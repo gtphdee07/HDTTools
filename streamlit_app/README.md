@@ -44,10 +44,19 @@ Opens at `http://localhost:8501`.
 
 ## Deploying to Streamlit Community Cloud
 
-This app is set up to deploy as-is — `packages.txt` (installs the
-Tesseract OCR system package) and `requirements.txt` (Python
-dependencies) live in this directory, which is where Community Cloud
-looks first when your main file isn't at the repo root.
+This app is set up to deploy as-is:
+
+- `requirements.txt` (Python dependencies) lives in this directory —
+  confirmed picked up correctly from here (Community Cloud's log showed
+  `Python dependencies were installed from
+  .../streamlit_app/requirements.txt`).
+- `packages.txt` (installs the `tesseract-ocr` system package) is at
+  **the repo root**, not in this directory — the subdirectory-first
+  search that works for `requirements.txt` did not pick up `packages.txt`
+  from here in practice (confirmed live: the app deployed and ran, but
+  OCR failed with "Tesseract OCR engine was not found" — a copy also
+  lives in this directory in case that changes, but the root copy is the
+  one actually being used).
 
 1. Go to https://share.streamlit.io and sign in with GitHub.
 2. Click **New app** (or **Create app**).
@@ -56,9 +65,7 @@ looks first when your main file isn't at the repo root.
 5. Click **Deploy**.
 
 The first deploy will take a few minutes (installing `tesseract-ocr` via
-`apt-get`, then the Python dependencies). If it fails to find
-`packages.txt`/`requirements.txt` in this directory for any reason, the
-documented fallback is a copy of both files at the repo root instead.
+`apt-get`, then the Python dependencies).
 
 **Known limitation on this platform**: the recent-rigs JSON file
 (`~/.rigcheck/recent_rigs.json`) won't survive a redeploy or container

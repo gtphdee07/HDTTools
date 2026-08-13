@@ -4,11 +4,12 @@ import { Button } from '../design-system/Button';
 interface ReviewStepProps {
   module: ModuleDef;
   data: Record<string, unknown>;
+  error: string | null;
   onFieldChange: (name: string, isNumber: boolean, value: string) => void;
   onContinue: () => void;
 }
 
-export function ReviewStep({ module, data, onFieldChange, onContinue }: ReviewStepProps) {
+export function ReviewStep({ module, data, error, onFieldChange, onContinue }: ReviewStepProps) {
   return (
     <div
       style={{
@@ -39,6 +40,9 @@ export function ReviewStep({ module, data, onFieldChange, onContinue }: ReviewSt
           );
         })}
       </div>
+      {error && (
+        <div style={{ color: 'var(--state-danger)', fontSize: 13, marginBottom: 16 }}>{error}</div>
+      )}
       <Button variant="primary" size="md" onClick={onContinue}>
         {module.continueLabel}
       </Button>

@@ -77,7 +77,7 @@ export interface HistoryEntry {
 }
 
 export type Screen = 'home' | 'history' | 'wizard';
-export type WizardSubStep = 'upload' | 'processing' | 'review';
+export type WizardSubStep = 'upload' | 'processing' | 'review' | 'error' | 'finalizing';
 
 export interface WizardState {
   step: number; // 0 = select rig, 1 = truck, 2 = trailer, 3 = scale, 4 = results
@@ -86,4 +86,24 @@ export interface WizardState {
   truck: TruckTagData;
   trailer: TrailerTagData;
   scale: ScaleTicketData;
+  pendingFile: File | null;
+  uploadError: string | null;
+}
+
+export interface BreakdownItem {
+  label: string;
+  tone: 'success' | 'warning';
+  badgeLabel: string;
+  pct: number;
+  barColor: string;
+  actualLabel: string;
+  limitLabel: string;
+  note: string | null;
+}
+
+export interface VerdictInfo {
+  headline: string;
+  subline: string;
+  bandBg: string;
+  icon: 'alert-triangle' | 'check-circle-2';
 }

@@ -1,10 +1,10 @@
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
-import type { BreakdownItem, Verdict } from '../calc';
+import type { BreakdownItem, VerdictInfo } from '../types';
 import { Button } from '../design-system/Button';
 import { Badge } from '../design-system/Badge';
 
 interface ResultsStepProps {
-  verdict: Verdict;
+  verdict: VerdictInfo;
   breakdownItems: BreakdownItem[];
   onRestart: () => void;
   onGoHome: () => void;

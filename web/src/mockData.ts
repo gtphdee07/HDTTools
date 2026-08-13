@@ -1,31 +1,3 @@
-import type { HistoryEntry, Rig, WizardState } from './types';
-
-export const initialRigs: Rig[] = [
-  { id: 'r1', truckName: 'Big Blue (Ford F-350)', trailerName: 'The Nest (Grand Design 2930RL)' },
-];
-
-export const initialHistory: HistoryEntry[] = [
-  { id: 'h1', date: 'Jul 28, 2026', truckName: 'Big Blue (Ford F-350)', trailerName: 'The Nest (Grand Design 2930RL)', verdict: 'fail' },
-  { id: 'h2', date: 'Jun 14, 2026', truckName: 'Big Blue (Ford F-350)', trailerName: 'The Nest (Grand Design 2930RL)', verdict: 'pass' },
-  { id: 'h3', date: 'May 2, 2026', truckName: 'Big Blue (Ford F-350)', trailerName: 'The Nest (Grand Design 2930RL)', verdict: 'pass' },
-];
-
-export const initialWizard: WizardState = {
-  step: 0,
-  subStep: 'upload',
-  rigChoice: 'r1',
-  truck: { manufacturer: 'Ford', gvwr_lb: 14000, front_gawr_lb: 6000, rear_gawr_lb: 9500 },
-  trailer: { manufacturer: 'Grand Design', gvwr_lb: 12500, gawr_per_axle_lb: 6000, uvw_lb: 9800 },
-  scale: {
-    steer_axle_lb: 5620,
-    drive_axle_lb: 9040,
-    trailer_axle_lb: 11380,
-    gross_weight_lb: 26040,
-    location_name: 'Loves Travel Stop #432',
-    date: '08/10/2026',
-  },
-};
-
 export type FieldType = 'text' | 'number';
 
 export interface FieldDef {

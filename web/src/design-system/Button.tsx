@@ -40,17 +40,18 @@ export function Button({ variant = 'primary', size = 'md', style, ...rest }: But
         fontFamily: 'var(--font-display)',
         fontWeight: 600,
         borderRadius: 'var(--radius-pill)',
-        cursor: 'pointer',
+        cursor: rest.disabled ? 'not-allowed' : 'pointer',
+        opacity: rest.disabled ? 0.5 : 1,
         transition: 'opacity 0.15s ease',
         ...sizeStyles[size],
         ...variantStyles[variant],
         ...style,
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.opacity = '0.85';
+        if (!rest.disabled) e.currentTarget.style.opacity = '0.85';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.opacity = '1';
+        if (!rest.disabled) e.currentTarget.style.opacity = '1';
       }}
     />
   );

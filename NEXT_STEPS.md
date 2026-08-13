@@ -2,13 +2,16 @@
 
 Working notes for picking this back up on another machine. Written 2026-08-13.
 
-## ⏭️ Next up: approved plan, not yet implemented
+## ✅ Done: axle-count / tongue-weight plan (implemented 2026-08-13)
 
-Two logic-fault fixes were designed and approved in the same session that
-wrote this file, but deliberately **not coded yet** — pick this up first
-tomorrow. Full plan also lives at
-`~/.claude/plans/mossy-cuddling-wren.md` on this machine, but that path
-won't exist on a different computer, so it's reproduced in full here.
+Two logic-fault fixes were designed and approved in the session that wrote
+this file, and implemented in the following session (different machine,
+after `git pull`). Plan text below is kept as a record of what was built;
+see `tests/test_breakdown.py` for the five tests covering all four
+scenarios (default axle count, custom axle count, tongue weight omitted,
+tongue weight provided, clamp-at-0), plus updated `models.py`,
+`database.py`, `api/schemas.py`, `mockData.ts`, and `types.ts`. All 55
+backend tests pass; frontend typechecks and builds clean.
 
 **The two faults:**
 1. `compute_breakdown()` hardcodes a 2-axle trailer (`gawr_per_axle * 2`)
@@ -123,8 +126,6 @@ On a machine that hasn't run this before:
 
 ## Natural next steps, roughly in order
 
-0. **The approved plan at the top of this file** (axle count + stand-alone
-   weight) — do this first.
 1. **Try it against more real labels.** Only one truck-tag manufacturer
    (Ford) and one trailer manufacturer (Brinkley RV) have been tested.
    Other manufacturers' compliance labels will have different layouts —

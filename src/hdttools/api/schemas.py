@@ -26,6 +26,7 @@ class TruckTagOut(BaseModel):
     front_gawr_lb: float | None = None
     rear_gawr_kg: float | None = None
     rear_gawr_lb: float | None = None
+    standalone_weight_lb: float | None = None
     front_tire: TireSpecOut
     rear_tire: TireSpecOut
 
@@ -41,6 +42,7 @@ class TrailerTagOut(BaseModel):
     gawr_per_axle_lb: float | None = None
     uvw_kg: float | None = None
     uvw_lb: float | None = None
+    axle_count: int | None = None
     tire: TireSpecOut
 
 

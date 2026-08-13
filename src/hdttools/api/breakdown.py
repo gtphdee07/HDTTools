@@ -25,6 +25,26 @@ def compute_breakdown(truck: dict, trailer: dict, scale: dict) -> list[dict]:
     trailer_gvwr = _lb(trailer.get("gvwr_lb"))
     gawr_per_axle = _lb(trailer.get("gawr_per_axle_lb"))
 
+    axle_count_raw = trailer.get("axle_count")
+    axle_count = int(axle_count_raw) if axle_count_raw else 2
+    trailer_axle_note = (
+        f"Trailer axle rating: {axle_count} axle(s) at the tag's per-axle rating."
+        if axle_count_raw
+        else "Assumes a 2-axle trailer at the tag's per-axle rating."
+    )
+
+    standalone_weight = truck.get("standalone_weight_lb")
+    if standalone_weight:
+        tongue_weight = max(0.0, (steer + drive) - _lb(standalone_weight))
+        trailer_total_actual = trailer_axle + tongue_weight
+        trailer_total_note = (
+            f"Includes an estimated {round(tongue_weight):,.0f} lb tongue weight "
+            "(steer + drive minus your truck's stand-alone weight)."
+        )
+    else:
+        trailer_total_actual = trailer_axle
+        trailer_total_note = "Excludes tongue weight carried by the truck — not on either tag."
+
     raw_items = [
         ("Front Axle (Steer)", steer, _lb(truck.get("front_gawr_lb")), None),
         ("Rear Axle (Drive)", drive, _lb(truck.get("rear_gawr_lb")), None),
@@ -37,14 +57,14 @@ def compute_breakdown(truck: dict, trailer: dict, scale: dict) -> list[dict]:
         (
             "Trailer Axle(s)",
             trailer_axle,
-            gawr_per_axle * 2,
-            "Assumes a 2-axle trailer at the tag's per-axle rating.",
+            gawr_per_axle * axle_count,
+            trailer_axle_note,
         ),
         (
             "Trailer Total (GVWR)",
-            trailer_axle,
+            trailer_total_actual,
             trailer_gvwr,
-            "Excludes tongue weight carried by the truck — not on either tag.",
+            trailer_total_note,
         ),
         ("Combined Rig Weight", gross, truck_gvwr + trailer_gvwr, None),
     ]

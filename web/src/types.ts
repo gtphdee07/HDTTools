@@ -40,6 +40,7 @@ export interface TruckTagData {
   front_gawr_lb?: number;
   rear_gawr_kg?: number;
   rear_gawr_lb?: number;
+  standalone_weight_lb?: number;
   front_tire?: TireSpec;
   rear_tire?: TireSpec;
 }
@@ -57,6 +58,7 @@ export interface TrailerTagData {
   gawr_per_axle_lb?: number;
   uvw_kg?: number;
   uvw_lb?: number;
+  axle_count?: number;
   tire?: TireSpec;
 }
 

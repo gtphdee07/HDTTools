@@ -21,7 +21,7 @@ _SCALE_TICKET_COLUMNS = [
 _TRUCK_TAG_COLUMNS = [
     "vehicle_name", "source_image", "manufacturer", "date", "vin",
     "vehicle_type", "gvwr_kg", "gvwr_lb", "front_gawr_kg", "front_gawr_lb",
-    "rear_gawr_kg", "rear_gawr_lb",
+    "rear_gawr_kg", "rear_gawr_lb", "standalone_weight_lb",
     "front_tire_tire", "front_tire_rim", "front_tire_cold_pressure_kpa",
     "front_tire_cold_pressure_psi", "front_tire_dual",
     "rear_tire_tire", "rear_tire_rim", "rear_tire_cold_pressure_kpa",
@@ -31,7 +31,7 @@ _TRUCK_TAG_COLUMNS = [
 _TRAILER_TAG_COLUMNS = [
     "vehicle_name", "source_image", "manufacturer", "date", "vin",
     "vehicle_type", "gvwr_kg", "gvwr_lb", "gawr_per_axle_kg",
-    "gawr_per_axle_lb", "uvw_kg", "uvw_lb",
+    "gawr_per_axle_lb", "uvw_kg", "uvw_lb", "axle_count",
     "tire_tire", "tire_rim", "tire_cold_pressure_kpa",
     "tire_cold_pressure_psi", "tire_dual",
 ]

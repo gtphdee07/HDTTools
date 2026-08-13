@@ -68,7 +68,23 @@ uv run pytest --cov
 - `src/hdttools/vision_client.py` — shared Claude-vision extraction helper
 - `src/hdttools/file_picker.py` — shared file-picker / vehicle-name prompt (no API dependency)
 - `src/hdttools/scale_ticket.py`, `truck_tag.py`, `trailer_tag.py` — Claude-vision readers
-- `src/hdttools/scale_ticket_ocr.py` — local-OCR alternative for scale tickets
+- `src/hdttools/scale_ticket_ocr.py`, `truck_tag_ocr.py`, `trailer_tag_ocr.py` — local-OCR alternatives
 - `src/hdttools/review_form.py` — generic GUI review/repair form
-- `src/hdttools/database.py` — SQLite persistence
+- `src/hdttools/database.py` — SQLite persistence (CLI tool only)
+- `src/hdttools/api/` — stateless FastAPI backend for the web/Streamlit frontends (no persistence — see below)
 - `tests/` — pytest suite
+
+## RigCheck: web and Streamlit frontends
+
+Alongside the CLI/library above, this repo also has a wizard-style RV
+weight-safety-check app ("RigCheck") in two self-contained frontends,
+each reusing the same OCR-parsing and breakdown logic:
+
+- `web/` — React + Vite frontend, talking to the FastAPI backend in
+  `src/hdttools/api/`. See `web/README.md`.
+- `streamlit_app/` — single-process Streamlit alternative, no separate
+  backend. See `streamlit_app/README.md`.
+
+Neither persists to a database — each remembers up to 5 recent rigs
+locally (browser `localStorage` for the web app, a JSON file for
+Streamlit) and keeps check history session-only.

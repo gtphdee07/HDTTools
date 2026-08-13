@@ -2,6 +2,66 @@
 
 Working notes for picking this back up on another machine. Written 2026-08-13.
 
+## ⏭️ Next up: approved plan, not yet implemented
+
+Two logic-fault fixes were designed and approved in the same session that
+wrote this file, but deliberately **not coded yet** — pick this up first
+tomorrow. Full plan also lives at
+`~/.claude/plans/mossy-cuddling-wren.md` on this machine, but that path
+won't exist on a different computer, so it's reproduced in full here.
+
+**The two faults:**
+1. `compute_breakdown()` hardcodes a 2-axle trailer (`gawr_per_axle * 2`)
+   regardless of the trailer's actual axle count.
+2. "Trailer Total (GVWR)" always excludes tongue weight (an acknowledged
+   approximation from the original design — no tongue-weight field exists
+   on either tag).
+
+**Agreed fix**, both fields **optional with graceful fallback** to today's
+behavior when left blank, and the tongue-weight estimate **folds into the
+existing "Trailer Total (GVWR)" card** rather than getting a new one:
+
+- Add `axle_count: int | None = None` to `TrailerTagData`
+  (`src/hdttools/models.py`) — user-typed during trailer review (not
+  OCR-derivable), field def added to `web/src/mockData.ts`'s `MODULES[2]`.
+  `breakdown.py`: `gawr_per_axle * int(trailer.get("axle_count") or 2)`,
+  with a note that's dynamic ("Trailer axle rating: N axle(s)...") when
+  provided vs. today's "Assumes a 2-axle trailer..." when defaulted.
+- Add `standalone_weight_lb: float | None = None` to `TruckTagData`
+  (lb-only, no `_kg` counterpart — matches `ScaleTicketData`'s weight
+  fields) — user-typed during truck review, field def added to
+  `MODULES[1]`. `breakdown.py`: when provided, `tongue_weight =
+  max(0.0, (steer + drive) - standalone_weight_lb)` (clamped at 0 — a
+  negative estimate is physically meaningless and would understate the
+  trailer total, the wrong direction for a safety check), and
+  `trailer_total_actual = trailer_axle + tongue_weight` with an updated
+  note explaining the estimate. When blank, keep today's exact behavior
+  and note unchanged.
+- Mirror both new fields into `src/hdttools/database.py`'s
+  `_TRAILER_TAG_COLUMNS`/`_TRUCK_TAG_COLUMNS` and
+  `src/hdttools/api/schemas.py`'s `TrailerTagOut`/`TruckTagOut`, for
+  consistency (CLI persistence, API schema completeness) even though OCR
+  won't populate them.
+- **No other frontend code changes needed** — `ReviewStep.tsx` and
+  `App.tsx`'s `createCheck` already handle `MODULES[step].fields`
+  generically, so the two new field defs are sufficient to get working
+  input rows end to end.
+- New `tests/test_breakdown.py` (currently `compute_breakdown`/
+  `verdict_for` only have indirect coverage via one `test_api.py` case):
+  default-2-axle case, custom axle count, stand-alone weight omitted vs.
+  provided, and the clamp-at-0 edge case (stand-alone weight larger than
+  the hitched total).
+- Verify against the real `ExampleDocs/` photos again after: blank vs.
+  filled-in axle count changes the "Trailer Axle(s)" limit/note correctly;
+  blank vs. filled-in stand-alone weight changes the "Trailer Total" actual
+  value/note correctly.
+
+**Explicitly deferred** (your idea, agreed as a good eventual direction
+but not this round): reading a *second* CAT scale ticket (unhitched) so
+`standalone_weight_lb` comes from an actual measurement instead of a typed
+number. The math in `compute_breakdown` won't need to change again for
+this — only where `standalone_weight_lb` comes from.
+
 ## What exists right now
 
 **Frontend** (`web/`, React + Vite + TS): all 7 RigCheck screens, wired to a
@@ -63,6 +123,8 @@ On a machine that hasn't run this before:
 
 ## Natural next steps, roughly in order
 
+0. **The approved plan at the top of this file** (axle count + stand-alone
+   weight) — do this first.
 1. **Try it against more real labels.** Only one truck-tag manufacturer
    (Ford) and one trailer manufacturer (Brinkley RV) have been tested.
    Other manufacturers' compliance labels will have different layouts —

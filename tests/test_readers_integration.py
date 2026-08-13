@@ -2,7 +2,7 @@
 every I/O boundary (file picker, vision extraction, review form, database
 save) mocked, so we're testing orchestration and control flow only."""
 
-from hdttools import scale_ticket, scale_ticket_ocr, trailer_tag, truck_tag
+from hdttools import file_picker, review_form, scale_ticket, scale_ticket_ocr, trailer_tag, truck_tag
 
 _SCALE_FIELDS = {
     "ticket_number": "123",
@@ -104,10 +104,10 @@ def test_read_scale_ticket_ocr_saves_reviewed_record(tmp_path, monkeypatch):
     image_path.write_bytes(b"fake")
 
     monkeypatch.setattr(scale_ticket_ocr, "_ensure_tesseract_configured", lambda: None)
-    monkeypatch.setattr(scale_ticket_ocr, "select_image_file", lambda title: image_path)
+    monkeypatch.setattr(file_picker, "select_image_file", lambda title: image_path)
     monkeypatch.setattr(scale_ticket_ocr, "_preprocess", lambda path: object())
     monkeypatch.setattr(scale_ticket_ocr, "_ocr_text", lambda image: "STEER AXLE 100 LB")
-    monkeypatch.setattr(scale_ticket_ocr, "review_and_edit", lambda record: record)
+    monkeypatch.setattr(review_form, "review_and_edit", lambda record: record)
 
     saved = []
     monkeypatch.setattr(

@@ -22,7 +22,6 @@ from __future__ import annotations
 import re
 
 from .database import save_truck_tag
-from .file_picker import prompt_vehicle_name, select_image_file
 from .models import TireSpec, TruckTagData
 from .ocr_common import (
     ensure_tesseract_configured as _ensure_tesseract_configured,
@@ -32,7 +31,9 @@ from .ocr_common import (
     open_image as _open_image,
     preprocess_image as _preprocess_image,
 )
-from .review_form import review_and_edit
+
+# file_picker/review_form (tkinter) are imported lazily inside
+# read_truck_tag_ocr() below, not here - see scale_ticket_ocr.py for why.
 
 
 def _preprocess(image_path):
@@ -101,6 +102,9 @@ def read_truck_tag_ocr() -> TruckTagData | None:
     than the API version, so expect to fix more), save the result, and
     return it. Returns None if the user cancels the review instead of
     saving."""
+    from .file_picker import prompt_vehicle_name, select_image_file
+    from .review_form import review_and_edit
+
     _ensure_tesseract_configured()
     image_path = select_image_file("Select a truck compliance label image")
     vehicle_name = prompt_vehicle_name()

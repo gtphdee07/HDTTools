@@ -11,7 +11,9 @@ Run with:
 
 from __future__ import annotations
 
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 import streamlit as st
 from PIL import Image
@@ -19,14 +21,35 @@ from PIL import Image
 from fields import FIELDS, TITLES
 from recent_rigs import load_recent_rigs, save_recent_rig
 
-from hdttools import scale_ticket_ocr, trailer_tag_ocr, truck_tag_ocr
-from hdttools.api.breakdown import compute_breakdown, verdict_for
-from hdttools.ocr_common import ensure_tesseract_configured, ocr_text, preprocess_image
+# Make the sibling `src/hdttools` package importable without relying on it
+# being pip-installed - a relative path in requirements.txt would resolve
+# against pip's current working directory, which isn't reliably known on
+# every host (confirmed to differ from "this file's directory" locally,
+# and undocumented for Streamlit Community Cloud). __file__ is always
+# correct regardless of where the process was launched from.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+
+from hdttools import scale_ticket_ocr, trailer_tag_ocr, truck_tag_ocr  # noqa: E402
+from hdttools.api.breakdown import compute_breakdown, verdict_for  # noqa: E402
+from hdttools.ocr_common import ensure_tesseract_configured, ocr_text, preprocess_image  # noqa: E402
 
 st.set_page_config(page_title="RigCheck", page_icon="🚚")
 
 MODULE_ORDER = ["truck", "trailer", "scale"]
 STEP_LABELS = ["Rig", "Truck Tag", "Trailer Tag", "Scale Ticket", "Results"]
+
+DISCLAIMER_TEXT = (
+    "**Experimental Tool — Not for Safety Decisions**\n\n"
+    "RigCheck is an experimental project built to learn AI-assisted software "
+    "development, not a certified or professional weight-safety tool. Its "
+    "numbers come from OCR-read photos, manually reviewed by you, and "
+    "simplified math — any step of that chain can be wrong.\n\n"
+    "Do not use this tool to decide whether your rig is safe to tow. Always "
+    "verify actual weights and ratings using a certified scale and your "
+    "vehicle's official documentation, and consult a qualified professional "
+    "if you're unsure. You use this tool, and any decisions you make based "
+    "on it, entirely at your own risk and responsibility."
+)
 
 _PARSERS = {
     "truck": truck_tag_ocr._parse_fields,
@@ -47,6 +70,7 @@ def _init_state() -> None:
     st.session_state.setdefault("recent_rigs", load_recent_rigs())
     st.session_state.setdefault("session_history", [])
     st.session_state.setdefault("result", None)
+    st.session_state.setdefault("disclaimer_acknowledged", False)
 
 
 def _reset_wizard() -> None:
@@ -139,7 +163,19 @@ def _module_step(module_key: str) -> None:
         st.rerun()
 
 
+def _show_disclaimer() -> None:
+    st.header("Before you see your results")
+    st.warning(DISCLAIMER_TEXT)
+    if st.button("I Understand — Continue"):
+        st.session_state["disclaimer_acknowledged"] = True
+        st.rerun()
+
+
 def _results_step() -> None:
+    if not st.session_state.get("disclaimer_acknowledged"):
+        _show_disclaimer()
+        return
+
     st.header("Results")
     truck, trailer, scale = st.session_state["truck"], st.session_state["trailer"], st.session_state["scale"]
     items = compute_breakdown(truck, trailer, scale)

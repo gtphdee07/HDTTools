@@ -4,6 +4,7 @@ import { MODULES } from './mockData';
 import { createBreakdown, extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
 import type { CreateBreakdownResult } from './api';
 import { loadRecentRigs, saveRecentRig } from './recentRigs';
+import { DisclaimerModal } from './components/DisclaimerModal';
 import { Header } from './components/Header';
 import { StepPills } from './components/StepPills';
 import { Dashboard } from './screens/Dashboard';
@@ -13,6 +14,8 @@ import { UploadStep } from './wizard/UploadStep';
 import { ProcessingStep } from './wizard/ProcessingStep';
 import { ReviewStep } from './wizard/ReviewStep';
 import { ResultsStep } from './wizard/ResultsStep';
+
+const DISCLAIMER_KEY = 'rigcheck:disclaimerAcknowledged';
 
 const EMPTY_WIZARD: WizardState = {
   step: 0,
@@ -31,6 +34,14 @@ function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [wizard, setWizard] = useState<WizardState>(EMPTY_WIZARD);
   const [checkResult, setCheckResult] = useState<CreateBreakdownResult | null>(null);
+  const [disclaimerAcknowledged, setDisclaimerAcknowledged] = useState(
+    () => sessionStorage.getItem(DISCLAIMER_KEY) === 'true',
+  );
+
+  const acknowledgeDisclaimer = () => {
+    sessionStorage.setItem(DISCLAIMER_KEY, 'true');
+    setDisclaimerAcknowledged(true);
+  };
 
   const goHome = () => setScreen('home');
   const goHistory = () => setScreen('history');
@@ -174,7 +185,11 @@ function App() {
               />
             )}
 
-            {isResultsStep && checkResult && (
+            {isResultsStep && checkResult && !disclaimerAcknowledged && (
+              <DisclaimerModal onAcknowledge={acknowledgeDisclaimer} />
+            )}
+
+            {isResultsStep && checkResult && disclaimerAcknowledged && (
               <ResultsStep
                 verdict={checkResult.verdictInfo}
                 breakdownItems={checkResult.breakdownItems}

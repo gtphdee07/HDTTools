@@ -66,12 +66,6 @@ class ScaleTicketOut(BaseModel):
     trailer_number: str | None = None
 
 
-class RigOut(BaseModel):
-    id: int
-    truck_name: str
-    trailer_name: str
-
-
 class BreakdownItemOut(BaseModel):
     label: str
     tone: Literal["success", "warning"]
@@ -90,25 +84,13 @@ class VerdictOut(BaseModel):
     icon: str
 
 
-class CheckOut(BaseModel):
-    id: int
-    rig_id: int
-    truck_name: str
-    trailer_name: str
-    date: str
-    verdict: Literal["pass", "fail"]
-    breakdown: list[BreakdownItemOut]
-
-
-class CheckCreateRequest(BaseModel):
-    rig_id: int
+class BreakdownRequest(BaseModel):
     truck: dict[str, Any]
     trailer: dict[str, Any]
     scale: dict[str, Any]
 
 
-class CheckCreateResponse(BaseModel):
-    id: int
+class BreakdownResponse(BaseModel):
     date: str
     verdict: Literal["pass", "fail"]
     breakdownItems: list[BreakdownItemOut]

@@ -1,8 +1,9 @@
 """API-level tests: routing, schema validation, and orchestration, with
 every OCR/image boundary mocked (same monkeypatch style as
 test_readers_integration.py) so the suite doesn't need Tesseract installed
-to run. Each test gets an isolated temp SQLite file via a dependency
-override, so nothing touches the real dev database."""
+to run. The API is stateless (no persistence) — each platform keeps its
+own recent-rigs/history state locally, so there's nothing to isolate per
+test beyond the OCR mocks."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,16 +13,13 @@ from hdttools.models import TireSpec
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    db_path = tmp_path / "test.db"
-    main.app.dependency_overrides[main.get_db_path] = lambda: db_path
+def client(monkeypatch):
     monkeypatch.setattr(main, "ensure_tesseract_configured", lambda: None)
     monkeypatch.setattr(main, "ocr_text", lambda image: "irrelevant")
     monkeypatch.setattr(main.Image, "open", lambda data: object())
     monkeypatch.setattr(main, "preprocess_image", lambda image: image)
     with TestClient(main.app) as test_client:
         yield test_client
-    main.app.dependency_overrides.clear()
 
 
 _TRUCK_FIELDS = {
@@ -102,45 +100,46 @@ def test_extract_rejects_non_image_upload(client):
     assert response.status_code == 400
 
 
-def test_get_rigs_returns_seeded_rig(client):
-    response = client.get("/api/rigs")
-    assert response.status_code == 200
-    rigs = response.json()
-    assert len(rigs) == 1
-    assert rigs[0]["truck_name"] == "Big Blue (Ford F-350)"
-
-
-def test_create_check_computes_verdict_and_persists(client):
-    rig_id = client.get("/api/rigs").json()[0]["id"]
-
-    payload = {
-        "rig_id": rig_id,
-        "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
-        "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
-        "scale": {
-            "steer_axle_lb": 5620,
-            "drive_axle_lb": 9040,
-            "trailer_axle_lb": 11380,
-            "gross_weight_lb": 26040,
-        },
-    }
-    response = client.post("/api/checks", json=payload)
+def test_breakdown_endpoint_computes_verdict():
+    with TestClient(main.app) as client:
+        payload = {
+            "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
+            "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+            "scale": {
+                "steer_axle_lb": 5620,
+                "drive_axle_lb": 9040,
+                "trailer_axle_lb": 11380,
+                "gross_weight_lb": 26040,
+            },
+        }
+        response = client.post("/api/breakdown", json=payload)
 
     assert response.status_code == 200
     body = response.json()
     assert body["verdict"] == "fail"
     assert body["verdictInfo"]["headline"] == "Not Safe to Tow"
     assert len(body["breakdownItems"]) == 6
-
-    history = client.get("/api/checks").json()
-    assert len(history) == 1
-    assert history[0]["truck_name"] == "Big Blue (Ford F-350)"
-    assert history[0]["verdict"] == "fail"
+    assert "date" in body
 
 
-def test_create_check_with_unknown_rig_returns_404(client):
-    response = client.post(
-        "/api/checks",
-        json={"rig_id": 999, "truck": {}, "trailer": {}, "scale": {}},
-    )
-    assert response.status_code == 404
+def test_breakdown_endpoint_reflects_axle_count_and_standalone_weight():
+    with TestClient(main.app) as client:
+        payload = {
+            "truck": {
+                "gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500,
+                "standalone_weight_lb": 13000,
+            },
+            "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000, "axle_count": 3},
+            "scale": {
+                "steer_axle_lb": 5620,
+                "drive_axle_lb": 9040,
+                "trailer_axle_lb": 11380,
+                "gross_weight_lb": 26040,
+            },
+        }
+        response = client.post("/api/breakdown", json=payload)
+
+    assert response.status_code == 200
+    items = {item["label"]: item for item in response.json()["breakdownItems"]}
+    assert items["Trailer Axle(s)"]["limitLabel"] == "18,000 lb"
+    assert items["Trailer Total (GVWR)"]["actualLabel"] == "13,040 lb"

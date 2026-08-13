@@ -62,10 +62,11 @@ export interface TrailerTagData {
   tire?: TireSpec;
 }
 
-export interface Rig {
-  id: string;
-  truckName: string;
-  trailerName: string;
+export interface RecentRig {
+  nickname: string;
+  truck: TruckTagData;
+  trailer: TrailerTagData;
+  lastUsedAt: string;
 }
 
 export type Verdict = 'pass' | 'fail';
@@ -73,8 +74,7 @@ export type Verdict = 'pass' | 'fail';
 export interface HistoryEntry {
   id: string;
   date: string;
-  truckName: string;
-  trailerName: string;
+  rigNickname: string;
   verdict: Verdict;
 }
 
@@ -84,7 +84,7 @@ export type WizardSubStep = 'upload' | 'processing' | 'review' | 'error' | 'fina
 export interface WizardState {
   step: number; // 0 = select rig, 1 = truck, 2 = trailer, 3 = scale, 4 = results
   subStep: WizardSubStep;
-  rigChoice: string;
+  rigNickname: string;
   truck: TruckTagData;
   trailer: TrailerTagData;
   scale: ScaleTicketData;

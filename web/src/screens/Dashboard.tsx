@@ -1,15 +1,15 @@
-import type { HistoryEntry, Rig } from '../types';
+import type { HistoryEntry, RecentRig } from '../types';
 import { Button } from '../design-system/Button';
 import { Card } from '../design-system/Card';
 import { Badge } from '../design-system/Badge';
 
 interface DashboardProps {
-  rigs: Rig[];
+  recentRigs: RecentRig[];
   history: HistoryEntry[];
   onStartWizard: () => void;
 }
 
-export function Dashboard({ rigs, history, onStartWizard }: DashboardProps) {
+export function Dashboard({ recentRigs, history, onStartWizard }: DashboardProps) {
   const recentHistory = history.slice(0, 2);
 
   return (
@@ -38,17 +38,20 @@ export function Dashboard({ rigs, history, onStartWizard }: DashboardProps) {
         </Button>
       </div>
 
-      <h2 style={{ fontSize: 'var(--text-h3)', color: 'var(--fg-1)', margin: '36px 0 14px' }}>Your Saved Rigs</h2>
+      <h2 style={{ fontSize: 'var(--text-h3)', color: 'var(--fg-1)', margin: '36px 0 14px' }}>Your Recent Rigs</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18 }}>
-        {rigs.map((rig) => (
-          <Card key={rig.id} title={rig.truckName} subtitle={rig.trailerName}>
-            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-              <Button variant="secondary" size="sm" onClick={onStartWizard}>
-                Run Check
-              </Button>
-            </div>
-          </Card>
-        ))}
+        {recentRigs.map((rig) => {
+          const subtitle = [rig.truck.manufacturer, rig.trailer.manufacturer].filter(Boolean).join(' + ');
+          return (
+            <Card key={rig.nickname} title={rig.nickname} subtitle={subtitle || undefined}>
+              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                <Button variant="secondary" size="sm" onClick={onStartWizard}>
+                  Run Check
+                </Button>
+              </div>
+            </Card>
+          );
+        })}
         <div
           style={{
             border: '2px dashed var(--border-subtle)',
@@ -84,7 +87,7 @@ export function Dashboard({ rigs, history, onStartWizard }: DashboardProps) {
           >
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15 }}>
-                {h.truckName} + {h.trailerName}
+                {h.rigNickname}
               </div>
               <div style={{ fontSize: 13, color: 'var(--fg-2)' }}>{h.date}</div>
             </div>

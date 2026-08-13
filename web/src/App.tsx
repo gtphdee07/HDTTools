@@ -1,15 +1,9 @@
-import { useEffect, useState } from 'react';
-import type { HistoryEntry, Rig, Screen, WizardState } from './types';
+import { useState } from 'react';
+import type { HistoryEntry, RecentRig, Screen, WizardState } from './types';
 import { MODULES } from './mockData';
-import {
-  createCheck,
-  extractScaleTicket,
-  extractTrailerTag,
-  extractTruckTag,
-  fetchHistory,
-  fetchRigs,
-} from './api';
-import type { CreateCheckResult } from './api';
+import { createBreakdown, extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
+import type { CreateBreakdownResult } from './api';
+import { loadRecentRigs, saveRecentRig } from './recentRigs';
 import { Header } from './components/Header';
 import { StepPills } from './components/StepPills';
 import { Dashboard } from './screens/Dashboard';
@@ -23,7 +17,7 @@ import { ResultsStep } from './wizard/ResultsStep';
 const EMPTY_WIZARD: WizardState = {
   step: 0,
   subStep: 'upload',
-  rigChoice: '',
+  rigNickname: '',
   truck: {},
   trailer: {},
   scale: {},
@@ -33,21 +27,10 @@ const EMPTY_WIZARD: WizardState = {
 
 function App() {
   const [screen, setScreen] = useState<Screen>('home');
-  const [rigs, setRigs] = useState<Rig[]>([]);
+  const [recentRigs, setRecentRigs] = useState<RecentRig[]>(() => loadRecentRigs());
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [wizard, setWizard] = useState<WizardState>(EMPTY_WIZARD);
-  const [checkResult, setCheckResult] = useState<CreateCheckResult | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    Promise.all([fetchRigs(), fetchHistory()])
-      .then(([loadedRigs, loadedHistory]) => {
-        setRigs(loadedRigs);
-        setHistory(loadedHistory);
-        setWizard((w) => (w.rigChoice ? w : { ...w, rigChoice: loadedRigs[0]?.id ?? '' }));
-      })
-      .catch((err) => setLoadError(err instanceof Error ? err.message : 'Failed to reach the backend.'));
-  }, []);
+  const [checkResult, setCheckResult] = useState<CreateBreakdownResult | null>(null);
 
   const goHome = () => setScreen('home');
   const goHistory = () => setScreen('history');
@@ -55,21 +38,22 @@ function App() {
   const startWizard = () => {
     setScreen('wizard');
     setCheckResult(null);
-    setWizard((w) => ({
-      ...w,
-      step: 0,
-      subStep: 'upload',
-      truck: {},
-      trailer: {},
-      scale: {},
-      pendingFile: null,
-      uploadError: null,
-    }));
+    setWizard(EMPTY_WIZARD);
   };
   const restart = startWizard;
 
-  const selectRig = (id: string) => setWizard((w) => ({ ...w, rigChoice: id }));
-  const confirmRig = () => setWizard((w) => ({ ...w, step: 1, subStep: 'upload' }));
+  const selectExistingRig = (rig: RecentRig) =>
+    setWizard((w) => ({
+      ...w,
+      rigNickname: rig.nickname,
+      truck: rig.truck,
+      trailer: rig.trailer,
+      step: 3,
+      subStep: 'upload',
+    }));
+
+  const startNewRig = (nickname: string) =>
+    setWizard((w) => ({ ...w, rigNickname: nickname, step: 1, subStep: 'upload' }));
 
   const onFileSelected = (file: File) => setWizard((w) => ({ ...w, pendingFile: file, uploadError: null }));
 
@@ -107,27 +91,24 @@ function App() {
 
     setWizard((w) => ({ ...w, subStep: 'finalizing' }));
     try {
-      const result = await createCheck(wizard.rigChoice, wizard.truck, wizard.trailer, wizard.scale);
+      const result = await createBreakdown(wizard.truck, wizard.trailer, wizard.scale);
       setCheckResult(result);
-      const rig = rigs.find((r) => r.id === wizard.rigChoice);
-      if (rig) {
-        setHistory((h) => [
-          {
-            id: result.id,
-            date: result.date,
-            truckName: rig.truckName,
-            trailerName: rig.trailerName,
-            verdict: result.verdict,
-          },
-          ...h,
-        ]);
-      }
+      setRecentRigs(saveRecentRig(wizard.rigNickname, wizard.truck, wizard.trailer));
+      setHistory((h) => [
+        {
+          id: crypto.randomUUID(),
+          date: result.date,
+          rigNickname: wizard.rigNickname,
+          verdict: result.verdict,
+        },
+        ...h,
+      ]);
       setWizard((w) => ({ ...w, step: 4, subStep: 'review' }));
     } catch (err) {
       setWizard((w) => ({
         ...w,
         subStep: 'review',
-        uploadError: err instanceof Error ? err.message : 'Could not save this check — try again.',
+        uploadError: err instanceof Error ? err.message : 'Could not compute this check — try again.',
       }));
     }
   };
@@ -150,14 +131,8 @@ function App() {
     <div style={{ minHeight: '100vh', background: 'var(--bg-page)', fontFamily: 'var(--font-body)', color: 'var(--fg-1)', paddingBottom: 80 }}>
       <Header screen={screen} onGoHome={goHome} onGoHistory={goHistory} onStartWizard={startWizard} />
 
-      {loadError && (
-        <div style={{ background: 'var(--state-danger)', color: '#fff', padding: '10px 32px', fontSize: 13 }}>
-          {loadError} — is the backend running at http://localhost:8000?
-        </div>
-      )}
-
       <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', padding: '36px 32px' }}>
-        {screen === 'home' && <Dashboard rigs={rigs} history={history} onStartWizard={startWizard} />}
+        {screen === 'home' && <Dashboard recentRigs={recentRigs} history={history} onStartWizard={startWizard} />}
         {screen === 'history' && <History history={history} />}
 
         {isWizard && (
@@ -172,7 +147,7 @@ function App() {
             <StepPills step={step} />
 
             {isRigStep && (
-              <RigStep rigs={rigs} rigChoice={wizard.rigChoice} onSelect={selectRig} onConfirm={confirmRig} />
+              <RigStep recentRigs={recentRigs} onSelectExisting={selectExistingRig} onStartNew={startNewRig} />
             )}
 
             {isUploadStep && currentModule && (

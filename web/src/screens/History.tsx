@@ -25,7 +25,7 @@ export function History({ history }: HistoryProps) {
           >
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15 }}>
-                {h.truckName} + {h.trailerName}
+                {h.rigNickname}
               </div>
               <div style={{ fontSize: 13, color: 'var(--fg-2)' }}>{h.date}</div>
             </div>

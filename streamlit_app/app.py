@@ -208,7 +208,13 @@ def _results_step() -> None:
         st.error(f"**{verdict_info['headline']}** — {verdict_info['subline']}")
 
     for item in items:
-        st.metric(item["label"], item["actualLabel"], delta=item["badgeLabel"])
+        # st.metric infers delta color from a leading "-" on the string, but
+        # our badge labels ("720 lb over", "380 lb to spare") never start
+        # with one, so it would show green for both pass and fail. Drive the
+        # color from our own already-correct tone instead: "inverse" flips
+        # a non-"-"-prefixed string from green to red.
+        delta_color = "normal" if item["tone"] == "success" else "inverse"
+        st.metric(item["label"], item["actualLabel"], delta=item["badgeLabel"], delta_color=delta_color)
         st.progress(min(item["pct"], 100) / 100, text=f"Limit: {item['limitLabel']}")
         if item["note"]:
             st.caption(item["note"])

@@ -17,3 +17,6 @@ htmlcov/
 
 # macOS
 .DS_Store
+
+# Design handoffs (local reference only, not version-controlled)
+android/design/

@@ -2,6 +2,56 @@
 
 Working notes for picking this back up on another machine. Written 2026-08-13.
 
+## ⏭️ Next up: fix the tongue-weight fallback assumption (web + Streamlit)
+
+Discovered while reviewing the Android design handoff (`android/design/`,
+not version-controlled — see its `README.md` for the full screen list):
+the Android design's blank-field fallback for stand-alone weight assumes
+`trailer_axle_lb` is **80% of the trailer's actual total weight** (a
+standard fifth-wheel/gooseneck pin-weight rule of thumb — pin weight is
+commonly cited as 15–25% of trailer weight). The web/Streamlit apps'
+current fallback — when stand-alone weight is blank, just skip the
+tongue-weight adjustment entirely — isn't merely less accurate, **it's
+wrong in the unsafe direction**: it implicitly assumes tongue weight is
+0%, which can make an overweight trailer look compliant on the "Trailer
+Total (GVWR)" check. Tongue weight physically transfers onto the truck's
+axles when hitched and never appears in `trailer_axle_lb` — so comparing
+`trailer_axle_lb` alone against the trailer's GVWR (a *total*-weight
+rating) understates the real number whenever tongue/pin weight isn't
+separately supplied.
+
+**Decided fix**: adopt the Android design's 80% assumption as the correct
+default everywhere, not a platform quirk to reconcile away.
+
+- `src/hdttools/api/breakdown.py`'s `compute_breakdown()`: when
+  `standalone_weight_lb` is blank, replace "use `trailer_axle_lb` alone"
+  with `trailer_total_actual = trailer_axle_lb / 0.8` (an *estimate* of
+  total trailer weight from the axle reading). Note text should say so
+  plainly, e.g. "Estimated total weight — assumes the axle reading is 80%
+  of actual trailer weight; enter your truck's stand-alone weight for an
+  exact figure." The exact-figure path (`standalone_weight_lb` provided)
+  stays as already implemented — computed tongue weight added to
+  `trailer_axle_lb`, clamped at 0.
+- Worth pulling `0.8` out as a named constant (e.g.
+  `DEFAULT_AXLE_TO_TOTAL_RATIO`) rather than a magic number, since
+  Android's eventual Kotlin port of `compute_breakdown` will need the same
+  value — a single documented source of truth is easier to keep in sync
+  than a comment in two languages.
+- `tests/test_breakdown.py`'s "tongue weight omitted" case currently
+  asserts the old (unsafe) unadjusted behavior — needs updating to expect
+  the `/0.8` estimate instead. Add a case confirming the *provided*
+  stand-alone-weight path is unaffected by this change.
+- Streamlit imports `compute_breakdown` directly (no separate copy of this
+  logic) — fixing `breakdown.py` fixes both web and Streamlit in one
+  place, nothing platform-specific to duplicate.
+- Android's design already bakes in this behavior as the intended default
+  — nothing to change there once built, just make sure the eventual
+  Kotlin port uses the same ratio.
+- Re-verify against the real `ExampleDocs/` photos after: leave
+  stand-alone weight blank, confirm "Trailer Total (GVWR)" now shows the
+  inflated estimate and the new note wording, instead of today's
+  unadjusted `trailer_axle_lb`.
+
 ## ✅ Done: portability pass (implemented 2026-08-13)
 
 Full plan at `~/.claude/plans/i-would-like-to-toasty-dusk.md` on the
@@ -112,6 +162,11 @@ but not this round): reading a *second* CAT scale ticket (unhitched) so
 number. The math in `compute_breakdown` won't need to change again for
 this — only where `standalone_weight_lb` comes from.
 
+**Superseded by the section above**: the "when blank, skip the
+tongue-weight adjustment entirely" fallback described below turned out to
+be unsafe (implicitly assumes 0% tongue weight) — see "Next up" at the top
+of this file for the fix.
+
 ## What exists right now
 
 **Frontend** (`web/`, React + Vite + TS): all 7 RigCheck screens, wired to a
@@ -175,6 +230,9 @@ On a machine that hasn't run this before:
 
 ## Natural next steps, roughly in order
 
+0. **The tongue-weight fallback fix at the top of this file** — do this
+   first, it's a correctness/safety issue in the shipped app, not just a
+   nice-to-have.
 1. **Try it against more real labels.** Only one truck-tag manufacturer
    (Ford) and one trailer manufacturer (Brinkley RV) have been tested.
    Other manufacturers' compliance labels will have different layouts —

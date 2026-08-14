@@ -8,8 +8,11 @@ Started planning the Android app's implementation. First topic was whether
 to charge for an optional Claude-vision-powered "scan instead of type"
 feature (as opposed to the native app's default manual-entry-only flow,
 which stays free and fully offline per `ANDROID_DESIGN_BRIEF.md`). Not
-decided yet — the clarifying questions below were asked and dismissed
-without an answer, so this is genuinely open, not settled.
+decided yet — genuinely open, not settled. The thread moved through a flat
+monthly subscription idea, then toward a different model the user actually
+prefers, and most recently landed on a backend architecture recommendation.
+No billing model is finalized and no Android/backend code exists for this
+feature yet.
 
 **Cost baseline** (documented pricing, not a measured count): a full
 3-photo check (truck tag + trailer tag + scale ticket) via Claude vision
@@ -21,41 +24,57 @@ this — structured field extraction from a printed label is squarely its
 use case. This is compute cost only; doesn't include Play Store fees or
 your own margin.
 
-**Toolkit options surveyed:**
-- **Google Play Billing Library** (mandatory Billing Library v8 by
-  2026-08-31 for anyone using it) — required historically, but as of
-  **2026-06-30** Google now permits external payment methods for US/UK/EEA
-  developers (post Epic v. Google), so this is no longer the only
-  compliant path.
-- **RevenueCat** — wraps Play Billing (+ Apple StoreKit), handles
-  entitlement/receipt validation for you. Built for subscription gating,
-  not fine-grained metered usage.
-- **Stripe / Stripe Billing** — now legitimate on Play Store per the above
-  policy change; Stripe Billing specifically supports true metered/
-  usage-based charges if you want pay-per-scan pricing instead of a flat
-  subscription.
-
 **The part that matters more than the billing rail:** `ANTHROPIC_API_KEY`
 can never ship inside the Android app (trivially extracted from the APK).
 Enabling Claude-vision scanning requires a backend that holds the key,
 checks entitlement, and proxies the request — reopening the "no backend"
 decision in `ANDROID_DESIGN_BRIEF.md`.
 
-**My recommendation, not yet accepted or rejected:**
-- Flat monthly subscription (not metered pay-per-scan) — simpler, Play
-  Billing/RevenueCat handle it natively; metering adds real complexity for
-  a cost difference that's probably marginal at likely volume (~$0.01–0.03
-  per check).
-- Scan is an **optional paid add-on**, not a rework of the whole app — the
-  native manual-entry flow stays the default, free, fully-offline path;
-  a backend exists only for this one feature.
-- Google Play Billing (via RevenueCat to cut plumbing) for the
-  subscription, with a small backend (could reuse the FastAPI pattern from
-  `src/hdttools/api/`) that just checks entitlement before proxying to
-  Claude.
+**Billing model under consideration — lifetime purchase + consumable
+credit packs** (your preferred direction, motivated by not wanting to
+carry the risk of Anthropic's per-token pricing changing under a flat
+subscription): a one-time purchase unlocks the app for life and includes a
+pre-set number of Claude-vision scans; once used up, additional scans are
+sold as consumable in-app-purchase "packs" (e.g. "20 more scans"). This
+caps your downside per user to the credits they've actually paid for,
+unlike an unlimited-use flat subscription.
 
-**Next step:** resume this conversation — decide flat-vs-metered and
-optional-addon-vs-architecture-rework before writing any Android code.
+**Capability split for building this** (roughly): I can write essentially
+all of the code — the Android purchase-flow UI, the credit-balance display,
+the backend proxy function, and the RevenueCat/API wiring. What's yours to
+do: create and own the RevenueCat, Google Play Console, and (if used)
+Stripe accounts; set actual prices; accept Google's Play Console developer
+agreement and any tax/payout info; and any legal/compliance judgment calls
+(refund policy wording, terms of service) — those need to be your accounts
+and your decisions, not something I can do on your behalf.
+
+**Backend architecture — answered 2026-08-14:** you don't need to run a
+traditional server or build your own credit-ledger database.
+[RevenueCat's Virtual Currency feature](https://www.revenuecat.com/feature/virtual-currency)
+now handles purchase verification for both the lifetime-unlock product and
+the consumable scan-packs, *and* tracks the credit balance itself (not just
+boolean subscription entitlements) — it increments on purchase, you read/
+decrement via their API, and it reconciles automatically on refunds/
+chargebacks. That covers the ledger/state-keeping question.
+
+What's still unavoidable: a small server-side function that holds
+`ANTHROPIC_API_KEY` and, per scan request, checks the RevenueCat balance →
+calls Claude vision → decrements the balance → returns the result. It's
+stateless (no database of its own needed — RevenueCat holds the balance),
+so it's a good fit for a serverless function rather than a maintained
+server: **Firebase Cloud Functions, Supabase Edge Functions, or Cloudflare
+Workers** are all reasonable, pay-per-use, no-uptime-babysitting options.
+**GoDaddy specifically is not a good fit** — it's domain registration and
+shared cPanel/WordPress hosting, not built for reliably running this kind
+of function on a payment-critical path.
+
+So the recommended shape: **RevenueCat (purchases + credit ledger) + one
+small serverless function (the Claude-key proxy)** — no self-managed
+server at all.
+
+**Next step:** decide whether to commit to the lifetime+credit-packs model
+(vs. flat subscription), then start on the RevenueCat account setup +
+serverless proxy skeleton before writing Android purchase-flow code.
 
 ## ⏭️ Next up: fix the tongue-weight fallback assumption (web + Streamlit)
 

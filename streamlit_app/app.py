@@ -85,13 +85,14 @@ def _reset_wizard() -> None:
     st.session_state["result"] = None
 
 
-def _extract_fields(module_key: str, uploaded_file) -> dict:
+def _extract_fields(module_key: str, uploaded_file) -> tuple[dict, str]:
     ensure_tesseract_configured()
     image = Image.open(uploaded_file)
     text = ocr_text(preprocess_image(image))
     parsed = _PARSERS[module_key](text)
     keep = {name for name, _label, _type in FIELDS[module_key]}
-    return {k: v for k, v in parsed.items() if k in keep}
+    fields = {k: v for k, v in parsed.items() if k in keep}
+    return fields, text
 
 
 def _rig_step() -> None:
@@ -125,6 +126,24 @@ def _rig_step() -> None:
 def _render_review(module_key: str) -> None:
     st.subheader("Check the numbers")
     st.caption("Here's what we read off your photo. Fix anything that looks off.")
+
+    raw_text = st.session_state.get(f"{module_key}_raw_text", "")
+    if not raw_text.strip():
+        st.warning(
+            "Tesseract returned no text at all from this photo — that points to an "
+            "OCR engine/environment problem (e.g. missing language data) rather than "
+            "a hard-to-read photo, since even a blurry photo usually yields some text."
+        )
+    elif not any(st.session_state[module_key].values()):
+        st.warning(
+            "Tesseract read text from the photo, but none of it matched the fields "
+            "we look for — expand below to see what it actually read. This usually "
+            "means a label layout our patterns haven't been tuned for yet."
+        )
+    if raw_text.strip():
+        with st.expander("Raw OCR text (for debugging)"):
+            st.text(raw_text)
+
     data = dict(st.session_state[module_key])
     for name, label, field_type in FIELDS[module_key]:
         current = data.get(name)
@@ -147,11 +166,12 @@ def _module_step(module_key: str) -> None:
         if uploaded is not None:
             with st.spinner("Reading the photo..."):
                 try:
-                    extracted = _extract_fields(module_key, uploaded)
+                    extracted, raw_text = _extract_fields(module_key, uploaded)
                 except Exception as exc:  # noqa: BLE001 - surface any OCR failure to the user
                     st.error(f"Could not read that photo: {exc}")
                     return
             st.session_state[module_key] = extracted
+            st.session_state[f"{module_key}_raw_text"] = raw_text
             st.session_state[f"{module_key}_extracted"] = True
             st.rerun()
         return

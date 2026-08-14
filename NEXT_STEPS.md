@@ -2,6 +2,61 @@
 
 Working notes for picking this back up on another machine. Written 2026-08-13.
 
+## 🗣️ Open thread: Android monetization (unresolved — pick up here)
+
+Started planning the Android app's implementation. First topic was whether
+to charge for an optional Claude-vision-powered "scan instead of type"
+feature (as opposed to the native app's default manual-entry-only flow,
+which stays free and fully offline per `ANDROID_DESIGN_BRIEF.md`). Not
+decided yet — the clarifying questions below were asked and dismissed
+without an answer, so this is genuinely open, not settled.
+
+**Cost baseline** (documented pricing, not a measured count): a full
+3-photo check (truck tag + trailer tag + scale ticket) via Claude vision
+costs roughly **$0.01 on Haiku 4.5** or **$0.03 on Claude Sonnet 5** in raw
+API spend — each image is a small extraction task (~1,600 image tokens at
+standard resolution + a short prompt + compact JSON output), not a
+high-res/reasoning-heavy call. Haiku 4.5 is very likely sufficient for
+this — structured field extraction from a printed label is squarely its
+use case. This is compute cost only; doesn't include Play Store fees or
+your own margin.
+
+**Toolkit options surveyed:**
+- **Google Play Billing Library** (mandatory Billing Library v8 by
+  2026-08-31 for anyone using it) — required historically, but as of
+  **2026-06-30** Google now permits external payment methods for US/UK/EEA
+  developers (post Epic v. Google), so this is no longer the only
+  compliant path.
+- **RevenueCat** — wraps Play Billing (+ Apple StoreKit), handles
+  entitlement/receipt validation for you. Built for subscription gating,
+  not fine-grained metered usage.
+- **Stripe / Stripe Billing** — now legitimate on Play Store per the above
+  policy change; Stripe Billing specifically supports true metered/
+  usage-based charges if you want pay-per-scan pricing instead of a flat
+  subscription.
+
+**The part that matters more than the billing rail:** `ANTHROPIC_API_KEY`
+can never ship inside the Android app (trivially extracted from the APK).
+Enabling Claude-vision scanning requires a backend that holds the key,
+checks entitlement, and proxies the request — reopening the "no backend"
+decision in `ANDROID_DESIGN_BRIEF.md`.
+
+**My recommendation, not yet accepted or rejected:**
+- Flat monthly subscription (not metered pay-per-scan) — simpler, Play
+  Billing/RevenueCat handle it natively; metering adds real complexity for
+  a cost difference that's probably marginal at likely volume (~$0.01–0.03
+  per check).
+- Scan is an **optional paid add-on**, not a rework of the whole app — the
+  native manual-entry flow stays the default, free, fully-offline path;
+  a backend exists only for this one feature.
+- Google Play Billing (via RevenueCat to cut plumbing) for the
+  subscription, with a small backend (could reuse the FastAPI pattern from
+  `src/hdttools/api/`) that just checks entitlement before proxying to
+  Claude.
+
+**Next step:** resume this conversation — decide flat-vs-metered and
+optional-addon-vs-architecture-rework before writing any Android code.
+
 ## ⏭️ Next up: fix the tongue-weight fallback assumption (web + Streamlit)
 
 Discovered while reviewing the Android design handoff (`android/design/`,

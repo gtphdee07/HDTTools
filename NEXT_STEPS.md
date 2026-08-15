@@ -72,9 +72,95 @@ So the recommended shape: **RevenueCat (purchases + credit ledger) + one
 small serverless function (the Claude-key proxy)** — no self-managed
 server at all.
 
+**Backend proxy — source written 2026-08-14, not deployed:**
+`workers/scan-proxy/` is a Cloudflare Worker implementing the architecture
+above — see its `README.md` for the full design. Ports the exact system
+prompts/JSON schemas from the desktop CLI's Claude-vision readers
+(`src/hdttools/truck_tag.py` / `trailer_tag.py` / `scale_ticket.py` /
+`vision_client.py`) into TypeScript (`src/docTypes.ts`), so both extraction
+paths agree on field names. `POST /v1/scan` charges one RevenueCat credit
+*before* calling Claude (RevenueCat's `422` on insufficient balance doubles
+as the entitlement check, so a zero-credit user never triggers a paid
+Claude call), and refunds the credit if extraction then fails. Uses Haiku
+4.5 per the cost baseline above.
+
+**20 unit tests written and passing, zero installs required.** The
+charge/extract/refund logic (`src/scan.ts`) takes its dependencies
+injected, and only loads `claude.ts` (and the Anthropic SDK) lazily on
+first real use — so `npm test` (`node --test`, built into Node 26, already
+on this machine) covers the money-critical control flow, RevenueCat
+request-shaping, and doc-type schema integrity without installing
+anything. See `workers/scan-proxy/README.md`'s Testing section for what
+this does and doesn't cover — full Workers-runtime integration tests
+(`@cloudflare/vitest-pool-workers`) still need the real `npm install`.
+
+**Known v1 gap, accepted on purpose:** the Worker trusts whatever
+`app_user_id` the client sends with no signed-token verification — someone
+who obtained another user's anonymous RevenueCat UUID could spend their
+credits. There's no real discovery path for another user's UUID short of
+device compromise, so this was accepted as fine for a first release; adding
+Firebase Authentication is the documented upgrade path if it ever matters.
+
+**Still needed before this can go live** (none of this can be done from
+here — needs your own accounts/decisions):
+- Create the Cloudflare, RevenueCat, and Anthropic-API-key accounts;
+  define the `SCAN` virtual currency in RevenueCat.
+- `cd workers/scan-proxy && npm install` — a real install (wrangler +
+  the Anthropic SDK), needs your confirmation before running on this
+  machine per your standing preference.
+- `wrangler login` (interactive) and set the two secrets
+  (`ANTHROPIC_API_KEY`, `REVENUECAT_SECRET_KEY`) — never committed.
+- The Android app itself doesn't exist yet and has no code calling this
+  endpoint — Play Billing product setup (lifetime unlock SKU + consumable
+  scan-pack SKUs) still needs to happen in Play Console.
+
 **Next step:** decide whether to commit to the lifetime+credit-packs model
-(vs. flat subscription), then start on the RevenueCat account setup +
-serverless proxy skeleton before writing Android purchase-flow code.
+(vs. flat subscription) if you haven't already, confirm the `npm install`
+above when you're ready to actually run/test the Worker, then start on
+Android purchase-flow code against this endpoint.
+
+## 🧪 Tests still outstanding
+
+Living checklist — remove an entry (or fold it into a "✅ Done" note,
+matching this file's convention) the moment its test actually gets
+written. Add new entries here as soon as a gap is spotted, not just
+mentioned in conversation, so it survives a machine switch. See
+`Claude.md`'s "NEXT_STEPS.md Maintenance" section for the standing rule
+behind this.
+
+**`workers/scan-proxy/` (Cloudflare Worker):**
+- **Workers-runtime integration tests** (`@cloudflare/vitest-pool-workers`)
+  — the 20 tests in `src/*.test.ts` run on plain Node and cover the
+  request validation, RevenueCat request-shaping, doc-type schema
+  integrity, and the charge/extract/refund control flow, but nothing
+  Workers-runtime-specific (this Worker doesn't currently use any
+  Workers-only APIs, so the gap is low-risk for now).
+  **Blocked on:** `npm install` in `workers/scan-proxy/` — needs your
+  confirmation per the standing install-size preference.
+- **Live RevenueCat API test** — `revenuecat.test.ts`'s mocked responses
+  were hand-written from RevenueCat's docs, never verified against a real
+  account/API response.
+  **Blocked on:** the RevenueCat project + secret key existing.
+- **Live Claude-vision extraction test** — `claude.ts`'s `extractFields`
+  has never been called against the real Anthropic API from this Worker.
+  **Blocked on:** `ANTHROPIC_API_KEY` set as a Worker secret, plus
+  accepting the real per-call API cost each time this test runs.
+- **End-to-end `POST /v1/scan` test** (real request through a running
+  Worker, real RevenueCat + Anthropic calls).
+  **Blocked on:** the full setup chain in
+  `workers/scan-proxy/README.md`'s Setup section (all accounts created,
+  `npm install`, `wrangler login`, secrets set).
+
+**Android app:**
+- **No test suite exists** — the app itself hasn't been scaffolded yet.
+  Once it is, needs: a Kotlin port of `compute_breakdown`/`verdict_for`
+  tested against the same scenarios as `tests/test_breakdown.py` (the
+  documented shared spec — see the portability section below), RevenueCat
+  Android SDK integration tests, and purchase-flow tests (lifetime unlock
+  + consumable credit packs) once that code exists.
+  **Blocked on:** the Android Studio/Gradle project being scaffolded (on
+  the other dev machine, per the standing "Android compilation happens
+  elsewhere" preference).
 
 ## ⏭️ Next up: fix the tongue-weight fallback assumption (web + Streamlit)
 

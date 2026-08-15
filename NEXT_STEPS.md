@@ -26,12 +26,23 @@ revisit this without a real change in circumstances. Reasoning:
   RevenueCat *virtual currency* balance, not a boolean entitlement —
   switching to a subscription now would mean discarding that design.
 
-Still open, but separate from the model decision above: the actual price
-and pack sizes (e.g. "$X for lifetime + 10 scans, $Y for 20 more") — your
-call on the market, not something to resolve today unless you want to.
+**Pricing and pack sizes — deliberately deferred (2026-08-14), not an
+unstarted to-do.** The actual price (e.g. "$X for lifetime + 10 scans, $Y
+for 20 more") is being held until real numbers are in hand instead of
+guessed at: Google's actual cut at your volume, RevenueCat's fee tier at
+your volume, and *measured* Claude API cost (the $0.01–0.03/scan baseline
+below is from documented per-token pricing, not observed spend yet).
+Pricing before that data would mean setting margin blind. This costs
+nothing to defer — it's a leaf decision that doesn't block anything below:
+the Worker only deals in credit counts, never dollar amounts; RevenueCat's
+virtual currency is just a code, no price attached; Play Console product
+IDs can be created and wired into Android code now and re-priced later
+without any rework. One independent, non-blocking thing worth starting
+early if there's ever idle time: Play Console developer/app registration
+can have its own review lead time unrelated to pricing.
 
 The backend build-out below is still in progress — only the billing
-*model* is final.
+*model* is final; pricing is intentionally still open.
 
 **Cost baseline** (documented pricing, not a measured count): a full
 3-photo check (truck tag + trailer tag + scale ticket) via Claude vision
@@ -113,8 +124,43 @@ Firebase Authentication is the documented upgrade path if it ever matters.
 
 **Still needed before this can go live** (none of this can be done from
 here — needs your own accounts/decisions):
-- Create the Cloudflare, RevenueCat, and Anthropic-API-key accounts;
-  define the `SCAN` virtual currency in RevenueCat.
+
+- **Create the three accounts, in this order (guidance from 2026-08-14) —
+  Anthropic → Cloudflare → RevenueCat.** Anthropic first: simplest, and
+  gives real per-scan cost data that feeds the pricing decision above.
+  Cloudflare second: simple, unlocks actually deploying/testing the
+  Worker. RevenueCat last: has the most internal setup (project, currency,
+  secret key) and is most useful once the other two already work.
+  - **Anthropic** (console.anthropic.com — a *separate account* from
+    claude.ai, different login and billing): sign up, add a payment
+    method (pay-as-you-go API credit, not a subscription — $5–10 covers a
+    lot of test scans at the ~$0.01–0.03/scan baseline above), create an
+    API key under Settings → API Keys. Paste it directly into
+    `wrangler secret put ANTHROPIC_API_KEY` yourself when the time comes
+    — never hand the raw key to Claude in chat.
+  - **Cloudflare** (dash.cloudflare.com): email sign-up, the free
+    Workers plan is enough at this volume, no domain name needed
+    (Workers get a free `*.workers.dev` subdomain). `npx wrangler login`
+    from `workers/scan-proxy/` links the CLI to the account via browser
+    OAuth once it exists.
+  - **RevenueCat** (app.revenuecat.com): create a Project (e.g.
+    "RigCheck") — note its Project ID (not secret, goes in
+    `wrangler.toml`'s `[vars]`, which already has a placeholder for it).
+    Define a Virtual Currency with code `SCAN` (matches the code already
+    written — no rename needed unless wanted). Create a Secret API Key
+    with Read & Write on Customer Purchases Configuration + Customer
+    Configuration — same handling as the Anthropic key, goes into
+    `wrangler secret put REVENUECAT_SECRET_KEY` directly. The Google Play
+    Console side does **not** need to be connected yet — the Worker only
+    talks to RevenueCat's virtual-currency API directly, not the Play
+    Billing verification path; that connection matters once real
+    purchases need to flow in automatically.
+  - **Aside, not blocking, worth starting whenever there's spare time:**
+    the eventual Google Play Console developer account ($25 one-time +
+    identity verification that can take days) is independent of the
+    three above and has by far the longest lead time of anything on this
+    list — worth kicking off early so the wait isn't on the critical path
+    later.
 - `cd workers/scan-proxy && npm install` — a real install (wrangler +
   the Anthropic SDK), needs your confirmation before running on this
   machine per your standing preference.
@@ -124,10 +170,11 @@ here — needs your own accounts/decisions):
   endpoint — Play Billing product setup (lifetime unlock SKU + consumable
   scan-pack SKUs) still needs to happen in Play Console.
 
-**Next step:** confirm the `npm install` above when you're ready to
-actually run/test the Worker, then start on Android purchase-flow code
-against this endpoint. The billing-model decision itself is done — see
-above.
+**Next step:** work through the three accounts above, in order, on
+whichever machine is convenient — none of it needs this repo checked out.
+Then confirm the `npm install` when you're ready to actually run/test the
+Worker, and start on Android purchase-flow code against this endpoint.
+The billing-model decision itself is done — see above.
 
 ## 🧪 Tests still outstanding
 

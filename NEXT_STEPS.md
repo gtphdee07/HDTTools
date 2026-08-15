@@ -2,17 +2,36 @@
 
 Working notes for picking this back up on another machine. Written 2026-08-13.
 
-## 🗣️ Open thread: Android monetization (unresolved — pick up here)
+## 💰 Android monetization: billing model decided, build in progress
 
-Started planning the Android app's implementation. First topic was whether
-to charge for an optional Claude-vision-powered "scan instead of type"
-feature (as opposed to the native app's default manual-entry-only flow,
-which stays free and fully offline per `ANDROID_DESIGN_BRIEF.md`). Not
-decided yet — genuinely open, not settled. The thread moved through a flat
-monthly subscription idea, then toward a different model the user actually
-prefers, and most recently landed on a backend architecture recommendation.
-No billing model is finalized and no Android/backend code exists for this
-feature yet.
+Optional Claude-vision-powered "scan instead of type" feature (the native
+app's default manual-entry-only flow stays free and fully offline per
+`ANDROID_DESIGN_BRIEF.md`).
+
+**Decided for good, 2026-08-14: lifetime purchase + consumable credit
+packs.** A one-time purchase unlocks the app for life and includes a
+pre-set number of Claude-vision scans; once used up, additional scans are
+sold as consumable in-app-purchase "packs" (e.g. "20 more scans"). A flat
+monthly/annual subscription was considered and explicitly rejected — don't
+revisit this without a real change in circumstances. Reasoning:
+- **Usage pattern.** RigCheck gets used a handful of times a year per
+  owner (before a trip, after buying gear) — a poor fit for a recurring
+  charge, a good fit for pay-once-own-it.
+- **Cost-risk protection**, the original motivation for moving off
+  subscription: a flat subscription exposes you to Anthropic's future
+  per-token pricing with no lever besides re-pricing existing subscribers.
+  Credits already sold are already priced; a future price change only
+  affects margin on packs not yet sold.
+- **Already built around it.** `workers/scan-proxy/` charges/refunds a
+  RevenueCat *virtual currency* balance, not a boolean entitlement —
+  switching to a subscription now would mean discarding that design.
+
+Still open, but separate from the model decision above: the actual price
+and pack sizes (e.g. "$X for lifetime + 10 scans, $Y for 20 more") — your
+call on the market, not something to resolve today unless you want to.
+
+The backend build-out below is still in progress — only the billing
+*model* is final.
 
 **Cost baseline** (documented pricing, not a measured count): a full
 3-photo check (truck tag + trailer tag + scale ticket) via Claude vision
@@ -29,15 +48,6 @@ can never ship inside the Android app (trivially extracted from the APK).
 Enabling Claude-vision scanning requires a backend that holds the key,
 checks entitlement, and proxies the request — reopening the "no backend"
 decision in `ANDROID_DESIGN_BRIEF.md`.
-
-**Billing model under consideration — lifetime purchase + consumable
-credit packs** (your preferred direction, motivated by not wanting to
-carry the risk of Anthropic's per-token pricing changing under a flat
-subscription): a one-time purchase unlocks the app for life and includes a
-pre-set number of Claude-vision scans; once used up, additional scans are
-sold as consumable in-app-purchase "packs" (e.g. "20 more scans"). This
-caps your downside per user to the credits they've actually paid for,
-unlike an unlimited-use flat subscription.
 
 **Capability split for building this** (roughly): I can write essentially
 all of the code — the Android purchase-flow UI, the credit-balance display,
@@ -114,10 +124,10 @@ here — needs your own accounts/decisions):
   endpoint — Play Billing product setup (lifetime unlock SKU + consumable
   scan-pack SKUs) still needs to happen in Play Console.
 
-**Next step:** decide whether to commit to the lifetime+credit-packs model
-(vs. flat subscription) if you haven't already, confirm the `npm install`
-above when you're ready to actually run/test the Worker, then start on
-Android purchase-flow code against this endpoint.
+**Next step:** confirm the `npm install` above when you're ready to
+actually run/test the Worker, then start on Android purchase-flow code
+against this endpoint. The billing-model decision itself is done — see
+above.
 
 ## 🧪 Tests still outstanding
 

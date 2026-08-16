@@ -15,6 +15,23 @@ This project uses `uv` for Python and dependency management. Do not use standard
  - The preference is for application code to be constructed using Python libraries, versus Claude skills. It is fine to use skills in Chat to create proofs of concepts, or to create test benches against the Python code, but the application should not require an ANTHROPIC_API_KEY to execute.
   - All coding modules should also have an automated test for each function.
 
+## System Tool Installs
+
+Before installing any system-wide application or tool (e.g. via
+`winget`, a standalone installer, Android Studio, a JDK, etc.):
+- Ask for explicit permission first, explaining what the tool is for.
+- Ask where it should be installed. The primary Windows dev machine's
+  C: (boot) drive is space-constrained — prefer another drive/location
+  whenever a tool has a reasonable chance of working from there, and
+  confirm the exact path before installing. Don't assume a default
+  location; ask fresh each time unless told otherwise.
+
+This does **not** apply to routine project-level package-manager installs
+(`uv add`, `npm install`, etc.) — those already install inside this
+project's own folder, not the C: drive, so they're unaffected by the
+space constraint and don't need separate permission beyond the normal
+tool-use confirmation.
+
 ## NEXT_STEPS.md Maintenance
 `NEXT_STEPS.md` is the durable, cross-machine project record — it travels
 via git, unlike any machine-local memory/config. Keep it current every

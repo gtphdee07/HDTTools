@@ -20,3 +20,6 @@ htmlcov/
 
 # Design handoffs (local reference only, not version-controlled)
 android/design/
+
+# Local scratch notes/fragments, not part of the application
+src/hdttools/parse_label.py

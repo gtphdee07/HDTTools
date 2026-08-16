@@ -219,7 +219,7 @@ behind this.
   the other dev machine, per the standing "Android compilation happens
   elsewhere" preference).
 
-## ⏭️ Next up: fix the tongue-weight fallback assumption (web + Streamlit)
+## ✅ Done: tongue-weight fallback fix (implemented 2026-08-15)
 
 Discovered while reviewing the Android design handoff (`android/design/`,
 not version-controlled — see its `README.md` for the full screen list):
@@ -237,37 +237,32 @@ axles when hitched and never appears in `trailer_axle_lb` — so comparing
 rating) understates the real number whenever tongue/pin weight isn't
 separately supplied.
 
-**Decided fix**: adopt the Android design's 80% assumption as the correct
-default everywhere, not a platform quirk to reconcile away.
+**Fix implemented**: adopted the Android design's 80% assumption as the
+correct default everywhere, per the plan above.
 
-- `src/hdttools/api/breakdown.py`'s `compute_breakdown()`: when
-  `standalone_weight_lb` is blank, replace "use `trailer_axle_lb` alone"
-  with `trailer_total_actual = trailer_axle_lb / 0.8` (an *estimate* of
-  total trailer weight from the axle reading). Note text should say so
-  plainly, e.g. "Estimated total weight — assumes the axle reading is 80%
-  of actual trailer weight; enter your truck's stand-alone weight for an
-  exact figure." The exact-figure path (`standalone_weight_lb` provided)
-  stays as already implemented — computed tongue weight added to
-  `trailer_axle_lb`, clamped at 0.
-- Worth pulling `0.8` out as a named constant (e.g.
-  `DEFAULT_AXLE_TO_TOTAL_RATIO`) rather than a magic number, since
-  Android's eventual Kotlin port of `compute_breakdown` will need the same
-  value — a single documented source of truth is easier to keep in sync
-  than a comment in two languages.
-- `tests/test_breakdown.py`'s "tongue weight omitted" case currently
-  asserts the old (unsafe) unadjusted behavior — needs updating to expect
-  the `/0.8` estimate instead. Add a case confirming the *provided*
-  stand-alone-weight path is unaffected by this change.
-- Streamlit imports `compute_breakdown` directly (no separate copy of this
-  logic) — fixing `breakdown.py` fixes both web and Streamlit in one
-  place, nothing platform-specific to duplicate.
-- Android's design already bakes in this behavior as the intended default
-  — nothing to change there once built, just make sure the eventual
-  Kotlin port uses the same ratio.
-- Re-verify against the real `ExampleDocs/` photos after: leave
-  stand-alone weight blank, confirm "Trailer Total (GVWR)" now shows the
-  inflated estimate and the new note wording, instead of today's
-  unadjusted `trailer_axle_lb`.
+- `src/hdttools/api/breakdown.py`: added `DEFAULT_AXLE_TO_TOTAL_RATIO = 0.8`
+  as a named constant; when `standalone_weight_lb` is blank,
+  `compute_breakdown()` now sets
+  `trailer_total_actual = trailer_axle_lb / DEFAULT_AXLE_TO_TOTAL_RATIO`
+  with the note text specified above. The exact-figure path
+  (`standalone_weight_lb` provided) is unchanged.
+- `tests/test_breakdown.py`'s omitted-stand-alone-weight test now asserts
+  the `/0.8` estimate (renamed
+  `test_trailer_total_estimates_from_axle_reading_when_standalone_weight_omitted`).
+  No new test was needed for the provided-path regression — the existing
+  provided/clamp-at-zero tests exercise the untouched `if` branch
+  directly, so they already prove it. 54 backend tests pass.
+- Streamlit imports `compute_breakdown` directly, so this one fix covers
+  both frontends — verified live via Streamlit `AppTest`: a trailer that
+  previously showed "1,120 lb to spare" (falsely safe, unadjusted axle
+  reading vs. GVWR) now correctly shows "1,725 lb over" in red.
+- Android's design already baked in this behavior as the intended
+  default — nothing to change there once built, just make sure the
+  eventual Kotlin port uses the same `0.8` ratio.
+- Not yet done: re-verifying against the real `ExampleDocs/` photos
+  specifically (the fix was verified with synthetic numbers matching the
+  existing test fixtures, not a fresh photo run) — low-risk since the
+  math is a single division, but worth a real-photo pass if it matters.
 
 ## ✅ Done: portability pass (implemented 2026-08-13)
 
@@ -447,9 +442,6 @@ On a machine that hasn't run this before:
 
 ## Natural next steps, roughly in order
 
-0. **The tongue-weight fallback fix at the top of this file** — do this
-   first, it's a correctness/safety issue in the shipped app, not just a
-   nice-to-have.
 1. **Try it against more real labels.** Only one truck-tag manufacturer
    (Ford) and one trailer manufacturer (Brinkley RV) have been tested.
    Other manufacturers' compliance labels will have different layouts —

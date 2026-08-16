@@ -11,6 +11,11 @@ from __future__ import annotations
 
 from typing import Any
 
+# Pin/tongue weight is commonly ~15-25% of trailer weight, so a trailer's
+# axle reading alone is assumed to be ~80% of its actual total weight
+# when no stand-alone truck weight was given to compute an exact figure.
+DEFAULT_AXLE_TO_TOTAL_RATIO = 0.8
+
 
 def _lb(value: Any) -> float:
     return float(value) if value is not None else 0.0
@@ -42,8 +47,12 @@ def compute_breakdown(truck: dict, trailer: dict, scale: dict) -> list[dict]:
             "(steer + drive minus your truck's stand-alone weight)."
         )
     else:
-        trailer_total_actual = trailer_axle
-        trailer_total_note = "Excludes tongue weight carried by the truck — not on either tag."
+        trailer_total_actual = trailer_axle / DEFAULT_AXLE_TO_TOTAL_RATIO
+        trailer_total_note = (
+            "Estimated total weight — assumes the axle reading is "
+            f"{DEFAULT_AXLE_TO_TOTAL_RATIO:.0%} of actual trailer weight; "
+            "enter your truck's stand-alone weight for an exact figure."
+        )
 
     raw_items = [
         ("Front Axle (Steer)", steer, _lb(truck.get("front_gawr_lb")), None),

@@ -1,9 +1,11 @@
 """Tests for compute_breakdown's axle-count and tongue-weight handling.
 
-Both fields are optional and fall back to the original (pre-fix)
-behavior when omitted — these tests cover that fallback plus the new
-behavior when each field is provided, per the approved plan in
-NEXT_STEPS.md.
+axle_count falls back to a 2-axle assumption when omitted. standalone_weight_lb
+falls back to estimating total trailer weight as trailer_axle_lb /
+DEFAULT_AXLE_TO_TOTAL_RATIO when omitted, rather than using the axle
+reading unadjusted (that assumed 0% tongue weight, which understates the
+real total). These tests cover both fallbacks plus the exact-figure
+behavior when each field is provided, per NEXT_STEPS.md.
 """
 
 from hdttools.api.breakdown import compute_breakdown
@@ -37,11 +39,17 @@ def test_trailer_axle_limit_uses_custom_axle_count():
     assert axle_item["note"] == "Trailer axle rating: 3 axle(s) at the tag's per-axle rating."
 
 
-def test_trailer_total_excludes_tongue_weight_when_standalone_weight_omitted():
+def test_trailer_total_estimates_from_axle_reading_when_standalone_weight_omitted():
+    # trailer_axle_lb (11,380) is assumed to be 80% of actual trailer
+    # weight when no stand-alone weight was given -> 11,380 / 0.8 = 14,225
     items = compute_breakdown(_TRUCK, _TRAILER, _SCALE)
     total_item = _item(items, "Trailer Total (GVWR)")
-    assert total_item["actualLabel"] == "11,380 lb"
-    assert total_item["note"] == "Excludes tongue weight carried by the truck — not on either tag."
+    assert total_item["actualLabel"] == "14,225 lb"
+    assert total_item["note"] == (
+        "Estimated total weight — assumes the axle reading is 80% of "
+        "actual trailer weight; enter your truck's stand-alone weight "
+        "for an exact figure."
+    )
 
 
 def test_trailer_total_includes_estimated_tongue_weight_when_provided():

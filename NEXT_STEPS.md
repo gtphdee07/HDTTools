@@ -176,6 +176,65 @@ Then confirm the `npm install` when you're ready to actually run/test the
 Worker, and start on Android purchase-flow code against this endpoint.
 The billing-model decision itself is done — see above.
 
+## 📐 Idea, not started: tiered test strategy (sanity → regression → full)
+
+Raised 2026-08-15, deliberately parked — **not being worked on now**, pick
+up whenever there's time (e.g. while waiting on account setup/approval
+lead times elsewhere). At 50+ pytest tests and growing (plus 20 more in
+`workers/scan-proxy/`, a third runner), it's worth structuring testing
+the way hardware/digital design verification does, rather than just
+"run everything, every time":
+
+- **Sanity** — a small, fast set run on every change to catch major
+  breakage.
+- **Module regression** — a fuller suite for the specific module touched,
+  run when a change lands there.
+- **Integration sanity** — a fast cross-module check.
+- **Full/"weekend" regression** — every corner case, every module,
+  including integrations — run periodically rather than on every change.
+
+The idea: a change to module A runs A's sanity, then integration sanity,
+then a regression depth appropriate to the change's size — not
+necessarily the full suite every time. Periodic (e.g. weekly) runs cover
+sanity everywhere plus full regression per module and top-level.
+
+**Open questions to resolve before this becomes an actionable plan**
+(raised when this was first discussed, not yet answered):
+
+1. **What "module" means here.** Hardware verification maps cleanly onto
+   design blocks; this codebase's boundaries are fuzzier — candidates:
+   OCR parsing (3 readers), breakdown/verdict math, the API layer, web
+   frontend, Streamlit frontend, `workers/scan-proxy/`, eventually
+   Android. Confirm the right granularity.
+2. **What concretely distinguishes the tiers.** Today's full 54-test
+   pytest suite already runs in ~2 seconds (mocked-everything) — by
+   hardware-verification standards that's arguably already "sanity."
+   Likely mapping: sanity = today's suite; regression = broader
+   parametrized cases (more synthetic label variants); full = the real
+   `ExampleDocs/` photo runs (slower — real Tesseract OCR). Confirm.
+3. **Whether "full" ever calls the real Claude API.** The vision-based
+   readers (and eventually Android's scan feature) could be tested
+   end-to-end against the live Anthropic API — but that costs real money
+   per run and adds non-determinism. Leaning toward: full regression
+   stays confined to the Tesseract path against static fixtures, vision-
+   API path always mocked — needs an explicit decision, not an default.
+4. **Automation vs. checklist.** No CI exists anywhere in this repo (no
+   GitHub Actions, nothing). Is the near-term goal a documented checklist
+   a human runs periodically, or eventual CI (on push + a scheduled
+   "weekend" job)? Doesn't block starting, but the plan should say which
+   one it's aiming at.
+5. **One scheme across four different test runners, or four idiomatic
+   ones.** pytest (backend/OCR/breakdown), `node --test` (scan-proxy
+   Worker), nothing yet for web (no test framework installed there at
+   all — would need Vitest), nothing yet for Streamlit beyond ad-hoc
+   `AppTest` scripts run by hand and never committed as real tests.
+6. **The concrete, immediate gap regardless of how the above resolves**:
+   `ExampleDocs/` real-photo verification has only ever happened via
+   manual ad-hoc runs when checking a specific fix — never a committed,
+   repeatable test. Probably the single best starting point whenever
+   this gets picked up, independent of how the broader tiering scheme
+   shakes out.
+
 ## 🧪 Tests still outstanding
 
 Living checklist — remove an entry (or fold it into a "✅ Done" note,

@@ -258,6 +258,146 @@ whenever there's spare time — see above) and, separately with no fixed
 timeline, the Android Studio project itself. The billing-model decision
 itself is done — see above.
 
+## 🤖 Android app: build started, Phase 0/1 done, Phase 2 in progress
+
+Full roadmap (6 phases) was planned 2026-08-17 — see git history / ask for
+the plan if needed; not duplicated here. This section tracks execution
+status only. Decided: build happens on this Windows machine (the earlier
+"Android compilation happens elsewhere" note referred to a *different*
+machine, not this one). `applicationId` = `com.rigcheck.app`. RevenueCat
+SDK choice: native `purchases-android`, not `purchases-kmp`.
+
+**Phase 0 (dev environment) — done, verified via CLI, 2026-08-17:**
+- Android Studio (Quail 3 | 2026.1.3) installed to `G:\Android\AndroidStudio`
+  (checksum-verified download, silent-install needs admin elevation this
+  automated session couldn't grant, so the user ran the installer/wizard
+  directly — same pattern as GUI dashboard steps elsewhere in this project).
+  SDK installed to `G:\Android\Sdk` via its Setup Wizard.
+- **No standalone JDK installed** — Android Studio bundles a JetBrains
+  Runtime at `G:\Android\AndroidStudio\jbr`; set as `JAVA_HOME` (User env
+  var) so `gradlew`/`sdkmanager`/`avdmanager` work from a bare terminal too.
+- `GRADLE_USER_HOME=G:\GradleUserHome` set (User env var) — Gradle's
+  dependency cache, same category of fix as the earlier npm-cache move.
+- **Session gotcha, will recur:** newly-set User env vars aren't visible to
+  an already-running shell (same class of issue as the `ANTHROPIC_API_KEY`
+  propagation gotcha) — every `gradlew`/`sdkmanager`/`avdmanager`/`emulator`
+  call in a shell opened *before* a var was set needs it passed inline
+  (`JAVA_HOME=... GRADLE_USER_HOME=... command`) until the shell restarts.
+- Confirmed via CLI: `./gradlew assembleDebug` and `./gradlew test` both
+  succeed; Gradle cache correctly lands on `G:\GradleUserHome`, not C:.
+
+**Phase 1 (project scaffolding) — done, verified via CLI, 2026-08-17:**
+- Project created at `android/` (inside this repo) via Android Studio's New
+  Project wizard — Empty Activity template, Compose, Kotlin DSL.
+  `applicationId=com.rigcheck.app`, `minSdk=26`, `targetSdk=37`.
+- A save-location warning about the space in
+  `G:\Claude Experiment\...` was dismissed — that warning is a legacy
+  caution for NDK/native-toolchain builds; this project has no native code,
+  and the build succeeded with the space in the path.
+- Baseline deps added: Navigation-Compose (2.9.8), `lifecycle-viewmodel-compose`
+  (2.11.0), `kotlinx-serialization-json` (1.11.0) + the matching Kotlin
+  serialization Gradle plugin — versions checked directly against Google's/
+  Maven Central's metadata (not guessed), filtered to the latest genuinely
+  stable release (the metadata's own `<latest>`/`<release>` tags include
+  alpha/rc builds, so those had to be excluded explicitly). Build confirmed
+  green with all of them in.
+
+**Phase 2 (core business logic port) — done, 2026-08-17, all tests green:**
+- Ported `compute_breakdown`/`verdict_for` to
+  `android/app/src/main/java/com/rigcheck/app/domain/Breakdown.kt` +
+  `VerdictInfo.kt`, with `TruckTag`/`TrailerTag`/`ScaleTicket` domain models
+  under `domain/model/` (deliberately narrower than the full Python
+  dataclasses — only fields `compute_breakdown` or manual entry actually
+  use; VIN/tire-spec/scale-metadata fields are scan-only and don't exist in
+  the Kotlin domain model at all).
+- Fixed the Python-truthiness parity trap identified in planning before it
+  could bite: `if standalone_weight:` and `if axle_count_raw else 2` both
+  treat an explicit `0` as "not provided" in the original — ported
+  explicitly (`!= null && != 0`), not via a naive `?:`, which would have
+  silently diverged on a `0` input.
+- String formatting deliberately split from the domain layer (unlike the
+  Python/TS originals, which bake comma-formatted strings directly into
+  their output): `domain/NumberFormatting.kt` holds the one canonical
+  `formatWholeNumber()` (needed by both the domain layer itself, since note
+  text like "1,660 lb tongue weight" embeds a formatted number as business
+  text, and by `ui/format/NumberFormatting.kt`'s display helpers
+  `formatLb()`/`badgeLabel()`). `barColor`/`bandBg` (CSS var strings in the
+  originals) don't port at all — deferred to whenever the UI screens map
+  `Tone` to actual Compose colors.
+- **Caught and fixed one real bug during testing, not just porting**: the
+  first draft of the tongue-weight note used a local `roundToInt().toString()`
+  instead of the shared comma-formatter, which would have produced `"1660 lb
+  tongue weight"` instead of the spec's `"1,660 lb tongue weight"` — the
+  ported test caught this immediately (comma-formatted assertion failed),
+  fixed by routing through the one shared `formatWholeNumber()`.
+- **Test port**: `BreakdownTest.kt` — the same 5 scenarios from
+  `tests/test_breakdown.py` (default axle count, custom axle count,
+  standalone-weight omitted/provided, clamp-at-0) *plus* 2 new cases the
+  Python suite doesn't cover (`axle_count = 0`, `standalone_weight_lb =
+  0.0`) verifying the truthiness-parity fix above. Plus `VerdictTest.kt`
+  (2 cases — `verdict_for` also has no existing Python test) and
+  `NumberFormattingTest.kt` (3 cases). **13/13 tests pass**, confirmed via
+  `./gradlew test` and the generated JUnit XML reports (`tests="7"` /
+  `"2"` / `"3"` / `"1"` across the 4 test classes, 0 failures/errors) — not
+  just a green Gradle exit code, the actual per-class counts were checked.
+  `./gradlew assembleDebug` also still succeeds.
+
+**Emulator setup — AVD created, boot blocked on a real hardware issue:**
+- `cmdline-tools` (sdkmanager/avdmanager) weren't part of Studio's default
+  SDK install — downloaded separately (checksum-verified) and extracted to
+  `G:\Android\Sdk\cmdline-tools\latest`.
+- System image `system-images;android-37.0;google_apis_playstore;x86_64`
+  (2.8 GB) installed manually via `sdkmanager`, matching `targetSdk=37` and
+  including Play Store (useful later for Phase 4/6 billing tests).
+- **`avdmanager create avd` (the older, deprecated tool) is broken for this
+  system image** — fails with "Could not load devices from ...devices.xml"
+  because this particular image ships with no `devices.xml`. Worked around
+  by using the newer `android` CLI instead (also in `cmdline-tools/latest/bin`,
+  the tool `sdkmanager`'s own deprecation warning points to):
+  `android --sdk="G:\Android\Sdk" emulator create <profile>` (profile names:
+  `android emulator create --list-profiles`). This tool auto-picked its own
+  system image (API 36, not the API 37 one installed above) rather than
+  reusing it — harmless (G: has ample space) but means both API 36 and 37
+  images now sit on disk unused-except-one.
+- **Real mistake caught and fixed:** the `android` CLI **defaults to its own
+  SDK at `C:\Users\Angela\AppData\Local\Android\Sdk`** if `--sdk` isn't
+  passed explicitly — first attempt did exactly this and silently downloaded
+  ~3.4 GB (platform-tools, emulator binary, the API 36 system image) to the
+  space-constrained C: drive. Caught via `android info` showing the wrong
+  `sdk:` path, deleted (`Remove-Item` on the whole stray folder, 3.4 GB
+  reclaimed), and redone with `--sdk` explicit. **Always pass `--sdk=` (or
+  `ANDROID_SDK_ROOT`) explicitly with this tool — it does not reliably pick
+  up the SDK from Android Studio's own configured location.**
+- AVD instance data (`~/.android`, normally lands on C: — flagged in the
+  original plan as "stubborn, revisit if C: usage climbs") was proactively
+  relocated *before* first boot, since first boot can add several GB via
+  userdata/snapshot images: `ANDROID_AVD_HOME=G:\Android\EmulatorHome\avd`
+  and `ANDROID_EMULATOR_HOME=G:\Android\EmulatorHome` (both User env vars).
+  Note the emulator binary's actual runtime search order (confirmed via
+  `emulator.exe -help-all` and by directly hitting the error) is
+  `$ANDROID_AVD_HOME` → `$ANDROID_SDK_HOME\avd` → `$HOME\.android\avd` —
+  `ANDROID_EMULATOR_HOME` alone was *not* sufficient to relocate the `avd/`
+  subfolder despite the help text implying it would be; both vars are now
+  set for safety.
+- **Blocked on a real hardware/firmware issue, not software:** the AVD
+  (`medium_phone`, API 36, Google Play, x86_64) was created successfully,
+  but boot fails with "x86_64 emulation currently requires hardware
+  acceleration" — `systeminfo` confirms `Virtualization Enabled In
+  Firmware: No`. This is a BIOS/UEFI-level setting (Intel VT-x / AMD-V),
+  not fixable by any Windows feature toggle or software install — needs a
+  reboot into firmware setup to enable, which only the user can do.
+  **User's plan: enable it tonight via a reboot.** Once enabled, resume
+  with: boot the AVD (`emulator -avd medium_phone`, with `ANDROID_SDK_ROOT`
+  and `ANDROID_AVD_HOME` set), confirm `adb devices` shows it, then `gradlew
+  installDebug` to confirm a real app deploy.
+
+**Next step:** Phase 3 (manual-entry UI — screens 1-4, 7-8, Navigation-
+Compose NavHost, DataStore-based last-5-rigs persistence). Doesn't need the
+emulator to *write*, but does need it (or the BIOS fix) to actually run/see
+the screens — worth checking whether virtualization got enabled before
+going deep into UI work. Phase 2 (business logic) is fully done — see
+above.
+
 ## 📐 Idea, not started: tiered test strategy (sanity → regression → full)
 
 Raised 2026-08-15, deliberately parked — **not being worked on now**, pick
@@ -358,15 +498,18 @@ manual `curl`/`wrangler tail` verification into real, committed
 customer) is the concrete remaining gap.
 
 **Android app:**
-- **No test suite exists** — the app itself hasn't been scaffolded yet.
-  Once it is, needs: a Kotlin port of `compute_breakdown`/`verdict_for`
-  tested against the same scenarios as `tests/test_breakdown.py` (the
-  documented shared spec — see the portability section below), RevenueCat
-  Android SDK integration tests, and purchase-flow tests (lifetime unlock
-  + consumable credit packs) once that code exists.
-  **Blocked on:** the Android Studio/Gradle project being scaffolded (on
-  the other dev machine, per the standing "Android compilation happens
-  elsewhere" preference).
+- ✅ **`compute_breakdown`/`verdict_for` Kotlin port — done 2026-08-17.**
+  `BreakdownTest.kt` (7 cases: the 5 from `tests/test_breakdown.py` plus 2
+  zero-value edge cases it doesn't cover), `VerdictTest.kt` (2 cases),
+  `NumberFormattingTest.kt` (3 cases) — 13/13 passing, see the section
+  above for detail.
+- **Still needed:** Compose UI tests (navigation happy-path, disclaimer
+  once-per-session gating, results rendering), RevenueCat Android SDK
+  integration tests, and purchase-flow tests (lifetime unlock + consumable
+  credit packs) — none of this code exists yet (Phase 3/4).
+- **Emulator-dependent tests** (Compose UI tests, live on-device scan
+  test) — **blocked on** the BIOS/firmware virtualization issue documented
+  above (Intel VT-x/AMD-V disabled), not on any code or scaffolding gap.
 
 ## ✅ Done: tongue-weight fallback fix (implemented 2026-08-15)
 

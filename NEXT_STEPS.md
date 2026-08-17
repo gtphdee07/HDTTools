@@ -8,6 +8,60 @@ Optional Claude-vision-powered "scan instead of type" feature (the native
 app's default manual-entry-only flow stays free and fully offline per
 `ANDROID_DESIGN_BRIEF.md`).
 
+**Progress update, 2026-08-17 — account setup underway, `workers/scan-proxy/`
+now actually installs and typechecks clean:**
+
+- **Anthropic: done.** Account created, API key generated, stored as a
+  persistent User-level `ANTHROPIC_API_KEY` environment variable on this
+  machine (not hardcoded anywhere) and verified working with a real API
+  call. `src/AccountSetup/AnthropicAccountTest.py` is the verification
+  script — that whole directory is gitignored (local credential-testing
+  scratch space, not part of the application), and the pattern going
+  forward is: read the key via `anthropic.Anthropic()`'s automatic env
+  var pickup, never hardcode it, even in a gitignored file. One Windows
+  gotcha hit and resolved: a newly-set User environment variable doesn't
+  propagate to already-running processes (or even freshly-opened
+  terminals, in this case) until Explorer's cached environment refreshes
+  — a reboot fixed it; restarting Explorer.exe is the lighter-weight
+  alternative if this comes up again for the next two accounts.
+- **Cloudflare: account created, `wrangler login` not yet run.** Next
+  concrete step when picking this back up — run `npx wrangler login`
+  from `workers/scan-proxy/` (browser OAuth, no token needs creating
+  manually).
+- **`cd workers/scan-proxy && npm install`: done.** This was the first
+  time it had ever been run, and it wasn't clean — surfaced a real
+  version conflict (`package.json` pinned `@cloudflare/workers-types` to
+  `^4.20260101.0`, but the `wrangler` release that resolved now peer-
+  depends on `^5.x` — ordinary drift from the gap between when the code
+  was written and when it was first installed, not anyone's error).
+  Fixed by bumping the pin to `^5.20260811.1`. That alone was clean, but
+  running `tsc --noEmit` for the first time ever (same reason — could
+  never run before install worked) surfaced ~20 pre-existing type errors
+  unrelated to the bump: `@types/node` was missing from `package.json`
+  entirely (broke every `node:test`/`node:assert` import), a
+  value-used-as-type bug in `scan.ts` (`typeof` was needed), an
+  undertyped `schema` field in `docTypes.ts` (now tied directly to the
+  Anthropic SDK's own `Tool.InputSchema` type instead of a loose
+  `Record<string, unknown>`), and 4 spots in `scan.test.ts` needing a
+  type assertion after `@cloudflare/workers-types` v5 deliberately
+  tightened `Response.json()` from `any` to `unknown`. All fixed;
+  `typecheck` is fully clean and all 20 tests still pass unchanged
+  (confirms none of this altered runtime behavior). `package-lock.json`
+  now exists and is committed for the first time — 97 packages, ~212MB
+  installed (dominated by the `workerd` and `esbuild` native binaries,
+  both approved via `npm approve-scripts` since npm blocks unknown
+  postinstall scripts by default).
+- **Machine note (this Windows machine specifically, not portable
+  info)**: npm's global package cache was relocated from
+  `C:\Users\Angela\AppData\Local\npm-cache` to `G:\npm-cache` — the C:
+  drive is space-constrained (see the "System Tool Installs" standing
+  rule in `Claude.md`), and this cache grows with *every* npm project
+  used on this machine, not just this one. Existing 115MB moved, not
+  duplicated.
+- **RevenueCat: not started.** Next account after Cloudflare's
+  `wrangler login` step, per the documented Anthropic → Cloudflare →
+  RevenueCat order below.
+
 **Decided for good, 2026-08-14: lifetime purchase + consumable credit
 packs.** A one-time purchase unlocks the app for life and includes a
 pre-set number of Claude-vision scans; once used up, additional scans are
@@ -113,7 +167,10 @@ on this machine) covers the money-critical control flow, RevenueCat
 request-shaping, and doc-type schema integrity without installing
 anything. See `workers/scan-proxy/README.md`'s Testing section for what
 this does and doesn't cover — full Workers-runtime integration tests
-(`@cloudflare/vitest-pool-workers`) still need the real `npm install`.
+(`@cloudflare/vitest-pool-workers`) are still a separate, un-started gap
+(see "Tests still outstanding" below); the real `npm install` itself is
+now done (2026-08-17, see progress update above) and `tsc --noEmit` is
+clean.
 
 **Known v1 gap, accepted on purpose:** the Worker trusts whatever
 `app_user_id` the client sends with no signed-token verification — someone
@@ -131,19 +188,21 @@ here — needs your own accounts/decisions):
   Cloudflare second: simple, unlocks actually deploying/testing the
   Worker. RevenueCat last: has the most internal setup (project, currency,
   secret key) and is most useful once the other two already work.
-  - **Anthropic** (console.anthropic.com — a *separate account* from
-    claude.ai, different login and billing): sign up, add a payment
-    method (pay-as-you-go API credit, not a subscription — $5–10 covers a
-    lot of test scans at the ~$0.01–0.03/scan baseline above), create an
-    API key under Settings → API Keys. Paste it directly into
-    `wrangler secret put ANTHROPIC_API_KEY` yourself when the time comes
-    — never hand the raw key to Claude in chat.
-  - **Cloudflare** (dash.cloudflare.com): email sign-up, the free
-    Workers plan is enough at this volume, no domain name needed
-    (Workers get a free `*.workers.dev` subdomain). `npx wrangler login`
-    from `workers/scan-proxy/` links the CLI to the account via browser
-    OAuth once it exists.
-  - **RevenueCat** (app.revenuecat.com): create a Project (e.g.
+  - **Anthropic — ✅ done (2026-08-17).** Account created, key generated
+    and verified working, stored as a local `ANTHROPIC_API_KEY`
+    environment variable for testing. Still needs a *separate* step
+    later: paste the same key into `wrangler secret put
+    ANTHROPIC_API_KEY` when actually deploying the Worker — a local env
+    var and a Wrangler secret are two different places, both needed,
+    neither done automatically from the other. Never hand the raw key to
+    Claude in chat.
+  - **Cloudflare — account created (2026-08-17), `wrangler login` not yet
+    run.** (dash.cloudflare.com, free Workers plan, no domain name
+    needed — Workers get a free `*.workers.dev` subdomain.) `npx wrangler
+    login` from `workers/scan-proxy/` links the CLI to the account via
+    browser OAuth — no token needs creating manually for this. This is
+    the literal next step.
+  - **RevenueCat — not started.** create a Project (e.g.
     "RigCheck") — note its Project ID (not secret, goes in
     `wrangler.toml`'s `[vars]`, which already has a placeholder for it).
     Define a Virtual Currency with code `SCAN` (matches the code already
@@ -161,20 +220,19 @@ here — needs your own accounts/decisions):
     three above and has by far the longest lead time of anything on this
     list — worth kicking off early so the wait isn't on the critical path
     later.
-- `cd workers/scan-proxy && npm install` — a real install (wrangler +
-  the Anthropic SDK), needs your confirmation before running on this
-  machine per your standing preference.
-- `wrangler login` (interactive) and set the two secrets
+- ✅ `cd workers/scan-proxy && npm install` — done 2026-08-17 (see
+  progress update above for what that actually took — a version bump
+  plus several pre-existing typecheck fixes, not just a plain install).
+- `wrangler login` (interactive, not yet run) and set the two secrets
   (`ANTHROPIC_API_KEY`, `REVENUECAT_SECRET_KEY`) — never committed.
 - The Android app itself doesn't exist yet and has no code calling this
   endpoint — Play Billing product setup (lifetime unlock SKU + consumable
   scan-pack SKUs) still needs to happen in Play Console.
 
-**Next step:** work through the three accounts above, in order, on
-whichever machine is convenient — none of it needs this repo checked out.
-Then confirm the `npm install` when you're ready to actually run/test the
-Worker, and start on Android purchase-flow code against this endpoint.
-The billing-model decision itself is done — see above.
+**Next step:** `npx wrangler login` from `workers/scan-proxy/` (browser
+OAuth) to finish linking the Cloudflare account, then RevenueCat account
+setup, then set both Worker secrets and do a real `wrangler dev`/`deploy`
+smoke test. The billing-model decision itself is done — see above.
 
 ## 📐 Idea, not started: tiered test strategy (sanity → regression → full)
 
@@ -251,8 +309,8 @@ behind this.
   integrity, and the charge/extract/refund control flow, but nothing
   Workers-runtime-specific (this Worker doesn't currently use any
   Workers-only APIs, so the gap is low-risk for now).
-  **Blocked on:** `npm install` in `workers/scan-proxy/` — needs your
-  confirmation per the standing install-size preference.
+  **Unblocked 2026-08-17** — `npm install` is done and `tsc --noEmit` is
+  clean, so this could be written now; just hasn't been yet.
 - **Live RevenueCat API test** — `revenuecat.test.ts`'s mocked responses
   were hand-written from RevenueCat's docs, never verified against a real
   account/API response.

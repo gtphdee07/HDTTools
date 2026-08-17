@@ -16,43 +16,25 @@ now actually installs and typechecks clean:**
   machine (not hardcoded anywhere) and verified working with a real API
   call. `src/AccountSetup/AnthropicAccountTest.py` is the verification
   script — that whole directory is gitignored (local credential-testing
-  scratch space, not part of the application), and the pattern going
-  forward is: read the key via `anthropic.Anthropic()`'s automatic env
-  var pickup, never hardcode it, even in a gitignored file. One Windows
-  gotcha hit and resolved: a newly-set User environment variable doesn't
-  propagate to already-running processes (or even freshly-opened
-  terminals, in this case) until Explorer's cached environment refreshes
-  — a reboot fixed it; restarting Explorer.exe is the lighter-weight
-  alternative if this comes up again for the next two accounts.
+  scratch space, not part of the application); read the key via
+  `anthropic.Anthropic()`'s automatic env var pickup, never hardcode it.
+  Windows gotcha: a newly-set User env var won't propagate to
+  already-running processes until Explorer's cached environment
+  refreshes — reboot or restart Explorer.exe if a freshly-set var isn't
+  picked up.
 - **Cloudflare: done.** Account created and linked via `npx wrangler
   login` (browser OAuth) — `wrangler whoami` confirms the CLI is
   authenticated as `gtphdee07@gmail.com`'s account
   (`0031ccba6a8de63fe9dc719b3061170a`), OAuth token cached in
   `%APPDATA%\xdg.config\.wrangler\config\default.toml`. Free Workers
   plan, no domain needed.
-- **`cd workers/scan-proxy && npm install`: done.** This was the first
-  time it had ever been run, and it wasn't clean — surfaced a real
-  version conflict (`package.json` pinned `@cloudflare/workers-types` to
-  `^4.20260101.0`, but the `wrangler` release that resolved now peer-
-  depends on `^5.x` — ordinary drift from the gap between when the code
-  was written and when it was first installed, not anyone's error).
-  Fixed by bumping the pin to `^5.20260811.1`. That alone was clean, but
-  running `tsc --noEmit` for the first time ever (same reason — could
-  never run before install worked) surfaced ~20 pre-existing type errors
-  unrelated to the bump: `@types/node` was missing from `package.json`
-  entirely (broke every `node:test`/`node:assert` import), a
-  value-used-as-type bug in `scan.ts` (`typeof` was needed), an
-  undertyped `schema` field in `docTypes.ts` (now tied directly to the
-  Anthropic SDK's own `Tool.InputSchema` type instead of a loose
-  `Record<string, unknown>`), and 4 spots in `scan.test.ts` needing a
-  type assertion after `@cloudflare/workers-types` v5 deliberately
-  tightened `Response.json()` from `any` to `unknown`. All fixed;
-  `typecheck` is fully clean and all 20 tests still pass unchanged
-  (confirms none of this altered runtime behavior). `package-lock.json`
-  now exists and is committed for the first time — 97 packages, ~212MB
-  installed (dominated by the `workerd` and `esbuild` native binaries,
-  both approved via `npm approve-scripts` since npm blocks unknown
-  postinstall scripts by default).
+- **`cd workers/scan-proxy && npm install`: done.** First-ever run of
+  `npm install`/`tsc --noEmit` on this project surfaced a real
+  `@cloudflare/workers-types` v4→v5 peer-dependency conflict (fixed by
+  bumping the pin) plus ~20 pre-existing typecheck errors, all fixed —
+  `typecheck` is clean and all 20 tests still pass unchanged. See git
+  history around 2026-08-17 for the specific fixes if ever needed again.
+  `package-lock.json` now exists and is committed for the first time.
 - **Machine note (this Windows machine specifically, not portable
   info)**: npm's global package cache was relocated from
   `C:\Users\Angela\AppData\Local\npm-cache` to `G:\npm-cache` — the C:
@@ -238,55 +220,20 @@ credits. There's no real discovery path for another user's UUID short of
 device compromise, so this was accepted as fine for a first release; adding
 Firebase Authentication is the documented upgrade path if it ever matters.
 
-**Still needed before this can go live** (none of this can be done from
-here — needs your own accounts/decisions):
+**Still needed before this can go live:**
 
-- **Create the three accounts, in this order (guidance from 2026-08-14) —
-  Anthropic → Cloudflare → RevenueCat.** Anthropic first: simplest, and
-  gives real per-scan cost data that feeds the pricing decision above.
-  Cloudflare second: simple, unlocks actually deploying/testing the
-  Worker. RevenueCat last: has the most internal setup (project, currency,
-  secret key) and is most useful once the other two already work.
-  - **Anthropic — ✅ done (2026-08-17).** Account created, key generated
-    and verified working, stored as a local `ANTHROPIC_API_KEY`
-    environment variable for testing. Still needs a *separate* step
-    later: paste the same key into `wrangler secret put
-    ANTHROPIC_API_KEY` when actually deploying the Worker — a local env
-    var and a Wrangler secret are two different places, both needed,
-    neither done automatically from the other. Never hand the raw key to
-    Claude in chat.
-  - **Cloudflare — ✅ done (2026-08-17).** Account created
-    (dash.cloudflare.com, free Workers plan, no domain name needed —
-    Workers get a free `*.workers.dev` subdomain) and linked via `npx
-    wrangler login` (browser OAuth) from `workers/scan-proxy/`.
-    `wrangler whoami` confirms the login.
-  - **RevenueCat — ✅ done (2026-08-17).** Project `RigCheck` created
-    (ID `proj07f52826`, now in `wrangler.toml`'s `[vars]`). Entitlement
-    `RigCheck Pro`, virtual currency `SCAN`, and two placeholder products
-    (`lifetime`, `consumable`, both granting 10 `SCAN` per purchase) all
-    created — see the progress update above for the placeholder-pricing
-    caveats and the `consumable`/entitlement cleanup note. Secret API
-    Key created and set directly via `wrangler secret put
-    REVENUECAT_SECRET_KEY`. The Google Play Console side is still **not**
-    connected — not needed yet, since the Worker only talks to
-    RevenueCat's virtual-currency API directly, not the Play Billing
-    verification path; that connection matters once real purchases need
-    to flow in automatically.
-  - **Aside, not blocking, worth starting whenever there's spare time:**
-    the eventual Google Play Console developer account ($25 one-time +
-    identity verification that can take days) is independent of the
-    three above and has by far the longest lead time of anything on this
-    list — worth kicking off early so the wait isn't on the critical path
-    later.
-- ✅ `cd workers/scan-proxy && npm install` — done 2026-08-17 (see
-  progress update above for what that actually took — a version bump
-  plus several pre-existing typecheck fixes, not just a plain install).
-- ✅ `wrangler login` — done 2026-08-17.
-- ✅ Both Worker secrets (`ANTHROPIC_API_KEY`, `REVENUECAT_SECRET_KEY`)
-  set via `wrangler secret put` — done 2026-08-17, never committed.
-- ✅ `wrangler deploy` + billing-path smoke test — done 2026-08-17 (see
-  progress update above). Live at
+- ✅ Anthropic, Cloudflare, and RevenueCat accounts (created in that
+  order, per 2026-08-14 guidance) — all done 2026-08-17, see the
+  progress update above for detail and the gotchas hit along the way.
+- ✅ `npm install`, `wrangler login`, both Worker secrets
+  (`ANTHROPIC_API_KEY`, `REVENUECAT_SECRET_KEY`), and a first `wrangler
+  deploy` + billing-path smoke test — all done 2026-08-17, see progress
+  update above. Live at
   `https://rigcheck-scan-proxy.wanderingtrailswaggingtails.workers.dev`.
+- **Aside, not blocking, worth starting whenever there's spare time:**
+  the Google Play Console developer account ($25 one-time + identity
+  verification that can take days) — independent of the above and has
+  by far the longest lead time of anything on this list.
 - The Android app itself doesn't exist yet and has no code calling this
   endpoint — Play Billing product setup (lifetime unlock SKU + consumable
   scan-pack SKUs) still needs to happen in Play Console.
@@ -463,39 +410,18 @@ correct default everywhere, per the plan above.
 
 ## ✅ Done: portability pass (implemented 2026-08-13)
 
-Full plan at `~/.claude/plans/i-would-like-to-toasty-dusk.md` on the
-machine that ran it (won't exist elsewhere — summarized here). Goal:
-make RigCheck portable to additional hosting types (Streamlit, eventually
-Android), decided as **no shared hosted backend** — each platform is
-self-contained.
-
-- **Web app (`web/` + `src/hdttools/api/`) is now database-free.**
-  `api/store.py` and the SQLite `rigs`/`checks` tables are gone.
-  `POST /api/checks` became stateless `POST /api/breakdown` (no `rig_id`,
-  no persistence). Rigs are now a client-side "last 5" list
-  (`web/src/recentRigs.ts`, `localStorage`, keyed by a user-typed
-  nickname, storing the full reviewed truck/trailer data so picking a
-  remembered rig skips straight to the Scale Ticket step). Check history
-  is session-only (gone on refresh) — this was a deliberate simplification,
-  not an oversight.
-- **New self-contained Streamlit app** (`streamlit_app/`) — same wizard
-  flow, single Python process, no FastAPI/HTTP hop, imports
-  `hdttools`'s OCR-parsing and breakdown logic directly. Recent rigs
-  persist to `~/.rigcheck/recent_rigs.json` instead of a database. See
-  `streamlit_app/README.md`.
-- **`hdttools/__init__.py`** now tolerates a missing `tkinter` (wraps the
-  desktop CLI reader imports in try/except) since it isn't always present
-  on headless/minimal Python builds — relevant if Streamlit or the API
-  ever runs somewhere without it.
-- **`ocr_common.py`**'s Tesseract path detection now also checks common
-  macOS/Linux install locations, not just Windows.
-- **Android**: high-level roadmap only, not started. Decided: fully
-  native (Kotlin/Compose), no OCR at all — reference images + manual
-  entry instead, no network/API-key dependency. Needs its own
-  Android Studio/Gradle project (doesn't exist in this repo).
-  `compute_breakdown`/`verdict_for` would need a Kotlin port —
-  `tests/test_breakdown.py`'s scenarios are the shared spec to check any
-  port against.
+Goal: make RigCheck portable beyond the original web+DB setup (decided:
+**no shared hosted backend**, each platform self-contained). Web app
+(`web/` + `src/hdttools/api/`) is now database-free — stateless
+`POST /api/breakdown`, recent rigs are a client-side `localStorage` list
+(`web/src/recentRigs.ts`). New self-contained Streamlit app
+(`streamlit_app/`) reuses the same OCR/breakdown logic directly, no HTTP
+hop, recent rigs persist to `~/.rigcheck/recent_rigs.json`. See
+`streamlit_app/README.md`. `hdttools/__init__.py` now tolerates a
+missing `tkinter`; `ocr_common.py`'s Tesseract path detection also
+checks macOS/Linux locations. Android: high-level roadmap only at this
+point (superseded by the monetization section above) — fully native, no
+OCR, needs its own Android Studio/Gradle project.
 
 54 backend tests pass; frontend typechecks/builds clean; Streamlit
 smoke-tested end-to-end against the real `ExampleDocs/` photos.
@@ -510,71 +436,27 @@ around.
 
 ## ✅ Done: axle-count / tongue-weight plan (implemented 2026-08-13)
 
-Two logic-fault fixes were designed and approved in the session that wrote
-this file, and implemented in the following session (different machine,
-after `git pull`). Plan text below is kept as a record of what was built;
-see `tests/test_breakdown.py` for the five tests covering all four
-scenarios (default axle count, custom axle count, tongue weight omitted,
-tongue weight provided, clamp-at-0), plus updated `models.py`,
-`database.py`, `api/schemas.py`, `mockData.ts`, and `types.ts`. All 55
-backend tests pass; frontend typechecks and builds clean.
+Two logic faults were fixed: `compute_breakdown()` hardcoded a 2-axle
+trailer regardless of actual axle count, and "Trailer Total (GVWR)"
+always excluded tongue weight. Fix: both `axle_count` (trailer) and
+`standalone_weight_lb` (truck) became optional user-typed fields with
+graceful fallback to the old behavior when left blank; the tongue-weight
+estimate folds into the existing "Trailer Total (GVWR)" card rather than
+a new one. See `tests/test_breakdown.py` for the five tests covering all
+four scenarios (default axle count, custom axle count, tongue weight
+omitted/provided, clamp-at-0). All 55 backend tests pass; frontend
+typechecks/builds clean.
 
-**The two faults:**
-1. `compute_breakdown()` hardcodes a 2-axle trailer (`gawr_per_axle * 2`)
-   regardless of the trailer's actual axle count.
-2. "Trailer Total (GVWR)" always excludes tongue weight (an acknowledged
-   approximation from the original design — no tongue-weight field exists
-   on either tag).
+**Explicitly deferred** (agreed as a good eventual direction, not yet
+built): reading a *second* CAT scale ticket (unhitched) so
+`standalone_weight_lb` comes from an actual measurement instead of a
+typed number — `compute_breakdown`'s math won't need to change again for
+this, only where the value comes from.
 
-**Agreed fix**, both fields **optional with graceful fallback** to today's
-behavior when left blank, and the tongue-weight estimate **folds into the
-existing "Trailer Total (GVWR)" card** rather than getting a new one:
-
-- Add `axle_count: int | None = None` to `TrailerTagData`
-  (`src/hdttools/models.py`) — user-typed during trailer review (not
-  OCR-derivable), field def added to `web/src/mockData.ts`'s `MODULES[2]`.
-  `breakdown.py`: `gawr_per_axle * int(trailer.get("axle_count") or 2)`,
-  with a note that's dynamic ("Trailer axle rating: N axle(s)...") when
-  provided vs. today's "Assumes a 2-axle trailer..." when defaulted.
-- Add `standalone_weight_lb: float | None = None` to `TruckTagData`
-  (lb-only, no `_kg` counterpart — matches `ScaleTicketData`'s weight
-  fields) — user-typed during truck review, field def added to
-  `MODULES[1]`. `breakdown.py`: when provided, `tongue_weight =
-  max(0.0, (steer + drive) - standalone_weight_lb)` (clamped at 0 — a
-  negative estimate is physically meaningless and would understate the
-  trailer total, the wrong direction for a safety check), and
-  `trailer_total_actual = trailer_axle + tongue_weight` with an updated
-  note explaining the estimate. When blank, keep today's exact behavior
-  and note unchanged.
-- Mirror both new fields into `src/hdttools/database.py`'s
-  `_TRAILER_TAG_COLUMNS`/`_TRUCK_TAG_COLUMNS` and
-  `src/hdttools/api/schemas.py`'s `TrailerTagOut`/`TruckTagOut`, for
-  consistency (CLI persistence, API schema completeness) even though OCR
-  won't populate them.
-- **No other frontend code changes needed** — `ReviewStep.tsx` and
-  `App.tsx`'s `createCheck` already handle `MODULES[step].fields`
-  generically, so the two new field defs are sufficient to get working
-  input rows end to end.
-- New `tests/test_breakdown.py` (currently `compute_breakdown`/
-  `verdict_for` only have indirect coverage via one `test_api.py` case):
-  default-2-axle case, custom axle count, stand-alone weight omitted vs.
-  provided, and the clamp-at-0 edge case (stand-alone weight larger than
-  the hitched total).
-- Verify against the real `ExampleDocs/` photos again after: blank vs.
-  filled-in axle count changes the "Trailer Axle(s)" limit/note correctly;
-  blank vs. filled-in stand-alone weight changes the "Trailer Total" actual
-  value/note correctly.
-
-**Explicitly deferred** (your idea, agreed as a good eventual direction
-but not this round): reading a *second* CAT scale ticket (unhitched) so
-`standalone_weight_lb` comes from an actual measurement instead of a typed
-number. The math in `compute_breakdown` won't need to change again for
-this — only where `standalone_weight_lb` comes from.
-
-**Superseded by the section above**: the "when blank, skip the
-tongue-weight adjustment entirely" fallback described below turned out to
-be unsafe (implicitly assumes 0% tongue weight) — see "Next up" at the top
-of this file for the fix.
+**Superseded by the tongue-weight fallback fix above**: the omitted-
+stand-alone-weight fallback described here ("skip the tongue-weight
+adjustment entirely") turned out to be unsafe — see that section above
+for the current behavior.
 
 ## What exists right now
 
@@ -645,12 +527,5 @@ On a machine that hasn't run this before:
    expect to extend `truck_tag_ocr._parse_fields` /
    `trailer_tag_ocr._parse_fields` with more pattern variants as you feed
    it real photos of your actual rig.
-2. **Android**, if you want to pick that up — see the portability section
-   above for the decided approach (native, no OCR, reference-image +
-   manual entry). Needs an Android Studio/Gradle project set up first;
-   nothing in this repo blocks starting that.
-3. **Decide on hosting** when ready to move off `localhost` for the web
+2. **Decide on hosting** when ready to move off `localhost` for the web
    app — see the note above, or revisit if requirements have changed.
-4. Nothing currently blocks day-to-day local use — both the web app and
-   the Streamlit app are functional as-is for testing your own rig's
-   numbers.

@@ -2,7 +2,7 @@
 
 Working notes for picking this back up on another machine. Written 2026-08-13.
 
-## 💰 Android monetization: billing model decided, build in progress
+## 💰 Android monetization: billing model decided, backend fully verified
 
 Optional Claude-vision-powered "scan instead of type" feature (the native
 app's default manual-entry-only flow stays free and fully offline per
@@ -98,10 +98,21 @@ now actually installs and typechecks clean:**
   with a fabricated `app_user_id` correctly gets `404 Customer could not
   be found` from RevenueCat (expected; RevenueCat only creates customer
   records via the SDK or a real purchase, not this direct ledger API),
-  which the Worker correctly turns into a `502 billing_error`. **Not yet
-  tested: an actual successful charge or a real Claude-vision call** —
-  needs a real RevenueCat test customer with `SCAN` credits, which
-  wasn't set up tonight. Explicit next step, by user request.
+  which the Worker correctly turns into a `502 billing_error`.
+- **Full happy-path test passed (2026-08-17).** No mobile app or store
+  sandbox needed to get a test customer — RevenueCat's REST API
+  auto-creates a customer the same way the SDK does, so a single `GET
+  /v1/subscribers/smoke-test-user` call (using the **public** SDK key,
+  not the secret one) created customer `smoke-test-user` with a `201`.
+  Granted it the `RigCheck Pro` entitlement + 100 `SCAN` credits directly
+  from its RevenueCat dashboard page. Sent a real photo
+  (`ExampleDocs/AddieTag.jpg`, base64-encoded) through `POST /v1/scan` —
+  got a real `200` with correctly-extracted fields (manufacturer, VIN,
+  GVWR, front/rear GAWR, tire specs) from a live Claude Haiku vision
+  call, and confirmed in the RevenueCat dashboard that the customer's
+  `SCAN` balance dropped from 100 to 99. This is the full production
+  path working end-to-end against real infrastructure — the last
+  blocker before Android app work itself.
 
 **Decided for good, 2026-08-14: lifetime purchase + consumable credit
 packs.** A one-time purchase unlocks the app for life and includes a
@@ -238,18 +249,14 @@ Firebase Authentication is the documented upgrade path if it ever matters.
   endpoint — Play Billing product setup (lifetime unlock SKU + consumable
   scan-pack SKUs) still needs to happen in Play Console.
 
-**Next step:** all three cloud accounts, both Worker secrets, and a
-first deploy are done as of 2026-08-17, with the billing-path (charge
-attempt → RevenueCat auth → structured error) confirmed working
-end-to-end. What's left for a *full* happy-path smoke test: in the
-RevenueCat dashboard, create a real test customer and grant it `SCAN`
-virtual-currency balance, then re-send `POST /v1/scan` against the live
-Worker — this should produce a real `200`, a real RevenueCat credit
-deduction, and a real (small-cost) Claude Haiku vision call. Explicitly
-queued as tomorrow's starting point, by user request. After that:
-(separately, no fixed timeline) the Android Studio project itself,
-which doesn't exist yet. The billing-model decision itself is done —
-see above.
+**Next step:** the backend is fully built, deployed, and verified against
+real infrastructure (accounts, secrets, deploy, and now a full happy-path
+charge + extraction, all confirmed 2026-08-17) — nothing left to do here
+until the Android app exists to actually call it. Remaining work is
+Play Console developer registration (long lead time, worth starting
+whenever there's spare time — see above) and, separately with no fixed
+timeline, the Android Studio project itself. The billing-model decision
+itself is done — see above.
 
 ## 📐 Idea, not started: tiered test strategy (sanity → regression → full)
 
@@ -329,28 +336,26 @@ behind this.
   **Unblocked 2026-08-17** — `npm install` is done and `tsc --noEmit` is
   clean, so this could be written now; just hasn't been yet.
 - **Live RevenueCat API test** — `revenuecat.test.ts`'s mocked responses
-  were hand-written from RevenueCat's docs, never verified against a real
-  account/API response as a *committed* test (manually verified via
-  `curl` + `wrangler tail` on 2026-08-17 — confirmed real 401/403/404
-  response shapes match what the mocks assume, but that was ad-hoc, not
-  turned into a repeatable test).
-  **Unblocked 2026-08-17** — RevenueCat project + V2 secret key both
-  exist and are confirmed working; just hasn't been written as a real
-  test yet.
-- **Live Claude-vision extraction test** — `claude.ts`'s `extractFields`
-  has never been called against the real Anthropic API from this Worker.
-  **Blocked on:** a RevenueCat test customer with `SCAN` credits (so a
-  real request gets past the billing check and actually reaches Claude)
-  — queued as tomorrow's next step, see the progress update above. The
-  secret itself is already set.
+  match real behavior (manually verified via `curl` + `wrangler tail` on
+  2026-08-17: real 401/403/404/200 response shapes all matched what the
+  mocks assume, including a real charge against a real customer), but
+  that verification is ad-hoc, not a *committed*, repeatable test yet.
+- **Live Claude-vision extraction test** — **manually verified
+  2026-08-17**: a real photo (`ExampleDocs/AddieTag.jpg`) sent through
+  the deployed Worker got correctly-extracted fields back from a real
+  Claude Haiku call. Not yet a committed automated test.
 - **End-to-end `POST /v1/scan` test** (real request through a running
-  Worker, real RevenueCat + Anthropic calls).
-  **Partially done 2026-08-17** — deployed and smoke-tested manually
-  (billing-check path confirmed working end-to-end against real
-  RevenueCat), but the full happy path (successful charge + real Claude
-  call) hasn't run yet, and none of this is a committed automated test.
-  **Blocked on:** same RevenueCat test-customer step as above, then
-  turning the manual `curl` check into a real test.
+  Worker, real RevenueCat + Anthropic calls) — **manually verified
+  2026-08-17**, full happy path: real charge, real extraction, real
+  balance decrement confirmed in the RevenueCat dashboard. See the
+  progress update above for the exact steps (test customer created via
+  a direct `GET /v1/subscribers/` call, no mobile app needed).
+
+All three of the above are now **just a matter of writing the test**,
+not blocked on any missing infrastructure — turning the 2026-08-17
+manual `curl`/`wrangler tail` verification into real, committed
+`node --test` cases (using a real but disposable RevenueCat test
+customer) is the concrete remaining gap.
 
 **Android app:**
 - **No test suite exists** — the app itself hasn't been scaffolded yet.

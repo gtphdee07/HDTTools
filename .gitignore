@@ -23,3 +23,6 @@ android/design/
 
 # Local scratch notes/fragments, not part of the application
 src/hdttools/parse_label.py
+
+# Local account-setup/credential-testing scripts, not part of the application
+src/AccountSetup/

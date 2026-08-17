@@ -24,10 +24,12 @@ now actually installs and typechecks clean:**
   terminals, in this case) until Explorer's cached environment refreshes
   — a reboot fixed it; restarting Explorer.exe is the lighter-weight
   alternative if this comes up again for the next two accounts.
-- **Cloudflare: account created, `wrangler login` not yet run.** Next
-  concrete step when picking this back up — run `npx wrangler login`
-  from `workers/scan-proxy/` (browser OAuth, no token needs creating
-  manually).
+- **Cloudflare: done.** Account created and linked via `npx wrangler
+  login` (browser OAuth) — `wrangler whoami` confirms the CLI is
+  authenticated as `gtphdee07@gmail.com`'s account
+  (`0031ccba6a8de63fe9dc719b3061170a`), OAuth token cached in
+  `%APPDATA%\xdg.config\.wrangler\config\default.toml`. Free Workers
+  plan, no domain needed.
 - **`cd workers/scan-proxy && npm install`: done.** This was the first
   time it had ever been run, and it wasn't clean — surfaced a real
   version conflict (`package.json` pinned `@cloudflare/workers-types` to
@@ -58,9 +60,66 @@ now actually installs and typechecks clean:**
   rule in `Claude.md`), and this cache grows with *every* npm project
   used on this machine, not just this one. Existing 115MB moved, not
   duplicated.
-- **RevenueCat: not started.** Next account after Cloudflare's
-  `wrangler login` step, per the documented Anthropic → Cloudflare →
-  RevenueCat order below.
+- **RevenueCat: done.** Project created (name `RigCheck`, ID
+  `proj07f52826` — written into `wrangler.toml`'s `[vars]` as
+  `REVENUECAT_PROJECT_ID`, not a secret). Entitlement `RigCheck Pro`
+  created for the lifetime-unlock gate. Virtual currency `SCAN` created
+  (matches `wrangler.toml`'s `REVENUECAT_CURRENCY_CODE` and the code
+  `src/revenuecat.ts` already sends). Two placeholder products exist
+  under Product catalog — `lifetime` (non-consumable, attached to
+  `RigCheck Pro`, $99.99 RevenueCat-default placeholder price — not a
+  real pricing decision) and `consumable` — both currently configured to
+  grant 10 `SCAN` credits per purchase (also placeholder; real pack
+  sizing still open). Note: `consumable` ended up with `RigCheck Pro`
+  attached too, which it doesn't need (only `lifetime` should gate the
+  entitlement) — harmless for now, worth detaching before this goes
+  live. **Important gotcha, cost real debugging time:** RevenueCat has
+  two separate API key systems — legacy **V1** (app-scoped) and newer
+  **V2** (project-scoped). The Worker calls the V2 Virtual Currency
+  endpoint (`/v2/projects/{id}/customers/.../virtual_currencies/transactions`
+  in `src/revenuecat.ts`), so the secret key **must** come from the V2
+  API Keys section of the dashboard, not the V1/legacy one — a V1 key
+  fails with a `403 authorization_error` ("legacy API key... use API v2")
+  that only shows up once the Worker is actually deployed and called,
+  not at key-creation time. Secret key set via `wrangler secret put`
+  (see below) and confirmed working (2026-08-17) — real request to the
+  deployed Worker gets a real, correctly-authenticated RevenueCat
+  response.
+- **Both Worker secrets set (2026-08-17).** `ANTHROPIC_API_KEY` and
+  `REVENUECAT_SECRET_KEY` were each set via `npx wrangler secret put
+  <NAME>` run directly in the user's own terminal (never typed into
+  chat) from `workers/scan-proxy/`. First run of `wrangler secret put`
+  also had to create the `rigcheck-scan-proxy` Worker itself (didn't
+  exist yet — nothing had been deployed), which it did automatically on
+  confirmation. Wrangler also offered to install Cloudflare-specific
+  Claude Code skills at this point — accepted; low-risk local
+  config/instruction files, not a system-wide install, doesn't trip the
+  C:-drive standing rule.
+- **Worker deployed and smoke-tested (2026-08-17).** Picked a
+  `workers.dev` subdomain (`wanderingtrailswaggingtails.workers.dev` —
+  a one-time, permanent, account-wide choice required by Cloudflare
+  before any dev/deploy that touches real infrastructure) and ran `npx
+  wrangler deploy` from `workers/scan-proxy/`. Live at
+  `https://rigcheck-scan-proxy.wanderingtrailswaggingtails.workers.dev`.
+  Note: `wrangler dev --remote` (the local dev-preview-against-real-
+  infra mode) failed with an opaque, undebuggable "internal error" —
+  Wrangler's own startup message flags `--remote` as a legacy mode being
+  replaced, so a real `wrangler deploy` was used instead for smoke
+  testing, which worked cleanly and is the actual production path
+  anyway. Sent a real `POST /v1/scan` request and used `wrangler tail`
+  to watch live logs, which is how the V1-vs-V2 API key issue above got
+  diagnosed — added a `console.error` in `src/scan.ts`'s `spendCredit`
+  failure branch to surface RevenueCat's actual error body (kept
+  in, not reverted — genuinely useful for future ops debugging via
+  `wrangler tail`, doesn't log anything secret). End state confirmed:
+  deploy pipeline, secrets, and RevenueCat V2 auth all work — a request
+  with a fabricated `app_user_id` correctly gets `404 Customer could not
+  be found` from RevenueCat (expected; RevenueCat only creates customer
+  records via the SDK or a real purchase, not this direct ledger API),
+  which the Worker correctly turns into a `502 billing_error`. **Not yet
+  tested: an actual successful charge or a real Claude-vision call** —
+  needs a real RevenueCat test customer with `SCAN` credits, which
+  wasn't set up tonight. Explicit next step, by user request.
 
 **Decided for good, 2026-08-14: lifetime purchase + consumable credit
 packs.** A one-time purchase unlocks the app for life and includes a
@@ -196,24 +255,23 @@ here — needs your own accounts/decisions):
     var and a Wrangler secret are two different places, both needed,
     neither done automatically from the other. Never hand the raw key to
     Claude in chat.
-  - **Cloudflare — account created (2026-08-17), `wrangler login` not yet
-    run.** (dash.cloudflare.com, free Workers plan, no domain name
-    needed — Workers get a free `*.workers.dev` subdomain.) `npx wrangler
-    login` from `workers/scan-proxy/` links the CLI to the account via
-    browser OAuth — no token needs creating manually for this. This is
-    the literal next step.
-  - **RevenueCat — not started.** create a Project (e.g.
-    "RigCheck") — note its Project ID (not secret, goes in
-    `wrangler.toml`'s `[vars]`, which already has a placeholder for it).
-    Define a Virtual Currency with code `SCAN` (matches the code already
-    written — no rename needed unless wanted). Create a Secret API Key
-    with Read & Write on Customer Purchases Configuration + Customer
-    Configuration — same handling as the Anthropic key, goes into
-    `wrangler secret put REVENUECAT_SECRET_KEY` directly. The Google Play
-    Console side does **not** need to be connected yet — the Worker only
-    talks to RevenueCat's virtual-currency API directly, not the Play
-    Billing verification path; that connection matters once real
-    purchases need to flow in automatically.
+  - **Cloudflare — ✅ done (2026-08-17).** Account created
+    (dash.cloudflare.com, free Workers plan, no domain name needed —
+    Workers get a free `*.workers.dev` subdomain) and linked via `npx
+    wrangler login` (browser OAuth) from `workers/scan-proxy/`.
+    `wrangler whoami` confirms the login.
+  - **RevenueCat — ✅ done (2026-08-17).** Project `RigCheck` created
+    (ID `proj07f52826`, now in `wrangler.toml`'s `[vars]`). Entitlement
+    `RigCheck Pro`, virtual currency `SCAN`, and two placeholder products
+    (`lifetime`, `consumable`, both granting 10 `SCAN` per purchase) all
+    created — see the progress update above for the placeholder-pricing
+    caveats and the `consumable`/entitlement cleanup note. Secret API
+    Key created and set directly via `wrangler secret put
+    REVENUECAT_SECRET_KEY`. The Google Play Console side is still **not**
+    connected — not needed yet, since the Worker only talks to
+    RevenueCat's virtual-currency API directly, not the Play Billing
+    verification path; that connection matters once real purchases need
+    to flow in automatically.
   - **Aside, not blocking, worth starting whenever there's spare time:**
     the eventual Google Play Console developer account ($25 one-time +
     identity verification that can take days) is independent of the
@@ -223,16 +281,28 @@ here — needs your own accounts/decisions):
 - ✅ `cd workers/scan-proxy && npm install` — done 2026-08-17 (see
   progress update above for what that actually took — a version bump
   plus several pre-existing typecheck fixes, not just a plain install).
-- `wrangler login` (interactive, not yet run) and set the two secrets
-  (`ANTHROPIC_API_KEY`, `REVENUECAT_SECRET_KEY`) — never committed.
+- ✅ `wrangler login` — done 2026-08-17.
+- ✅ Both Worker secrets (`ANTHROPIC_API_KEY`, `REVENUECAT_SECRET_KEY`)
+  set via `wrangler secret put` — done 2026-08-17, never committed.
+- ✅ `wrangler deploy` + billing-path smoke test — done 2026-08-17 (see
+  progress update above). Live at
+  `https://rigcheck-scan-proxy.wanderingtrailswaggingtails.workers.dev`.
 - The Android app itself doesn't exist yet and has no code calling this
   endpoint — Play Billing product setup (lifetime unlock SKU + consumable
   scan-pack SKUs) still needs to happen in Play Console.
 
-**Next step:** `npx wrangler login` from `workers/scan-proxy/` (browser
-OAuth) to finish linking the Cloudflare account, then RevenueCat account
-setup, then set both Worker secrets and do a real `wrangler dev`/`deploy`
-smoke test. The billing-model decision itself is done — see above.
+**Next step:** all three cloud accounts, both Worker secrets, and a
+first deploy are done as of 2026-08-17, with the billing-path (charge
+attempt → RevenueCat auth → structured error) confirmed working
+end-to-end. What's left for a *full* happy-path smoke test: in the
+RevenueCat dashboard, create a real test customer and grant it `SCAN`
+virtual-currency balance, then re-send `POST /v1/scan` against the live
+Worker — this should produce a real `200`, a real RevenueCat credit
+deduction, and a real (small-cost) Claude Haiku vision call. Explicitly
+queued as tomorrow's starting point, by user request. After that:
+(separately, no fixed timeline) the Android Studio project itself,
+which doesn't exist yet. The billing-model decision itself is done —
+see above.
 
 ## 📐 Idea, not started: tiered test strategy (sanity → regression → full)
 
@@ -313,17 +383,27 @@ behind this.
   clean, so this could be written now; just hasn't been yet.
 - **Live RevenueCat API test** — `revenuecat.test.ts`'s mocked responses
   were hand-written from RevenueCat's docs, never verified against a real
-  account/API response.
-  **Blocked on:** the RevenueCat project + secret key existing.
+  account/API response as a *committed* test (manually verified via
+  `curl` + `wrangler tail` on 2026-08-17 — confirmed real 401/403/404
+  response shapes match what the mocks assume, but that was ad-hoc, not
+  turned into a repeatable test).
+  **Unblocked 2026-08-17** — RevenueCat project + V2 secret key both
+  exist and are confirmed working; just hasn't been written as a real
+  test yet.
 - **Live Claude-vision extraction test** — `claude.ts`'s `extractFields`
   has never been called against the real Anthropic API from this Worker.
-  **Blocked on:** `ANTHROPIC_API_KEY` set as a Worker secret, plus
-  accepting the real per-call API cost each time this test runs.
+  **Blocked on:** a RevenueCat test customer with `SCAN` credits (so a
+  real request gets past the billing check and actually reaches Claude)
+  — queued as tomorrow's next step, see the progress update above. The
+  secret itself is already set.
 - **End-to-end `POST /v1/scan` test** (real request through a running
   Worker, real RevenueCat + Anthropic calls).
-  **Blocked on:** the full setup chain in
-  `workers/scan-proxy/README.md`'s Setup section (all accounts created,
-  `npm install`, `wrangler login`, secrets set).
+  **Partially done 2026-08-17** — deployed and smoke-tested manually
+  (billing-check path confirmed working end-to-end against real
+  RevenueCat), but the full happy path (successful charge + real Claude
+  call) hasn't run yet, and none of this is a committed automated test.
+  **Blocked on:** same RevenueCat test-customer step as above, then
+  turning the manual `curl` check into a real test.
 
 **Android app:**
 - **No test suite exists** — the app itself hasn't been scaffolded yet.

@@ -43,6 +43,7 @@ export async function runScan(
   // no credits never triggers a Claude call (which we'd be paying for).
   const spend = await deps.spendCredit(env, request.app_user_id, idempotencyKey);
   if (!spend.ok) {
+    console.error("spendCredit failed", spend.status, JSON.stringify(spend.body));
     if (spend.status === 422) {
       return json(
         { ok: false, code: "insufficient_credits", message: "Not enough scan credits." },

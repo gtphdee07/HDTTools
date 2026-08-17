@@ -13,14 +13,14 @@ import type { extractFields as ExtractFields } from "./claude.ts";
 export interface ScanDeps {
   spendCredit: typeof spendCredit;
   refundCredit: typeof refundCredit;
-  extractFields: ExtractFields;
+  extractFields: typeof ExtractFields;
 }
 
 // Loads claude.ts (and @anthropic-ai/sdk) only when a real scan actually
 // runs, not when this module is imported — so runScan and its tests work
 // without the SDK installed, while the real Worker still gets it lazily on
 // first use.
-const defaultExtractFields: ExtractFields = async (...args) => {
+const defaultExtractFields: typeof ExtractFields = async (...args) => {
   const { extractFields } = await import("./claude.ts");
   return extractFields(...args);
 };

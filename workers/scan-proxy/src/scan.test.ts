@@ -61,7 +61,7 @@ test("insufficient credits (422) returns 402 and never calls Claude", async () =
 
   const res = await runScan(env, request, deps);
   assert.equal(res.status, 402);
-  assert.equal((await res.json()).code, "insufficient_credits");
+  assert.equal(((await res.json()) as { code: string }).code, "insufficient_credits");
   assert.equal(extractCalls, 0, "a zero-credit user must never trigger a paid Claude call");
 });
 
@@ -77,7 +77,7 @@ test("a non-422 billing failure returns 502 and never calls Claude", async () =>
 
   const res = await runScan(env, request, deps);
   assert.equal(res.status, 502);
-  assert.equal((await res.json()).code, "billing_error");
+  assert.equal(((await res.json()) as { code: string }).code, "billing_error");
   assert.equal(extractCalls, 0);
 });
 
@@ -97,7 +97,7 @@ test("extraction failure refunds the credit for the same user and reports extrac
 
   const res = await runScan(env, request, deps);
   assert.equal(res.status, 502);
-  assert.equal((await res.json()).code, "extraction_failed");
+  assert.equal(((await res.json()) as { code: string }).code, "extraction_failed");
   assert.equal(refundCalls, 1);
   assert.equal(refundedUser, "user-1");
 });
@@ -114,7 +114,7 @@ test("a failed refund attempt doesn't crash the request", async () => {
 
   const res = await runScan(env, request, deps);
   assert.equal(res.status, 502);
-  assert.equal((await res.json()).code, "extraction_failed");
+  assert.equal(((await res.json()) as { code: string }).code, "extraction_failed");
 });
 
 test("a successful scan never issues a refund", async () => {

@@ -2,6 +2,7 @@
 // desktop CLI's Claude-vision reader modules (src/hdttools/truck_tag.py,
 // trailer_tag.py, scale_ticket.py / vision_client.py) so extraction results
 // match the same field names the OCR path already produces.
+import type Anthropic from "@anthropic-ai/sdk";
 
 export type DocType = "truck_tag" | "trailer_tag" | "scale_ticket";
 
@@ -9,7 +10,7 @@ export interface DocTypeConfig {
   systemPrompt: string;
   toolName: string;
   toolDescription: string;
-  schema: Record<string, unknown>;
+  schema: Anthropic.Tool.InputSchema;
 }
 
 const TIRE_SCHEMA = {

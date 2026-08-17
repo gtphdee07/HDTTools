@@ -379,24 +379,35 @@ SDK choice: native `purchases-android`, not `purchases-kmp`.
   `ANDROID_EMULATOR_HOME` alone was *not* sufficient to relocate the `avd/`
   subfolder despite the help text implying it would be; both vars are now
   set for safety.
-- **Blocked on a real hardware/firmware issue, not software:** the AVD
-  (`medium_phone`, API 36, Google Play, x86_64) was created successfully,
-  but boot fails with "x86_64 emulation currently requires hardware
-  acceleration" — `systeminfo` confirms `Virtualization Enabled In
-  Firmware: No`. This is a BIOS/UEFI-level setting (Intel VT-x / AMD-V),
-  not fixable by any Windows feature toggle or software install — needs a
-  reboot into firmware setup to enable, which only the user can do.
-  **User's plan: enable it tonight via a reboot.** Once enabled, resume
-  with: boot the AVD (`emulator -avd medium_phone`, with `ANDROID_SDK_ROOT`
-  and `ANDROID_AVD_HOME` set), confirm `adb devices` shows it, then `gradlew
-  installDebug` to confirm a real app deploy.
+- ✅ **Emulator fully working — done 2026-08-18.** Booting needed *two*
+  separate fixes, not one — worth remembering both if this ever needs
+  reproducing on another machine:
+  1. **BIOS/UEFI firmware virtualization** (Intel VT-x/AMD-V) was off —
+     `systeminfo`'s `Virtualization Enabled In Firmware: No` caught this;
+     fixed by the user rebooting into firmware setup and enabling it (no
+     software/Windows-feature toggle can do this, hardware-level only).
+  2. **Windows Hypervisor Platform**, a separate *Windows* feature from the
+     BIOS setting — still showed `InstallState: 2` (disabled) even after
+     the BIOS fix (checked via `Get-CimInstance -ClassName
+     Win32_OptionalFeature -Filter "Name='HypervisorPlatform'"`, since the
+     more obvious `Get-WindowsOptionalFeature` cmdlet itself requires
+     elevation even to *read* status). Needs admin elevation to enable
+     (`dism.exe /online /enable-feature /featurename:HypervisorPlatform
+     /all`, or the "Turn Windows features on or off" GUI) — same
+     elevation wall as the Android Studio installer, so the user ran it
+     directly, then rebooted again.
+  - With both fixed, `emulator -avd medium_phone` boots cleanly — log
+    confirms `WHPX on Windows 10.0.26200 detected. Windows Hypervisor
+    Platform accelerator is operational`. Full pipeline verified: `adb
+    devices` sees it, `gradlew installDebug` installs the real app,
+    `adb shell am start` launches it, confirmed via a real screenshot
+    (`adb exec-out screencap`) showing the stock "Hello Android!" screen
+    rendering correctly with the Play Store icon present in the status bar.
 
 **Next step:** Phase 3 (manual-entry UI — screens 1-4, 7-8, Navigation-
-Compose NavHost, DataStore-based last-5-rigs persistence). Doesn't need the
-emulator to *write*, but does need it (or the BIOS fix) to actually run/see
-the screens — worth checking whether virtualization got enabled before
-going deep into UI work. Phase 2 (business logic) is fully done — see
-above.
+Compose NavHost, DataStore-based last-5-rigs persistence). Phase 2
+(business logic) is fully done and the emulator is fully working end to
+end — see above — so nothing blocks starting Phase 3.
 
 ## 📐 Idea, not started: tiered test strategy (sanity → regression → full)
 
@@ -508,8 +519,8 @@ customer) is the concrete remaining gap.
   integration tests, and purchase-flow tests (lifetime unlock + consumable
   credit packs) — none of this code exists yet (Phase 3/4).
 - **Emulator-dependent tests** (Compose UI tests, live on-device scan
-  test) — **blocked on** the BIOS/firmware virtualization issue documented
-  above (Intel VT-x/AMD-V disabled), not on any code or scaffolding gap.
+  test) — **unblocked 2026-08-18**, the emulator is fully working (see
+  above) — blocked only on the UI/scan code itself existing (Phase 3/4).
 
 ## ✅ Done: tongue-weight fallback fix (implemented 2026-08-15)
 

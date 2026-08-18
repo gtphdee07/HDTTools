@@ -88,4 +88,30 @@ class BreakdownTest {
         assertEquals("14,225 lb", formatLb(row.actual))
         assertTrue(row.note!!.startsWith("Estimated total weight"))
     }
+
+    // Android-only enhancement (not in tests/test_breakdown.py): dynamic,
+    // number-specific explanations on the two rows that sum other rows,
+    // matching the 2026-08-17 mockup instead of the Python/web originals'
+    // fixed generic sentence.
+
+    @Test
+    fun `tow vehicle total note spells out the arithmetic`() {
+        val items = computeBreakdown(TRUCK, TRAILER, SCALE)
+        val row = item(items, "Tow Vehicle Total (GVWR)")
+        assertEquals(
+            "Steer (5,620) + drive (9,040) = 14,660 lb, which is 660 lb over this truck's 14,000 lb GVWR.",
+            row.note,
+        )
+    }
+
+    @Test
+    fun `combined rig weight note spells out the arithmetic`() {
+        val items = computeBreakdown(TRUCK, TRAILER, SCALE)
+        val row = item(items, "Combined Rig Weight")
+        assertEquals(
+            "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined " +
+                "weight — your 26,040 lb gross reading is 460 lb to spare.",
+            row.note,
+        )
+    }
 }

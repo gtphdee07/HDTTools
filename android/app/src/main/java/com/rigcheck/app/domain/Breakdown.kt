@@ -3,6 +3,7 @@ package com.rigcheck.app.domain
 import com.rigcheck.app.domain.model.ScaleTicket
 import com.rigcheck.app.domain.model.TrailerTag
 import com.rigcheck.app.domain.model.TruckTag
+import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -16,6 +17,33 @@ const val DEFAULT_AXLE_TO_TOTAL_RATIO = 0.8
 private fun lb(value: Double?): Double = value ?: 0.0
 
 private data class Row(val label: String, val actual: Double, val limit: Double, val note: String?)
+
+// Android-only enhancement, deliberately not ported back to breakdown.py/
+// calc.ts: these two rows are sums of other rows, so their notes spell out
+// the arithmetic with real numbers (matching the 2026-08-17 mockup) rather
+// than the Python/web originals' fixed generic sentence. Deliberately does
+// NOT try to identify "the" row causing a "Not Safe" verdict the way the
+// mockup's single-failure example did — with multiple simultaneous
+// failures that framing gets ambiguous, so tone/color alone carries pass/
+// fail and each note only explains its own row's math.
+private fun towVehicleTotalNote(steer: Double, drive: Double, limit: Double): String {
+    val sum = steer + drive
+    val margin = limit - sum
+    val overUnder = if (margin >= 0) "under" else "over"
+    return "Steer (${formatWholeNumber(steer)}) + drive (${formatWholeNumber(drive)}) = " +
+        "${formatWholeNumber(sum)} lb, which is ${formatWholeNumber(abs(margin))} lb $overUnder " +
+        "this truck's ${formatWholeNumber(limit)} lb GVWR."
+}
+
+private fun combinedRigWeightNote(truckGvwr: Double, trailerGvwr: Double, gross: Double): String {
+    val limit = truckGvwr + trailerGvwr
+    val margin = limit - gross
+    val overUnder = if (margin >= 0) "to spare" else "over"
+    return "Truck GVWR (${formatWholeNumber(truckGvwr)}) + trailer GVWR " +
+        "(${formatWholeNumber(trailerGvwr)}) = ${formatWholeNumber(limit)} lb allowed combined " +
+        "weight — your ${formatWholeNumber(gross)} lb gross reading is " +
+        "${formatWholeNumber(abs(margin))} lb $overUnder."
+}
 
 fun computeBreakdown(truck: TruckTag, trailer: TrailerTag, scale: ScaleTicket): List<BreakdownItem> {
     val steer = lb(scale.steerAxleLb)
@@ -62,11 +90,14 @@ fun computeBreakdown(truck: TruckTag, trailer: TrailerTag, scale: ScaleTicket): 
         Row("Rear Axle (Drive)", drive, rearGawr, null),
         Row(
             "Tow Vehicle Total (GVWR)", steer + drive, truckGvwr,
-            "Steer + drive axle readings vs. your truck tag's GVWR.",
+            towVehicleTotalNote(steer, drive, truckGvwr),
         ),
         Row("Trailer Axle(s)", trailerAxle, gawrPerAxle * axleCount, axleCountNote),
         Row("Trailer Total (GVWR)", trailerTotalActual, trailerGvwr, trailerTotalNote),
-        Row("Combined Rig Weight", gross, truckGvwr + trailerGvwr, null),
+        Row(
+            "Combined Rig Weight", gross, truckGvwr + trailerGvwr,
+            combinedRigWeightNote(truckGvwr, trailerGvwr, gross),
+        ),
     )
 
     return rows.map { row ->

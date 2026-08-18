@@ -258,7 +258,7 @@ whenever there's spare time — see above) and, separately with no fixed
 timeline, the Android Studio project itself. The billing-model decision
 itself is done — see above.
 
-## 🤖 Android app: build started, Phase 0/1 done, Phase 2 in progress
+## 🤖 Android app: Phases 0-3 done, screens working end-to-end
 
 Full roadmap (6 phases) was planned 2026-08-17 — see git history / ask for
 the plan if needed; not duplicated here. This section tracks execution
@@ -404,10 +404,91 @@ SDK choice: native `purchases-android`, not `purchases-kmp`.
     (`adb exec-out screencap`) showing the stock "Hello Android!" screen
     rendering correctly with the Play Store icon present in the status bar.
 
-**Next step:** Phase 3 (manual-entry UI — screens 1-4, 7-8, Navigation-
-Compose NavHost, DataStore-based last-5-rigs persistence). Phase 2
-(business logic) is fully done and the emulator is fully working end to
-end — see above — so nothing blocks starting Phase 3.
+**Phase 3 (manual-entry UI) — done, verified end-to-end on-device,
+2026-08-18.** Real screens built from the 2026-08-17 mockups (reconciled
+into `ANDROID_DESIGN_BRIEF.md`), not stubs:
+
+- **Theme**: `ui/theme/Color.kt`/`Theme.kt`/`Type.kt` replaced entirely —
+  were 100% stock Android Studio purple/pink template before this phase.
+  Real brand palette from `web/src/design-system/tokens.css`, light-only
+  `lightColorScheme`, `dynamicColor` off (so Material You can't override
+  the fixed brand colors). Quicksand + Karla wired via the Compose
+  **Downloadable Fonts API** (fetched at runtime from Google Fonts, not
+  bundled `.ttf` files) — needed `res/values/font_certs.xml`, which
+  **must be copied verbatim from Google's own sample**, not
+  hand-transcribed: a first attempt at reproducing it from memory got the
+  certificate bytes wrong and used the wrong XML array type
+  (`<array>` vs `<string-array>`), caught only by fetching the real file
+  from `android/user-interface-samples` and diffing before it shipped.
+- **Reference images**: the 3 mockup photos (`android/design/extracted/.../
+  reference-images/`) resized via a one-off `uv run python` + Pillow
+  script (repo's existing Python dependency, no new tooling) from
+  ~3.6 MB combined down to ~0.63 MB, capped at 1600px long edge, and
+  copied into `res/drawable/` as `ref_truck_tag.jpg`/`ref_trailer_tag.jpg`/
+  `ref_scale_ticket.jpg`. **Real bug caught by on-device testing**: the
+  first resize pass called `ImageOps.exif_transpose()`, which rotated the
+  truck-tag photo sideways — the design export's pixel data was already
+  correctly rotated (confirmed by direct visual inspection), but the file
+  carries a *stale* EXIF orientation tag left over from the original phone
+  capture that no longer matches the pixels. Fixed by dropping the
+  `exif_transpose()` call entirely.
+- **Domain model change**: `TruckTag`/`TrailerTag`'s `manufacturer` field
+  renamed to `description`, plus a new `name` field added to both —
+  matches the reconciled brief's mockup-driven field list. Safe rename:
+  `manufacturer` was never read by `compute_breakdown`, no test fixture
+  set it.
+- **Domain layer change, decided this session**: `Breakdown.kt`'s
+  `"Tow Vehicle Total (GVWR)"` and `"Combined Rig Weight"` rows now get
+  dynamic, number-specific note text (e.g. "Steer (5,640) + drive (9,080)
+  = 14,720 lb, which is 720 lb over this truck's 14,000 lb GVWR.")
+  instead of a fixed generic sentence — matches the mockup, but is a
+  **deliberate Android-only enhancement**, not ported back to
+  `breakdown.py`/`calc.ts`. Two new JUnit cases added
+  (`BreakdownTest.kt`) asserting the exact generated text.
+- **Data layer**: `data/RecentRigsRepository.kt` — Preferences DataStore
+  (new dependency, `androidx.datastore:datastore-preferences` 1.2.1),
+  one serialized JSON blob via `kotlinx.serialization`, porting
+  `web/src/recentRigs.ts`'s exact algorithm (case-insensitive dedupe by
+  nickname, prepend, slice to 5) — verified against the real file this
+  session, not from memory.
+- **Navigation**: `ui/navigation/RigCheckNavHost.kt` — Navigation-Compose
+  with type-safe `@Serializable` route objects (natural fit given
+  `kotlinx-serialization-json` was already a dependency). One
+  nav-graph-scoped `RigCheckViewModel` (`AndroidViewModel`, no DI
+  framework needed) holds in-progress truck/trailer/scale state and an
+  in-memory-only `disclaimerAcknowledged` flag — never persisted, shown
+  once per process per the brief.
+- **Reference-image zoom, decided this session**: tap-and-hold (not the
+  alternative persistent-lower-third-crop option) — press and drag on the
+  truck/trailer tag photos to zoom into that exact spot, matching the
+  mockup's hover-to-zoom intent adapted for touch. Highlight-ring color
+  (`#f0942f`) pulled directly from the mockup's own JS, not guessed.
+  Scale-ticket screen uses a simpler static numbered-legend instead (no
+  interaction) — exact badge x/y positions weren't extractable from the
+  design source, so the legend row carries the number-to-field mapping.
+- **"Scan Photo" is visually present but inert** on all three chooser
+  screens (disabled, non-clickable) — Phase 4 doesn't exist yet.
+- **Full on-device verification, real data, both branches of the
+  tongue-weight fallback exercised**: installed the real (non-stub) app
+  on the now-fully-working emulator, manually drove the entire flow via
+  `adb shell input tap`/`text` (with `uiautomator dump` for exact element
+  bounds — screen-relative tap coordinates broke once the keyboard
+  reflowed the layout, a test-methodology gotcha, not an app bug) using
+  the real `ExampleDocs/`-equivalent CAT Scale ticket numbers. Confirmed
+  via real screenshots at every step: Rig Picker (gradient header, empty
+  state, working nickname field) → Chooser (disabled Scan card, active
+  Manual card) → Truck Tag Entry (corrected reference image, all fields
+  bind correctly) → Trailer Tag Entry → Scale Ticket Entry (numbered
+  legend + real ticket image) → Disclaimer (exact finalized text) →
+  **Results**, which rendered the full real breakdown correctly: mixed
+  pass/fail rows, correct colors/borders/percentages, and the new dynamic
+  note text tap-to-expanded exactly as designed. `./gradlew test
+  assembleDebug` both still pass after all of the above.
+
+**Next step:** Phase 4 (optional paid scan feature — RevenueCat SDK,
+photo capture, calling the already-deployed `scan-proxy` Worker, the
+custom paywall screen). Phases 0-3 are fully done and verified — nothing
+blocks starting Phase 4.
 
 ## 📐 Idea, not started: tiered test strategy (sanity → regression → full)
 
@@ -532,11 +613,13 @@ outstanding** (not done this pass — pick up separately):
   denied" trying to replace them. Fix each time: find and
   `Stop-Process -Force` the actual `python.exe` under this project's
   `.venv` path via PowerShell, not the bash-reported PID.
-- **Android + `workers/scan-proxy/`**: not done this pass — still
-  outstanding, see the original plan below whenever picked up:
-  `cd android && ./gradlew test && ./gradlew assembleDebug`; `cd
-  workers/scan-proxy && npm test` plus re-confirming the already-deployed
-  Worker is still live (`curl` the real endpoint).
+- ✅ **Android — done 2026-08-18**, as part of building Phase 3 (see the
+  Android section above): `./gradlew test`/`assembleDebug` both clean,
+  plus a full real on-device walkthrough well beyond what this checklist
+  item originally asked for.
+- **`workers/scan-proxy/`**: still not done this pass — outstanding:
+  `cd workers/scan-proxy && npm test` plus re-confirming the
+  already-deployed Worker is still live (`curl` the real endpoint).
 
 **`workers/scan-proxy/` (Cloudflare Worker):**
 - **Workers-runtime integration tests** (`@cloudflare/vitest-pool-workers`)
@@ -571,17 +654,21 @@ customer) is the concrete remaining gap.
 
 **Android app:**
 - ✅ **`compute_breakdown`/`verdict_for` Kotlin port — done 2026-08-17.**
-  `BreakdownTest.kt` (7 cases: the 5 from `tests/test_breakdown.py` plus 2
-  zero-value edge cases it doesn't cover), `VerdictTest.kt` (2 cases),
+  `BreakdownTest.kt` (9 cases: the 5 from `tests/test_breakdown.py` plus 2
+  zero-value edge cases it doesn't cover plus 2 for the new dynamic
+  Android-only row notes), `VerdictTest.kt` (2 cases),
   `NumberFormattingTest.kt` (3 cases) — 13/13 passing, see the section
   above for detail.
-- **Still needed:** Compose UI tests (navigation happy-path, disclaimer
-  once-per-session gating, results rendering), RevenueCat Android SDK
-  integration tests, and purchase-flow tests (lifetime unlock + consumable
-  credit packs) — none of this code exists yet (Phase 3/4).
-- **Emulator-dependent tests** (Compose UI tests, live on-device scan
-  test) — **unblocked 2026-08-18**, the emulator is fully working (see
-  above) — blocked only on the UI/scan code itself existing (Phase 3/4).
+- **Compose UI tests (navigation happy-path, disclaimer once-per-session
+  gating, results rendering) — manually verified 2026-08-18** via a real
+  on-device walkthrough (see the Phase 3 section above for the full
+  screen-by-screen detail), but that's ad-hoc, not a *committed*,
+  repeatable `androidx.compose.ui.test` suite yet — the concrete
+  remaining gap, same shape as `workers/scan-proxy`'s manually-verified-
+  but-not-yet-committed tests above.
+- **Still needed, genuinely not started:** RevenueCat Android SDK
+  integration tests and purchase-flow tests (lifetime unlock + consumable
+  credit packs) — none of this code exists yet (Phase 4).
 
 ## ✅ Done: tongue-weight fallback fix (implemented 2026-08-15)
 

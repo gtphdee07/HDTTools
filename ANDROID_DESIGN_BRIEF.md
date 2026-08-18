@@ -288,10 +288,13 @@ Description/Name fields, the two reference-image interaction patterns,
 the bespoke paywall) are now folded in above — if anything here still
 doesn't match the actual mockups, the mockups win.
 
-**Build: environment and business logic done, screens not started.**
-Android Studio + SDK set up on this Windows machine, project scaffolded
-at `android/`, `compute_breakdown`/`verdict_for` ported to Kotlin with
-13/13 tests passing, and the emulator fully verified end-to-end
-(2026-08-17) — see `NEXT_STEPS.md` for the full account/environment
-history. Phase 3 (the actual screens, from the mockups reconciled above)
-hasn't started yet.
+**Build: environment, business logic, and the manual-entry screens are
+all done and verified on-device (2026-08-18).** Android Studio + SDK set
+up on this Windows machine, project scaffolded at `android/`,
+`compute_breakdown`/`verdict_for` ported to Kotlin, the emulator fully
+verified, and Phase 3 (rig picker, chooser, all three entry screens,
+disclaimer, results — matching the mockups reconciled above) built and
+confirmed working end-to-end via a real on-device walkthrough with real
+data — see `NEXT_STEPS.md` for the full detail. Not yet started: Phase 4
+(the optional paid scan feature — RevenueCat SDK, photo capture, the
+paywall screen).

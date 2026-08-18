@@ -477,22 +477,66 @@ mentioned in conversation, so it survives a machine switch. See
 `Claude.md`'s "NEXT_STEPS.md Maintenance" section for the standing rule
 behind this.
 
-**Full rebuild + regression pass, all platforms — requested 2026-08-18,
-explicitly deferred (not urgent, do later, not that night).** Enough has
-changed recently (the tongue-weight fallback fix, the README rewrite, the
-Android scaffold/business-logic port, the `scan-proxy` deploy) that it's
-worth a deliberate from-scratch pass confirming everything still actually
-builds and passes together, not just piecemeal as each change landed:
-- **Desktop** (Streamlit): `uv run pytest -q`, then a manual smoke test
-  of the running app against the real `ExampleDocs/` photos.
-- **Web**: `uv run pytest -q` (shared backend), `npm run build` in
-  `web/`, then a manual click-through against the real photos.
-- **Android**: `cd android && ./gradlew test && ./gradlew assembleDebug`
-  (no screens exist yet, so this is the business-logic layer only, but
-  still worth confirming clean from a fresh state).
-- **`workers/scan-proxy/`**: `npm test`, and worth re-confirming the
-  already-deployed Worker is still live/working (`curl` the real
-  endpoint) rather than assuming nothing's drifted.
+**Full rebuild + regression pass, all platforms — requested 2026-08-18.**
+**Desktop + Web done this session; Android + `scan-proxy` still
+outstanding** (not done this pass — pick up separately):
+
+- ✅ **Desktop (Streamlit) — done 2026-08-18, nothing broken, one real
+  environment gap found and fixed.** `uv run pytest -q`: 54/54 pass.
+  `streamlit run` boots and serves (HTTP 200). Every individual piece of
+  `app.py` (imports, `load_recent_rigs()`, `ensure_tesseract_configured()`)
+  verified working in isolation via a throwaway script.
+  **Real finding**: this machine had no `~/.streamlit/credentials.toml`,
+  so a fresh `streamlit run` (or `AppTest`, which drives the same
+  machinery) hangs *indefinitely* on Streamlit's interactive first-run
+  "send usage stats?" prompt when there's no TTY to answer it — this is
+  what actually consumed ~40 minutes before being caught (process
+  confirmed alive but at 0% CPU, i.e. genuinely blocked, not slow).
+  Fixed by writing `~/.streamlit/credentials.toml` (`email = ""`) and
+  `~/.streamlit/config.toml` (`gatherUsageStats = false`,
+  `server.headless = true`) — **do this on any new machine before first
+  Streamlit run**, interactive or not.
+  **Tooling dead-end, not an app bug**: attempted a deeper `AppTest`-based
+  walkthrough (upload the real `ExampleDocs/` photos, click through the
+  full wizard, assert on rendered results) matching this project's
+  established ad-hoc verification pattern. Even after the credentials fix,
+  `AppTest.from_file(...).run()` hung indefinitely on the *real* `app.py`
+  specifically — `AppTest`'s own documented `default_timeout=3` (seconds)
+  never fired, which points to its timeout enforcement relying on a
+  POSIX-only mechanism (e.g. `SIGALRM`) that's silently inert on Windows.
+  Not investigated further since the app's actual correctness was already
+  solidly confirmed by other means (below) — a real photo-driven
+  `AppTest` walkthrough remains a genuine test-coverage gap, just blocked
+  on this Windows-specific tooling issue, not on app code.
+- ✅ **Web — done 2026-08-18, nothing broken.** `uv run pytest -q`
+  (shared backend): 54/54 pass. `npm run build` in `web/`: clean. `npm
+  run dev`: serves (HTTP 200). Real HTTP requests against the live
+  FastAPI backend (`uv run uvicorn hdttools.api.main:app --port 8000`)
+  using the actual `ExampleDocs/` photos through
+  `/api/extract/truck-tag`, `/api/extract/trailer-tag`,
+  `/api/extract/scale-ticket` — Tesseract OCR still extracts fields
+  correctly. `/api/breakdown` re-confirmed the tongue-weight fix is live
+  end-to-end through the real API: `"Trailer Total (GVWR)"` →
+  `"14,225 lb"` for the standard test fixtures, exactly matching the fix.
+- **Minor, unrelated finding**: `uv run pytest`/`uv sync` without
+  `--extra streamlit` vs. with it causes `websockets` to flip between
+  16.1.1 and 17.0.1 on every single invocation (visible as a "Failed to
+  uninstall... missing RECORD file" warning each time) — cosmetic, tests
+  pass either way, not investigated further (would mean adjusting
+  dependency pins, out of scope for a regression *check*).
+- **Session gotcha hit twice**: backgrounding a `uv run ...`/`streamlit
+  run` process via `&` in git-bash and later `kill`-ing the *reported*
+  job PID does not reliably kill the real underlying `python.exe`
+  process — it can keep running orphaned, holding native `.dll`/`.pyd`
+  files open and causing the *next* `uv sync` to fail with "Access is
+  denied" trying to replace them. Fix each time: find and
+  `Stop-Process -Force` the actual `python.exe` under this project's
+  `.venv` path via PowerShell, not the bash-reported PID.
+- **Android + `workers/scan-proxy/`**: not done this pass — still
+  outstanding, see the original plan below whenever picked up:
+  `cd android && ./gradlew test && ./gradlew assembleDebug`; `cd
+  workers/scan-proxy && npm test` plus re-confirming the already-deployed
+  Worker is still live (`curl` the real endpoint).
 
 **`workers/scan-proxy/` (Cloudflare Worker):**
 - **Workers-runtime integration tests** (`@cloudflare/vitest-pool-workers`)

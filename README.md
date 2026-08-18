@@ -1,41 +1,111 @@
-# HDTTools
+# RigCheck / HDTTools
 
-Tools for extracting structured data from heavy-duty-truck paperwork —
-CAT Scale weigh tickets and vehicle Safety Compliance Certification labels
-(truck and trailer) — via photo. Each reader prompts the user to pick an
-image, extracts the printed fields, shows an editable review form so the
-user can correct any misreads, then saves the result to a local SQLite
-database.
+**RigCheck** is an experimental RV/trailer tow-weight safety checker: get
+the numbers off a truck's compliance label, a trailer's compliance label,
+and a CAT Scale weigh ticket — by photo or by typing them in — and it
+computes an axle-by-axle pass/fail breakdown against each axle's rated
+limit. It's an experimental learning project, not a certified safety
+tool — every version shows a blocking "not for safety decisions"
+disclaimer before results.
 
-## Setup
+RigCheck ships on three platforms, each self-contained (no shared backend
+or database):
 
-This project uses [`uv`](https://docs.astral.sh/uv/) for Python and
-dependency management.
+- **Desktop** (`streamlit_app/`) — a single-process Streamlit app, local
+  OCR via Tesseract.
+- **Web** (`web/` + `src/hdttools/api/`) — a React frontend talking to a
+  stateless FastAPI backend, local OCR via Tesseract.
+- **Android** (`android/`) — 🚧 **under construction**. Native
+  Kotlin/Compose; free offline manual entry by default, plus an optional
+  paid Claude-vision "scan instead of type" feature. Environment, project
+  scaffold, and the core weight-breakdown logic are done and tested; the
+  actual screens haven't been built yet.
+
+This repo also contains the underlying Python extraction toolkit
+(`hdttools`) that the Desktop/Web OCR paths are built on — usable
+directly as a library, see "Underlying toolkit" below.
+
+For the full project history, decisions, and current status (including
+the Android monetization backend, deployment notes, and everything below
+this file's scope), see [`NEXT_STEPS.md`](NEXT_STEPS.md) — the
+maintained, cross-session record.
+
+## Desktop (Streamlit)
 
 ```
+uv sync --extra streamlit
+uv run --extra streamlit streamlit run streamlit_app/app.py
+```
+
+Opens at `http://localhost:8501`. Requires Tesseract — see "Tesseract"
+below. See [`streamlit_app/README.md`](streamlit_app/README.md) for more,
+including deployment notes.
+
+**Live demo**: https://hdttools-ynfeq8py78ghmeyulo2grr.streamlit.app
+
+## Web
+
+```
+# Backend (FastAPI), from the repo root
 uv sync
+uv run uvicorn hdttools.api.main:app --reload --port 8000
+
+# Frontend (React + Vite), in a second terminal
+cd web
+npm install
+npm run dev
 ```
 
-### API key (for the Claude-vision readers)
+Frontend runs on `http://localhost:5173`, backend on
+`http://localhost:8000` (`/docs` for Swagger UI). Also requires
+Tesseract — see below. See [`web/README.md`](web/README.md) for more.
 
-`read_scale_ticket`, `read_truck_tag`, and `read_trailer_tag` extract data
-via the Claude API and require an `ANTHROPIC_API_KEY` environment variable.
+## Android 🚧 under construction
 
-### Tesseract (for the no-API-key OCR alternative)
+Native Kotlin/Compose app — manual entry is free and fully offline by
+default, with an optional paid Claude-vision "scan instead of type"
+feature backed by `workers/scan-proxy/` (a Cloudflare Worker — already
+deployed and verified end-to-end, see `NEXT_STEPS.md`).
 
-`hdttools.scale_ticket_ocr.read_scale_ticket` is a drop-in alternative to
-the scale ticket reader that uses local OCR instead of the Claude API, so
-no API key or network access is needed. It requires the Tesseract OCR
-engine installed separately (not just the `pytesseract` pip package). On
-Windows: install from the community builds at
+**Current status**: dev environment set up, project scaffolded, and the
+core weight-breakdown logic (`compute_breakdown`/`verdict_for`) ported to
+Kotlin with full test coverage, matching `tests/test_breakdown.py`'s
+scenarios exactly. **No screens exist yet** — this doesn't build a usable
+app today, only the tested business-logic layer.
+
+```
+cd android
+./gradlew test           # run the business-logic unit tests
+./gradlew assembleDebug  # build the (currently screen-less) debug APK
+```
+
+Requires Android Studio (bundles the JDK) and its SDK — see
+`NEXT_STEPS.md` for this project's environment setup notes and gotchas.
+
+## Tesseract (for the Desktop/Web local-OCR path)
+
+Desktop and Web both extract label/ticket fields via local OCR
+(`pytesseract`), which requires the Tesseract OCR engine installed
+separately — not just the `pytesseract` pip package. On Windows: install
+from the community builds at
 https://github.com/UB-Mannheim/tesseract/wiki. It's auto-detected on PATH
-or at the default install location (`C:\Program Files\Tesseract-OCR`).
+or at the default install location (`C:\Program Files\Tesseract-OCR`), and
+also auto-detected on common macOS (Homebrew) and Linux install locations.
 
 Accuracy is noticeably lower than the Claude-vision version, particularly
 for fields near dense boilerplate text or small print — that's what the
 review/repair step is for.
 
-## Usage
+## Underlying toolkit: `hdttools` (Python library/CLI)
+
+Alongside RigCheck, this repo's original tool: standalone functions that
+prompt for a photo, extract structured fields (via Claude vision or local
+Tesseract OCR), show an editable review form, and save the result — no
+wizard flow, just direct library use.
+
+```
+uv sync
+```
 
 ```python
 from hdttools import read_scale_ticket, read_truck_tag, read_trailer_tag
@@ -50,16 +120,25 @@ review step instead of saving. Records are saved to `hdttools.db`
 (SQLite) in the working directory, one table per record type
 (`scale_tickets`, `truck_tags`, `trailer_tags`).
 
+`read_scale_ticket`, `read_truck_tag`, and `read_trailer_tag` extract data
+via the Claude API and require an `ANTHROPIC_API_KEY` environment
+variable. `hdttools.scale_ticket_ocr.read_scale_ticket` is a drop-in
+alternative using local Tesseract OCR instead, so no API key or network
+access is needed (see "Tesseract" above).
+
 ## Testing
 
 ```
-uv run pytest -q
+uv run pytest -q          # Python (CLI, API, breakdown logic)
+uv run pytest --cov       # with coverage
 ```
 
-Or with coverage:
+```
+cd android && ./gradlew test    # Android (Kotlin business-logic layer)
+```
 
 ```
-uv run pytest --cov
+cd workers/scan-proxy && npm test   # Cloudflare Worker (charge/extract/refund control flow)
 ```
 
 ## Project layout
@@ -71,20 +150,11 @@ uv run pytest --cov
 - `src/hdttools/scale_ticket_ocr.py`, `truck_tag_ocr.py`, `trailer_tag_ocr.py` — local-OCR alternatives
 - `src/hdttools/review_form.py` — generic GUI review/repair form
 - `src/hdttools/database.py` — SQLite persistence (CLI tool only)
-- `src/hdttools/api/` — stateless FastAPI backend for the web/Streamlit frontends (no persistence — see below)
+- `src/hdttools/api/` — stateless FastAPI backend for the web frontend (no persistence)
 - `tests/` — pytest suite
-
-## RigCheck: web and Streamlit frontends
-
-Alongside the CLI/library above, this repo also has a wizard-style RV
-weight-safety-check app ("RigCheck") in two self-contained frontends,
-each reusing the same OCR-parsing and breakdown logic:
-
-- `web/` — React + Vite frontend, talking to the FastAPI backend in
-  `src/hdttools/api/`. See `web/README.md`.
-- `streamlit_app/` — single-process Streamlit alternative, no separate
-  backend. See `streamlit_app/README.md`.
-
-Neither persists to a database — each remembers up to 5 recent rigs
-locally (browser `localStorage` for the web app, a JSON file for
-Streamlit) and keeps check history session-only.
+- `web/` — React + Vite frontend (RigCheck Web)
+- `streamlit_app/` — self-contained Streamlit frontend (RigCheck Desktop)
+- `android/` — native Kotlin/Compose app (RigCheck Android, under construction)
+- `workers/scan-proxy/` — Cloudflare Worker backing Android's paid scan feature
+- `ANDROID_DESIGN_BRIEF.md` — Android screen-by-screen design reference
+- `NEXT_STEPS.md` — the maintained, cross-session project record

@@ -477,6 +477,23 @@ mentioned in conversation, so it survives a machine switch. See
 `Claude.md`'s "NEXT_STEPS.md Maintenance" section for the standing rule
 behind this.
 
+**Full rebuild + regression pass, all platforms — requested 2026-08-18,
+explicitly deferred (not urgent, do later, not that night).** Enough has
+changed recently (the tongue-weight fallback fix, the README rewrite, the
+Android scaffold/business-logic port, the `scan-proxy` deploy) that it's
+worth a deliberate from-scratch pass confirming everything still actually
+builds and passes together, not just piecemeal as each change landed:
+- **Desktop** (Streamlit): `uv run pytest -q`, then a manual smoke test
+  of the running app against the real `ExampleDocs/` photos.
+- **Web**: `uv run pytest -q` (shared backend), `npm run build` in
+  `web/`, then a manual click-through against the real photos.
+- **Android**: `cd android && ./gradlew test && ./gradlew assembleDebug`
+  (no screens exist yet, so this is the business-logic layer only, but
+  still worth confirming clean from a fresh state).
+- **`workers/scan-proxy/`**: `npm test`, and worth re-confirming the
+  already-deployed Worker is still live/working (`curl` the real
+  endpoint) rather than assuming nothing's drifted.
+
 **`workers/scan-proxy/` (Cloudflare Worker):**
 - **Workers-runtime integration tests** (`@cloudflare/vitest-pool-workers`)
   — the 20 tests in `src/*.test.ts` run on plain Node and cover the

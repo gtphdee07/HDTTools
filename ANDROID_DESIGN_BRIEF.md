@@ -9,6 +9,11 @@ brief back in sync with `NEXT_STEPS.md`, which is the source of truth
 for the business/backend reasoning — this doc doesn't re-derive it, just
 stays consistent with it.
 
+**Updated again 2026-08-17** — real mockups exist now (the earlier
+version above was written before any Design work had actually happened).
+This pass reconciles a handful of deliberate deviations Design flagged in
+its own handoff — see "Current status" for exactly what changed and why.
+
 ## What RigCheck is
 
 An experimental RV/trailer tow-weight safety checker: get the numbers
@@ -105,7 +110,14 @@ being a numbers-and-safety tool.
    one credit, requires camera capture) and **"Enter Manually"** (free),
    both leading to the same reference image (annotated Ford-style
    compliance label) + editable fields:
-   - Manufacturer (text)
+   - Description (text, e.g. "Ford F-350" — **renamed from
+     "Manufacturer" per the 2026-08-17 mockup**, same underlying field,
+     broader example content: full make/model, not just the manufacturer
+     name)
+   - Name (text, e.g. "Addie" — **new field added by the mockup, not in
+     the original field list**: a nickname for *this specific vehicle*,
+     distinct from the rig-level nickname on screen 1. Display-only, like
+     Description — not consumed by the breakdown math)
    - GVWR, lb (number)
    - Front GAWR, lb (number)
    - Rear GAWR, lb (number)
@@ -114,7 +126,8 @@ being a numbers-and-safety tool.
      clear it's optional)
 3. **Trailer tag entry** — same scan-or-manual choice, reference image
    (annotated Brinkley-RV-style compliance label) + fields:
-   - Manufacturer (text)
+   - Description (text — same rename as truck tag above)
+   - Name (text — same new per-vehicle-nickname field as truck tag above)
    - GVWR, lb (number)
    - GAWR per axle, lb (number)
    - Axle count (number, **optional, always manual even after a scan,
@@ -130,28 +143,34 @@ being a numbers-and-safety tool.
    - Gross weight, lb (number)
 5. **Purchase / paywall** — lifetime unlock (includes a pre-set number
    of scan credits) + consumable credit-pack purchases once those run
-   out. Already covered by the existing mockups. Pricing itself is
-   deliberately still undecided (see `NEXT_STEPS.md`) — don't hard-code
-   dollar amounts anywhere they'd be annoying to change later.
+   out. The 2026-08-17 mockup is a bespoke, brand-matched layout (not a
+   generic paywall) — build this as a custom Compose screen rather than
+   RevenueCat's prebuilt Paywall UI, which wouldn't match. Pricing itself
+   is deliberately still undecided (see `NEXT_STEPS.md`) — the mockup
+   shows "Price TBD" placeholders; don't hard-code dollar amounts
+   anywhere they'd be annoying to change later.
 6. **Credit balance indicator** — not a dedicated screen; a persistent,
    contextual element near each "Scan Photo" entry point (e.g. "12 scans
    left"), reading from RevenueCat directly. Already covered by the
    existing mockups.
 7. **Disclaimer** — blocking, shown once per app session before the
-   first results screen. Exact required text (already used verbatim on
-   web/Streamlit, keep identical):
+   first results screen. **Wording decided 2026-08-17**: Android uses its
+   own text, deliberately *not* identical to web/Streamlit's — the
+   original wording's "OCR-read photos" phrasing doesn't fit Android's
+   manual-entry-first default (most users never touch a scan). Exact
+   required text:
 
    > **Experimental Tool — Not for Safety Decisions**
    >
-   > RigCheck is an experimental project built to learn AI-assisted
-   > software development, not a certified or professional weight-safety
-   > tool. Its numbers come from OCR-read photos, manually reviewed by
-   > you, and simplified math — any step of that chain can be wrong.
+   > RigCheck is an experimental project built to learn app development,
+   > not a certified or professional weight-safety tool. You type in
+   > numbers straight off your own tag and ticket photos, and the math
+   > that follows is simplified — any step of that chain can be wrong.
    >
    > Do not use this tool to decide whether your rig is safe to tow.
    > Always verify actual weights and ratings using a certified scale
    > and your vehicle's official documentation, and consult a qualified
-   > professional if you're unsure. Your use this tool, and any decisions
+   > professional if you're unsure. You use this tool, and any decisions
    > you make based on it, entirely at your own risk and responsibility.
 8. **Results** — six axle-by-axle comparisons, each needing: label,
    actual value, rated limit, a pass/fail visual treatment (green/red,
@@ -195,23 +214,44 @@ being a numbers-and-safety tool.
 
 For each of the three entry screens (truck tag, trailer tag, scale
 ticket), design a reference image: a photo or clean illustration of a
-real label/ticket with callouts (arrows/circles + labels) pointing at
-exactly the value each input field is asking for. Goal: someone who has
-never seen a compliance label before can look at the reference image,
-find the same spot on their own tag, and type the number in confidently.
-Relevant on the manual-entry path regardless of whether scanning is
-available — scanning is optional/paid, so manual entry needs to stand on
-its own.
+real label/ticket with callouts pointing at exactly the value each input
+field is asking for. Goal: someone who has never seen a compliance label
+before can look at the reference image, find the same spot on their own
+tag, and type the number in confidently. Relevant on the manual-entry
+path regardless of whether scanning is available — scanning is
+optional/paid, so manual entry needs to stand on its own.
 
-Starting material — real, already-in-repo example photos:
-- `ExampleDocs/AddieTag.jpg` — truck compliance label (Ford)
-- `ExampleDocs/GooseTag.jpg` — trailer compliance label (Brinkley RV)
-  (note: these two filenames are swapped relative to what they imply —
-  `AddieTag.jpg` is actually the *truck* tag and `GooseTag.jpg` is
-  actually the *trailer* tag; this is a known pre-existing mix-up,
-  already noted in `NEXT_STEPS.md`, not something to fix here — just
-  don't be misled by the names when picking source material)
-- `ExampleDocs/CatScale-Ticket.jpg` — CAT Scale weigh ticket
+**Two different patterns, per the 2026-08-17 mockup** (not one pattern
+for all three, as originally envisioned):
+- **Truck tag and trailer tag**: an interactive hover-to-zoom pattern —
+  hovering a field smoothly zooms the reference photo into that field's
+  exact spot and drops a highlight ring, no static numbered legend.
+  **Has no direct mobile equivalent** — the mockup's own README flags
+  this and recommends either tap-and-hold, or a persistent lower-third
+  crop that updates on focus, to carry the same "confirm you're reading
+  the right spot" intent to touch. **Not yet decided which — pick one
+  when building screens 2/3.**
+- **Scale ticket**: a simpler static pattern — numbered circle badges
+  overlaid directly on the ticket photo, matched to a numbered legend row
+  above the fields ("1 Scale location · 2 Steer · 3 Drive · 4 Trailer ·
+  5 Gross"). Ports directly to Compose (numbered badges positioned over
+  an `Image`) — no interaction design needed here.
+
+Starting material — real photos, from the design export
+(`android/design/`'s extracted `reference-images/` folder, filenames
+already corrected — unlike `ExampleDocs/`'s swapped names, see below):
+- `AddieTag-truck.jpg` — truck compliance label (Ford)
+- `GooseTag-trailer.jpg` — trailer compliance label (Brinkley RV)
+- `CatScale-Ticket.jpg` — CAT Scale weigh ticket
+
+These are re-exported, corrected copies — not the original
+`ExampleDocs/AddieTag.jpg` / `ExampleDocs/GooseTag.jpg`, whose filenames
+are swapped relative to what they imply (already noted in
+`NEXT_STEPS.md`, not fixed there since it wasn't part of that ask). Two
+edits were made for this export: the truck tag photo's EXIF orientation
+was corrected (it displayed sideways), and both tag photos have their VIN
+line and/or barcode redacted with an opaque block, since they're real
+customer documents.
 
 ## Data & persistence (Android-specific)
 
@@ -231,19 +271,27 @@ Starting material — real, already-in-repo example photos:
 
 ## Current status
 
-**Design: done.** Claude Design produced mockups covering the full flow
-above — rig picker, scan-vs-manual entry on all three tag/ticket
-screens, the purchase/paywall flow, the credit-balance indicator, and
-results. They live in a local `android/design/` directory that the other
-session deliberately gitignored ("local reference only, not
-version-controlled") rather than committing image assets to this repo —
-respecting that choice rather than asking to change it. This document is
-the portable, synced record of what those mockups need to cover; if
-anything here turns out to not match what's actually in the mockups,
-the mockups win and this doc should be corrected to match.
+**Design: done, mockups confirmed present 2026-08-17.** Claude Design
+produced mockups covering the full flow above — rig picker, scan-vs-manual
+entry on all three tag/ticket screens, the purchase/paywall flow, the
+credit-balance indicator, and results — delivered as a dated export zip
+(`RV Towing Safety Calculator-2026-08-17.zip`) into `android/design/`,
+which stays gitignored ("local reference only, not version-controlled")
+matching the prior session's choice. Extracted contents: a `README.md`
+(this reconciliation is based on it), 8 numbered screenshots (2x
+resolution, 412×892), the `.dc.html` source file (not standalone —
+**the screenshots are the authoritative build reference**, per the
+export's own README), and the corrected `reference-images/`. This
+document is the portable, synced record of what those mockups cover; the
+deviations from the original brief (disclaimer wording, the new
+Description/Name fields, the two reference-image interaction patterns,
+the bespoke paywall) are now folded in above — if anything here still
+doesn't match the actual mockups, the mockups win.
 
-**Build: not started.** No Android Studio/Kotlin project exists yet,
-here or (per the user) anywhere else — see `NEXT_STEPS.md` for the
-current setup checklist and the backend accounts that need creating
-first (Anthropic → Cloudflare → RevenueCat, in that order) before the
-scan feature can go live, independent of when Android build work starts.
+**Build: environment and business logic done, screens not started.**
+Android Studio + SDK set up on this Windows machine, project scaffolded
+at `android/`, `compute_breakdown`/`verdict_for` ported to Kotlin with
+13/13 tests passing, and the emulator fully verified end-to-end
+(2026-08-17) — see `NEXT_STEPS.md` for the full account/environment
+history. Phase 3 (the actual screens, from the mockups reconciled above)
+hasn't started yet.

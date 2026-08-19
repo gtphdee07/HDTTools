@@ -899,14 +899,45 @@ URL, before/after every `wrangler deploy`). Manual cadence, no CI —
   Test Store and the live `smoke-test-user` customer (see the Phase 4
   section above for the full step-by-step: real scan against the
   deployed Worker, real credit decrement, real Test Store purchase, real
-  credit increment). Not yet a committed, repeatable automated test —
-  same shape as the other "manually verified but not committed" gaps in
-  this list. Unlocked now that the code exists; concretely needed:
-  Compose UI tests for the Paywall/credit-chip/scan-loading states
-  (fakeable without hitting the real network), plus `RevenueCatManager`
-  unit tests against a fake/mocked `Purchases` instance for the
-  balance-cache-invalidation logic specifically (this session's real bug
-  — a test would have caught it without needing on-device verification).
+  credit increment). Compose UI tests (Paywall/credit-chip/scan-loading
+  states) are still only manually verified, not a committed
+  `androidx.compose.ui.test` suite — same shape as the other
+  "manually verified but not committed" gaps in this list, deliberately
+  deferred as its own next session (needs a running emulator, unlike a
+  plain JVM unit test).
+- ✅ **`RevenueCatManager` unit test — done 2026-08-19.**
+  `RevenueCatManagerTest.kt` (4 JUnit4 + MockK cases) specifically covers
+  the balance-cache-invalidation bug found and fixed 2026-08-18: asserts
+  `getScanCreditBalance()` calls `invalidateVirtualCurrenciesCache()`
+  before reading the balance (not after), plus the balance-present,
+  balance-absent, and `appUserId`-passthrough cases. New test
+  dependencies: `io.mockk:mockk` 1.14.3, `kotlinx-coroutines-test` 1.10.2
+  (added to the version catalog; versions verified against Maven Central
+  at write time, not assumed from memory).
+  **Two genuine deadlocks hit and fixed while writing this — both
+  confirmed via `jstack` thread dumps, not guessed:**
+  1. **`Purchases.sharedInstance` needs `mockkObject(Purchases.Companion)`,
+     not `mockkStatic(Purchases::class)`.** The latter compiles and runs
+     without error but silently doesn't intercept the call — `sharedInstance`
+     is `Purchases.Companion.getSharedInstance()` under the hood, not a
+     true `@JvmStatic` method, so the *real* getter ran every time and threw
+     (`Purchases.configure()` is never called in a plain JVM unit test).
+  2. **MockK's `coEvery`/`coVerifyOrder` on a suspend function deadlock
+     if called from inside any coroutine builder** (`runBlocking`,
+     `runTest`, doesn't matter which) — `coEvery` internally bridges into
+     suspend land via its *own* `runBlocking` to record the call
+     signature, and nesting that inside another coroutine on the same
+     thread means both park waiting on each other. This happened twice
+     (once nested in `runTest`, once nested in plain `runBlocking`) before
+     the actual fix: **mock the real callback-based
+     `getVirtualCurrencies(GetVirtualCurrenciesCallback)` member method
+     instead of the `awaitGetVirtualCurrencies()` suspend extension
+     function built on top of it** — a plain `every {...} answers {...}`
+     invoking the callback synchronously, no `coEvery`/`mockkStatic` on
+     the extension file needed at all. `RevenueCatManager`'s real
+     (unmocked) suspend wrapper still runs and bridges the callback into a
+     suspend result exactly as it does in production.
+  `./gradlew test`/`assembleDebug` both clean after.
 
 ## ✅ Done: tongue-weight fallback fix (implemented 2026-08-15)
 

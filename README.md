@@ -144,8 +144,10 @@ cd workers/scan-proxy && npm test              # full mocked regression suite (d
 ```
 
 The Worker's tests are organized into tiers (sanity → daily → weekly →
-release); only sanity and daily exist so far — see `NEXT_STEPS.md` for
-the full tier breakdown and what's still to come.
+release); only sanity and daily exist so far — see
+[`workers/scan-proxy/TESTING.md`](workers/scan-proxy/TESTING.md) for what
+each tier and individual test covers, or `NEXT_STEPS.md` for the
+narrative history of how it got built.
 
 ## Project layout
 

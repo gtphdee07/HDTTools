@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider paths for the camera-capture temp file (Phase 4 scan
+     feature) - the captured photo is written to the app's own cache dir,
+     never external/shared storage. -->
+<paths>
+    <cache-path name="scan_photos" path="scan_photos/" />
+</paths>

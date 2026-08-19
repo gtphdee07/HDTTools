@@ -30,6 +30,7 @@ import com.rigcheck.app.ui.theme.TrailGreen
 
 @Composable
 fun ScanOrManualChooser(
+    onScanPhoto: () -> Unit,
     onChooseManual: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -40,8 +41,8 @@ fun ScanOrManualChooser(
             description = "Photograph the label — Claude reads the fields for you.",
             badgeText = "1 credit",
             badgeColor = SunsetOrange,
-            enabled = false, // Phase 4 (paid scan feature) doesn't exist yet
-            onClick = {},
+            enabled = true,
+            onClick = onScanPhoto,
         )
         ChooserOptionCard(
             icon = Icons.Filled.Edit,

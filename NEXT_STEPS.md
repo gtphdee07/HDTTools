@@ -258,7 +258,7 @@ whenever there's spare time — see above) and, separately with no fixed
 timeline, the Android Studio project itself. The billing-model decision
 itself is done — see above.
 
-## 🤖 Android app: Phases 0-3 done, screens working end-to-end
+## 🤖 Android app: Phases 0-4 done, paid scan feature working end-to-end
 
 Full roadmap (6 phases) was planned 2026-08-17 — see git history / ask for
 the plan if needed; not duplicated here. This section tracks execution
@@ -466,8 +466,8 @@ into `ANDROID_DESIGN_BRIEF.md`), not stubs:
   Scale-ticket screen uses a simpler static numbered-legend instead (no
   interaction) — exact badge x/y positions weren't extractable from the
   design source, so the legend row carries the number-to-field mapping.
-- **"Scan Photo" is visually present but inert** on all three chooser
-  screens (disabled, non-clickable) — Phase 4 doesn't exist yet.
+- **"Scan Photo" is now fully live on all three chooser screens** — see
+  the Phase 4 section below.
 - **Full on-device verification, real data, both branches of the
   tongue-weight fallback exercised**: installed the real (non-stub) app
   on the now-fully-working emulator, manually drove the entire flow via
@@ -485,10 +485,102 @@ into `ANDROID_DESIGN_BRIEF.md`), not stubs:
   note text tap-to-expanded exactly as designed. `./gradlew test
   assembleDebug` both still pass after all of the above.
 
-**Next step:** Phase 4 (optional paid scan feature — RevenueCat SDK,
-photo capture, calling the already-deployed `scan-proxy` Worker, the
-custom paywall screen). Phases 0-3 are fully done and verified — nothing
-blocks starting Phase 4.
+**Phase 4 (optional paid scan feature) — done, verified on-device,
+2026-08-18:** connected to the RevenueCat test customer `smoke-test-user`
+(the same one used for the 2026-08-17 server-side Worker smoke test),
+using the RevenueCat **public** Test Store SDK key pasted directly into
+chat (public keys are explicitly exempt from the "never type secrets in
+chat" rule — unlike `REVENUECAT_SECRET_KEY`/`ANTHROPIC_API_KEY`, which
+stayed out of chat/commands as always).
+- **RevenueCat SDK wiring**: `RigCheckApplication.kt` configures
+  `Purchases` with a hardcoded `appUserID("smoke-test-user")` —
+  deliberately a testing-only shortcut, commented in code as needing to
+  change to the SDK's default per-install anonymous ID before any real
+  release. `data/RevenueCatManager.kt` wraps the SDK's callback APIs as
+  suspend functions (balance, offerings, purchase via the current
+  non-deprecated `PurchaseParams.Builder`/`purchase()` path, restore).
+- **Scan pipeline**: `ActivityResultContracts.TakePicture()` +
+  `FileProvider` (no `CAMERA` permission needed) →
+  `data/PhotoEncoding.kt` (downscale ≤1600px long edge, JPEG q85, base64)
+  → `data/ScanApiClient.kt` (OkHttp POST to the deployed `scan-proxy`
+  Worker) → `data/ScanFieldMapping.kt` (merges extracted fields onto the
+  current module's state, never clobbering a value the user already
+  typed) → lands on the *same* Phase 3 entry screen for review, exactly
+  as planned (no new form UI needed).
+- **New `RigCheckRoute.Paywall` + `PaywallScreen.kt`**: custom Compose
+  layout (not RevenueCat's prebuilt UI), real Test Store offerings/prices
+  via `StoreProduct.price.formatted` (never hardcoded), "Restore
+  purchase" link. Reachable by tapping Scan Photo at 0 credits, or by
+  tapping the new credit-balance chip directly ("get more scans"
+  affordance).
+- **Real bug caught and fixed during on-device verification**: the
+  RevenueCat SDK caches virtual-currency balance client-side and has no
+  way to know the Worker just deducted a credit server-side via a direct
+  REST call (not through the SDK's own purchase flow) — so the credit
+  chip kept showing the pre-scan balance after a real scan. Fixed by
+  calling the SDK's `invalidateVirtualCurrenciesCache()` before every
+  balance fetch in `RevenueCatManager.getScanCreditBalance()`, so launch
+  and post-scan/post-purchase refreshes always hit the network. This is
+  the same "don't trust memory, verify against the real decompiled jar"
+  discipline as the Phase 4 planning stage (`javap -p` on
+  `purchases-10.17.0.aar`'s `classes.jar` found the method).
+- **Full on-device verification, `./gradlew assembleDebug` clean**,
+  driven via `adb shell input`/`uiautomator dump` (same technique as
+  Phase 3): credit chip showed the real `smoke-test-user` balance (99) on
+  launch; tapping Scan Photo launched the real system camera app via
+  `FileProvider` with no crash; capturing and confirming a photo drove
+  the full pipeline (encode → upload → real Worker call → real Claude
+  call → parsed response → merged onto `TruckTag` → navigated to the
+  review screen) — fields came back blank/`<UNKNOWN>` as expected since
+  the AVD's back camera is a generic virtual scene, not a real label, but
+  the pipeline itself is proven; balance correctly decremented 99 → 98,
+  confirmed durable across an app reinstall (not just an optimistic local
+  update); Paywall rendered two real Test Store products ($99.99
+  Lifetime, $0.99 Consumable) with working "Restore purchase"; a real
+  Test Store purchase completed end-to-end (RevenueCat's own "Test Store
+  Purchase" confirmation dialog → "Purchase complete!" toast → balance
+  correctly incremented 98 → 108, the consumable pack's configured
+  credit grant).
+
+All 6 planned phases are now done. Remaining Android work is polish/tests
+only — see "🧪 Tests still outstanding" below.
+
+**Two real bugs found during the user's own hands-on emulator testing,
+both fixed and re-verified on-device, 2026-08-18:**
+- **Recent-rig selection skipped the Chooser entirely.** Picking an
+  existing rig from `RigPickerScreen` navigated straight to
+  `RigCheckRoute.ScaleTicketEntry`, bypassing `Chooser(EntryModule.SCALE)`
+  — so returning users had no Scan Photo option at all, only the fresh
+  "start a new rig" path did. Fixed in `RigCheckNavHost.kt`:
+  `onSelectRecentRig` now navigates to `Chooser(EntryModule.SCALE)`
+  instead. Re-verified: selecting an existing rig now lands on the
+  Chooser with Scan Photo available.
+- **Scan Photo only offered "take a new photo," never "use one you
+  already have."** The user correctly pointed out that in practice the
+  photo is usually already taken before opening the app — certainly true
+  for a CAT Scale ticket, which is a printed receipt handed over well
+  before anyone opens RigCheck. `ChooserScreen.kt` now shows a small
+  dialog on tapping Scan Photo ("Take Photo" / "Choose from Gallery"),
+  the latter via `ActivityResultContracts.PickVisualMedia()` (the modern
+  Android Photo Picker — no storage permission needed on any API level).
+  The credit-balance chip also got a `onClick` (opens the Paywall
+  directly, a "get more scans" affordance) to support testing this
+  without spending real Test Store credits repeatedly.
+  **AVD-testing-only gotcha hit and fixed while verifying this**: photos
+  pushed onto the emulator via `adb push` land in MediaStore with
+  `is_pending=1` (a flag meaning "still being written"), which hides them
+  from every gallery/picker app including the new one — not an app bug,
+  a test-environment quirk. Fix: `adb shell content update --uri
+  content://media/external/images/media/<id> --bind is_pending:i:0` per
+  file. Even after that, the Photo Picker's own separate sync can lag
+  behind a raw `adb push`; `adb shell am force-stop
+  com.google.android.providers.media.module` forces it to resync on next
+  launch. Re-verified end-to-end with a real, legible photo this time
+  (`ExampleDocs/CatScale-Ticket.jpg` via "Choose from Gallery," not the
+  AVD's virtual-scene camera): Claude correctly extracted every field —
+  scale location "LOVES COUNTRY STORES," steer 5640, drive 9080, trailer
+  19680 lb, all matching the real ticket exactly — and the credit balance
+  decremented correctly (108 → 107).
 
 ## 📐 Idea, not started: tiered test strategy (sanity → regression → full)
 
@@ -666,9 +758,19 @@ customer) is the concrete remaining gap.
   repeatable `androidx.compose.ui.test` suite yet — the concrete
   remaining gap, same shape as `workers/scan-proxy`'s manually-verified-
   but-not-yet-committed tests above.
-- **Still needed, genuinely not started:** RevenueCat Android SDK
-  integration tests and purchase-flow tests (lifetime unlock + consumable
-  credit packs) — none of this code exists yet (Phase 4).
+- **RevenueCat/scan/purchase flow (Phase 4) — manually verified
+  2026-08-18** via a real on-device walkthrough against the RevenueCat
+  Test Store and the live `smoke-test-user` customer (see the Phase 4
+  section above for the full step-by-step: real scan against the
+  deployed Worker, real credit decrement, real Test Store purchase, real
+  credit increment). Not yet a committed, repeatable automated test —
+  same shape as the other "manually verified but not committed" gaps in
+  this list. Unlocked now that the code exists; concretely needed:
+  Compose UI tests for the Paywall/credit-chip/scan-loading states
+  (fakeable without hitting the real network), plus `RevenueCatManager`
+  unit tests against a fake/mocked `Purchases` instance for the
+  balance-cache-invalidation logic specifically (this session's real bug
+  — a test would have caught it without needing on-device verification).
 
 ## ✅ Done: tongue-weight fallback fix (implemented 2026-08-15)
 

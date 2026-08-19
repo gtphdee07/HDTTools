@@ -12,6 +12,9 @@ sealed interface RigCheckRoute {
     data class Chooser(val module: EntryModule) : RigCheckRoute
 
     @Serializable
+    data object Paywall : RigCheckRoute
+
+    @Serializable
     data object TruckTagEntry : RigCheckRoute
 
     @Serializable

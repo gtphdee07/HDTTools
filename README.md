@@ -15,11 +15,10 @@ or database):
   OCR via Tesseract.
 - **Web** (`web/` + `src/hdttools/api/`) — a React frontend talking to a
   stateless FastAPI backend, local OCR via Tesseract.
-- **Android** (`android/`) — 🚧 **under construction**. Native
-  Kotlin/Compose; free offline manual entry by default, plus an optional
-  paid Claude-vision "scan instead of type" feature. Environment, project
-  scaffold, and the core weight-breakdown logic are done and tested; the
-  actual screens haven't been built yet.
+- **Android** (`android/`) — native Kotlin/Compose app. Free offline
+  manual entry by default, plus an optional paid Claude-vision "scan
+  instead of type" feature (take a photo or pick one from the gallery;
+  billed in RevenueCat-managed credits).
 
 This repo also contains the underlying Python extraction toolkit
 (`hdttools`) that the Desktop/Web OCR paths are built on — usable
@@ -60,23 +59,25 @@ Frontend runs on `http://localhost:5173`, backend on
 `http://localhost:8000` (`/docs` for Swagger UI). Also requires
 Tesseract — see below. See [`web/README.md`](web/README.md) for more.
 
-## Android 🚧 under construction
+## Android
 
 Native Kotlin/Compose app — manual entry is free and fully offline by
 default, with an optional paid Claude-vision "scan instead of type"
 feature backed by `workers/scan-proxy/` (a Cloudflare Worker — already
 deployed and verified end-to-end, see `NEXT_STEPS.md`).
 
-**Current status**: dev environment set up, project scaffolded, and the
-core weight-breakdown logic (`compute_breakdown`/`verdict_for`) ported to
-Kotlin with full test coverage, matching `tests/test_breakdown.py`'s
-scenarios exactly. **No screens exist yet** — this doesn't build a usable
-app today, only the tested business-logic layer.
+**Current status**: all 6 planned phases are done and verified on a real
+emulator — truck tag, trailer tag, and CAT Scale ticket entry (manual or
+scanned), the axle-by-axle breakdown/verdict screen, recent-rig
+shortcuts, and the paid scan feature end to end: take a photo or choose
+an existing one from the gallery, RevenueCat-managed credit balance, and
+a custom paywall with real Test Store pricing. See `NEXT_STEPS.md` for
+the full build-out history and remaining polish/test gaps.
 
 ```
 cd android
-./gradlew test           # run the business-logic unit tests
-./gradlew assembleDebug  # build the (currently screen-less) debug APK
+./gradlew test           # business-logic unit tests
+./gradlew assembleDebug  # build the debug APK
 ```
 
 Requires Android Studio (bundles the JDK) and its SDK — see
@@ -154,7 +155,7 @@ cd workers/scan-proxy && npm test   # Cloudflare Worker (charge/extract/refund c
 - `tests/` — pytest suite
 - `web/` — React + Vite frontend (RigCheck Web)
 - `streamlit_app/` — self-contained Streamlit frontend (RigCheck Desktop)
-- `android/` — native Kotlin/Compose app (RigCheck Android, under construction)
+- `android/` — native Kotlin/Compose app (RigCheck Android)
 - `workers/scan-proxy/` — Cloudflare Worker backing Android's paid scan feature
 - `ANDROID_DESIGN_BRIEF.md` — Android screen-by-screen design reference
 - `NEXT_STEPS.md` — the maintained, cross-session project record

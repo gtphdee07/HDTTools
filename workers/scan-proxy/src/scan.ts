@@ -67,10 +67,30 @@ export async function runScan(
     return json({ ok: true, doc_type: request.doc_type, fields });
   } catch {
     // Charged but couldn't deliver — refund so the user isn't billed for a
-    // failed scan (e.g. Claude API error, an unreadable photo).
-    await deps.refundCredit(env, request.app_user_id, idempotencyKey).catch(() => {});
+    // failed scan (e.g. Claude API error, an unreadable photo). The refund
+    // call itself can fail too (RevenueCat unreachable, etc.) - the response
+    // message must reflect what actually happened, not claim a refund that
+    // didn't go through.
+    const refund = await deps
+      .refundCredit(env, request.app_user_id, idempotencyKey)
+      .catch(() => null);
+
+    if (refund?.ok) {
+      return json(
+        { ok: false, code: "extraction_failed", message: "Could not read the image. Credit refunded." },
+        502,
+      );
+    }
+
+    console.error("refundCredit failed after a charged scan", request.app_user_id, idempotencyKey);
     return json(
-      { ok: false, code: "extraction_failed", message: "Could not read the image. Credit refunded." },
+      {
+        ok: false,
+        code: "extraction_failed_no_refund",
+        message:
+          "Could not read the image, and we weren't able to automatically refund your credit. " +
+          "Please contact support if this keeps happening.",
+      },
       502,
     );
   }

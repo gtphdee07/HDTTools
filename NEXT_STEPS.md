@@ -582,6 +582,57 @@ both fixed and re-verified on-device, 2026-08-18:**
   19680 lb, all matching the real ticket exactly — and the credit balance
   decremented correctly (108 → 107).
 
+## 📱 Android distribution: sideloading confirmed viable, Play Console decision parked
+
+Raised 2026-08-18 after Phase 4 was committed/pushed — the user wants to
+field-test the app on their own phone for a while before deciding
+anything about a real Play Store release. **Not blocking further work,
+no action taken yet** — this section exists so the decision context
+survives a machine switch.
+
+**Sideloading needs no Google Play Console account at all** — confirmed
+this is a fully separate concern from Play Store distribution:
+- **Recommended path**: enable Developer Options (Settings → About Phone
+  → tap Build Number 7×) and USB Debugging on the phone, plug it into
+  this PC, authorize the one-time "Allow USB debugging?" prompt, then
+  `adb install` the existing debug APK exactly like every emulator
+  install this session — no rebuild needed beyond what already exists.
+- **Cable-free alternative**: transfer the APK to the phone any way
+  (email, Drive, USB file copy) and tap to install; Android prompts for a
+  one-time "install unknown apps" permission on whichever app opened the
+  file. Fully standalone afterward either way — the cable/PC is only
+  needed at install time, not for ongoing use.
+- **Caveat specific to field-testing the paid scan feature**: the app is
+  currently wired to RevenueCat's **Test Store** with the hardcoded
+  `smoke-test-user` identity (see the Phase 4 section above) — so scans/
+  purchases on a sideloaded phone build won't involve real money and will
+  share the same credit balance this session's testing has been using
+  (107 as of the last check), not a fresh account. Convenient for free
+  field testing, but not representative of a real customer's experience,
+  and this hardcoded identity must change before any real release
+  (already flagged in code as testing-phase-only). Manual entry (the
+  free, offline path) has no such caveat.
+
+**Play Console registration — decision explicitly parked by the user,
+"need to think about it for a while":**
+- **Personal vs. Organization account** is the open question. Personal
+  is simpler (no D-U-N-S/business-entity verification) and was my
+  recommendation for a solo/experimental project like RigCheck;
+  Organization is only needed to publish under a registered business
+  name. Neither choice is reversible without creating a new account, so
+  there's no harm in taking time here.
+- Known facts for whenever this decision resumes: one-time $25 USD
+  registration fee; Google now requires **identity verification**
+  (government-ID upload, possibly a live selfie-match step) for *all*
+  new developer accounts, personal or organization, which can take
+  anywhere from a few days to ~2 weeks to clear; after approval, Google
+  requires new personal accounts to run a **closed test with 20+ testers
+  for 14 continuous days** before allowing a production release.
+- None of this blocks sideloaded field testing, which needs no Play
+  Console account at all — the two tracks (personal field testing vs.
+  eventual Play Store release) are fully independent until the user
+  decides to actually publish.
+
 ## 📐 Idea, not started: tiered test strategy (sanity → regression → full)
 
 Raised 2026-08-15, deliberately parked — **not being worked on now**, pick
@@ -640,6 +691,43 @@ sanity everywhere plus full regression per module and top-level.
    repeatable test. Probably the single best starting point whenever
    this gets picked up, independent of how the broader tiering scheme
    shakes out.
+
+## 📋 Backlog: regression-tier docs + a static CI/CD-style dashboard
+
+Raised 2026-08-19, right after `scan-proxy`'s sanity/daily tiers were
+built — **not started**. Two related pieces:
+
+1. **Document the regression tiers themselves.** For `scan-proxy` (and
+   eventually whichever other platforms adopt the same sanity → daily →
+   weekly → release scheme, see the tiered-test-strategy idea above):
+   what each tier actually is, its cadence, what it does/doesn't cover
+   (mocked vs. real network calls), and — the part that doesn't exist
+   anywhere yet — **what each individual test covers**, so someone
+   picking this up cold doesn't have to read every test file to know
+   what's actually being checked. The `scan-proxy` architectural-review
+   writeup from 2026-08-19 (see git history) is the raw material this
+   would be built from, just not yet turned into standing, maintained
+   documentation.
+2. **A statically-generated report of regression run results**, the
+   user's own framing: "something that looks similar to what a CI/CD
+   dashboard might show, only statically generated in our case" — this
+   repo has no CI (confirmed above), so this would be a script that runs
+   a test tier and renders its results (pass/fail per test, per tier,
+   maybe trended over time if run repeatedly) as a static HTML/Markdown
+   page, run manually alongside the tiers themselves rather than
+   triggered by CI.
+
+**Open questions, not yet resolved:**
+- Scope: `scan-proxy` only first (matches how the tiered scheme itself
+  started), or wait until at least one more platform has tiers before
+  designing the report format, so it doesn't end up scan-proxy-shaped?
+- Format/tooling for the dashboard: Node's built-in test runner supports
+  a `--test-reporter` flag (e.g. `tap`, `junit`, `spec`) that could feed
+  a small static-site generator step, vs. hand-rolling something simpler
+  directly from `node --test`'s output.
+- Where results get archived (if trended over time at all) — a
+  git-committed file that updates each run, or explicitly ephemeral
+  (regenerated fresh each time, never versioned)?
 
 ## 🧪 Tests still outstanding
 
@@ -709,40 +797,88 @@ outstanding** (not done this pass — pick up separately):
   Android section above): `./gradlew test`/`assembleDebug` both clean,
   plus a full real on-device walkthrough well beyond what this checklist
   item originally asked for.
-- **`workers/scan-proxy/`**: still not done this pass — outstanding:
-  `cd workers/scan-proxy && npm test` plus re-confirming the
-  already-deployed Worker is still live (`curl` the real endpoint).
+- ✅ **`workers/scan-proxy/` — sanity + daily tiers done 2026-08-19.**
+  See the dedicated writeup below; the "already-deployed Worker still
+  live" re-confirmation now belongs to the weekly/release tiers, not yet
+  built (see below).
 
-**`workers/scan-proxy/` (Cloudflare Worker):**
-- **Workers-runtime integration tests** (`@cloudflare/vitest-pool-workers`)
-  — the 20 tests in `src/*.test.ts` run on plain Node and cover the
-  request validation, RevenueCat request-shaping, doc-type schema
-  integrity, and the charge/extract/refund control flow, but nothing
-  Workers-runtime-specific (this Worker doesn't currently use any
-  Workers-only APIs, so the gap is low-risk for now).
-  **Unblocked 2026-08-17** — `npm install` is done and `tsc --noEmit` is
-  clean, so this could be written now; just hasn't been yet.
-- **Live RevenueCat API test** — `revenuecat.test.ts`'s mocked responses
-  match real behavior (manually verified via `curl` + `wrangler tail` on
-  2026-08-17: real 401/403/404/200 response shapes all matched what the
-  mocks assume, including a real charge against a real customer), but
-  that verification is ad-hoc, not a *committed*, repeatable test yet.
-- **Live Claude-vision extraction test** — **manually verified
-  2026-08-17**: a real photo (`ExampleDocs/AddieTag.jpg`) sent through
-  the deployed Worker got correctly-extracted fields back from a real
-  Claude Haiku call. Not yet a committed automated test.
-- **End-to-end `POST /v1/scan` test** (real request through a running
-  Worker, real RevenueCat + Anthropic calls) — **manually verified
-  2026-08-17**, full happy path: real charge, real extraction, real
-  balance decrement confirmed in the RevenueCat dashboard. See the
-  progress update above for the exact steps (test customer created via
-  a direct `GET /v1/subscribers/` call, no mobile app needed).
+**`workers/scan-proxy` (Cloudflare Worker) — tiered test plan, sanity +
+daily tiers implemented 2026-08-19:**
 
-All three of the above are now **just a matter of writing the test**,
-not blocked on any missing infrastructure — turning the 2026-08-17
-manual `curl`/`wrangler tail` verification into real, committed
-`node --test` cases (using a real but disposable RevenueCat test
-customer) is the concrete remaining gap.
+A full architectural review (every module's exported API, what each
+existing test covered, and a gap analysis per module) preceded this —
+see git history around 2026-08-19 for the analysis itself if ever needed
+again. That review, plus a pass specifically for realistic
+user-confusion failure modes (not just code-coverage gaps), produced a
+4-tier plan: **sanity** (a handful of tagged smoke tests, <1s, run before
+every commit) → **daily** (the full mocked regression suite, zero
+network calls, run while actively working on this Worker) → **weekly**
+(bounded real Anthropic + RevenueCat calls against a dedicated disposable
+test customer) → **release** (same, against the live deployed Worker
+URL, before/after every `wrangler deploy`). Manual cadence, no CI —
+`npm test`/`npm run test:sanity` are the only scripts that exist so far;
+`test:weekly`/`test:release` are deferred until those tiers are built.
+
+- **A real bug found and fixed before writing any new tests**: `scan.ts`'s
+  `502 extraction_failed` response always said "Credit refunded," even
+  on the path where the refund call itself failed
+  (`.catch(() => {})` swallowed it silently) — a user could be charged,
+  see an error, and be told they were refunded when they weren't. Fixed:
+  the refund's actual outcome now determines the response — a genuinely
+  failed refund now returns a distinct `extraction_failed_no_refund`
+  code with an honest message, instead of lying. Two tests pin this down
+  (`scan.test.ts`): a thrown refund and an `ok:false`-but-not-thrown
+  refund are both treated as "failed," and the message is asserted to
+  *not* claim a refund happened.
+- **Sanity tier**: 7 tests tagged `[sanity]` across the existing files
+  plus the three new ones below (one happy-path check per critical
+  module) — `npm run test:sanity`, ~0.3s.
+- **Daily tier — three previously-untested modules got their first
+  coverage**:
+  - `http.test.ts` (new) — `json()`/`badRequest()`'s status/content-type/
+    envelope shape, previously asserted only incidentally through other
+    tests.
+  - `claude.test.ts` (new) — mocks the real Anthropic HTTP endpoint via
+    `fetch` (same technique as `revenuecat.test.ts`) rather than reaching
+    into SDK internals; **the most important case here** is the one that
+    `scan.ts`'s entire refund path exists to handle — no matching
+    `tool_use` block in Claude's response → `extractFields` throws.
+    Real gotcha hit while writing this: the Anthropic SDK's response
+    parsing keys off the mocked `Response`'s `Content-Type` header — a
+    mock without `application/json` set gets silently mis-parsed into
+    something with no `.content`, throwing a confusing `TypeError`
+    inside `extractFields` instead of ever reaching the code being
+    tested.
+  - `index.test.ts` (new) — the router/entry-point layer, including the
+    **first tests anywhere that exercise `runScan`'s real
+    `defaultScanDeps` wiring** (every `scan.test.ts` case uses fake
+    deps) — required mocking `fetch` to route by URL (RevenueCat vs.
+    Anthropic) rather than one canned response, since real deps means
+    one mock has to stand in for both external APIs at once.
+  - Extended `request.ts`/`revenuecat.ts`/`scan.ts`/`docTypes.ts` tests
+    with the type-confusion, network-failure, idempotency-key-reuse, and
+    field-name-contract gaps the architectural review surfaced — see git
+    history for the full list; `docTypes.test.ts` now specifically
+    asserts each doc type's schema still contains the exact field names
+    `ScanFieldMapping.kt` on Android reads, which the older
+    required-matches-properties test structurally couldn't catch.
+  - Two gaps deliberately left as **documented current behavior, not
+    fixed**: `spendCredit`/`fetch` rejecting outright (not just
+    returning a non-ok status) propagates as an unhandled rejection
+    with no `try/catch` anywhere in the chain; there's no request-level
+    idempotency across client retries (each `runScan` call mints its own
+    key). Both are pinned down by tests explicitly documenting today's
+    behavior so a future change is a deliberate choice, not an accident.
+  - Total: **47 tests, all passing, `tsc --noEmit` clean.**
+- **Weekly and release tiers — not started.** Needs a dedicated
+  disposable RevenueCat test customer (separate from `smoke-test-user`,
+  which stays reserved for manual Android field testing) before this can
+  begin — deliberately deferred until picked back up.
+- **Also still flagged, not yet acted on**: no timeout on the Anthropic/
+  RevenueCat `fetch` calls — a hung call currently means the Android
+  loading spinner spins forever with no error, ever. Not a scan-proxy
+  test gap so much as a missing feature (both here and client-side);
+  raised during this review, not yet a task.
 
 **Android app:**
 - ✅ **`compute_breakdown`/`verdict_for` Kotlin port — done 2026-08-17.**

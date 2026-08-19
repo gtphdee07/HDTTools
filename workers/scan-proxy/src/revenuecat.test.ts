@@ -10,7 +10,7 @@ const env: Env = {
   REVENUECAT_CURRENCY_CODE: "SCAN",
 };
 
-test("spendCredit posts a -1 adjustment to the right URL with the right headers", async (t) => {
+test("[sanity] spendCredit posts a -1 adjustment to the right URL with the right headers", async (t) => {
   let capturedUrl: string | undefined;
   let capturedInit: RequestInit | undefined;
 
@@ -80,4 +80,42 @@ test("a non-JSON error body doesn't throw", async (t) => {
   assert.equal(result.ok, false);
   assert.equal(result.status, 502);
   assert.equal(result.body, null);
+});
+
+// Unlike a non-ok HTTP response (handled above), fetch() itself rejecting
+// (DNS failure, connection reset, etc.) isn't caught anywhere in
+// postAdjustment - this test documents that it propagates straight out of
+// spendCredit/refundCredit as an unhandled rejection. scan.ts's own call
+// site has no try/catch around spendCredit either (only around
+// extractFields), so a real network failure here currently means the whole
+// Worker request fails ungracefully rather than returning a clean
+// billing_error response - a known gap, not a fix, pinned down so a future
+// change to either file is a deliberate choice, not an accident.
+test("a network failure (fetch rejecting) propagates out of spendCredit rather than being caught", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => {
+    throw new Error("network error: getaddrinfo ENOTFOUND api.revenuecat.com");
+  });
+
+  await assert.rejects(() => spendCredit(env, "user-123", "idem-4"), /network error/);
+});
+
+test("uses the currency code from env, not a value baked into the module", async (t) => {
+  let capturedBody: string | undefined;
+  t.mock.method(globalThis, "fetch", async (_url: string | URL, init?: RequestInit) => {
+    capturedBody = init?.body as string;
+    return new Response(JSON.stringify({}), { status: 200 });
+  });
+
+  const customEnv: Env = { ...env, REVENUECAT_CURRENCY_CODE: "OTHER_CURRENCY" };
+  await spendCredit(customEnv, "user-123", "idem-5");
+
+  assert.deepEqual(JSON.parse(capturedBody as string), { adjustments: { OTHER_CURRENCY: -1 } });
+});
+
+test("the real response body is returned to the caller, not discarded", async (t) => {
+  const realBody = { items: [{ balance: 7, currency: "SCAN" }] };
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify(realBody), { status: 200 }));
+
+  const result = await spendCredit(env, "user-123", "idem-6");
+  assert.deepEqual(result.body, realBody);
 });

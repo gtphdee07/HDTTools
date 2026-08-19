@@ -30,7 +30,7 @@ function makeDeps(overrides: Partial<ScanDeps>): ScanDeps {
   };
 }
 
-test("successful scan charges exactly once and returns the extracted fields", async () => {
+test("[sanity] successful scan charges exactly once and returns the extracted fields", async () => {
   let spendCalls = 0;
   const deps = makeDeps({
     spendCredit: async () => {
@@ -102,7 +102,7 @@ test("extraction failure refunds the credit for the same user and reports extrac
   assert.equal(refundedUser, "user-1");
 });
 
-test("a failed refund attempt doesn't crash the request", async () => {
+test("a failed refund attempt doesn't crash the request, and doesn't falsely claim a refund happened", async () => {
   const deps = makeDeps({
     extractFields: async () => {
       throw new Error("Claude API error");
@@ -113,8 +113,24 @@ test("a failed refund attempt doesn't crash the request", async () => {
   });
 
   const res = await runScan(env, request, deps);
+  const body = (await res.json()) as { code: string; message: string };
   assert.equal(res.status, 502);
-  assert.equal(((await res.json()) as { code: string }).code, "extraction_failed");
+  assert.equal(body.code, "extraction_failed_no_refund");
+  assert.doesNotMatch(body.message, /credit refunded/i);
+});
+
+test("a refund call that resolves with ok:false (not a throw) is also treated as a failed refund", async () => {
+  const deps = makeDeps({
+    extractFields: async () => {
+      throw new Error("Claude API error");
+    },
+    refundCredit: async () => ({ ok: false, status: 500, body: {} }),
+  });
+
+  const res = await runScan(env, request, deps);
+  const body = (await res.json()) as { code: string };
+  assert.equal(res.status, 502);
+  assert.equal(body.code, "extraction_failed_no_refund");
 });
 
 test("a successful scan never issues a refund", async () => {
@@ -128,4 +144,62 @@ test("a successful scan never issues a refund", async () => {
 
   await runScan(env, request, deps);
   assert.equal(refundCalls, 0);
+});
+
+// revenuecat.ts derives the refund's distinct "-refund" idempotency key from
+// whatever it's given, so scan.ts's own responsibility is to generate one
+// key per runScan call and pass that same raw value to both spendCredit and
+// refundCredit. A regression minting a fresh key per call would silently
+// break the charge/refund pairing's idempotency and nothing else would
+// catch it, since revenuecat.test.ts only tests its own suffixing logic in
+// isolation.
+test("spendCredit and refundCredit are called with the same idempotency key", async () => {
+  let spendKey: string | undefined;
+  let refundKey: string | undefined;
+  const deps = makeDeps({
+    extractFields: async () => {
+      throw new Error("Claude API error");
+    },
+    spendCredit: async (_env, _customerId, idempotencyKey) => {
+      spendKey = idempotencyKey;
+      return { ok: true, status: 200, body: {} };
+    },
+    refundCredit: async (_env, _customerId, idempotencyKey) => {
+      refundKey = idempotencyKey;
+      return { ok: true, status: 200, body: {} };
+    },
+  });
+
+  await runScan(env, request, deps);
+  assert.ok(spendKey, "spendCredit should have been called with a key");
+  assert.equal(spendKey, refundKey);
+});
+
+// postAdjustment/fetch rejecting (not just returning ok:false) isn't caught
+// anywhere around the spendCredit call site either - documents that this
+// currently propagates out of runScan as an unhandled rejection rather than
+// a clean billing_error response. Same known-gap shape as the matching
+// revenuecat.test.ts case, one layer up.
+test("spendCredit itself rejecting propagates out of runScan rather than being caught", async () => {
+  const deps = makeDeps({
+    spendCredit: async () => {
+      throw new Error("RevenueCat unreachable");
+    },
+  });
+
+  await assert.rejects(() => runScan(env, request, deps), /RevenueCat unreachable/);
+});
+
+test("trailer_tag and scale_ticket scans use their own doc type's config and echo it back", async () => {
+  for (const docType of ["trailer_tag", "scale_ticket"] as const) {
+    const deps = makeDeps({
+      extractFields: async (_apiKey, _image, _mediaType, config) => ({ toolNameUsed: config.toolName }),
+    });
+
+    const res = await runScan(env, { ...request, doc_type: docType }, deps);
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { doc_type: string; fields: { toolNameUsed: string } };
+    assert.equal(body.doc_type, docType);
+    assert.equal(body.fields.toolNameUsed, `record_${docType}`);
+  }
 });

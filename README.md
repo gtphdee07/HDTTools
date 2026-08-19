@@ -139,8 +139,13 @@ cd android && ./gradlew test    # Android (Kotlin business-logic layer)
 ```
 
 ```
-cd workers/scan-proxy && npm test   # Cloudflare Worker (charge/extract/refund control flow)
+cd workers/scan-proxy && npm run test:sanity   # fast smoke subset, <1s, no network — run before every commit
+cd workers/scan-proxy && npm test              # full mocked regression suite (daily tier), no network
 ```
+
+The Worker's tests are organized into tiers (sanity → daily → weekly →
+release); only sanity and daily exist so far — see `NEXT_STEPS.md` for
+the full tier breakdown and what's still to come.
 
 ## Project layout
 

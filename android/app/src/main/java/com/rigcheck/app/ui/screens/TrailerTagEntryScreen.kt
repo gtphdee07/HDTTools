@@ -12,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.R
 import com.rigcheck.app.domain.model.TrailerTag
@@ -58,6 +59,7 @@ fun TrailerTagEntryScreen(
                 value = trailer.description ?: "",
                 onValueChange = { onTrailerChange(trailer.copy(description = it.ifBlank { null })) },
                 placeholder = "e.g. Brinkley RV",
+                modifier = Modifier.testTag("trailer_description"),
             )
             LabeledTextField(
                 label = "Name",

@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.R
 import com.rigcheck.app.domain.model.TruckTag
@@ -69,6 +70,7 @@ fun TruckTagEntryScreen(
                 value = truck.description ?: "",
                 onValueChange = { onTruckChange(truck.copy(description = it.ifBlank { null })) },
                 placeholder = "e.g. Ford F-450",
+                modifier = Modifier.testTag("truck_description"),
             )
             LabeledTextField(
                 label = "Name",

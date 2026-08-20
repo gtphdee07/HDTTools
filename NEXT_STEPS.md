@@ -697,17 +697,12 @@ sanity everywhere plus full regression per module and top-level.
 Raised 2026-08-19, right after `scan-proxy`'s sanity/daily tiers were
 built — **not started**. Two related pieces:
 
-1. **Document the regression tiers themselves.** For `scan-proxy` (and
-   eventually whichever other platforms adopt the same sanity → daily →
-   weekly → release scheme, see the tiered-test-strategy idea above):
-   what each tier actually is, its cadence, what it does/doesn't cover
-   (mocked vs. real network calls), and — the part that doesn't exist
-   anywhere yet — **what each individual test covers**, so someone
-   picking this up cold doesn't have to read every test file to know
-   what's actually being checked. The `scan-proxy` architectural-review
-   writeup from 2026-08-19 (see git history) is the raw material this
-   would be built from, just not yet turned into standing, maintained
-   documentation.
+1. ✅ **Document the regression tiers themselves — done for two
+   platforms, 2026-08-19.** `workers/scan-proxy/TESTING.md` and
+   `android/TESTING.md` both exist now, same structure: tier table +
+   what each individual test covers. Remaining: Python/`hdttools` and
+   Web have no test-tier docs yet (and no formal tiering at all — see
+   the tiered-test-strategy idea above).
 2. **A statically-generated report of regression run results**, the
    user's own framing: "something that looks similar to what a CI/CD
    dashboard might show, only statically generated in our case" — this
@@ -718,9 +713,10 @@ built — **not started**. Two related pieces:
    triggered by CI.
 
 **Open questions, not yet resolved:**
-- Scope: `scan-proxy` only first (matches how the tiered scheme itself
-  started), or wait until at least one more platform has tiers before
-  designing the report format, so it doesn't end up scan-proxy-shaped?
+- Scope: piece 1 (docs) is now unblocked for the dashboard's format
+  question — both `scan-proxy` and Android have tiers to design against,
+  so the "don't make it scan-proxy-shaped" concern is addressed. Piece 2
+  (the actual dashboard script) still hasn't been started.
 - Format/tooling for the dashboard: Node's built-in test runner supports
   a `--test-reporter` flag (e.g. `tap`, `junit`, `spec`) that could feed
   a small static-site generator step, vs. hand-rolling something simpler
@@ -887,24 +883,12 @@ URL, before/after every `wrangler deploy`). Manual cadence, no CI —
   Android-only row notes), `VerdictTest.kt` (2 cases),
   `NumberFormattingTest.kt` (3 cases) — 13/13 passing, see the section
   above for detail.
-- **Compose UI tests (navigation happy-path, disclaimer once-per-session
-  gating, results rendering) — manually verified 2026-08-18** via a real
-  on-device walkthrough (see the Phase 3 section above for the full
-  screen-by-screen detail), but that's ad-hoc, not a *committed*,
-  repeatable `androidx.compose.ui.test` suite yet — the concrete
-  remaining gap, same shape as `workers/scan-proxy`'s manually-verified-
-  but-not-yet-committed tests above.
-- **RevenueCat/scan/purchase flow (Phase 4) — manually verified
-  2026-08-18** via a real on-device walkthrough against the RevenueCat
-  Test Store and the live `smoke-test-user` customer (see the Phase 4
-  section above for the full step-by-step: real scan against the
-  deployed Worker, real credit decrement, real Test Store purchase, real
-  credit increment). Compose UI tests (Paywall/credit-chip/scan-loading
-  states) are still only manually verified, not a committed
-  `androidx.compose.ui.test` suite — same shape as the other
-  "manually verified but not committed" gaps in this list, deliberately
-  deferred as its own next session (needs a running emulator, unlike a
-  plain JVM unit test).
+- ✅ **Phase 3/4 manual on-device verification (navigation, disclaimer
+  gating, results rendering, RevenueCat/scan/purchase flow) — done
+  2026-08-18**, real walkthroughs against the RevenueCat Test Store and
+  the live `smoke-test-user` customer (see the Phase 3/4 sections above).
+  Converted into a committed, repeatable `androidx.compose.ui.test` suite
+  2026-08-19 — see below.
 - ✅ **`RevenueCatManager` unit test — done 2026-08-19.**
   `RevenueCatManagerTest.kt` (4 JUnit4 + MockK cases) specifically covers
   the balance-cache-invalidation bug found and fixed 2026-08-18: asserts
@@ -938,6 +922,51 @@ URL, before/after every `wrangler deploy`). Manual cadence, no CI —
      (unmocked) suspend wrapper still runs and bridges the callback into a
      suspend result exactly as it does in production.
   `./gradlew test`/`assembleDebug` both clean after.
+- ✅ **Compose UI test suite (daily-equivalent tier) — done 2026-08-19.**
+  Full writeup in `android/TESTING.md`; summary here. 30 instrumented
+  tests across 10 files (`ResultsScreenTest`, `BreakdownRowTest`,
+  `DisclaimerScreenTest`, `RigPickerScreenTest`,
+  `TruckTagEntryScreenTest`, `TrailerTagEntryScreenTest`,
+  `ScaleTicketEntryScreenTest`, `ChooserScreenTest`,
+  `CreditBalanceChipTest`, `PaywallScreenTest`) plus navigation-flow
+  coverage in `RigCheckNavHostTest.kt` — `./gradlew
+  connectedDebugAndroidTest`, 30/30 passing.
+  - **New `CustomTestRunner.kt`** substitutes a plain `Application` for
+    `RigCheckApplication` during instrumented tests, so
+    `Purchases.configure()` never runs — confirmed via `adb logcat`
+    showing zero `[Purchases]` SDK log lines across a full run. This
+    keeps the whole suite offline and hermetic (no real network, doesn't
+    touch `smoke-test-user`'s balance), needing zero production-code
+    changes since `RigCheckViewModel`/`PaywallScreen`'s RevenueCat calls
+    were already wrapped in `runCatching`.
+  - **Real regression test added** for the recent-rig routing bug found
+    2026-08-18 (`RigCheckNavHostTest.recentRigSelectionRoutesThrough...`):
+    does a full checkout, goes back to `RigPicker`, selects the
+    just-created recent rig, and asserts it lands on
+    `Chooser(EntryModule.SCALE)` rather than skipping straight to the
+    entry form — would fail if that bug reappeared.
+  - **Real gotcha hit and fixed**: entry screens (`TruckTagEntryScreen`
+    etc.) live inside a `verticalScroll` `Column`, and their Next/Check
+    Weights buttons sit below the fold — `performClick()` doesn't
+    auto-scroll a node into view before clicking, unlike Espresso.
+    Fixed by chaining `.performScrollTo().performClick()`; first showed
+    up as 5 failures (a "not displayed" assertion, and several button
+    clicks silently not registering) across the entry-screen and
+    NavHost-flow tests.
+  - **Minor production change**: added `testTag` modifiers to one
+    representative field per entry screen (`truck_description`,
+    `trailer_description`, `scale_location`) so tests can target a
+    specific `TextField` reliably — `LabeledTextField`'s existing
+    `modifier` parameter already threaded through to the real field, so
+    this needed no changes to the shared component itself.
+  - **Weekly-equivalent tier — not started**, same blocker as
+    `workers/scan-proxy`'s own weekly tier: needs the dedicated
+    disposable RevenueCat test customer. Would cover: `PaywallScreen`
+    rendering real Test Store offerings/prices, a real purchase
+    completing and incrementing the balance, a real scan against the
+    deployed Worker decrementing it. Tracked together with scan-proxy's
+    weekly tier — pick both up in the same session once that customer
+    exists.
 
 ## ✅ Done: tongue-weight fallback fix (implemented 2026-08-15)
 

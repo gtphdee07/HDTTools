@@ -71,13 +71,16 @@ emulator — truck tag, trailer tag, and CAT Scale ticket entry (manual or
 scanned), the axle-by-axle breakdown/verdict screen, recent-rig
 shortcuts, and the paid scan feature end to end: take a photo or choose
 an existing one from the gallery, RevenueCat-managed credit balance, and
-a custom paywall with real Test Store pricing. See `NEXT_STEPS.md` for
-the full build-out history and remaining polish/test gaps.
+a custom paywall with real Test Store pricing. A committed Compose UI
+test suite (30 tests, fully offline) now backs the screens and
+navigation flow — see `android/TESTING.md`. See `NEXT_STEPS.md` for the
+full build-out history and remaining polish/test gaps.
 
 ```
 cd android
-./gradlew test           # business-logic unit tests
-./gradlew assembleDebug  # build the debug APK
+./gradlew test                       # business-logic + RevenueCatManager unit tests
+./gradlew connectedDebugAndroidTest   # Compose UI tests — needs a running emulator/device
+./gradlew assembleDebug               # build the debug APK
 ```
 
 Requires Android Studio (bundles the JDK) and its SDK — see
@@ -135,8 +138,14 @@ uv run pytest --cov       # with coverage
 ```
 
 ```
-cd android && ./gradlew test    # Android (Kotlin business-logic layer)
+cd android && ./gradlew test                       # JVM unit tests (business logic, RevenueCatManager)
+cd android && ./gradlew connectedDebugAndroidTest   # Compose UI tests (screens, navigation) — needs a running emulator/device
 ```
+
+The instrumented suite runs fully offline (a custom test `Application`
+skips RevenueCat configuration) — see
+[`android/TESTING.md`](android/TESTING.md) for what each test covers and
+what's deliberately deferred to a later, real-RevenueCat tier.
 
 ```
 cd workers/scan-proxy && npm run test:sanity   # fast smoke subset, <1s, no network — run before every commit

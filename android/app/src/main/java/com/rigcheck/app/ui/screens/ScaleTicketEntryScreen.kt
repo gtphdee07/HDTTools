@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.R
@@ -75,6 +76,7 @@ fun ScaleTicketEntryScreen(
                 label = "Scale location",
                 value = scale.locationName ?: "",
                 onValueChange = { onScaleChange(scale.copy(locationName = it.ifBlank { null })) },
+                modifier = Modifier.testTag("scale_location"),
             )
             LabeledNumberField(
                 label = "Steer axle, lb",

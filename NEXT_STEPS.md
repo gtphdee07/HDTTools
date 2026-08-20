@@ -137,6 +137,54 @@ button each). Verified live on both platforms (Playwright screenshot for
 Web, `AppTest` for Streamlit). `uv run pytest -q`: still 70/70. `npm run
 build`: clean.
 
+**Follow-up, 2026-08-20 (same day) — real tow-vehicle-only photo added,
+real bug found and fixed via it.** `ExampleDocs/CatScale-GooseOnly.jpg` is
+a real CAT Scale ticket weighing just the tow vehicle (tractor# GOOSE, no
+trailer hitched — trailer axle reads 00 LB). Used to close a
+long-flagged gap: this repo had never had a test that runs real Tesseract
+OCR against a real photo file, only hand-transcribed text.
+- ✅ **Real bug found and fixed, Streamlit only**: scanning a
+  tow-vehicle-only ticket correctly set `truck["standalone_weight_lb"]`,
+  but the very next render of the review form silently overwrote it back
+  to blank. Root cause: `_render_review`'s `st.number_input(key=
+  "truck_standalone_weight_lb", ...)` had already been instantiated
+  earlier in the run (in a prior page load, before the scan), so its own
+  cached widget state — still blank — took priority over the freshly
+  updated data dict on the next rerun, per Streamlit's standard "a new
+  `value=` is ignored once a keyed widget already has session-state" rule.
+  Never caught before because the only prior verification of this feature
+  was a screenshot of the upload UI rendering, not an actual scan-and-
+  confirm-the-field-updates walkthrough. Fixed via the standard Streamlit
+  workaround: stash the new value in a scratch `_pending_standalone_weight_lb`
+  key and apply it to the widget's own key at the *top* of `_module_step`,
+  before `_render_review` instantiates the widget (setting a widget's key
+  *after* it's already been instantiated this run raises a
+  `StreamlitAPIException` — tried that first, had to switch approaches).
+  Verified against the real live app via Playwright, not just `AppTest`.
+- **New tests, all real-photo/real-OCR, not mocked**:
+  `tests/test_scale_ticket_ocr_parsing.py::test_parse_fields_on_a_real_tow_vehicle_only_ticket`
+  (ground-truth `_parse_fields` coverage using this ticket's actual
+  Tesseract output — documents, doesn't fix, some unrelated cosmetic OCR
+  garbling in `tractor_number`/`trailer_number`/`location_name`, none of
+  which feed into `compute_breakdown`). `tests/test_scale_ticket_real_photo.py`
+  (new file — the first test in this repo to run real Tesseract against a
+  real `ExampleDocs/` image end to end, both at the `scale_ticket_ocr`
+  module level and through the real `/api/extract/scale-ticket` FastAPI
+  endpoint with nothing mocked). `tests/test_streamlit_app.py::
+  test_scanning_a_real_tow_vehicle_only_photo_fills_in_standalone_weight`
+  (the regression test for the bug above, uploading the real photo through
+  `AppTest`'s `file_uploader.set_value(...)`).
+- **Unrelated environment note**: hit the recurring "websockets" file-lock
+  quirk (see the "Session gotcha hit twice" note further down) badly
+  enough this session that the package ended up genuinely corrupted (missing
+  `__version__`, Streamlit failed to boot at all) rather than just the
+  usual cosmetic warning — fixed by manually deleting
+  `.venv/Lib/site-packages/websockets*` and letting `uv sync --extra
+  streamlit` reinstall clean. If `streamlit run` ever fails with
+  `ImportError: cannot import name '__version__' from 'websockets'`, this
+  is the fix.
+- `uv run pytest -q`: 74/74 passing (was 70).
+
 ## 💰 Android monetization: billing model decided, backend fully verified
 
 Optional Claude-vision-powered "scan instead of type" feature (the native
@@ -818,14 +866,19 @@ sanity everywhere plus full regression per module and top-level.
 5. **One scheme across four different test runners, or four idiomatic
    ones.** pytest (backend/OCR/breakdown), `node --test` (scan-proxy
    Worker), nothing yet for web (no test framework installed there at
-   all — would need Vitest), nothing yet for Streamlit beyond ad-hoc
-   `AppTest` scripts run by hand and never committed as real tests.
+   all — would need Vitest). Streamlit: **partially resolved 2026-08-20**
+   — `tests/test_streamlit_app.py` now exists as real, committed pytest
+   coverage via `AppTest` (not ad-hoc hand-run scripts) — the "nothing
+   committed" state described here is stale.
 6. **The concrete, immediate gap regardless of how the above resolves**:
    `ExampleDocs/` real-photo verification has only ever happened via
    manual ad-hoc runs when checking a specific fix — never a committed,
-   repeatable test. Probably the single best starting point whenever
-   this gets picked up, independent of how the broader tiering scheme
-   shakes out.
+   repeatable test. **Partially closed 2026-08-20** for the scale-ticket
+   reader specifically — see `tests/test_scale_ticket_real_photo.py` and
+   the "Follow-up" note in the predictive-spare-capacity section above
+   (found and fixed a real bug this exact gap was designed to catch).
+   Truck tag and trailer tag readers still have no equivalent real-photo
+   test — same pattern, straightforward to replicate whenever picked up.
 
 ## 📋 Backlog: regression-tier docs + a static CI/CD-style dashboard
 

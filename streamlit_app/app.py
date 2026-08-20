@@ -234,6 +234,18 @@ def _render_standalone_ticket_section() -> None:
             st.error("Couldn't find a weight on that ticket — try a clearer photo, or enter it manually above.")
         else:
             st.session_state["truck"]["standalone_weight_lb"] = standalone
+            # Can't seed the number_input's own widget key directly here -
+            # _render_review (called before this function) has already
+            # instantiated it this run, and Streamlit forbids writing to a
+            # widget's key after it's been instantiated. Stash it instead;
+            # _module_step applies it *before* _render_review runs on the
+            # next pass. Without this, the widget's own stale cached state
+            # (still blank from before this scan) would silently overwrite
+            # this update right back to blank the next time _render_review
+            # rebuilds st.session_state["truck"] from its fields - a real
+            # bug, caught via a genuine ExampleDocs/ photo walkthrough, not
+            # by mocked tests.
+            st.session_state["_pending_standalone_weight_lb"] = standalone
             st.success(f"Stand-alone weight set to {standalone:,.0f} lb.")
             st.rerun()
 
@@ -250,6 +262,12 @@ def _render_standalone_ticket_section() -> None:
 def _module_step(module_key: str) -> None:
     st.header(TITLES[module_key])
     is_scale = module_key == "scale"
+
+    if module_key == "truck" and "_pending_standalone_weight_lb" in st.session_state:
+        # Must apply before _render_review below instantiates the
+        # truck_standalone_weight_lb widget - see the comment where this
+        # gets stashed in _render_standalone_ticket_section.
+        st.session_state["truck_standalone_weight_lb"] = st.session_state.pop("_pending_standalone_weight_lb")
 
     if not st.session_state[f"{module_key}_extracted"]:
         if is_scale:

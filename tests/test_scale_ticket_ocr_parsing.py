@@ -59,3 +59,48 @@ def test_parse_fields_returns_none_for_absent_fields():
     assert fields["ticket_number"] is None
     assert fields["gross_weight_lb"] is None
     assert fields["company"] is None
+
+
+def test_parse_fields_on_a_real_tow_vehicle_only_ticket():
+    # Real Tesseract output (boilerplate legal text trimmed, everything
+    # else verbatim including its actual garbling) from
+    # ExampleDocs/CatScale-GooseOnly.jpg - a tow-vehicle-only ticket (no
+    # trailer hitched, hence TRAILER AXLE 00 LB) used to populate
+    # standalone_weight_lb for the predictive/pre-purchase feature.
+    sample = """
+    1327426192434
+    TICKET NUMBER
+    www.catscale.com DATE: 7-11-26 STEER AXLE 5560 LB
+    DRIVE AXLE 4420 LB
+    15:50 scate: 3274
+    Location, LOVES COUNTRY STORES TRAILER AXLE 00 LB
+    PUBLIC WEIGHMASTERS ee
+    CERTIFICATE OF WALSENBURG CO GrossweicHt 9980LB
+    WEIGHT & MEASURE
+    LIVESTOCK, PRODUCE, PROPERTY, COMMODITY, OR ARTICLE WEIGHED RV BRINKLEY G4170 0
+    company .WANDERING TRAILS INC TRACTOR # GOOSE_traiten# ADDIE
+    WEIGH NUMBER
+    2434
+    """
+    fields = _parse_fields(sample)
+
+    # The fields the app's math actually depends on (via the standalone-
+    # weight scan pipeline) all parse correctly, including the unhitched
+    # trailer axle reading as a real 0.0, not a missing value.
+    assert fields["steer_axle_lb"] == 5560.0
+    assert fields["drive_axle_lb"] == 4420.0
+    assert fields["trailer_axle_lb"] == 0.0
+    assert fields["gross_weight_lb"] == 9980.0
+    assert fields["date"] == "7-11-26"
+    assert fields["time"] == "15:50"
+    assert fields["state"] == "CO"
+    assert fields["weigh_number"] == "2434"
+
+    # Documented current behavior, not fixed: this ticket's own OCR
+    # garbling ("traiten#" run onto "GOOSE" with no space, "Location,"
+    # instead of "LOCATION:") defeats tractor_number/trailer_number/
+    # location_name's simple regexes. None of these three feed into
+    # compute_breakdown - they're cosmetic metadata only.
+    assert fields["tractor_number"] == "GOOSE_traiten#"
+    assert fields["trailer_number"] is None
+    assert "LOVES COUNTRY STORES" in fields["location_name"]

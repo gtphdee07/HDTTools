@@ -120,6 +120,23 @@ mirrored onto the truck side.
   (was "Not enough info"), and the new disclaimer renders on both.
 - `uv run pytest -q`: 70/70 passing (was 65). `npm run build` clean.
 
+**Follow-up, 2026-08-20 (same day) — Scale Ticket step now points at the
+predictive path explicitly.** The generic "I don't have this image" skip
+button didn't tell anyone that skipping the *scale* step specifically is
+what unlocks the estimate above. `UploadStep.tsx`'s scale-module rendering
+(and Streamlit's `_module_step` for `module_key == "scale"`) now show:
+an italic caption ("No CAT scale ticket? You can skip this step and still
+build an estimated model from your truck and trailer tag ratings.") plus
+*two* buttons instead of one — "No Image / Enter Weight Manually" (renamed
+from the old generic label, same skip action) and "Build Estimated Model /
+No CAT scale info" (new, same skip action, framed for the predictive use
+case). Both buttons call the identical underlying skip handler — this is
+purely a messaging/framing change, no new behavior. Truck Tag and Trailer
+Tag steps are unchanged (still one generic "I don't have this image"
+button each). Verified live on both platforms (Playwright screenshot for
+Web, `AppTest` for Streamlit). `uv run pytest -q`: still 70/70. `npm run
+build`: clean.
+
 ## 💰 Android monetization: billing model decided, backend fully verified
 
 Optional Claude-vision-powered "scan instead of type" feature (the native

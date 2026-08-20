@@ -249,8 +249,14 @@ def _render_standalone_ticket_section() -> None:
 
 def _module_step(module_key: str) -> None:
     st.header(TITLES[module_key])
+    is_scale = module_key == "scale"
 
     if not st.session_state[f"{module_key}_extracted"]:
+        if is_scale:
+            st.caption(
+                "No CAT scale ticket? You can skip this step and still build an "
+                "estimated model from your truck and trailer tag ratings."
+            )
         uploaded = st.file_uploader(
             "Upload a photo", type=["jpg", "jpeg", "png", "webp"], key=f"upload_{module_key}"
         )
@@ -266,7 +272,13 @@ def _module_step(module_key: str) -> None:
             st.session_state[f"{module_key}_extracted"] = True
             st.session_state[f"{module_key}_skipped"] = False
             st.rerun()
-        if st.button("I don't have this image", key=f"skip_{module_key}"):
+
+        skip_label = "No Image / Enter Weight Manually" if is_scale else "I don't have this image"
+        if st.button(skip_label, key=f"skip_{module_key}"):
+            st.session_state[f"{module_key}_extracted"] = True
+            st.session_state[f"{module_key}_skipped"] = True
+            st.rerun()
+        if is_scale and st.button("Build Estimated Model / No CAT scale info", key="skip_scale_estimated"):
             st.session_state[f"{module_key}_extracted"] = True
             st.session_state[f"{module_key}_skipped"] = True
             st.rerun()

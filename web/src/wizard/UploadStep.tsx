@@ -13,6 +13,7 @@ interface UploadStepProps {
 
 export function UploadStep({ module, file, error, onFileSelected, onExtract, onSkip }: UploadStepProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const isScale = module.key === 'scale';
 
   return (
     <div
@@ -26,6 +27,12 @@ export function UploadStep({ module, file, error, onFileSelected, onExtract, onS
     >
       <h2 style={{ fontSize: 'var(--text-h2)', margin: '0 0 6px' }}>{module.title}</h2>
       <p style={{ color: 'var(--fg-2)', fontSize: 14, margin: '0 0 20px' }}>{module.instructions}</p>
+      {isScale && (
+        <p style={{ color: 'var(--fg-2)', fontSize: 13, margin: '-12px 0 20px', fontStyle: 'italic' }}>
+          No CAT scale ticket? You can skip this step and still build an estimated model from your truck and
+          trailer tag ratings.
+        </p>
+      )}
       <input
         ref={inputRef}
         type="file"
@@ -60,13 +67,18 @@ export function UploadStep({ module, file, error, onFileSelected, onExtract, onS
       {error && (
         <div style={{ color: 'var(--state-danger)', fontSize: 13, marginBottom: 16 }}>{error}</div>
       )}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <Button variant="primary" size="md" onClick={onExtract} disabled={!file}>
           Extract Data
         </Button>
         <Button variant="ghost" size="md" onClick={onSkip}>
-          I don't have this image
+          {isScale ? 'No Image / Enter Weight Manually' : "I don't have this image"}
         </Button>
+        {isScale && (
+          <Button variant="secondary" size="md" onClick={onSkip}>
+            Build Estimated Model / No CAT scale info
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -11,11 +11,28 @@ Results - a failure compute_breakdown's own unit tests can't see, because
 they call it directly with genuinely blank dicts.
 """
 
+import sys
 from pathlib import Path
 
+import pytest
 from streamlit.testing.v1 import AppTest
 
 _APP_PATH = Path(__file__).resolve().parent.parent / "streamlit_app" / "app.py"
+
+# Needed to import recent_rigs below - app.py relies on Streamlit adding
+# its own script directory to sys.path at run time, which pytest doesn't
+# do for us when just importing the module directly.
+sys.path.insert(0, str(_APP_PATH.parent))
+import recent_rigs  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _isolate_recent_rigs(tmp_path, monkeypatch):
+    # Every test in this file drives the real app.py, including its real
+    # (non-mocked) recent-rigs persistence - without this, completing a
+    # checkout here would write test rig nicknames straight into the
+    # developer's actual ~/.rigcheck/recent_rigs.json.
+    monkeypatch.setattr(recent_rigs, "RECENT_RIGS_PATH", tmp_path / "recent_rigs.json")
 
 
 def _start_test_rig(at: AppTest) -> AppTest:

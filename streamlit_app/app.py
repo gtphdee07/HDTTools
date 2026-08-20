@@ -35,6 +35,8 @@ from hdttools.ocr_common import ensure_tesseract_configured, ocr_text, preproces
 
 st.set_page_config(page_title="RigCheck", page_icon="🚚")
 
+_WTWT_LOGO_PATH = Path(__file__).resolve().parent / "assets" / "wtwt_logo.png"
+
 MODULE_ORDER = ["truck", "trailer", "scale"]
 STEP_LABELS = ["Rig", "Truck Tag", "Trailer Tag", "Scale Ticket", "Results"]
 
@@ -386,9 +388,12 @@ def main() -> None:
     else:
         _results_step()
 
-    _VERDICT_ICONS = {"pass": "✅", "fail": "⚠️", "partial": "❔", "insufficient": "❔"}
-    if st.session_state["session_history"]:
-        with st.sidebar:
+    with st.sidebar:
+        if _WTWT_LOGO_PATH.is_file():
+            st.image(str(_WTWT_LOGO_PATH), width=160)
+
+        if st.session_state["session_history"]:
+            _VERDICT_ICONS = {"pass": "✅", "fail": "⚠️", "partial": "❔", "insufficient": "❔"}
             st.subheader("This session's checks")
             for entry in st.session_state["session_history"]:
                 icon = _VERDICT_ICONS.get(entry["verdict"], "❔")

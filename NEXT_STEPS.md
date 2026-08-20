@@ -185,6 +185,30 @@ OCR against a real photo file, only hand-transcribed text.
   is the fix.
 - `uv run pytest -q`: 74/74 passing (was 70).
 
+**Follow-up, 2026-08-20 (same day) — WTWT branding in the Streamlit
+sidebar, and a real test-isolation bug found in the process.**
+`streamlit_app/assets/wtwt_logo.png` (the "Wandering Trails Wagging
+Tails" logo — RV, mountains, two dogs — provided by the user) now renders
+via `st.image(..., width=160)` at the top of the sidebar, unconditionally
+(the sidebar itself used to only render at all once a check existed in
+session history; restructured so branding shows from the very first page
+load, with "This session's checks" nested conditionally beneath it).
+- ✅ **Real bug found and fixed**: `tests/test_streamlit_app.py`'s
+  `AppTest`-driven tests run the real (non-mocked) `app.py`, including its
+  real `recent_rigs.py` persistence layer — which has always written
+  straight to `~/.rigcheck/recent_rigs.json`, the developer's actual local
+  file, with no test-time override. Every prior run of this test file
+  silently left synthetic "Test Rig"/"Predictive Verify"/etc. entries in
+  the real recent-rigs list (confirmed and cleaned up manually this
+  session; also found via a live screenshot showing them cluttering the
+  rig picker). Fixed with an autouse `monkeypatch` fixture that redirects
+  `recent_rigs.RECENT_RIGS_PATH` to a `tmp_path` for every test in the
+  file — verified the real file's mtime is now untouched by a full test
+  run. **If any *other* future Streamlit test file drives a full checkout
+  through `AppTest`, it needs this same fixture** — it isn't automatic
+  across files.
+- `uv run pytest -q`: still 74/74.
+
 ## 💰 Android monetization: billing model decided, backend fully verified
 
 Optional Claude-vision-powered "scan instead of type" feature (the native

@@ -2,6 +2,7 @@ import { AlertTriangle, CheckCircle2, HelpCircle } from 'lucide-react';
 import type { BreakdownItem, VerdictInfo } from '../types';
 import { Button } from '../design-system/Button';
 import { Badge } from '../design-system/Badge';
+import { PredictiveEstimateNotice } from '../components/PredictiveEstimateNotice';
 
 interface ResultsStepProps {
   verdict: VerdictInfo;
@@ -50,6 +51,8 @@ export function ResultsStep({ verdict, breakdownItems, onRestart, onGoHome }: Re
           <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14, marginTop: 4 }}>{verdict.subline}</div>
         </div>
       </div>
+
+      {breakdownItems.some((item) => item.estimated) && <PredictiveEstimateNotice />}
 
       <h3 style={{ fontSize: 'var(--text-h3)', margin: '0 0 14px' }}>Axle-by-axle breakdown</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>

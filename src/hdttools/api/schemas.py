@@ -75,6 +75,7 @@ class BreakdownItemOut(BaseModel):
     actualLabel: str
     limitLabel: str
     note: str | None = None
+    estimated: bool = False
 
 
 class VerdictOut(BaseModel):

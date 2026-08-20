@@ -146,6 +146,67 @@ def test_a_real_failure_always_wins_over_insufficient_rows():
     assert verdict["headline"] == "Not Safe to Tow"
 
 
+def test_truck_total_estimates_from_standalone_weight_when_no_hitched_reading():
+    # Pure pre-purchase case: a tow-vehicle-alone reading exists, but no
+    # hitched combined scale reading (no rig to hitch yet). Previously
+    # "Tow Vehicle Total (GVWR)" stayed "Not enough info" forever here -
+    # this is the fix that actually answers "can I tow this" pre-purchase.
+    # No scale data at all -> trailer total falls to the GVWR-fallback
+    # estimate (12,500) -> tongue weight estimate = 12,500 * 0.20 = 2,500.
+    truck = {**_TRUCK, "standalone_weight_lb": 6000}
+    items = compute_breakdown(truck, _TRAILER, {})
+    truck_item = _item(items, "Tow Vehicle Total (GVWR)")
+    assert truck_item["tone"] == "success"
+    assert truck_item["actualLabel"] == "8,500 lb"
+    assert truck_item["badgeLabel"] == "5,500 lb to spare"
+    assert truck_item["estimated"] is True
+    assert "2,500 lb tongue weight" in truck_item["note"]
+    assert "20% of the trailer's estimated total" in truck_item["note"]
+
+
+def test_truck_and_trailer_totals_both_estimate_when_only_a_trailer_axle_reading_exists():
+    # A real trailer-axle scale reading exists (weighed the trailer alone)
+    # and a real tow-vehicle-alone reading exists, but the two were never
+    # weighed hitched together. Regression test for the bug this session
+    # fixed: the old code gated tongue-weight math on `if standalone_weight`
+    # alone, so this exact scenario silently zeroed tongue weight instead
+    # of falling back to the axle-based estimate (11,380 unadjusted instead
+    # of the correct 14,225 estimate).
+    truck = {**_TRUCK, "standalone_weight_lb": 10000}
+    scale = {"trailer_axle_lb": 11380}
+    items = compute_breakdown(truck, _TRAILER, scale)
+
+    trailer_item = _item(items, "Trailer Total (GVWR)")
+    assert trailer_item["actualLabel"] == "14,225 lb"  # not 11,380 - the bug's symptom
+    assert trailer_item["estimated"] is True
+
+    truck_item = _item(items, "Tow Vehicle Total (GVWR)")
+    assert truck_item["actualLabel"] == "12,845 lb"  # 10,000 + (14,225 * 0.20)
+    assert truck_item["estimated"] is True
+
+
+def test_tow_vehicle_total_stays_insufficient_with_neither_hitched_nor_standalone_reading():
+    items = compute_breakdown(_TRUCK, _TRAILER, {})
+    truck_item = _item(items, "Tow Vehicle Total (GVWR)")
+    assert truck_item["tone"] == "insufficient"
+    assert truck_item["estimated"] is False
+
+
+def test_estimated_flag_is_false_for_a_real_hitched_reading_even_when_trailer_side_estimates():
+    items = compute_breakdown(_TRUCK, _TRAILER, _SCALE)
+    assert _item(items, "Tow Vehicle Total (GVWR)")["estimated"] is False
+    assert _item(items, "Trailer Total (GVWR)")["estimated"] is True
+
+
+def test_estimated_flag_is_always_false_on_insufficient_rows():
+    # A row can internally take an "estimate" branch (e.g. Trailer Total's
+    # GVWR-fallback) while still being flagged insufficient for an
+    # unrelated reason (no trailer GVWR at all) - estimated must not leak
+    # true in that case, since there's no real number being shown.
+    items = compute_breakdown({}, {}, {})
+    assert all(item["estimated"] is False for item in items)
+
+
 def test_verdict_status_is_never_derived_from_headline_text():
     # Regression test: main.py/streamlit_app both used to derive a
     # simplified pass/fail string via `"fail" if headline.startswith

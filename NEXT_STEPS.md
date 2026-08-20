@@ -73,6 +73,53 @@ Scope deliberately left for a follow-up round (per the plan this was built
 from): no new predictive/cargo-capacity *output* row yet — just the two
 input mechanisms (skip button, tow-vehicle-alone weight source).
 
+**Follow-up done, 2026-08-20 — the output row above, plus a legal
+disclaimer.** "Tow Vehicle Total (GVWR)" previously stayed "Not enough
+info" forever in the pre-purchase scenario (a tow-vehicle-alone reading
+known, but no real hitched combined scale reading) — its insufficiency
+check only ever recognized a real `steer_axle_lb`+`drive_axle_lb` pair.
+Fixed by giving `compute_breakdown` a second, independent branch for the
+truck-side total: when there's no hitched reading but a real stand-alone
+one exists, estimate the missing tongue weight off the trailer-side total
+(`trailer_total_actual * pin_weight_pct`) and add it onto the stand-alone
+weight — same math shape as the existing trailer-side estimate, just
+mirrored onto the truck side.
+- **Real bug fixed in passing, found while redesigning this**: the old
+  trailer-total branch gated its three-way logic on `if standalone_weight`
+  truthy *alone*, not on whether a real hitched reading also existed — so
+  a user with *only* a tow-vehicle-alone reading (the exact pre-purchase
+  case) silently got `tongue_weight = max(0, 0 - standalone) = 0`, losing
+  the tongue-weight estimate entirely instead of falling back to the
+  axle-based or GVWR-fallback estimate. Fixed by decoupling
+  `have_hitched`/`have_standalone` explicitly. Regression test:
+  `tests/test_breakdown.py::test_truck_and_trailer_totals_both_estimate_when_only_a_trailer_axle_reading_exists`
+  (asserts the trailer total comes out to the correct 14,225 lb estimate,
+  not the bug's 11,380 lb symptom).
+- **New `estimated: bool` field** on each breakdown item (additive,
+  `BreakdownItemOut`/`BreakdownItem` in both schema layers) — `True` only
+  when a row's number came from `pin_weight_pct` math rather than a real
+  reading; always `False` on insufficient rows (a row can internally take
+  an estimate branch while still being insufficient for an unrelated
+  reason, e.g. no trailer GVWR at all — the flag must not leak `true` in
+  that case; see the corresponding pytest case).
+- **New persistent legal disclaimer** — explicitly requested with real
+  content, not just a generic warning: build/trim options change real
+  payload, passengers/cargo aren't accounted for, the specific vehicle's
+  own certification label must be checked before buying, and the
+  consumer alone is responsible for safe towing and FMCSA/DOT compliance
+  (federal and state). Deliberately **not** the existing one-time
+  `DisclaimerModal`/`DISCLAIMER_TEXT` (acknowledged once, then gone) —
+  this one re-renders every time any row has `estimated: true`:
+  `web/src/components/PredictiveEstimateNotice.tsx` (amber `--state-warning`
+  callout, visually distinct from the mauve `--state-info` "insufficient"
+  styling) and Streamlit's `PREDICTIVE_ESTIMATE_NOTICE` via `st.warning`.
+- Verified live on both platforms (Playwright for Web, `AppTest` for
+  Streamlit) with the same scenario: truck tag + stand-alone weight
+  entered, trailer tag entered, scale ticket fully skipped — confirms
+  "Tow Vehicle Total (GVWR)" renders a real "5,500 lb to spare" badge
+  (was "Not enough info"), and the new disclaimer renders on both.
+- `uv run pytest -q`: 70/70 passing (was 65). `npm run build` clean.
+
 ## 💰 Android monetization: billing model decided, backend fully verified
 
 Optional Claude-vision-powered "scan instead of type" feature (the native

@@ -58,21 +58,33 @@ def compute_breakdown(
         else "Assumes a 2-axle trailer at the tag's per-axle rating."
     )
 
-    standalone_weight = truck.get("standalone_weight_lb")
-    if standalone_weight:
-        tongue_weight = max(0.0, (steer + drive) - _lb(standalone_weight))
+    standalone_raw = truck.get("standalone_weight_lb")
+    standalone_weight = _lb(standalone_raw)
+    have_hitched = steer_raw is not None and drive_raw is not None
+    have_standalone = standalone_raw is not None
+
+    # Trailer total: which branch fires depends only on what's known about
+    # the TRAILER side of the tongue-weight math (a real hitched reading
+    # plus a real stand-alone reading gives an exact figure; otherwise fall
+    # back to an axle-reading estimate or, with no scale data at all, a
+    # GVWR-rated estimate) - deliberately independent of whether the truck
+    # side ends up using an estimate too (see truck_total_actual below).
+    trailer_total_estimated = False
+    if have_hitched and have_standalone:
+        tongue_weight = max(0.0, (steer + drive) - standalone_weight)
         trailer_total_actual = trailer_axle + tongue_weight
         trailer_total_note = (
             f"Includes an estimated {round(tongue_weight):,.0f} lb tongue weight "
             "(steer + drive minus your truck's stand-alone weight)."
         )
-    elif trailer_axle_raw:
+    elif trailer_axle_raw is not None:
         trailer_total_actual = trailer_axle / (1 - pin_weight_pct)
         trailer_total_note = (
             "Estimated total weight — assumes the axle reading is "
             f"{1 - pin_weight_pct:.0%} of actual trailer weight; "
             "enter your truck's stand-alone weight for an exact figure."
         )
+        trailer_total_estimated = True
     else:
         # No scale reading at all - nothing to divide, so estimate off the
         # trailer's rated GVWR instead. This is the branch that makes a
@@ -83,6 +95,31 @@ def compute_breakdown(
             "Estimated total weight — no scale reading yet, so this assumes "
             "the trailer is loaded to its rated GVWR; weigh it for a real figure."
         )
+        trailer_total_estimated = True
+
+    # Truck total: a real hitched reading always wins (today's original
+    # behavior). Without one, but with a real tow-vehicle-alone reading,
+    # estimate the missing tongue weight off the trailer total above -
+    # this is what actually answers the pre-purchase "can I tow this"
+    # question, which previously stayed "Not enough info" forever since
+    # only a hitched reading was ever recognized here.
+    truck_total_estimated = False
+    if have_hitched:
+        truck_total_actual: float | None = steer + drive
+        truck_total_note = "Steer + drive axle readings vs. your truck tag's GVWR."
+    elif have_standalone:
+        truck_tongue_weight_estimate = trailer_total_actual * pin_weight_pct
+        truck_total_actual = standalone_weight + truck_tongue_weight_estimate
+        truck_total_note = (
+            "Estimated total weight — includes an estimated "
+            f"{round(truck_tongue_weight_estimate):,.0f} lb tongue weight "
+            f"({pin_weight_pct:.0%} of the trailer's estimated total); enter a "
+            "real hitched scale reading for an exact figure."
+        )
+        truck_total_estimated = True
+    else:
+        truck_total_actual = None
+        truck_total_note = "Steer + drive axle readings vs. your truck tag's GVWR."
 
     # Each row's own "do we actually have enough data to check this"
     # flag - checked from the specific source fields it depends on, not
@@ -95,6 +132,7 @@ def compute_breakdown(
             _lb(front_gawr_raw),
             None,
             steer_raw is None or front_gawr_raw is None,
+            False,
         ),
         (
             "Rear Axle (Drive)",
@@ -102,13 +140,15 @@ def compute_breakdown(
             _lb(rear_gawr_raw),
             None,
             drive_raw is None or rear_gawr_raw is None,
+            False,
         ),
         (
             "Tow Vehicle Total (GVWR)",
-            steer + drive,
+            truck_total_actual if truck_total_actual is not None else 0.0,
             truck_gvwr,
-            "Steer + drive axle readings vs. your truck tag's GVWR.",
-            steer_raw is None or drive_raw is None or truck_gvwr_raw is None,
+            truck_total_note,
+            truck_total_actual is None or truck_gvwr_raw is None,
+            truck_total_estimated,
         ),
         (
             "Trailer Axle(s)",
@@ -116,6 +156,7 @@ def compute_breakdown(
             gawr_per_axle * axle_count,
             trailer_axle_note,
             trailer_axle_raw is None or gawr_per_axle_raw is None,
+            False,
         ),
         (
             "Trailer Total (GVWR)",
@@ -123,6 +164,7 @@ def compute_breakdown(
             trailer_gvwr,
             trailer_total_note,
             trailer_gvwr_raw is None,
+            trailer_total_estimated,
         ),
         (
             "Combined Rig Weight",
@@ -130,11 +172,12 @@ def compute_breakdown(
             truck_gvwr + trailer_gvwr,
             None,
             gross_raw is None or truck_gvwr_raw is None or trailer_gvwr_raw is None,
+            False,
         ),
     ]
 
     items = []
-    for label, actual, limit, note, insufficient in raw_items:
+    for label, actual, limit, note, insufficient, estimated in raw_items:
         if insufficient:
             items.append(
                 {
@@ -146,6 +189,7 @@ def compute_breakdown(
                     "actualLabel": f"{round(actual):,.0f} lb",
                     "limitLabel": f"{round(limit):,.0f} lb",
                     "note": note,
+                    "estimated": False,
                 }
             )
             continue
@@ -163,6 +207,7 @@ def compute_breakdown(
                 "actualLabel": f"{round(actual):,.0f} lb",
                 "limitLabel": f"{round(limit):,.0f} lb",
                 "note": note,
+                "estimated": estimated,
             }
         )
     return items

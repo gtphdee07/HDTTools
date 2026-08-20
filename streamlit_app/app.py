@@ -51,6 +51,26 @@ DISCLAIMER_TEXT = (
     "on it, entirely at your own risk and responsibility."
 )
 
+# Persistent (shown every time it's relevant, not a one-time acknowledge-
+# and-forget dialog like DISCLAIMER_TEXT above) caution for any breakdown
+# row derived from pin-weight-percentage math rather than a real scale
+# reading - most commonly the pre-purchase "no rig yet" case.
+PREDICTIVE_ESTIMATE_NOTICE = (
+    "**⚠️ Estimated Figures — Confirm Before You Buy**\n\n"
+    "- Trim, engine, axle ratio, cab/bed size, and factory options change a "
+    "specific vehicle's real payload — a GVWR/GAWR from a compliance label "
+    "is a rating, not a guarantee for every configuration.\n"
+    "- This estimate doesn't account for passengers, cargo in the cab or "
+    "bed, or aftermarket accessories — all of which reduce what's actually "
+    "left for towing.\n"
+    "- Before buying, confirm the actual ratings on that specific vehicle's "
+    "own certification label, and the trailer's own data plate — not an "
+    "average, a brochure figure, or this estimate.\n"
+    "- Actual results may differ. You are solely responsible for safe "
+    "towing and for complying with all applicable federal and state "
+    "regulations, including FMCSA and DOT requirements."
+)
+
 _PARSERS = {
     "truck": truck_tag_ocr._parse_fields,
     "trailer": trailer_tag_ocr._parse_fields,
@@ -292,6 +312,9 @@ def _results_step() -> None:
         st.error(f"**{verdict_info['headline']}** — {verdict_info['subline']}")
     else:
         st.info(f"**{verdict_info['headline']}** — {verdict_info['subline']}")
+
+    if any(item["estimated"] for item in items):
+        st.warning(PREDICTIVE_ESTIMATE_NOTICE)
 
     for item in items:
         # st.metric infers delta color from a leading "-" on the string, but

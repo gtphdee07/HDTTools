@@ -105,6 +105,7 @@ export interface BreakdownItem {
   actualLabel: string;
   limitLabel: string;
   note: string | null;
+  estimated: boolean;
 }
 
 export interface VerdictInfo {

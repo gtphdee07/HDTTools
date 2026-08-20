@@ -8,9 +8,10 @@ interface UploadStepProps {
   error: string | null;
   onFileSelected: (file: File) => void;
   onExtract: () => void;
+  onSkip: () => void;
 }
 
-export function UploadStep({ module, file, error, onFileSelected, onExtract }: UploadStepProps) {
+export function UploadStep({ module, file, error, onFileSelected, onExtract, onSkip }: UploadStepProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -59,9 +60,14 @@ export function UploadStep({ module, file, error, onFileSelected, onExtract }: U
       {error && (
         <div style={{ color: 'var(--state-danger)', fontSize: 13, marginBottom: 16 }}>{error}</div>
       )}
-      <Button variant="primary" size="md" onClick={onExtract} disabled={!file}>
-        Extract Data
-      </Button>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <Button variant="primary" size="md" onClick={onExtract} disabled={!file}>
+          Extract Data
+        </Button>
+        <Button variant="ghost" size="md" onClick={onSkip}>
+          I don't have this image
+        </Button>
+      </div>
     </div>
   );
 }

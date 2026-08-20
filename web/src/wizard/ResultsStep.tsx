@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, HelpCircle } from 'lucide-react';
 import type { BreakdownItem, VerdictInfo } from '../types';
 import { Button } from '../design-system/Button';
 import { Badge } from '../design-system/Badge';
@@ -10,8 +10,10 @@ interface ResultsStepProps {
   onGoHome: () => void;
 }
 
+const VERDICT_ICONS = { 'alert-triangle': AlertTriangle, 'check-circle-2': CheckCircle2, 'help-circle': HelpCircle };
+
 export function ResultsStep({ verdict, breakdownItems, onRestart, onGoHome }: ResultsStepProps) {
-  const Icon = verdict.icon === 'alert-triangle' ? AlertTriangle : CheckCircle2;
+  const Icon = VERDICT_ICONS[verdict.icon];
 
   return (
     <div>

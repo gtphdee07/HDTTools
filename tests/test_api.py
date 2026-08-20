@@ -143,3 +143,37 @@ def test_breakdown_endpoint_reflects_axle_count_and_standalone_weight():
     items = {item["label"]: item for item in response.json()["breakdownItems"]}
     assert items["Trailer Axle(s)"]["limitLabel"] == "18,000 lb"
     assert items["Trailer Total (GVWR)"]["actualLabel"] == "13,040 lb"
+
+
+def test_breakdown_endpoint_accepts_a_custom_pin_weight_pct():
+    with TestClient(main.app) as client:
+        payload = {
+            "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
+            "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+            "scale": {
+                "steer_axle_lb": 5620,
+                "drive_axle_lb": 9040,
+                "trailer_axle_lb": 11380,
+                "gross_weight_lb": 26040,
+            },
+            "pin_weight_pct": 0.15,
+        }
+        response = client.post("/api/breakdown", json=payload)
+
+    assert response.status_code == 200
+    items = {item["label"]: item for item in response.json()["breakdownItems"]}
+    # 11,380 / (1 - 0.15) = 13,388, not the 0.20-default 14,225.
+    assert items["Trailer Total (GVWR)"]["actualLabel"] == "13,388 lb"
+
+
+def test_breakdown_endpoint_reports_insufficient_status_for_a_blank_rig():
+    with TestClient(main.app) as client:
+        payload = {"truck": {}, "trailer": {}, "scale": {}}
+        response = client.post("/api/breakdown", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["verdict"] == "insufficient"
+    assert body["verdictInfo"]["status"] == "insufficient"
+    assert body["verdictInfo"]["headline"] == "Not Enough Information"
+    assert all(item["tone"] == "insufficient" for item in body["breakdownItems"])

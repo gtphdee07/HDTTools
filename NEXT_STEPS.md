@@ -2,6 +2,77 @@
 
 Working notes for picking this back up on another machine. Written 2026-08-13.
 
+## 🖼️ Web + Streamlit: skip-image entry and predictive tow-vehicle-alone weight — done 2026-08-20
+
+Two related, real-world-driven requests, scoped to Web + Streamlit only
+(Android/CLI untouched this round): (1) users may have 0-3 of (truck tag,
+trailer tag, scale ticket) photos and need a way to skip straight to manual
+entry instead of being blocked at the upload screen; (2) growing interest in
+*pre-purchase* "can I tow this" estimation, which needs a tow-vehicle-alone
+weight even before a real rig exists to put on a scale.
+
+**Backend (`src/hdttools/api/breakdown.py`, the shared source of truth):**
+- `compute_breakdown` gained a `pin_weight_pct` parameter (default 0.20,
+  was the hardcoded `DEFAULT_AXLE_TO_TOTAL_RATIO = 0.8`) and a new 3-way
+  branch for "Trailer Total (GVWR)": exact tongue-weight math when
+  `standalone_weight_lb` is known, `trailer_axle / (1 - pin_weight_pct)`
+  when a real trailer-axle scale reading exists, or — new — an estimate
+  off the trailer's *rated* GVWR when there's no scale reading at all
+  (the pre-purchase case).
+- New `"insufficient"` tone + verdict tier ("Not Enough Information" when
+  every row lacks data, "Partially Checked" when some do) sits alongside
+  the existing pass/fail, driven by per-row **source-field presence**
+  (`x_raw is None`), not `limit <= 0` — the latter was tried first and
+  found wrong via test-writing (a row can have a real limit but a missing
+  actual, which `limit<=0` would silently show as a false pass).
+- Fixed a latent bug in both `main.py` and `streamlit_app/app.py`: each
+  derived pass/fail by sniffing whether the headline starts with "Not" —
+  broken once "Not Enough Information" also starts with "Not". Both now
+  read `verdict_for`'s new explicit `status` field instead.
+- 65/65 `uv run pytest -q` passing (was 54 before this feature).
+
+**Web**: `UploadStep` gained an "I don't have this image" button (skips
+straight to the blank review form, reusing the same rendering path a real
+empty-OCR-result already takes); `ReviewStep`'s truck step gained a
+tow-vehicle-only scale-ticket scanner (reuses the existing scale-ticket OCR
+pipeline, maps the reading onto `standalone_weight_lb`) and, when that's
+still empty, a 15-25% pin-weight slider defaulting to 20%. Verified live via
+a Playwright walkthrough: 0 images at all → "Not Enough Information" with
+correct "Not enough info" badges on every row, zero console errors.
+
+**Streamlit**: same shape (`_module_step` skip button, `_render_review`,
+`_render_standalone_ticket_section`) — but this is where a **real,
+crash-causing bug** was caught live, not by pytest: `st.number_input`
+cannot return `None`, so simply *rendering* the review screen was silently
+turning every un-entered numeric field into a real `0.0` instead of leaving
+it blank. That defeated the new presence-based insufficient-tracking (a
+literal `0.0` isn't `None`) and then hit a `ZeroDivisionError` computing a
+percentage against a `0` limit once a fully-skipped rig reached Results.
+Fixed by passing `value=None` to `st.number_input` (supported since
+Streamlit ~1.23; this project runs 1.61.1) instead of defaulting to `0.0` —
+it now renders a genuinely blank input and returns `None` until the user
+types something. Also fixed a smaller UX bug found the same way: the
+"Tesseract returned no text at all" warning was showing after a deliberate
+skip too (no OCR ever ran) — now gated behind a new
+`st.session_state[f"{module_key}_skipped"]` flag, showing "No photo
+provided" instead.
+- **`tests/test_streamlit_app.py` (new)** — the project's first Streamlit
+  UI-level automated tests, via `streamlit.testing.v1.AppTest`. Two tests:
+  the full skip-everything-reaches-Results-without-crashing regression
+  (this is what pins down the `ZeroDivisionError` fix — `compute_breakdown`'s
+  own unit tests can't see this bug, since they call it directly with
+  genuinely-`None` dicts, never through `app.py`'s widget layer), and the
+  skip-notice-vs-OCR-warning distinction. See the corrected `AppTest`-on-
+  Windows note further down (search "Correction, 2026-08-20") — it does
+  *not* hang on this machine, contrary to an earlier session's finding.
+- Verified live via Playwright, same walkthrough as Web: 0 images at all →
+  "Not Enough Information", all six rows showing "Not enough info", no
+  exceptions.
+
+Scope deliberately left for a follow-up round (per the plan this was built
+from): no new predictive/cargo-capacity *output* row yet — just the two
+input mechanisms (skip button, tow-vehicle-alone weight source).
+
 ## 💰 Android monetization: billing model decided, backend fully verified
 
 Optional Claude-vision-powered "scan instead of type" feature (the native
@@ -753,18 +824,17 @@ outstanding** (not done this pass — pick up separately):
   `~/.streamlit/config.toml` (`gatherUsageStats = false`,
   `server.headless = true`) — **do this on any new machine before first
   Streamlit run**, interactive or not.
-  **Tooling dead-end, not an app bug**: attempted a deeper `AppTest`-based
-  walkthrough (upload the real `ExampleDocs/` photos, click through the
-  full wizard, assert on rendered results) matching this project's
-  established ad-hoc verification pattern. Even after the credentials fix,
-  `AppTest.from_file(...).run()` hung indefinitely on the *real* `app.py`
-  specifically — `AppTest`'s own documented `default_timeout=3` (seconds)
-  never fired, which points to its timeout enforcement relying on a
-  POSIX-only mechanism (e.g. `SIGALRM`) that's silently inert on Windows.
-  Not investigated further since the app's actual correctness was already
-  solidly confirmed by other means (below) — a real photo-driven
-  `AppTest` walkthrough remains a genuine test-coverage gap, just blocked
-  on this Windows-specific tooling issue, not on app code.
+  **Correction, 2026-08-20 — the "AppTest hangs on Windows" finding above
+  did not reproduce.** `tests/test_streamlit_app.py` (new, see the
+  skip-image feature section below) drives `AppTest.from_file(...)` through
+  a full multi-step wizard flow (rig creation → three skip clicks → three
+  continues → disclaimer) on this same Windows machine, no hang, ~1s total
+  for both tests. Root cause of the original hang was never re-identified
+  (maybe a since-fixed Streamlit bug, maybe an environment difference that
+  session) — but treat "`AppTest` is broken on Windows" as stale, not
+  current fact. A real `ExampleDocs/`-photo-driven `AppTest` walkthrough
+  (uploading actual files, not just clicking skip/continue) is still
+  untried and remains the actual open gap.
 - ✅ **Web — done 2026-08-18, nothing broken.** `uv run pytest -q`
   (shared backend): 54/54 pass. `npm run build` in `web/`: clean. `npm
   run dev`: serves (HTTP 200). Real HTTP requests against the live

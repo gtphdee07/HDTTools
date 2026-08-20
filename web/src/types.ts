@@ -69,7 +69,7 @@ export interface RecentRig {
   lastUsedAt: string;
 }
 
-export type Verdict = 'pass' | 'fail';
+export type Verdict = 'pass' | 'fail' | 'partial' | 'insufficient';
 
 export interface HistoryEntry {
   id: string;
@@ -90,11 +90,15 @@ export interface WizardState {
   scale: ScaleTicketData;
   pendingFile: File | null;
   uploadError: string | null;
+  // Whole percentage points (15-25), not a 0-1 fraction - converted when
+  // calling createBreakdown. Only used when truck.standalone_weight_lb
+  // isn't known from a real tow-vehicle-only scale reading.
+  pinWeightPct: number;
 }
 
 export interface BreakdownItem {
   label: string;
-  tone: 'success' | 'warning';
+  tone: 'success' | 'warning' | 'insufficient';
   badgeLabel: string;
   pct: number;
   barColor: string;
@@ -104,8 +108,9 @@ export interface BreakdownItem {
 }
 
 export interface VerdictInfo {
+  status: Verdict;
   headline: string;
   subline: string;
   bandBg: string;
-  icon: 'alert-triangle' | 'check-circle-2';
+  icon: 'alert-triangle' | 'check-circle-2' | 'help-circle';
 }

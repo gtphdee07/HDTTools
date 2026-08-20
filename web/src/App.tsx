@@ -26,6 +26,7 @@ const EMPTY_WIZARD: WizardState = {
   scale: {},
   pendingFile: null,
   uploadError: null,
+  pinWeightPct: 20,
 };
 
 function App() {
@@ -93,6 +94,34 @@ function App() {
     }
   };
 
+  // "I don't have this image" - skip extraction entirely and go straight
+  // to the review form. ReviewStep already renders {} as all-blank
+  // inputs (the same path a real empty-OCR-result already takes), so no
+  // change needed there.
+  const skipCurrent = () => {
+    if (!currentModule) return;
+    const moduleKey = currentModule.key;
+    setWizard((w) => ({ ...w, [moduleKey]: {}, subStep: 'review', pendingFile: null, uploadError: null }));
+  };
+
+  // Reuses the scale-ticket OCR pipeline for a tow-vehicle-only ticket -
+  // same CAT ticket format, just without a trailer-axle line - and maps
+  // its reading onto the existing standalone_weight_lb field rather than
+  // introducing a new one.
+  const scanStandaloneTicket = async (file: File) => {
+    const extracted = await extractScaleTicket(file);
+    const standalone =
+      extracted.steer_axle_lb != null && extracted.drive_axle_lb != null
+        ? extracted.steer_axle_lb + extracted.drive_axle_lb
+        : extracted.gross_weight_lb;
+    if (standalone == null) {
+      throw new Error("Couldn't find a weight on that ticket — try a clearer photo, or enter it manually.");
+    }
+    setWizard((w) => ({ ...w, truck: { ...w.truck, standalone_weight_lb: standalone } }));
+  };
+
+  const updatePinWeightPct = (value: number) => setWizard((w) => ({ ...w, pinWeightPct: value }));
+
   const continueReview = async () => {
     const nextStep = wizard.step + 1;
     if (nextStep !== 4) {
@@ -102,7 +131,7 @@ function App() {
 
     setWizard((w) => ({ ...w, subStep: 'finalizing' }));
     try {
-      const result = await createBreakdown(wizard.truck, wizard.trailer, wizard.scale);
+      const result = await createBreakdown(wizard.truck, wizard.trailer, wizard.scale, wizard.pinWeightPct);
       setCheckResult(result);
       setRecentRigs(saveRecentRig(wizard.rigNickname, wizard.truck, wizard.trailer));
       setHistory((h) => [
@@ -168,6 +197,7 @@ function App() {
                 error={wizard.uploadError}
                 onFileSelected={onFileSelected}
                 onExtract={extractCurrent}
+                onSkip={skipCurrent}
               />
             )}
 
@@ -182,6 +212,13 @@ function App() {
                 error={wizard.uploadError}
                 onFieldChange={(name, isNumber, value) => updateField(currentModule.key, name, isNumber, value)}
                 onContinue={continueReview}
+                {...(currentModule.key === 'truck'
+                  ? {
+                      pinWeightPct: wizard.pinWeightPct,
+                      onPinWeightPctChange: updatePinWeightPct,
+                      onScanStandaloneTicket: scanStandaloneTicket,
+                    }
+                  : {})}
               />
             )}
 

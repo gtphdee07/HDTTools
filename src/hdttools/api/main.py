@@ -19,7 +19,7 @@ from PIL import Image
 
 from .. import scale_ticket_ocr, trailer_tag_ocr, truck_tag_ocr
 from ..ocr_common import ensure_tesseract_configured, ocr_text, preprocess_image
-from .breakdown import compute_breakdown, verdict_for
+from .breakdown import DEFAULT_PIN_WEIGHT_PCT, compute_breakdown, verdict_for
 from .schemas import (
     BreakdownRequest,
     BreakdownResponse,
@@ -77,12 +77,12 @@ async def extract_scale_ticket(file: UploadFile):
 
 @app.post("/api/breakdown", response_model=BreakdownResponse)
 def create_breakdown(payload: BreakdownRequest):
-    items = compute_breakdown(payload.truck, payload.trailer, payload.scale)
+    pin_weight_pct = payload.pin_weight_pct if payload.pin_weight_pct is not None else DEFAULT_PIN_WEIGHT_PCT
+    items = compute_breakdown(payload.truck, payload.trailer, payload.scale, pin_weight_pct)
     verdict_info = verdict_for(items)
-    verdict = "fail" if verdict_info["headline"].startswith("Not") else "pass"
     return {
         "date": datetime.now(timezone.utc).strftime("%b %d, %Y"),
-        "verdict": verdict,
+        "verdict": verdict_info["status"],
         "breakdownItems": items,
         "verdictInfo": verdict_info,
     }

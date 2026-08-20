@@ -68,7 +68,7 @@ class ScaleTicketOut(BaseModel):
 
 class BreakdownItemOut(BaseModel):
     label: str
-    tone: Literal["success", "warning"]
+    tone: Literal["success", "warning", "insufficient"]
     badgeLabel: str
     pct: int
     barColor: str
@@ -78,6 +78,7 @@ class BreakdownItemOut(BaseModel):
 
 
 class VerdictOut(BaseModel):
+    status: Literal["pass", "fail", "partial", "insufficient"]
     headline: str
     subline: str
     bandBg: str
@@ -88,10 +89,11 @@ class BreakdownRequest(BaseModel):
     truck: dict[str, Any]
     trailer: dict[str, Any]
     scale: dict[str, Any]
+    pin_weight_pct: float | None = None
 
 
 class BreakdownResponse(BaseModel):
     date: str
-    verdict: Literal["pass", "fail"]
+    verdict: Literal["pass", "fail", "partial", "insufficient"]
     breakdownItems: list[BreakdownItemOut]
     verdictInfo: VerdictOut

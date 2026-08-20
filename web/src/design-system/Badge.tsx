@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-type Tone = 'success' | 'warning' | 'neutral';
+type Tone = 'success' | 'warning' | 'neutral' | 'insufficient';
 
 interface BadgeProps {
   tone: Tone;
@@ -11,6 +11,9 @@ const toneStyles: Record<Tone, React.CSSProperties> = {
   success: { background: 'color-mix(in oklch, var(--color-trail-green) 18%, white)', color: 'var(--color-trail-green-dark)' },
   warning: { background: 'color-mix(in oklch, var(--color-sunset-orange) 20%, white)', color: 'var(--color-sunset-orange-dark)' },
   neutral: { background: 'var(--color-cream-dark)', color: 'var(--fg-2)' },
+  // Matches the backend's --state-info color used for "insufficient" rows'
+  // barColor - a row we can't check yet, not a pass or a fail.
+  insufficient: { background: 'color-mix(in oklch, var(--color-dusk-mauve) 18%, white)', color: 'var(--color-dusk-mauve-dark)' },
 };
 
 export function Badge({ tone, children }: BadgeProps) {

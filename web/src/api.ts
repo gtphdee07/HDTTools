@@ -27,7 +27,7 @@ export function extractScaleTicket(file: File): Promise<ScaleTicketData> {
 
 export interface CreateBreakdownResult {
   date: string;
-  verdict: 'pass' | 'fail';
+  verdict: 'pass' | 'fail' | 'partial' | 'insufficient';
   breakdownItems: BreakdownItem[];
   verdictInfo: VerdictInfo;
 }
@@ -36,11 +36,12 @@ export async function createBreakdown(
   truck: TruckTagData,
   trailer: TrailerTagData,
   scale: ScaleTicketData,
+  pinWeightPct: number,
 ): Promise<CreateBreakdownResult> {
   const res = await fetch(`${API_BASE_URL}/api/breakdown`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ truck, trailer, scale }),
+    body: JSON.stringify({ truck, trailer, scale, pin_weight_pct: pinWeightPct / 100 }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);

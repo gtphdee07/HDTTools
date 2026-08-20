@@ -30,7 +30,7 @@ from recent_rigs import load_recent_rigs, save_recent_rig
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from hdttools import scale_ticket_ocr, trailer_tag_ocr, truck_tag_ocr  # noqa: E402
-from hdttools.api.breakdown import compute_breakdown, verdict_for  # noqa: E402
+from hdttools.api.breakdown import DEFAULT_PIN_WEIGHT_PCT, compute_breakdown, verdict_for  # noqa: E402
 from hdttools.ocr_common import ensure_tesseract_configured, ocr_text, preprocess_image  # noqa: E402
 
 st.set_page_config(page_title="RigCheck", page_icon="🚚")
@@ -67,10 +67,19 @@ def _init_state() -> None:
     st.session_state.setdefault("truck_extracted", False)
     st.session_state.setdefault("trailer_extracted", False)
     st.session_state.setdefault("scale_extracted", False)
+    st.session_state.setdefault("truck_skipped", False)
+    st.session_state.setdefault("trailer_skipped", False)
+    st.session_state.setdefault("scale_skipped", False)
     st.session_state.setdefault("recent_rigs", load_recent_rigs())
     st.session_state.setdefault("session_history", [])
     st.session_state.setdefault("result", None)
     st.session_state.setdefault("disclaimer_acknowledged", False)
+    # Whole percentage points (15-25), not a 0-1 fraction - converted
+    # when calling compute_breakdown. Only used when
+    # truck.standalone_weight_lb isn't known from a real tow-vehicle-only
+    # scale reading.
+    st.session_state.setdefault("pin_weight_pct", round(DEFAULT_PIN_WEIGHT_PCT * 100))
+    st.session_state.setdefault("standalone_ticket_processed_id", None)
 
 
 def _reset_wizard() -> None:
@@ -82,7 +91,12 @@ def _reset_wizard() -> None:
     st.session_state["truck_extracted"] = False
     st.session_state["trailer_extracted"] = False
     st.session_state["scale_extracted"] = False
+    st.session_state["truck_skipped"] = False
+    st.session_state["trailer_skipped"] = False
+    st.session_state["scale_skipped"] = False
     st.session_state["result"] = None
+    st.session_state["pin_weight_pct"] = round(DEFAULT_PIN_WEIGHT_PCT * 100)
+    st.session_state["standalone_ticket_processed_id"] = None
 
 
 def _extract_fields(module_key: str, uploaded_file) -> tuple[dict, str]:
@@ -128,7 +142,9 @@ def _render_review(module_key: str) -> None:
     st.caption("Here's what we read off your photo. Fix anything that looks off.")
 
     raw_text = st.session_state.get(f"{module_key}_raw_text", "")
-    if not raw_text.strip():
+    if st.session_state.get(f"{module_key}_skipped"):
+        st.info("No photo provided — fill in what you know below, or leave fields blank.")
+    elif not raw_text.strip():
         st.warning(
             "Tesseract returned no text at all from this photo — that points to an "
             "OCR engine/environment problem (e.g. missing language data) rather than "
@@ -149,11 +165,66 @@ def _render_review(module_key: str) -> None:
         current = data.get(name)
         if field_type == "number":
             data[name] = st.number_input(
-                label, value=float(current) if current else 0.0, step=1.0, key=f"{module_key}_{name}"
+                label,
+                value=float(current) if current is not None else None,
+                step=1.0,
+                key=f"{module_key}_{name}",
+                placeholder="Not entered",
             )
         else:
             data[name] = st.text_input(label, value=current or "", key=f"{module_key}_{name}") or None
     st.session_state[module_key] = data
+
+
+def _render_standalone_ticket_section() -> None:
+    """Truck-step-only extra (folded in rather than a new wizard step):
+    an optional second upload for a tow-vehicle-only CAT Scale ticket,
+    reusing the scale-ticket OCR pipeline (same ticket format, just no
+    trailer-axle line) to fill in standalone_weight_lb directly. If it's
+    not provided, expose the pin/hitch weight % used as the fallback
+    estimate instead of leaving that 15-25% assumption silently hardcoded.
+    """
+    st.markdown("**Don't know your tow vehicle's stand-alone weight?**")
+    st.caption(
+        "Scan a CAT Scale ticket weighing just your tow vehicle (no trailer "
+        "attached) and we'll fill in the field above for you."
+    )
+    standalone_file = st.file_uploader(
+        "Tow-vehicle-only scale ticket (optional)",
+        type=["jpg", "jpeg", "png", "webp"],
+        key="standalone_ticket_upload",
+    )
+    # file_id changes every time a genuinely new file is picked - guards
+    # against reprocessing the same upload on every rerun this widget's
+    # persisted selection would otherwise trigger.
+    if standalone_file is not None and standalone_file.file_id != st.session_state["standalone_ticket_processed_id"]:
+        with st.spinner("Reading the ticket..."):
+            try:
+                extracted, _raw_text = _extract_fields("scale", standalone_file)
+            except Exception as exc:  # noqa: BLE001 - surface any OCR failure to the user
+                st.error(f"Could not read that photo: {exc}")
+                return
+        st.session_state["standalone_ticket_processed_id"] = standalone_file.file_id
+        standalone = None
+        if extracted.get("steer_axle_lb") is not None and extracted.get("drive_axle_lb") is not None:
+            standalone = extracted["steer_axle_lb"] + extracted["drive_axle_lb"]
+        elif extracted.get("gross_weight_lb") is not None:
+            standalone = extracted["gross_weight_lb"]
+        if standalone is None:
+            st.error("Couldn't find a weight on that ticket — try a clearer photo, or enter it manually above.")
+        else:
+            st.session_state["truck"]["standalone_weight_lb"] = standalone
+            st.success(f"Stand-alone weight set to {standalone:,.0f} lb.")
+            st.rerun()
+
+    if not st.session_state["truck"].get("standalone_weight_lb"):
+        st.session_state["pin_weight_pct"] = st.slider(
+            "No ticket? Estimate pin/hitch weight as this % of the trailer's weight",
+            min_value=15,
+            max_value=25,
+            value=st.session_state["pin_weight_pct"],
+        )
+        st.caption("Industry recommendations are typically 15-25% — we default to 20%.")
 
 
 def _module_step(module_key: str) -> None:
@@ -173,10 +244,17 @@ def _module_step(module_key: str) -> None:
             st.session_state[module_key] = extracted
             st.session_state[f"{module_key}_raw_text"] = raw_text
             st.session_state[f"{module_key}_extracted"] = True
+            st.session_state[f"{module_key}_skipped"] = False
+            st.rerun()
+        if st.button("I don't have this image", key=f"skip_{module_key}"):
+            st.session_state[f"{module_key}_extracted"] = True
+            st.session_state[f"{module_key}_skipped"] = True
             st.rerun()
         return
 
     _render_review(module_key)
+    if module_key == "truck":
+        _render_standalone_ticket_section()
     if st.button("Continue", key=f"continue_{module_key}"):
         current_index = MODULE_ORDER.index(module_key)
         st.session_state["step"] = current_index + 2  # steps are 1-indexed, rig is step 0
@@ -198,22 +276,31 @@ def _results_step() -> None:
 
     st.header("Results")
     truck, trailer, scale = st.session_state["truck"], st.session_state["trailer"], st.session_state["scale"]
-    items = compute_breakdown(truck, trailer, scale)
+    pin_weight_pct = st.session_state["pin_weight_pct"] / 100
+    items = compute_breakdown(truck, trailer, scale, pin_weight_pct)
     verdict_info = verdict_for(items)
-    verdict = "fail" if verdict_info["headline"].startswith("Not") else "pass"
+    # verdict_info["status"] is explicit ("pass"/"fail"/"partial"/
+    # "insufficient") - never derive it by sniffing whether the headline
+    # starts with "Not" (both "Not Safe to Tow" and "Not Enough
+    # Information" do, which would misclassify insufficient data as a
+    # real failure).
+    verdict = verdict_info["status"]
 
     if verdict == "pass":
         st.success(f"**{verdict_info['headline']}** — {verdict_info['subline']}")
-    else:
+    elif verdict == "fail":
         st.error(f"**{verdict_info['headline']}** — {verdict_info['subline']}")
+    else:
+        st.info(f"**{verdict_info['headline']}** — {verdict_info['subline']}")
 
     for item in items:
         # st.metric infers delta color from a leading "-" on the string, but
         # our badge labels ("720 lb over", "380 lb to spare") never start
         # with one, so it would show green for both pass and fail. Drive the
         # color from our own already-correct tone instead: "inverse" flips
-        # a non-"-"-prefixed string from green to red.
-        delta_color = "normal" if item["tone"] == "success" else "inverse"
+        # a non-"-"-prefixed string from green to red; "off" leaves
+        # insufficient rows uncolored rather than falsely red or green.
+        delta_color = "normal" if item["tone"] == "success" else "off" if item["tone"] == "insufficient" else "inverse"
         st.metric(item["label"], item["actualLabel"], delta=item["badgeLabel"], delta_color=delta_color)
         st.progress(min(item["pct"], 100) / 100, text=f"Limit: {item['limitLabel']}")
         if item["note"]:
@@ -246,11 +333,12 @@ def main() -> None:
     else:
         _results_step()
 
+    _VERDICT_ICONS = {"pass": "✅", "fail": "⚠️", "partial": "❔", "insufficient": "❔"}
     if st.session_state["session_history"]:
         with st.sidebar:
             st.subheader("This session's checks")
             for entry in st.session_state["session_history"]:
-                icon = "✅" if entry["verdict"] == "pass" else "⚠️"
+                icon = _VERDICT_ICONS.get(entry["verdict"], "❔")
                 st.write(f"{icon} **{entry['nickname']}** — {entry['date']}")
 
 

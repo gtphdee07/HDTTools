@@ -61,7 +61,15 @@ def compute_breakdown(
     standalone_raw = truck.get("standalone_weight_lb")
     standalone_weight = _lb(standalone_raw)
     have_hitched = steer_raw is not None and drive_raw is not None
-    have_standalone = standalone_raw is not None
+    # Truthy, not just non-None: a truck can't really weigh 0 lb, so an
+    # explicit 0 here means "not entered," the same as it being absent -
+    # matching axle_count's existing truthy check just below, and the
+    # Kotlin port's own documented truthiness-parity decision. Regression
+    # found 2026-08-21 while porting this fix to Kotlin - a plain
+    # `is not None` check (introduced earlier this session alongside the
+    # have_hitched/have_standalone decoupling) let standalone_weight_lb: 0
+    # through as "real data," producing a nonsensical tongue-weight result.
+    have_standalone = bool(standalone_raw)
 
     # Trailer total: which branch fires depends only on what's known about
     # the TRAILER side of the tongue-weight math (a real hitched reading

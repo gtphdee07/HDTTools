@@ -19,24 +19,24 @@ import org.junit.Test
 // Runs the shared golden vectors (test-vectors/breakdown_cases.json) - the
 // same cases tests/test_breakdown_golden_vectors.py checks against Python,
 // the source of truth. Kotlin's port doesn't have every capability Python
-// does yet (no adjustable pin-weight %, no insufficient/partial verdict
-// tiers, no predictive standalone-only truck estimate) - cases needing
-// those are skipped via Assume, not silently passed. This file does NOT
-// replace BreakdownTest.kt's hand-written, one-scenario-per-test suite;
-// it exists specifically to catch this port drifting further from Python.
+// does yet (as of 2026-08-21: no predictive standalone-only truck estimate)
+// - cases needing those are skipped via Assume, not silently passed. This
+// file does NOT replace BreakdownTest.kt's hand-written, one-scenario-per-
+// test suite; it exists specifically to catch this port drifting further
+// from Python.
 //
 // Parses JSON manually (JsonObject field access) rather than
 // kotlinx.serialization's typed decodeFromString, so this file needs no
 // changes to the domain model classes (ScaleTicket isn't @Serializable
 // today, and shouldn't need to become so just for this test).
 
-private val SUPPORTED_CAPABILITIES = emptySet<String>()
-
-// Deliberately not skipped even though it contains rows Kotlin can't
-// represent as "insufficient" - routed to its own dedicated assertion
-// below instead of the generic per-case loop. See its "_note" in the
-// JSON file.
-private const val LIVE_BUG_CASE_NAME = "live_bug_standalone_without_hitched"
+// Update this set as the Kotlin port gains capabilities - see each
+// case's "requires" in the JSON file for what's still gated.
+private val SUPPORTED_CAPABILITIES = setOf(
+    "insufficient_tone",
+    "gvwr_fallback_trailer_estimate",
+    "adjustable_pin_weight_pct",
+)
 
 private fun findVectorsFile(): File {
     var dir = File("").absoluteFile
@@ -95,8 +95,6 @@ class BreakdownGoldenVectorTest {
     fun `golden vectors - cases fully supported by the current Kotlin port`() {
         for (case in loadCases()) {
             val name = case.string("name")
-            if (name == LIVE_BUG_CASE_NAME) continue
-
             val requires = case["requires"]!!.jsonArray.map { it.jsonPrimitive.content }
             if (!SUPPORTED_CAPABILITIES.containsAll(requires)) {
                 // Not a failure - this case needs a capability the Kotlin
@@ -106,11 +104,14 @@ class BreakdownGoldenVectorTest {
                 continue
             }
 
-            val items = computeBreakdown(truckFrom(case), trailerFrom(case), scaleFrom(case))
+            val pinWeightPct = case.double("pin_weight_pct") ?: DEFAULT_PIN_WEIGHT_PCT
+            val items = computeBreakdown(truckFrom(case), trailerFrom(case), scaleFrom(case), pinWeightPct)
             val expected = case["expected"]!!.jsonObject
-            val expectedStatus = expected.string("verdict_status")
-            val kotlinStatus = if (verdictFor(items).tone == Tone.WARNING) "fail" else "pass"
-            assertEquals("$name: verdict status", expectedStatus, kotlinStatus)
+            assertEquals(
+                "$name: verdict status",
+                expected.string("verdict_status"),
+                verdictFor(items).status.name.lowercase(),
+            )
 
             for (expectedItemElement in expected["items"]!!.jsonArray) {
                 val expectedItem = expectedItemElement.jsonObject
@@ -129,7 +130,7 @@ class BreakdownGoldenVectorTest {
 
     @Test
     fun `golden vectors - report how many cases are currently skipped`() {
-        val cases = loadCases().filter { it.string("name") != LIVE_BUG_CASE_NAME }
+        val cases = loadCases()
         val skipped = cases.filter { case ->
             val requires = case["requires"]!!.jsonArray.map { it.jsonPrimitive.content }
             !SUPPORTED_CAPABILITIES.containsAll(requires)
@@ -143,28 +144,5 @@ class BreakdownGoldenVectorTest {
                 skipped.joinToString { it.string("name") },
         )
         assumeTrue("informational only", true)
-    }
-
-    @Test
-    fun `golden vector - live bug - standalone weight without a hitched reading`() {
-        // Deliberately NOT skipped, and expected to FAIL right now - see
-        // this case's "_note" in the JSON file. Kotlin's standaloneProvided
-        // branch in computeBreakdown doesn't check whether a real hitched
-        // (steer+drive) reading also exists, so it silently produces the
-        // wrong Trailer Total here - the exact bug fixed in Python's
-        // compute_breakdown this session, still live in this port.
-        val case = loadCases().first { it.string("name") == LIVE_BUG_CASE_NAME }
-        val items = computeBreakdown(truckFrom(case), trailerFrom(case), scaleFrom(case))
-        val expectedItem = case["expected"]!!.jsonObject["items"]!!.jsonArray
-            .map { it.jsonObject }
-            .first { it.string("label") == "Trailer Total (GVWR)" }
-
-        val row = item(items, "Trailer Total (GVWR)")
-        assertEquals(
-            "Trailer Total (GVWR) actual_lb - if this now passes, the live bug has been " +
-                "fixed in Kotlin; update this test's expectations and its surrounding comments",
-            expectedItem.int("actual_lb"),
-            row.actual.roundToInt(),
-        )
     }
 }

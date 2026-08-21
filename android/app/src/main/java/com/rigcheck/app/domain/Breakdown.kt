@@ -8,24 +8,34 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 // Kotlin port of src/hdttools/api/breakdown.py (the single source of truth,
-// itself already a port of web/src/calc.ts) — keep the three in sync.
-// Pin/tongue weight is commonly ~15-25% of trailer weight, so a trailer's
-// axle reading alone is assumed to be ~80% of its actual total weight when
-// no stand-alone truck weight was given to compute an exact figure.
-const val DEFAULT_AXLE_TO_TOTAL_RATIO = 0.8
+// itself already a port of web/src/calc.ts) — keep the three in sync, and
+// keep test-vectors/breakdown_cases.json's SUPPORTED_CAPABILITIES in
+// BreakdownGoldenVectorTest.kt updated as this port gains capabilities.
+// Pin/tongue weight is commonly ~15-25% of trailer weight - used as a
+// fraction of a REAL trailer-axle scale reading when one exists, or as a
+// fraction of the trailer's RATED GVWR when no scale reading exists at all.
+const val DEFAULT_PIN_WEIGHT_PCT = 0.20
 
 private fun lb(value: Double?): Double = value ?: 0.0
 
-private data class Row(val label: String, val actual: Double, val limit: Double, val note: String?)
+// insufficient: this row's own "do we actually have enough data to check
+// this" flag, checked from the specific source fields it depends on - not
+// inferred from whether actual/limit happen to be 0, which a real 0 lb
+// reading and a never-entered field are otherwise indistinguishable from.
+private data class Row(
+    val label: String,
+    val actual: Double,
+    val limit: Double,
+    val note: String?,
+    val insufficient: Boolean,
+)
 
 // Android-only enhancement, deliberately not ported back to breakdown.py/
 // calc.ts: these two rows are sums of other rows, so their notes spell out
 // the arithmetic with real numbers (matching the 2026-08-17 mockup) rather
-// than the Python/web originals' fixed generic sentence. Deliberately does
-// NOT try to identify "the" row causing a "Not Safe" verdict the way the
-// mockup's single-failure example did — with multiple simultaneous
-// failures that framing gets ambiguous, so tone/color alone carries pass/
-// fail and each note only explains its own row's math.
+// than the Python/web originals' fixed generic sentence. Suppressed
+// entirely (null) when the row is insufficient - showing "0 + 0 = 0 lb"
+// arithmetic would misrepresent "no data" as "a real zero reading."
 private fun towVehicleTotalNote(steer: Double, drive: Double, limit: Double): String {
     val sum = steer + drive
     val margin = limit - sum
@@ -45,7 +55,12 @@ private fun combinedRigWeightNote(truckGvwr: Double, trailerGvwr: Double, gross:
         "${formatWholeNumber(abs(margin))} lb $overUnder."
 }
 
-fun computeBreakdown(truck: TruckTag, trailer: TrailerTag, scale: ScaleTicket): List<BreakdownItem> {
+fun computeBreakdown(
+    truck: TruckTag,
+    trailer: TrailerTag,
+    scale: ScaleTicket,
+    pinWeightPct: Double = DEFAULT_PIN_WEIGHT_PCT,
+): List<BreakdownItem> {
     val steer = lb(scale.steerAxleLb)
     val drive = lb(scale.driveAxleLb)
     val trailerAxle = lb(scale.trailerAxleLb)
@@ -70,47 +85,110 @@ fun computeBreakdown(truck: TruckTag, trailer: TrailerTag, scale: ScaleTicket): 
         "Assumes a 2-axle trailer at the tag's per-axle rating."
     }
 
-    val standaloneWeight = truck.standaloneWeightLb
-    val standaloneProvided = standaloneWeight != null && standaloneWeight != 0.0
+    val standaloneWeight = lb(truck.standaloneWeightLb)
+    // haveHitched/haveStandalone are deliberately independent checks - a
+    // standalone-only reading (no hitched steer+drive reading) used to be
+    // silently treated the same as a real hitched+standalone pair, which
+    // gave the wrong trailer total (fixed 2026-08-21). haveStandalone is
+    // truthy, not just non-null - a truck can't really weigh 0 lb, so an
+    // explicit 0 means "not entered," matching axleCountProvided's own
+    // truthy check above (truthiness parity with the Python original).
+    val haveHitched = scale.steerAxleLb != null && scale.driveAxleLb != null
+    val haveStandalone = truck.standaloneWeightLb != null && truck.standaloneWeightLb != 0.0
+
     val trailerTotalActual: Double
     val trailerTotalNote: String
-    if (standaloneProvided) {
-        val tongueWeight = ((steer + drive) - standaloneWeight!!).coerceAtLeast(0.0)
+    if (haveHitched && haveStandalone) {
+        val tongueWeight = ((steer + drive) - standaloneWeight).coerceAtLeast(0.0)
         trailerTotalActual = trailerAxle + tongueWeight
         trailerTotalNote = "Includes an estimated ${formatWholeNumber(tongueWeight)} lb tongue weight " +
             "(steer + drive minus your truck's stand-alone weight)."
-    } else {
-        trailerTotalActual = trailerAxle / DEFAULT_AXLE_TO_TOTAL_RATIO
+    } else if (scale.trailerAxleLb != null) {
+        trailerTotalActual = trailerAxle / (1 - pinWeightPct)
         trailerTotalNote = "Estimated total weight — assumes the axle reading is " +
-            "80% of actual trailer weight; enter your truck's stand-alone weight for an exact figure."
+            "${formatWholeNumber((1 - pinWeightPct) * 100)}% of actual trailer weight; " +
+            "enter your truck's stand-alone weight for an exact figure."
+    } else {
+        // No scale reading at all - nothing to divide, so estimate off the
+        // trailer's rated GVWR instead. This is what makes a pre-purchase
+        // "can I tow this" check possible before a real scale ticket
+        // exists (currently only for the trailer side - the matching
+        // truck-side predictive estimate is Round 2, not built yet).
+        trailerTotalActual = trailerGvwr
+        trailerTotalNote = "Estimated total weight — no scale reading yet, so this assumes " +
+            "the trailer is loaded to its rated GVWR; weigh it for a real figure."
     }
 
+    // Truck total: a real hitched reading always wins. Without one, this
+    // row stays insufficient - the standalone-only predictive estimate
+    // (mirroring the trailer side's GVWR-fallback logic above) is Round 2,
+    // not built yet; test-vectors/breakdown_cases.json's
+    // predictive_truck_estimate case is expected to fail against this
+    // Kotlin port until then.
+    val truckTotalActual: Double?
+    if (haveHitched) {
+        truckTotalActual = steer + drive
+    } else {
+        truckTotalActual = null
+    }
+
+    val towVehicleInsufficient = truckTotalActual == null || truck.gvwrLb == null
+    val trailerTotalInsufficient = trailer.gvwrLb == null
+    val combinedInsufficient = scale.grossWeightLb == null || truck.gvwrLb == null || trailer.gvwrLb == null
+
     val rows = listOf(
-        Row("Front Axle (Steer)", steer, frontGawr, null),
-        Row("Rear Axle (Drive)", drive, rearGawr, null),
         Row(
-            "Tow Vehicle Total (GVWR)", steer + drive, truckGvwr,
-            towVehicleTotalNote(steer, drive, truckGvwr),
+            "Front Axle (Steer)", steer, frontGawr, null,
+            scale.steerAxleLb == null || truck.frontGawrLb == null,
         ),
-        Row("Trailer Axle(s)", trailerAxle, gawrPerAxle * axleCount, axleCountNote),
-        Row("Trailer Total (GVWR)", trailerTotalActual, trailerGvwr, trailerTotalNote),
         Row(
-            "Combined Rig Weight", gross, truckGvwr + trailerGvwr,
-            combinedRigWeightNote(truckGvwr, trailerGvwr, gross),
+            "Rear Axle (Drive)", drive, rearGawr, null,
+            scale.driveAxleLb == null || truck.rearGawrLb == null,
+        ),
+        Row(
+            "Tow Vehicle Total (GVWR)",
+            truckTotalActual ?: 0.0,
+            truckGvwr,
+            if (towVehicleInsufficient) null else towVehicleTotalNote(steer, drive, truckGvwr),
+            towVehicleInsufficient,
+        ),
+        Row(
+            "Trailer Axle(s)", trailerAxle, gawrPerAxle * axleCount, axleCountNote,
+            scale.trailerAxleLb == null || trailer.gawrPerAxleLb == null,
+        ),
+        Row("Trailer Total (GVWR)", trailerTotalActual, trailerGvwr, trailerTotalNote, trailerTotalInsufficient),
+        Row(
+            "Combined Rig Weight",
+            gross,
+            truckGvwr + trailerGvwr,
+            if (combinedInsufficient) null else combinedRigWeightNote(truckGvwr, trailerGvwr, gross),
+            combinedInsufficient,
         ),
     )
 
     return rows.map { row ->
-        val passed = row.actual <= row.limit
-        val pct = if (row.limit > 0) min(100, ((row.actual / row.limit) * 100).roundToInt()) else 0
-        BreakdownItem(
-            label = row.label,
-            tone = if (passed) Tone.SUCCESS else Tone.WARNING,
-            actual = row.actual,
-            limit = row.limit,
-            margin = row.limit - row.actual,
-            pct = pct,
-            note = row.note,
-        )
+        if (row.insufficient) {
+            BreakdownItem(
+                label = row.label,
+                tone = Tone.INSUFFICIENT,
+                actual = row.actual,
+                limit = row.limit,
+                margin = row.limit - row.actual,
+                pct = 0,
+                note = row.note,
+            )
+        } else {
+            val passed = row.actual <= row.limit
+            val pct = if (row.limit > 0) min(100, ((row.actual / row.limit) * 100).roundToInt()) else 0
+            BreakdownItem(
+                label = row.label,
+                tone = if (passed) Tone.SUCCESS else Tone.WARNING,
+                actual = row.actual,
+                limit = row.limit,
+                margin = row.limit - row.actual,
+                pct = pct,
+                note = row.note,
+            )
+        }
     }
 }

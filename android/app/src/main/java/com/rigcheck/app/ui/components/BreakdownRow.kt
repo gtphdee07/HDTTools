@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -32,12 +33,19 @@ import com.rigcheck.app.domain.BreakdownItem
 import com.rigcheck.app.domain.Tone
 import com.rigcheck.app.ui.format.formatLb
 import com.rigcheck.app.ui.theme.DangerRed
+import com.rigcheck.app.ui.theme.DuskMauve
 import com.rigcheck.app.ui.theme.TrailGreen
+
+private fun toneColorFor(tone: Tone) = when (tone) {
+    Tone.SUCCESS -> TrailGreen
+    Tone.WARNING -> DangerRed
+    Tone.INSUFFICIENT -> DuskMauve
+}
 
 @Composable
 fun BreakdownRow(item: BreakdownItem, modifier: Modifier = Modifier) {
     var expanded by remember { mutableStateOf(false) }
-    val toneColor = if (item.tone == Tone.SUCCESS) TrailGreen else DangerRed
+    val toneColor = toneColorFor(item.tone)
 
     Surface(
         shape = RoundedCornerShape(14.dp),
@@ -50,7 +58,11 @@ fun BreakdownRow(item: BreakdownItem, modifier: Modifier = Modifier) {
         Column(modifier = Modifier.padding(14.dp, 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = if (item.tone == Tone.SUCCESS) Icons.Filled.CheckCircle else Icons.Filled.Cancel,
+                    imageVector = when (item.tone) {
+                        Tone.SUCCESS -> Icons.Filled.CheckCircle
+                        Tone.WARNING -> Icons.Filled.Cancel
+                        Tone.INSUFFICIENT -> Icons.Filled.Info
+                    },
                     contentDescription = null,
                     tint = toneColor,
                     modifier = Modifier.size(28.dp),
@@ -71,6 +83,14 @@ fun BreakdownRow(item: BreakdownItem, modifier: Modifier = Modifier) {
             LinearProgressIndicator(
                 progress = { (item.pct.coerceIn(0, 100)) / 100f },
                 color = toneColor,
+                // Explicit, tone-matching track color - Material3's default
+                // track color is theme-derived, not based on the `color`
+                // param, so it stayed a fixed green regardless of tone.
+                // Invisible for a normal passing/failing row (mostly
+                // covered by the filled portion) but every insufficient
+                // row is 0% (all track, no fill), which made this bug
+                // impossible to miss on a real device.
+                trackColor = toneColor.copy(alpha = 0.2f),
                 modifier = Modifier
                     .padding(top = 8.dp)
                     .fillMaxWidth()

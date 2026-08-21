@@ -114,4 +114,54 @@ class BreakdownTest {
             row.note,
         )
     }
+
+    // Fixed 2026-08-21 - see NEXT_STEPS.md and
+    // test-vectors/breakdown_cases.json's live_bug_standalone_without_hitched
+    // case. A stand-alone reading with no real hitched (steer+drive)
+    // reading used to be treated the same as a real hitched+standalone
+    // pair, silently producing the wrong trailer total.
+
+    @Test
+    fun `standalone weight without a hitched reading falls back to the axle estimate, not the exact-tongue-weight math`() {
+        val truck = TRUCK.copy(standaloneWeightLb = 10000.0)
+        val scaleTrailerAxleOnly = ScaleTicket(trailerAxleLb = 11380.0)
+        val items = computeBreakdown(truck, TRAILER, scaleTrailerAxleOnly)
+        val row = item(items, "Trailer Total (GVWR)")
+        assertEquals("14,225 lb", formatLb(row.actual)) // not 11,380 - the bug's symptom
+    }
+
+    @Test
+    fun `tow vehicle total is insufficient with neither a hitched nor a standalone reading`() {
+        val items = computeBreakdown(TRUCK, TRAILER, ScaleTicket())
+        val row = item(items, "Tow Vehicle Total (GVWR)")
+        assertEquals(Tone.INSUFFICIENT, row.tone)
+    }
+
+    // GVWR-fallback trailer estimate - no scale reading at all, the pre-
+    // purchase/predictive case.
+
+    @Test
+    fun `trailer total estimates from GVWR when no scale reading exists at all`() {
+        val items = computeBreakdown(TRUCK, TRAILER, ScaleTicket())
+        val row = item(items, "Trailer Total (GVWR)")
+        assertEquals("12,500 lb", formatLb(row.actual))
+        assertTrue(row.note!!.contains("no scale reading yet"))
+    }
+
+    @Test
+    fun `blank rig reports every row insufficient, not a false pass`() {
+        val items = computeBreakdown(TruckTag(), TrailerTag(), ScaleTicket())
+        assertTrue(items.all { it.tone == Tone.INSUFFICIENT })
+    }
+
+    // Adjustable pin-weight % - was hardcoded at 80%/20% (DEFAULT_AXLE_TO_TOTAL_RATIO).
+
+    @Test
+    fun `custom pin weight pct changes the trailer axle reading estimate`() {
+        // 11,380 / (1 - 0.15) = 13,388
+        val items = computeBreakdown(TRUCK, TRAILER, SCALE, pinWeightPct = 0.15)
+        val row = item(items, "Trailer Total (GVWR)")
+        assertEquals("13,388 lb", formatLb(row.actual))
+        assertTrue(row.note!!.contains("85% of actual trailer weight"))
+    }
 }

@@ -207,6 +207,24 @@ def test_estimated_flag_is_always_false_on_insufficient_rows():
     assert all(item["estimated"] is False for item in items)
 
 
+def test_standalone_weight_of_zero_is_treated_as_not_provided():
+    # A truck can't really weigh 0 lb - an explicit 0 here means "not
+    # entered," the same as the field being absent entirely. Regression
+    # test: have_standalone briefly became a plain `is not None` check
+    # earlier this session (alongside the have_hitched/have_standalone
+    # decoupling fix), which let a literal 0 through as "real data" and
+    # produced a nonsensical tongue-weight estimate - caught while porting
+    # this exact logic to Kotlin, where the equivalent truthiness-parity
+    # test already existed and failed against it.
+    truck = {**_TRUCK, "standalone_weight_lb": 0}
+    items = compute_breakdown(truck, _TRAILER, _SCALE)
+    total_item = _item(items, "Trailer Total (GVWR)")
+    # Falls back to the axle-based estimate (11,380 / 0.8 = 14,225), not
+    # the exact-tongue-weight branch (which would wrongly use the full
+    # steer+drive reading as "tongue weight").
+    assert total_item["actualLabel"] == "14,225 lb"
+
+
 def test_verdict_status_is_never_derived_from_headline_text():
     # Regression test: main.py/streamlit_app both used to derive a
     # simplified pass/fail string via `"fail" if headline.startswith

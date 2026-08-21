@@ -43,6 +43,15 @@ against the deployed Worker decrementing it.
   `compute_breakdown`/`verdict_for` Kotlin port, ported from
   `tests/test_breakdown.py` plus Android-only edge cases (see
   `NEXT_STEPS.md` for detail).
+- `BreakdownGoldenVectorTest.kt` — runs the shared
+  `test-vectors/breakdown_cases.json` cases against this port, the same
+  cases `tests/test_breakdown_golden_vectors.py` runs against Python (the
+  source of truth). Cases needing a capability this port doesn't have yet
+  are skipped, not silently passed — the test's own console output
+  reports the count every run. See the root `TESTING.md`'s cross-platform
+  section and `NEXT_STEPS.md` for what running this the first time found
+  (several generations of drift, including a live bug this exact
+  mechanism proved and then verified fixed).
 - `RevenueCatManagerTest.kt` — the balance-cache-invalidation bug fixed
   2026-08-18: `getScanCreditBalance()` must call
   `invalidateVirtualCurrenciesCache()` before reading the balance, not
@@ -59,10 +68,18 @@ parameters passed directly to each composable, no ViewModel/NavHost/
 network involved:
 
 - `ResultsScreenTest` — all-passing renders "Safe to Tow", any failure
-  renders "Not Safe to Tow"; row labels/percentages display correctly.
+  renders "Not Safe to Tow"; row labels/percentages display correctly;
+  all-insufficient renders "Not Enough Information", a mix renders
+  "Partially Checked" (added 2026-08-21 alongside the `Tone.INSUFFICIENT`
+  correctness fixes below).
 - `BreakdownRowTest` — a row's note is hidden until tapped, then appears
   (the dynamic tongue-weight-explanation feature); a note-less row's tap
-  is a no-op, doesn't crash.
+  is a no-op, doesn't crash; an insufficient row renders without crashing
+  and shows 0%. A real bug was found manually verifying this on-device,
+  not by this test: the progress bar's *track* color didn't follow
+  `Tone.INSUFFICIENT`'s mauve, only the filled portion did — invisible on
+  a normal row (mostly covered by the fill) but glaring on an insufficient
+  row (always 0%, all track) — fixed by setting `trackColor` explicitly.
 - `DisclaimerScreenTest` — the finalized disclaimer copy renders;
   tapping "I Understand, Continue" fires `onAcknowledge`.
 - `RigPickerScreenTest` — a recent-rig card tap fires
@@ -122,3 +139,11 @@ real `RigCheckNavHost` + `RigCheckViewModel`, offline via
 - **`android/app/src/androidTest/java/com/rigcheck/app/ExampleInstrumentedTest.kt`**
   — the unmodified AGP template test, left in place; harmless, not part
   of this suite's real coverage.
+- **Predictive standalone-only truck-side estimate** — the one remaining
+  capability `BreakdownGoldenVectorTest.kt` skips as of 2026-08-21 (not
+  built yet, "Round 2" in `NEXT_STEPS.md`). Its golden-vector case
+  already exists in `test-vectors/breakdown_cases.json`
+  (`predictive_truck_estimate`), currently skipped like any other
+  unsupported case — the plan is to un-skip it deliberately once its
+  test coverage is written, before the feature itself is implemented, so
+  it fails informatively rather than being silently absent.

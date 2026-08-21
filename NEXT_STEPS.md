@@ -903,6 +903,68 @@ infrastructure only, per your choice to build the mechanism before doing
 the port. That's real, separate feature/bugfix work, not yet started or
 scheduled.
 
+**2026-08-21 (same day) — Round 1 correctness fixes done.** Per your
+"correctness fixes first" call: `Breakdown.kt` now mirrors Python's
+current 3-branch trailer-total logic (exact/axle-estimate/GVWR-fallback),
+`Tone` gained `INSUFFICIENT`, `verdictFor` gained the full
+pass/fail/partial/insufficient priority logic (a new `VerdictStatus`
+enum, mirroring Python's explicit `status` field — never derived from
+headline text), and adjustable `pinWeightPct` was folded in too (a
+near-free parametrization of code already being touched, per the
+reclassification flagged in the plan and approved). UI: `BreakdownRow`/
+`ResultsScreen` render `INSUFFICIENT` with the already-defined-but-unused
+`DuskMauve` and an info icon.
+- ✅ **The live bug is fixed** — `standalone_without_hitched_falls_back_to_axle_estimate`
+  (renamed from the "live bug" case now that it's fixed) passes on both
+  platforms.
+- **A second real bug found while porting**: Python's own `have_standalone`
+  check had regressed to a plain `is not None` earlier this session
+  (during the trailer-total decoupling fix) — an explicit
+  `standalone_weight_lb: 0` was being treated as *provided* instead of
+  "not entered," producing a nonsensical result (a truck "weighing 0 lb"
+  used as real tongue-weight math). No test had covered this specific
+  edge case. Caught only because Kotlin's *existing* test for this exact
+  scenario (a deliberate truthiness-parity decision from Android's
+  original build) failed against the ported logic. Fixed in both
+  `compute_breakdown` and `Breakdown.kt` — `bool(standalone_raw)` /
+  `!= null && != 0.0`, matching `axle_count`'s existing pattern.
+- **A third real bug found via manual on-device verification, not any
+  automated test**: `BreakdownRow`'s progress bar only passed `color` to
+  `LinearProgressIndicator`, not `trackColor` — Material3's default track
+  color is theme-derived, not based on `color`, so the empty portion of
+  every insufficient row's bar (always 0%, i.e. all track) rendered a
+  fixed green regardless of tone. Invisible for a normal row (mostly
+  covered by the colored fill), glaring on a real device for a blank rig.
+  Fixed by setting `trackColor` explicitly.
+- One golden-vector case needed re-tagging: `standalone_without_hitched_falls_back_to_axle_estimate`'s
+  "Tow Vehicle Total (GVWR)" row expectation also depends on
+  `predictive_truck_estimate` (Python's oracle bakes both capabilities
+  into this input combination together, since Python already has the
+  predictive branch) — re-tagged `requires: ["predictive_truck_estimate"]`,
+  so it's correctly skipped until Round 2, not a false failure.
+- Verified: `./gradlew testDebugUnitTest` (30 tests) and
+  `./gradlew connectedDebugAndroidTest` (33 tests, real emulator) both
+  fully green; `uv run pytest -q` 86/86. Manual on-device walkthrough of
+  a fully blank rig confirmed "Not Enough Information" renders correctly
+  end to end (screenshotted, not just asserted).
+  **Emulator gotcha hit and fixed**: a background-launched emulator
+  reported `sys.boot_completed=1` and `adb devices` showed `device`
+  almost immediately, but the screen was actually asleep the whole time —
+  every instrumented test failed with "No compose hierarchies found in
+  the app" (Compose can't build a semantics tree with nothing rendering),
+  a misleading error that looked like a code/config problem but was
+  purely an idle/display-off emulator. `adb shell input keyevent
+  KEYCODE_WAKEUP` alone wasn't durable (the screen went back to sleep
+  during the ~2.5 minute instrumented test run despite an extended
+  `screen_off_timeout` setting); `adb shell svc power stayon true`
+  (stay-awake-while-charging, always true for an emulator) fixed it for
+  good. Worth remembering if this ever needs reproducing.
+- Golden-vector status after Round 1: **8 of 10 cases fully supported**
+  by the Kotlin port (was 4 of 9 before Round 1 — the standalone-zero fix
+  above didn't change this count, it was caught by `BreakdownTest.kt`,
+  not the golden vectors). The 2 still skipped both need
+  `predictive_truck_estimate` — Round 2.
+
 **Not done yet**: `web/` retrofit. Web has no test infrastructure
 installed at all yet (no Vitest, no test script in `package.json`) —
 discussed 2026-08-21 but not started; the plan (not yet written down

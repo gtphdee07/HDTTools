@@ -49,4 +49,16 @@ class BreakdownRowTest {
         composeRule.onNodeWithText("Trailer Total (GVWR)").performClick()
         composeRule.onNodeWithText("Trailer Total (GVWR)").assertIsDisplayed()
     }
+
+    @Test
+    fun insufficientRowRendersWithoutCrashingAndShowsZeroPercent() {
+        val item = BreakdownItem(
+            label = "Front Axle (Steer)", tone = Tone.INSUFFICIENT,
+            actual = 0.0, limit = 6000.0, margin = 6000.0, pct = 0, note = null,
+        )
+        composeRule.setContent { BreakdownRow(item) }
+
+        composeRule.onNodeWithText("Front Axle (Steer)").assertIsDisplayed()
+        composeRule.onNodeWithText("0%").assertIsDisplayed()
+    }
 }

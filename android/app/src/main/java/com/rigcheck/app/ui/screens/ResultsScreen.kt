@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,11 +27,16 @@ import com.rigcheck.app.domain.Tone
 import com.rigcheck.app.domain.VerdictInfo
 import com.rigcheck.app.ui.components.BreakdownRow
 import com.rigcheck.app.ui.theme.DangerRed
+import com.rigcheck.app.ui.theme.DuskMauve
 import com.rigcheck.app.ui.theme.TrailGreen
 
 @Composable
 fun ResultsScreen(breakdown: List<BreakdownItem>, verdict: VerdictInfo) {
-    val toneColor = if (verdict.tone == Tone.SUCCESS) TrailGreen else DangerRed
+    val toneColor = when (verdict.tone) {
+        Tone.SUCCESS -> TrailGreen
+        Tone.WARNING -> DangerRed
+        Tone.INSUFFICIENT -> DuskMauve
+    }
 
     Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
         Text("Results", style = MaterialTheme.typography.headlineMedium)
@@ -44,7 +50,11 @@ fun ResultsScreen(breakdown: List<BreakdownItem>, verdict: VerdictInfo) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                imageVector = if (verdict.tone == Tone.SUCCESS) Icons.Filled.CheckCircle else Icons.Filled.Warning,
+                imageVector = when (verdict.tone) {
+                    Tone.SUCCESS -> Icons.Filled.CheckCircle
+                    Tone.WARNING -> Icons.Filled.Warning
+                    Tone.INSUFFICIENT -> Icons.Filled.Info
+                },
                 contentDescription = null,
                 tint = toneColor,
                 modifier = Modifier.size(36.dp),

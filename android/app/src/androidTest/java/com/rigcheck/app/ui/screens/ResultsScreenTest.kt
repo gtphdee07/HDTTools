@@ -43,4 +43,24 @@ class ResultsScreenTest {
         composeRule.onNodeWithText("Combined Rig Weight").assertIsDisplayed()
         composeRule.onNodeWithText("108%").assertIsDisplayed()
     }
+
+    @Test
+    fun allInsufficientRendersNotEnoughInformationVerdict() {
+        val breakdown = listOf(item("Front Axle (Steer)", Tone.INSUFFICIENT, 0))
+        composeRule.setContent { ResultsScreen(breakdown = breakdown, verdict = verdictFor(breakdown)) }
+
+        composeRule.onNodeWithText("Not Enough Information").assertIsDisplayed()
+        composeRule.onNodeWithText("Front Axle (Steer)").assertIsDisplayed()
+    }
+
+    @Test
+    fun mixedInsufficientAndPassingRendersPartiallyCheckedVerdict() {
+        val breakdown = listOf(
+            item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85),
+            item("Trailer Total (GVWR)", Tone.INSUFFICIENT, 0),
+        )
+        composeRule.setContent { ResultsScreen(breakdown = breakdown, verdict = verdictFor(breakdown)) }
+
+        composeRule.onNodeWithText("Partially Checked").assertIsDisplayed()
+    }
 }

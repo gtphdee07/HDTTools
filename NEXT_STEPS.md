@@ -1116,12 +1116,40 @@ varies between the three. `npm test`: 25/25 (was 7). `npm run build`
 still clean. This closes both of `web/TESTING.md`'s remaining function-
 test gaps from the retrofit's original plan order.
 
-**Not done yet**: dedicated component-level tests for `ReviewStep`/
-`UploadStep`/`ResultsStep` (currently only indirect coverage via the
-interaction suite). Also reconciling this Minor/Major model with
+**2026-08-21 (same day) — ReviewStep/UploadStep/ResultsStep component
+tests written, plus a real harness gotcha found and fixed.** New
+`src/wizard/UploadStep.test.tsx` (8 cases), `src/wizard/ReviewStep.test.tsx`
+(10 cases), `src/wizard/ResultsStep.test.tsx` (7 cases) — all fake props,
+no `App`/network involved, the same Module category Android's screen-level
+Compose tests (`ChooserScreenTest` etc.) already use. Notably:
+`UploadStep`'s scale-vs-non-scale branch (the extra hint text, second
+skip button, and first skip button's label swap) is exercised for the
+first time; `ReviewStep`'s scan-loading ("Reading…", disabled) and
+scan-error states are new coverage `App.interaction.test.tsx` never hit
+(it only exercises the resolved-scan path); `ResultsStep`'s
+estimated-figures-notice show/hide is new too, since
+`App.interaction.test.tsx`'s `RESULT` fixture is always non-estimated.
+
+**Real gotcha, found writing `UploadStep.test.tsx`**: React Testing
+Library's automatic `afterEach(cleanup)` only self-registers when it
+detects a global `afterEach` — this project's `vite.config.ts` doesn't
+set `test.globals: true`, so without an explicit `cleanup()` call, every
+test's render stayed mounted, and later tests in the same file matched
+stale elements from earlier ones (`getByRole`/`getByText` "multiple
+elements found" errors, not silent false-passes - the failure mode was
+loud, just initially confusing). `App.interaction.test.tsx` had
+already worked around this per-file with its own `afterEach(cleanup)`;
+fixed properly this time by moving `afterEach(cleanup)` into
+`src/setupTests.ts` once, and removed the now-redundant per-file copies.
+`npm test`: 51/51 (was 25). `npm run build` still clean. This was the
+last item on `web/TESTING.md`'s known-gaps list — every gap identified
+when the retrofit started 2026-08-21 is now closed.
+
+**Not done yet**: reconciling this Minor/Major model with
 `android/TESTING.md`'s and `workers/scan-proxy/TESTING.md`'s existing
 sanity/daily/weekly/release tiers (a different, earlier scheme, still
-accurate for those two platforms as written).
+accurate for those two platforms as written) — the one item left on the
+list from the "what's next" discussion this session.
 
 Original sketch, superseded by `TESTING.md` but kept here for history:
 

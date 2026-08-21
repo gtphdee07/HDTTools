@@ -1,6 +1,6 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import * as api from './api';
 import type { CreateBreakdownResult } from './api';
@@ -14,13 +14,10 @@ import type { RecentRig } from './types';
 // calls (extract*/createBreakdown) are mocked; localStorage/
 // sessionStorage are the real jsdom implementations, matching how
 // recentRigs.ts and the disclaimer-acknowledged flag actually persist.
+// DOM cleanup between tests is centralized in setupTests.ts.
 
 vi.mock('./api');
 const mockedApi = vi.mocked(api);
-
-afterEach(() => {
-  cleanup();
-});
 
 beforeEach(() => {
   localStorage.clear();

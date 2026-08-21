@@ -140,10 +140,13 @@ real `RigCheckNavHost` + `RigCheckViewModel`, offline via
   — the unmodified AGP template test, left in place; harmless, not part
   of this suite's real coverage.
 - **Predictive standalone-only truck-side estimate** — the one remaining
-  capability `BreakdownGoldenVectorTest.kt` skips as of 2026-08-21 (not
-  built yet, "Round 2" in `NEXT_STEPS.md`). Its golden-vector case
-  already exists in `test-vectors/breakdown_cases.json`
-  (`predictive_truck_estimate`), currently skipped like any other
-  unsupported case — the plan is to un-skip it deliberately once its
-  test coverage is written, before the feature itself is implemented, so
-  it fails informatively rather than being silently absent.
+  capability the Kotlin port doesn't have yet ("Round 2" in
+  `NEXT_STEPS.md`). **Deliberately red as of 2026-08-21, not skipped**:
+  `predictive_truck_estimate` was added to `BreakdownGoldenVectorTest.kt`'s
+  `SUPPORTED_CAPABILITIES` and `BreakdownTest.kt` gained a new case
+  (`tow vehicle total estimates from standalone weight when no hitched
+  reading exists`) *before* `computeBreakdown` gained the branch itself —
+  both currently fail with clean, informative diffs (not crashes/compile
+  errors), TDD-style: tests written and landed first, against an
+  already-agreed spec (Python's existing behavior), implementation to
+  follow. `./gradlew testDebugUnitTest`: 31 tests, exactly these 2 fail.

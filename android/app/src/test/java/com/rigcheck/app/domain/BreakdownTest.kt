@@ -116,10 +116,11 @@ class BreakdownTest {
     }
 
     // Fixed 2026-08-21 - see NEXT_STEPS.md and
-    // test-vectors/breakdown_cases.json's live_bug_standalone_without_hitched
-    // case. A stand-alone reading with no real hitched (steer+drive)
-    // reading used to be treated the same as a real hitched+standalone
-    // pair, silently producing the wrong trailer total.
+    // test-vectors/breakdown_cases.json's
+    // standalone_without_hitched_falls_back_to_axle_estimate case. A
+    // stand-alone reading with no real hitched (steer+drive) reading used
+    // to be treated the same as a real hitched+standalone pair, silently
+    // producing the wrong trailer total.
 
     @Test
     fun `standalone weight without a hitched reading falls back to the axle estimate, not the exact-tongue-weight math`() {
@@ -163,5 +164,25 @@ class BreakdownTest {
         val row = item(items, "Trailer Total (GVWR)")
         assertEquals("13,388 lb", formatLb(row.actual))
         assertTrue(row.note!!.contains("85% of actual trailer weight"))
+    }
+
+    // Round 2 (not built yet) - predictive standalone-only truck-side
+    // estimate, mirroring tests/test_breakdown.py's
+    // test_truck_total_estimates_from_standalone_weight_when_no_hitched_reading.
+    // Written ahead of the feature on purpose (see NEXT_STEPS.md and
+    // BreakdownGoldenVectorTest.kt's SUPPORTED_CAPABILITIES comment) -
+    // EXPECTED TO FAIL until computeBreakdown gains this branch. When it
+    // does, this test should pass with no changes.
+
+    @Test
+    fun `tow vehicle total estimates from standalone weight when no hitched reading exists`() {
+        // No scale data at all -> trailer total falls to the GVWR-fallback
+        // estimate (12,500) -> tongue weight estimate = 12,500 * 0.20 = 2,500
+        // -> truck total = 6,000 (standalone) + 2,500 = 8,500.
+        val truck = TRUCK.copy(standaloneWeightLb = 6000.0)
+        val items = computeBreakdown(truck, TRAILER, ScaleTicket())
+        val row = item(items, "Tow Vehicle Total (GVWR)")
+        assertEquals(Tone.SUCCESS, row.tone)
+        assertEquals("8,500 lb", formatLb(row.actual))
     }
 }

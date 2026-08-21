@@ -32,10 +32,21 @@ import org.junit.Test
 
 // Update this set as the Kotlin port gains capabilities - see each
 // case's "requires" in the JSON file for what's still gated.
+//
+// "predictive_truck_estimate" is listed here DELIBERATELY AHEAD OF THE
+// FEATURE ITSELF (Round 2 - see NEXT_STEPS.md) - computeBreakdown has no
+// standalone-only truck-side estimate branch yet, so the two cases
+// needing it (predictive_truck_estimate,
+// standalone_without_hitched_falls_back_to_axle_estimate) now run for
+// real instead of being skipped, and are EXPECTED TO FAIL until that
+// branch is implemented. This is intentional red, written before the
+// code that makes it green - once the branch lands, these failures
+// should disappear with no changes needed here.
 private val SUPPORTED_CAPABILITIES = setOf(
     "insufficient_tone",
     "gvwr_fallback_trailer_estimate",
     "adjustable_pin_weight_pct",
+    "predictive_truck_estimate",
 )
 
 private fun findVectorsFile(): File {

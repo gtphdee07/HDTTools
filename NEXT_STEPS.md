@@ -965,6 +965,42 @@ reclassification flagged in the plan and approved). UI: `BreakdownRow`/
   not the golden vectors). The 2 still skipped both need
   `predictive_truck_estimate` — Round 2.
 
+**2026-08-21 (same day) — Round 2 tests written and landed red, on
+purpose.** Per your TDD request: wrote and committed the predictive
+standalone-only truck-estimate tests *before* the feature itself, so
+implementation starts from a known-red state against an already-agreed
+spec rather than a blank page. `predictive_truck_estimate` moved into
+`BreakdownGoldenVectorTest.kt`'s `SUPPORTED_CAPABILITIES` (so its case,
+and `standalone_without_hitched_falls_back_to_axle_estimate`'s — which
+also needs it — run for real instead of skipping); `BreakdownTest.kt`
+gained a new case mirroring `tests/test_breakdown.py`'s
+`test_truck_total_estimates_from_standalone_weight_when_no_hitched_reading`.
+Confirmed both fail with clean `ComparisonFailure`/`AssertionError` diffs
+(`expected:<success> but was:<insufficient>`), not crashes or compile
+errors — `./gradlew testDebugUnitTest`: 31 tests, exactly these 2 red.
+No production code touched this round; `computeBreakdown` still lacks
+the branch. **UI tests deliberately not added** — a Compose test
+referencing a not-yet-existing UI state/component would fail to
+*compile*, not just fail an assertion (a real limit of TDD against a
+statically-typed UI framework, flagged before starting); those land
+alongside their composables when the feature itself is built, not ahead
+of them. `uv run pytest -q` unaffected (86/86, no Python changes).
+
+**Next, whenever picked up**: implement `computeBreakdown`'s
+standalone-only truck-side branch (mirrors `breakdown.py`'s already-
+built `elif have_standalone:` branch — see that file for the exact
+formula) — the two red tests above should go green with no changes to
+themselves. Then the UI half: an `estimated`-equivalent flag/legal
+disclaimer notice (Web/Streamlit precedent: `PredictiveEstimateNotice.tsx`/
+`PREDICTIVE_ESTIMATE_NOTICE`), a tow-vehicle-only-ticket scan entry point
+on `TruckTagEntryScreen` (confirmed no `scan-proxy` change needed — the
+existing `scale_ticket` doc type already extracts
+`steer_axle_lb`/`drive_axle_lb`/`gross_weight_lb`; Android would compute
+`standalone_weight_lb` client-side from the scan result, exactly like
+Web's `scanStandaloneTicket` in `App.tsx`), and an adjustable pin-weight-%
+control (Round 1 already added the `pinWeightPct` parameter/plumbing;
+only the UI control itself is missing).
+
 **Not done yet**: `web/` retrofit. Web has no test infrastructure
 installed at all yet (no Vitest, no test script in `package.json`) —
 discussed 2026-08-21 but not started; the plan (not yet written down

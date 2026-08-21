@@ -862,18 +862,62 @@ contract, and the OCR-output-keys-vs-Streamlit's-`FIELDS`-dict contract —
 both lower-risk (a mismatch shows up as a `None` field, not silently
 wrong math, unlike the breakdown case). `uv run pytest -q`: 75/75.
 
-**Not done yet**: `web/` and Android retrofits. Web has no test
-infrastructure installed at all yet (no Vitest, no test script in
-`package.json`) — discussed 2026-08-21 but not started; the plan
-(not yet written down anywhere durable) is Vitest + React Testing
-Library, prioritizing interaction tests for `App.tsx`'s ~10 handlers
-sharing one `wizard` state object (the same shared-mutable-state shape
-as the Streamlit bug above, just via React state instead of
-`st.session_state`), then function tests for `recentRigs.ts`/`api.ts`,
-then an inter-module interface fixture shared between `test_api.py` and
-a new Web test for the `/api/breakdown` request/response contract. Also
-reconciling this Minor/Major model with `android/TESTING.md`'s and
-`workers/scan-proxy/TESTING.md`'s existing sanity/daily/weekly/release
+**2026-08-21 (same day) — shared Python/Kotlin golden vectors built, and
+a real live bug found on Android.** Checking how far `Breakdown.kt`
+(Android's hand-port of `compute_breakdown`/`verdict_for`) had actually
+drifted, before building the shared-vector infrastructure `TESTING.md`
+calls for, turned up more than expected: **none** of the 2026-08-19–
+2026-08-20 feature arc made it to Kotlin — no adjustable `pinWeightPct`
+(still hardcodes the old `DEFAULT_AXLE_TO_TOTAL_RATIO = 0.8`), no
+`INSUFFICIENT` tone, `verdictFor` only ever returns pass/fail (no
+partial/insufficient), no `estimated` field, no predictive standalone-
+only truck-side estimate branch. **Worse — a real, live bug**: Kotlin's
+existing standalone-weight branch has the *exact* bug fixed in Python
+this session (`standaloneProvided` doesn't check whether a real hitched
+reading also exists), so a tow-vehicle-alone reading with no hitched
+scale data still silently produces the wrong trailer total on Android
+today.
+
+Built `test-vectors/breakdown_cases.json` (10 cases, snake_case fields,
+rounded-whole-number `actual_lb`/`limit_lb` — not exact doubles or
+formatted strings, since Python only exposes formatted display strings
+and Kotlin deliberately keeps raw unrounded numbers, formatting only at
+the UI layer; this tests the math, not presentation) — shared by
+`tests/test_breakdown_golden_vectors.py` (Python, all 10 pass — it's the
+source of truth) and
+`android/.../domain/BreakdownGoldenVectorTest.kt` (Kotlin). Each case
+declares a `requires` list; Kotlin's runner skips (`Assume`, not a
+silent pass) anything needing a capability it doesn't have, and prints a
+count every run: **4 of 9 fully supported, 5 skipped by name**. The 10th
+case — the live bug — was deliberately left unskipped per your explicit
+call: it fails for real, `expected:<14225> but was:<11380>`, an honest,
+reproducible proof the bug is live on the shipped Android app, not just
+a missing feature. Confirmed via a real `./gradlew testDebugUnitTest`
+run (not just `test`, which isn't a valid task name for this Android
+module — use the variant-specific task). Full Android suite after: 22
+tests, exactly that 1 expected failure, nothing else regressed.
+
+**Deliberately not done as part of this**: fixing `Breakdown.kt` itself
+(porting the missing features, fixing the live bug) — this was
+infrastructure only, per your choice to build the mechanism before doing
+the port. That's real, separate feature/bugfix work, not yet started or
+scheduled.
+
+**Not done yet**: `web/` retrofit. Web has no test infrastructure
+installed at all yet (no Vitest, no test script in `package.json`) —
+discussed 2026-08-21 but not started; the plan (not yet written down
+anywhere durable) is Vitest + React Testing Library, prioritizing
+interaction tests for `App.tsx`'s ~10 handlers sharing one `wizard`
+state object (the same shared-mutable-state shape as the Streamlit bug
+above, just via React state instead of `st.session_state`), then
+function tests for `recentRigs.ts`/`api.ts`, then an inter-module
+interface fixture shared between `test_api.py` and a new Web test for
+the `/api/breakdown` request/response contract — specifically starting
+with the `pin_weight_pct` units convention (whole number 15–25 on the
+frontend vs. a 0.15–0.25 fraction in Python), the same "silently wrong
+math, not a `None` field" risk shape this Android work just illustrated
+again. Also reconciling this Minor/Major model with `android/TESTING.md`'s
+and `workers/scan-proxy/TESTING.md`'s existing sanity/daily/weekly/release
 tiers (a different, earlier scheme, still accurate for those two
 platforms as written).
 

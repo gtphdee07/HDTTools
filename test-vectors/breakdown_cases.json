@@ -1,0 +1,196 @@
+{
+  "_readme": "Shared golden test vectors for compute_breakdown/verdict_for (Python, source of truth) and its Kotlin hand-port (android/.../domain/Breakdown.kt). See TESTING.md's cross-platform section and tests/test_breakdown_golden_vectors.py. Field names are snake_case, matching the /api/breakdown wire convention - the Kotlin loader maps to its own camelCase data classes. actual_lb/limit_lb are rounded whole numbers (Python parses its actualLabel/limitLabel strings back to int; Kotlin rounds its raw Double) - this tests the math, not display formatting, which each platform already tests separately. 'requires' lists capability tags a case depends on that Kotlin's current port doesn't have; Kotlin's test runner skips any case whose requires isn't fully supported today, EXCEPT live_bug_standalone_without_hitched, which is deliberately left unskipped and is expected to fail - see that case's own comment.",
+  "cases": [
+    {
+      "name": "baseline_all_real_readings",
+      "requires": [],
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+      "scale": {"steer_axle_lb": 5620, "drive_axle_lb": 9040, "trailer_axle_lb": 11380, "gross_weight_lb": 26040},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "fail",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 14225, "limit_lb": 12500, "pct": 100, "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "custom_axle_count",
+      "requires": [],
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000, "axle_count": 3},
+      "scale": {"steer_axle_lb": 5620, "drive_axle_lb": 9040, "trailer_axle_lb": 11380, "gross_weight_lb": 26040},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "fail",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 18000, "pct": 63, "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 14225, "limit_lb": 12500, "pct": 100, "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "tongue_weight_from_standalone",
+      "requires": [],
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500, "standalone_weight_lb": 13000},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+      "scale": {"steer_axle_lb": 5620, "drive_axle_lb": 9040, "trailer_axle_lb": 11380, "gross_weight_lb": 26040},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "fail",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 13040, "limit_lb": 12500, "pct": 100, "estimated": false},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "tongue_weight_clamps_at_zero",
+      "requires": [],
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500, "standalone_weight_lb": 20000},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+      "scale": {"steer_axle_lb": 5620, "drive_axle_lb": 9040, "trailer_axle_lb": 11380, "gross_weight_lb": 26040},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "fail",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 11380, "limit_lb": 12500, "pct": 91, "estimated": false},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "custom_pin_weight_pct",
+      "requires": ["adjustable_pin_weight_pct"],
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+      "scale": {"steer_axle_lb": 5620, "drive_axle_lb": 9040, "trailer_axle_lb": 11380, "gross_weight_lb": 26040},
+      "pin_weight_pct": 0.15,
+      "expected": {
+        "verdict_status": "fail",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 13388, "limit_lb": 12500, "pct": 100, "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "gvwr_fallback_no_scale_data",
+      "requires": ["insufficient_tone", "gvwr_fallback_trailer_estimate"],
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+      "scale": {},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "partial",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 6000, "pct": 0, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 9500, "pct": 0, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 14000, "pct": 0, "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 12000, "pct": 0, "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 12500, "limit_lb": 12500, "pct": 100, "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 26500, "pct": 0, "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "blank_rig_insufficient",
+      "requires": ["insufficient_tone"],
+      "truck": {},
+      "trailer": {},
+      "scale": {},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "insufficient",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "estimated": false},
+          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "predictive_truck_estimate",
+      "requires": ["insufficient_tone", "gvwr_fallback_trailer_estimate", "predictive_truck_estimate"],
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500, "standalone_weight_lb": 6000},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+      "scale": {},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "partial",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 6000, "pct": 0, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 9500, "pct": 0, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 8500, "limit_lb": 14000, "pct": 61, "estimated": true},
+          {"label": "Trailer Axle(s)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 12000, "pct": 0, "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 12500, "limit_lb": 12500, "pct": 100, "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 26500, "pct": 0, "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "partial_mixed_tones",
+      "requires": ["insufficient_tone"],
+      "truck": {"gvwr_lb": 16000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
+      "trailer": {},
+      "scale": {"steer_axle_lb": 5620, "drive_axle_lb": 9040, "trailer_axle_lb": 11380, "gross_weight_lb": 26040},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "partial",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 14660, "limit_lb": 16000, "pct": 92, "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "insufficient", "actual_lb": 11380, "limit_lb": 0, "pct": 0, "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "insufficient", "actual_lb": 14225, "limit_lb": 0, "pct": 0, "estimated": false},
+          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 26040, "limit_lb": 16000, "pct": 0, "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "live_bug_standalone_without_hitched",
+      "requires": [],
+      "_note": "Deliberately NOT skipped even though it contains insufficient-tone rows Kotlin can't represent - Kotlin's test routes this one case to a dedicated, hand-written assertion (not the generic full-item loop) checking only the Trailer Total (GVWR) row, which is expected to FAIL against Kotlin's current code: Kotlin's standaloneProvided branch doesn't check whether a real hitched (steer+drive) reading also exists, so it silently computes the wrong trailer total here (11,380, the unadjusted axle reading) instead of the correct 14,225 estimate - the exact bug fixed in Python's compute_breakdown this session, still live in Breakdown.kt.",
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500, "standalone_weight_lb": 10000},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+      "scale": {"trailer_axle_lb": 11380},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "fail",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 6000, "pct": 0, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 9500, "pct": 0, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 12845, "limit_lb": 14000, "pct": 92, "estimated": true},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 14225, "limit_lb": 12500, "pct": 100, "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 26500, "pct": 0, "estimated": false}
+        ]
+      }
+    }
+  ]
+}

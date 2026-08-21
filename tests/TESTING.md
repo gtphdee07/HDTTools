@@ -8,7 +8,7 @@ this suite predates the categories below; this is the first pass at
 labeling it, not a rewrite. See `NEXT_STEPS.md` for the narrative history
 of individual features/bugs each test file guards against.
 
-`uv run pytest -q` — currently 75 tests, all passing, no markers/tiers
+`uv run pytest -q` — currently 85 tests, all passing, no markers/tiers
 wired up yet (this repo has no CI; everything runs manually, matching the
 root `TESTING.md`'s "session regression" model rather than a cadence).
 
@@ -17,6 +17,7 @@ root `TESTING.md`'s "session regression" model rather than a cadence).
 | File | Category | Covers |
 |---|---|---|
 | `test_breakdown.py` | Module | `compute_breakdown`/`verdict_for`'s full public surface: axle-count/tongue-weight/pin-weight-pct math, the `estimated` flag, all four verdict tones, error-shaped edge cases (clamp-at-zero). |
+| `test_breakdown_golden_vectors.py` | **Cross-platform interface** | Runs `compute_breakdown`/`verdict_for` against `test-vectors/breakdown_cases.json`, the same cases the Kotlin port's `BreakdownGoldenVectorTest.kt` checks itself against — see the root `TESTING.md`'s cross-platform section. |
 | `test_api.py` | Module + **Interface** | FastAPI routing/schema validation with OCR mocked. The four `test_breakdown_endpoint_*` cases and the new `test_breakdown_endpoint_response_preserves_the_estimated_field` are genuinely interface tests — they exercise the real (unmocked) `main.py` → `breakdown.py` → `schemas.py` chain, not a mock of any of them. |
 | `test_scale_ticket_ocr_parsing.py` | Function | `_parse_fields`/`_find_str`/`_find_num` against transcribed OCR text, including a real (garbled) tow-vehicle-only ticket transcription. |
 | `test_truck_tag_ocr_parsing.py` | Function | `_parse_fields`/`_kg_lb` against transcribed OCR text, including a real garbled "LB read as 1B" regression case. |
@@ -50,8 +51,8 @@ root `TESTING.md`'s "session regression" model rather than a cadence).
   `streamlit_app/app.py`'s `FIELDS` dict (`fields.py`) expects to read via
   `.get()` — a silent-`None` failure mode, same shape as the truck/trailer
   API case above, just on the Streamlit side instead of the FastAPI side.
-- **Cross-language, not yet started**: `compute_breakdown`/`verdict_for`'s
-  Kotlin port (`android/.../Breakdown.kt`) has no shared golden-vector
-  file with this suite — see the root `TESTING.md`'s cross-platform
-  section. Nothing here would catch the Kotlin port silently drifting
-  from a future Python-side change.
+- ✅ **Closed 2026-08-21**: `test_breakdown_golden_vectors.py` (new)
+  loads `test-vectors/breakdown_cases.json`, shared with the Kotlin port's
+  own `BreakdownGoldenVectorTest.kt` — see the root `TESTING.md`'s
+  cross-platform section and `NEXT_STEPS.md` for what running it against
+  Kotlin found.

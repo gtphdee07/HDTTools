@@ -125,13 +125,27 @@ underlying operation is conceptually the same.
 **Preferred when it's genuinely the same operation**: define one shared
 set of input → expected-output (and expected-error) cases once, and have
 each platform's own test runner consume that same set against its own
-implementation. This is the mechanism that would actually catch the
-Kotlin port silently drifting from a future `compute_breakdown` change —
-today nothing does; `BreakdownTest.kt`'s cases were ported by hand from
-`tests/test_breakdown.py` once, not kept in sync automatically. **Not yet
-built** — the shared-vector file/format doesn't exist yet. Worth doing
-whenever `compute_breakdown` next changes in a way that should also move
-the Kotlin port.
+implementation.
+
+**Built 2026-08-21** for `compute_breakdown`/`verdict_for`:
+`test-vectors/breakdown_cases.json`, consumed by
+`tests/test_breakdown_golden_vectors.py` (Python) and
+`android/.../domain/BreakdownGoldenVectorTest.kt` (Kotlin). Each case
+declares a `requires` list of capabilities it depends on; Kotlin's runner
+skips (not silently passes) any case needing something its current port
+doesn't have — running it today reports **4 of 9 cases fully supported**,
+the rest skipped by name (adjustable pin-weight %, insufficient/partial
+verdict tiers, the GVWR-fallback and predictive-estimate branches — none
+of the 2026-08-19–2026-08-20 feature arc made it to Kotlin). One more
+case, deliberately unskipped, proved something worse than a missing
+feature: Kotlin's existing standalone-weight branch has the *same real
+bug* fixed in Python this session (no check that a real hitched reading
+exists before using it) — that case fails on purpose,
+`expected:<14225> but was:<11380>`, an honest, reproducible proof the bug
+is live on the shipped Android app. See `NEXT_STEPS.md` for the full
+writeup. Porting the missing features/fixing the bug in Kotlin itself is
+separate, not-yet-started work — this only built the mechanism that makes
+the gap visible and testable.
 
 ## Status of this repo against the framework
 

@@ -14,6 +14,10 @@ This project uses `uv` for Python and dependency management. Do not use standard
 ## Coding Preferences
  - The preference is for application code to be constructed using Python libraries, versus Claude skills. It is fine to use skills in Chat to create proofs of concepts, or to create test benches against the Python code, but the application should not require an ANTHROPIC_API_KEY to execute.
   - All coding modules should also have an automated test for each function.
+    See `TESTING.md` for the full methodology this implies: function/
+    interaction/module/interface test categories, and the Minor/Major
+    regression-scoping rules for deciding which suites a change needs to
+    run.
 
 ## System Tool Installs
 

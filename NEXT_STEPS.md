@@ -840,14 +840,20 @@ this is a fully separate concern from Play Store distribution:
   eventual Play Store release) are fully independent until the user
   decides to actually publish.
 
-## 📐 Idea, not started: tiered test strategy (sanity → regression → full)
+## 📐 Tiered test strategy: methodology decided 2026-08-20, retrofit not started
 
-Raised 2026-08-15, deliberately parked — **not being worked on now**, pick
-up whenever there's time (e.g. while waiting on account setup/approval
-lead times elsewhere). At 50+ pytest tests and growing (plus 20 more in
-`workers/scan-proxy/`, a third runner), it's worth structuring testing
-the way hardware/digital design verification does, rather than just
-"run everything, every time":
+Raised 2026-08-15 as a parked idea; **the methodology itself was decided
+2026-08-20 and is now written down in `TESTING.md`** — a Minor/Major
+regression-scoping model (test scope driven by what a change actually
+touches: new library or interface change = Major, internal-only = Minor),
+replacing the sanity/regression/full framing originally sketched below.
+**Not done yet**: retroactively categorizing this repo's existing tests
+against the new framework, and reconciling it with `android/TESTING.md`'s
+and `workers/scan-proxy/TESTING.md`'s existing sanity/daily/weekly/release
+tiers (a different, earlier scheme, still accurate for those two
+platforms as written).
+
+Original sketch, superseded by `TESTING.md` but kept here for history:
 
 - **Sanity** — a small, fast set run on every change to catch major
   breakage.
@@ -857,25 +863,17 @@ the way hardware/digital design verification does, rather than just
 - **Full/"weekend" regression** — every corner case, every module,
   including integrations — run periodically rather than on every change.
 
-The idea: a change to module A runs A's sanity, then integration sanity,
-then a regression depth appropriate to the change's size — not
-necessarily the full suite every time. Periodic (e.g. weekly) runs cover
-sanity everywhere plus full regression per module and top-level.
+**Open questions from the original framing** (raised 2026-08-15):
 
-**Open questions to resolve before this becomes an actionable plan**
-(raised when this was first discussed, not yet answered):
-
-1. **What "module" means here.** Hardware verification maps cleanly onto
-   design blocks; this codebase's boundaries are fuzzier — candidates:
-   OCR parsing (3 readers), breakdown/verdict math, the API layer, web
-   frontend, Streamlit frontend, `workers/scan-proxy/`, eventually
-   Android. Confirm the right granularity.
-2. **What concretely distinguishes the tiers.** Today's full 54-test
-   pytest suite already runs in ~2 seconds (mocked-everything) — by
-   hardware-verification standards that's arguably already "sanity."
-   Likely mapping: sanity = today's suite; regression = broader
-   parametrized cases (more synthetic label variants); full = the real
-   `ExampleDocs/` photo runs (slower — real Tesseract OCR). Confirm.
+1. **What "module" means here — partially resolved.** `TESTING.md`
+   settles on module = file as the general rule, but doesn't enumerate
+   this repo's specific boundaries (e.g. whether the 3 OCR readers count
+   as one module or three is still an open call whenever this gets
+   applied for real).
+2. ✅ **What concretely distinguishes the tiers — resolved.** See
+   `TESTING.md`'s Minor/Major criteria: new library or an interface/
+   parameter/return-shape change triggers Major; internal-only logic
+   changes stay Minor.
 3. **Whether "full" ever calls the real Claude API.** The vision-based
    readers (and eventually Android's scan feature) could be tested
    end-to-end against the live Anthropic API — but that costs real money

@@ -133,19 +133,24 @@ implementation.
 `android/.../domain/BreakdownGoldenVectorTest.kt` (Kotlin). Each case
 declares a `requires` list of capabilities it depends on; Kotlin's runner
 skips (not silently passes) any case needing something its current port
-doesn't have — running it today reports **4 of 9 cases fully supported**,
-the rest skipped by name (adjustable pin-weight %, insufficient/partial
-verdict tiers, the GVWR-fallback and predictive-estimate branches — none
-of the 2026-08-19–2026-08-20 feature arc made it to Kotlin). One more
-case, deliberately unskipped, proved something worse than a missing
-feature: Kotlin's existing standalone-weight branch has the *same real
-bug* fixed in Python this session (no check that a real hitched reading
-exists before using it) — that case fails on purpose,
-`expected:<14225> but was:<11380>`, an honest, reproducible proof the bug
-is live on the shipped Android app. See `NEXT_STEPS.md` for the full
-writeup. Porting the missing features/fixing the bug in Kotlin itself is
-separate, not-yet-started work — this only built the mechanism that makes
-the gap visible and testable.
+doesn't have. First run that day found real drift (4 of 9 cases
+supported, including a live bug — see `NEXT_STEPS.md` for that writeup);
+by the end of the same day's follow-up work, the Kotlin port had gained
+every missing capability and this file reports **10 of 10 cases fully
+supported** — full parity with Python.
+
+**Also built 2026-08-21**, a narrower fixture for a single risky
+convention rather than full input/output cases:
+`test-vectors/pin_weight_pct_contract.json`, consumed by
+`tests/test_api.py`'s `test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage`
+and `web/src/api.test.ts`. Every UI works in whole percentage points
+(15–25); `/api/breakdown`'s `pin_weight_pct` is the equivalent 0.15–0.25
+fraction, converted at each platform's own thin API-client boundary — a
+silently-wrong-math risk shape (right field, wrong units, no type error
+anywhere) rather than a missing-field one. This is a genuine interface
+test, not a golden-vector case: it only proves the *contract* (a whole
+number in, that same value ÷ 100 out) holds independently on each side of
+the boundary, not any particular breakdown math.
 
 ## Status of this repo against the framework
 

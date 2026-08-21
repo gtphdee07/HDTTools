@@ -1,0 +1,5 @@
+{
+  "_readme": "Shared interface-contract fixture for the /api/breakdown pin_weight_pct units convention. Every UI (Web's ReviewStep slider, Android's TruckTagEntryScreen slider) works in whole percentage points (15-25, default 20) since that's what a person reads off a physical slider. compute_breakdown/computeBreakdown, and the /api/breakdown request body itself, always work in the equivalent 0.15-0.25 fraction. Each UI's own thin conversion layer (Web's api.ts, Android's RigCheckViewModel) is the one place that divides by 100 before crossing the boundary - a change to that line, on either platform, is the exact silently-wrong-math risk this fixture exists to catch. Consumed by tests/test_api.py's pin-weight-pct contract test and web/src/api.test.ts's matching case - if this file's values ever change, update both.",
+  "ui_percent": 15,
+  "api_fraction": 0.15
+}

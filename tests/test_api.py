@@ -5,11 +5,18 @@ to run. The API is stateless (no persistence) — each platform keeps its
 own recent-rigs/history state locally, so there's nothing to isolate per
 test beyond the OCR mocks."""
 
+import json
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
 from hdttools.api import main
 from hdttools.models import TireSpec
+
+_PIN_WEIGHT_PCT_CONTRACT = json.loads(
+    (Path(__file__).resolve().parent.parent / "test-vectors" / "pin_weight_pct_contract.json").read_text()
+)
 
 
 @pytest.fixture
@@ -177,6 +184,55 @@ def test_breakdown_endpoint_reports_insufficient_status_for_a_blank_rig():
     assert body["verdictInfo"]["status"] == "insufficient"
     assert body["verdictInfo"]["headline"] == "Not Enough Information"
     assert all(item["tone"] == "insufficient" for item in body["breakdownItems"])
+
+
+def test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage():
+    # Interface-contract test, paired with web/src/api.test.ts's matching
+    # case via test-vectors/pin_weight_pct_contract.json. Both Web's
+    # ReviewStep slider and Android's TruckTagEntryScreen slider work in
+    # whole percentage points (15-25); this endpoint's pin_weight_pct is
+    # the 0.15-0.25 fraction each platform's own thin conversion layer
+    # (web/src/api.ts, RigCheckViewModel) divides by 100 to produce
+    # before calling here - nothing on the Python side enforces that
+    # conversion happened, so this test proves both halves: the fraction
+    # produces the documented math, AND sending the raw UI number
+    # unconverted produces a visibly, not silently, wrong result (dividing
+    # by a negative number), which is why the conversion actually matters.
+    ui_percent = _PIN_WEIGHT_PCT_CONTRACT["ui_percent"]
+    api_fraction = _PIN_WEIGHT_PCT_CONTRACT["api_fraction"]
+    assert api_fraction == ui_percent / 100
+
+    truck = {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500}
+    trailer = {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000}
+    scale = {
+        "steer_axle_lb": 5620, "drive_axle_lb": 9040,
+        "trailer_axle_lb": 11380, "gross_weight_lb": 26040,
+    }
+
+    with TestClient(main.app) as client:
+        correct = client.post(
+            "/api/breakdown",
+            json={"truck": truck, "trailer": trailer, "scale": scale, "pin_weight_pct": api_fraction},
+        )
+        unconverted = client.post(
+            "/api/breakdown",
+            json={"truck": truck, "trailer": trailer, "scale": scale, "pin_weight_pct": ui_percent},
+        )
+
+    correct_total = next(
+        i for i in correct.json()["breakdownItems"] if i["label"] == "Trailer Total (GVWR)"
+    )
+    unconverted_total = next(
+        i for i in unconverted.json()["breakdownItems"] if i["label"] == "Trailer Total (GVWR)"
+    )
+    # 11,380 / (1 - 0.15) = 13,388 - matches
+    # test_breakdown_endpoint_accepts_a_custom_pin_weight_pct's own math.
+    assert correct_total["actualLabel"] == "13,388 lb"
+    # 11,380 / (1 - 15) = 11,380 / -14 - a negative weight, not a subtly
+    # off number, so the mistake this test guards against would be
+    # obvious in the UI, not silently wrong.
+    unconverted_value = float(unconverted_total["actualLabel"].replace(",", "").split()[0])
+    assert unconverted_value < 0
 
 
 def test_breakdown_endpoint_response_preserves_the_estimated_field():

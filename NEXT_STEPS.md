@@ -1070,20 +1070,38 @@ flagged below, now locked down from the Web side. `npm test`: 6/6 (5 new
 classifies this suite the way `tests/TESTING.md`/`android/TESTING.md` do
 for their platforms.
 
-**Not done yet**: function tests for `recentRigs.ts`/`api.ts` in
+**2026-08-21 (same day) — pin_weight_pct inter-module interface fixture
+built.** New shared `test-vectors/pin_weight_pct_contract.json`
+(`{ui_percent: 15, api_fraction: 0.15}`), the same "one file, both
+languages derive their expected numbers from it" pattern as
+`breakdown_cases.json`, but for a single risky convention rather than
+full breakdown cases. Consumed by two new, explicitly paired tests: Python's
+`tests/test_api.py::test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage`
+(confirms `api_fraction == ui_percent / 100`, that the fraction produces
+the documented `13,388 lb` trailer total, AND that sending the raw
+unconverted `15` produces a visibly wrong *negative* weight - dividing by
+`1 - 15`- rather than a quietly-off one), and Web's new
+`src/api.test.ts` (mocks only `fetch`, so `api.ts`'s real
+`pin_weight_pct: pinWeightPct / 100` line runs - confirms calling
+`createBreakdown(..., 15)` sends `pin_weight_pct: 0.15` in the request
+body). This is a stronger check than `App.interaction.test.tsx`'s
+existing pin-weight test, which mocks `./api` entirely and so only proves
+`App.tsx` passes the raw number *to* `api.ts`, not that `api.ts` itself
+converts it correctly. `uv run pytest -q`: 87/87 (was 86). `npm test`:
+7/7 (was 6). `npm run build` still clean - JSON-imports the fixture
+directly (`import CONTRACT from '../../test-vectors/...json'`) rather
+than via Node's `fs`, since `tsconfig.app.json`'s `types: ["vite/client"]`
+doesn't include Node's ambient types and adding them project-wide felt
+like the wrong tradeoff for one test file.
+
+**Not done yet**: function tests for `recentRigs.ts`/rest of `api.ts` in
 isolation (currently covered only indirectly through the interaction
-suite's happy path); an inter-module interface fixture shared between
-`test_api.py` and a Web-side test for the `/api/breakdown` contract - the
-`pin_weight_pct` units convention (whole number 15–25 on the frontend vs.
-a 0.15–0.25 fraction in Python) is now asserted from the Web side, but
-nothing on the Python side asserts the matching expectation, the way
-`test_breakdown_golden_vectors.py` does for `compute_breakdown` itself;
-dedicated component-level tests for `ReviewStep`/`UploadStep`/
-`ResultsStep` (currently only indirect coverage via the interaction
-suite). Also reconciling this Minor/Major model with `android/TESTING.md`'s
-and `workers/scan-proxy/TESTING.md`'s existing sanity/daily/weekly/release
-tiers (a different, earlier scheme, still accurate for those two
-platforms as written).
+suite's happy path); dedicated component-level tests for `ReviewStep`/
+`UploadStep`/`ResultsStep` (currently only indirect coverage via the
+interaction suite). Also reconciling this Minor/Major model with
+`android/TESTING.md`'s and `workers/scan-proxy/TESTING.md`'s existing
+sanity/daily/weekly/release tiers (a different, earlier scheme, still
+accurate for those two platforms as written).
 
 Original sketch, superseded by `TESTING.md` but kept here for history:
 

@@ -30,7 +30,8 @@ included, since `tsconfig.app.json`'s `include` is just `["src"]`.
 | File | Category | Covers |
 |---|---|---|
 | `src/App.smoke.test.tsx` | Function | Proves the harness itself works (jsdom environment, jest-dom matchers, `App`'s `localStorage`/`sessionStorage` reads on mount) before anything real was written against it. Not meant to catch regressions in `App` itself. |
-| `src/App.interaction.test.tsx` | **Interaction** | `App.tsx` has no exported handlers — its ~10 handlers (`startNewRig`, `selectExistingRig`, `onFileSelected`, `extractCurrent`, `skipCurrent`, `scanStandaloneTicket`, `updatePinWeightPct`, `continueReview`, `updateField`, `acknowledgeDisclaimer`) all read/write one shared `wizard` state object via closures, the same shared-mutable-state shape `test_streamlit_app.py` covers on the Python side via `st.session_state`. Driven through the real rendered UI with `@testing-library/user-event`, not by calling handlers directly (they aren't reachable that way). Five cases: (1) a full happy path — start a new rig, skip all three image steps, reach Results, and confirm both `recentRigs` (localStorage) and `history` (in-memory) updated from the same `continueReview` call; (2) selecting an existing rig jumps straight to the scale step, skipping truck/trailer entirely — the same "skipped a step it shouldn't have" bug shape Android's `RigCheckNavHostTest` caught on 2026-08-18, here as a regression-shaped test written ahead of any bug, not after one; (3) an extraction error clears once the user skips instead of retrying, not left dangling on `wizard.uploadError`; (4) scanning a tow-vehicle-only ticket fills the stand-alone-weight field and hides the now-unnecessary pin-weight slider; (5) the pin-weight slider's value reaches `createBreakdown` as the raw 15–25 whole number, not divided by 100 — the exact units-convention risk (whole number in the UI vs. a `0.15`–`0.25` fraction in `compute_breakdown`) flagged when this retrofit was planned. |
+| `src/App.interaction.test.tsx` | **Interaction** | `App.tsx` has no exported handlers — its ~10 handlers (`startNewRig`, `selectExistingRig`, `onFileSelected`, `extractCurrent`, `skipCurrent`, `scanStandaloneTicket`, `updatePinWeightPct`, `continueReview`, `updateField`, `acknowledgeDisclaimer`) all read/write one shared `wizard` state object via closures, the same shared-mutable-state shape `test_streamlit_app.py` covers on the Python side via `st.session_state`. Driven through the real rendered UI with `@testing-library/user-event`, not by calling handlers directly (they aren't reachable that way). Five cases: (1) a full happy path — start a new rig, skip all three image steps, reach Results, and confirm both `recentRigs` (localStorage) and `history` (in-memory) updated from the same `continueReview` call; (2) selecting an existing rig jumps straight to the scale step, skipping truck/trailer entirely — the same "skipped a step it shouldn't have" bug shape Android's `RigCheckNavHostTest` caught on 2026-08-18, here as a regression-shaped test written ahead of any bug, not after one; (3) an extraction error clears once the user skips instead of retrying, not left dangling on `wizard.uploadError`; (4) scanning a tow-vehicle-only ticket fills the stand-alone-weight field and hides the now-unnecessary pin-weight slider; (5) the pin-weight slider's value *leaves App.tsx* as the raw 15–25 whole number, unconverted — `./api` is mocked here, so this only proves App passes the number through, not that `api.ts` itself converts it (that's `src/api.test.ts`, below). |
+| `src/api.test.ts` | **Cross-platform interface** | `createBreakdown`'s real `pin_weight_pct: pinWeightPct / 100` conversion (only `fetch` is mocked, `api.ts` itself runs for real) — paired with `tests/test_api.py`'s `test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage` via the shared `test-vectors/pin_weight_pct_contract.json` fixture, so a Python-side and TypeScript-side test both derive their expected numbers from the one file rather than two independently hardcoded ones. |
 
 ## Known gaps (identified 2026-08-21, not yet closed)
 
@@ -39,13 +40,10 @@ included, since `tsconfig.app.json`'s `include` is just `["src"]`.
   JSON fallback) or `api.ts` (request shape, error-body parsing) in
   isolation. Currently covered only indirectly, through the interaction
   suite's happy path.
-- **No inter-module interface fixture** yet between `test_api.py` and a
-  Web-side test for the `/api/breakdown` request/response contract - the
-  `pin_weight_pct` units convention above is now locked down from the Web
-  side (whole number in, sent as `pin_weight_pct / 100` by `api.ts`), but
-  nothing on the Python side asserts the matching expectation from
-  `test_api.py`'s end, the way `test_breakdown_golden_vectors.py` does for
-  `compute_breakdown` itself.
+- ✅ **Closed 2026-08-21**: the `pin_weight_pct` inter-module interface
+  fixture (`test-vectors/pin_weight_pct_contract.json`, `src/api.test.ts`,
+  `tests/test_api.py`'s matching case) — see the root `TESTING.md`'s
+  cross-platform section.
 - **`ReviewStep`/`UploadStep`/`ResultsStep` have no dedicated
   component-level tests** of their own yet - only indirect coverage via
   `App.interaction.test.tsx` driving them through `App`. Lower priority

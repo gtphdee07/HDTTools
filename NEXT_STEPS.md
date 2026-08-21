@@ -1034,20 +1034,53 @@ plus a correct "Tow Vehicle Total (GVWR): 8,500 lb" (6,000 standalone +
 No Python/Web files changed this round (Android-only work, matching an
 already-built cross-platform spec).
 
-**Not done yet**: `web/` retrofit. Web has no test infrastructure
-installed at all yet (no Vitest, no test script in `package.json`) —
-discussed 2026-08-21 but not started; the plan (not yet written down
-anywhere durable) is Vitest + React Testing Library, prioritizing
-interaction tests for `App.tsx`'s ~10 handlers sharing one `wizard`
-state object (the same shared-mutable-state shape as the Streamlit bug
-above, just via React state instead of `st.session_state`), then
-function tests for `recentRigs.ts`/`api.ts`, then an inter-module
-interface fixture shared between `test_api.py` and a new Web test for
-the `/api/breakdown` request/response contract — specifically starting
-with the `pin_weight_pct` units convention (whole number 15–25 on the
-frontend vs. a 0.15–0.25 fraction in Python), the same "silently wrong
-math, not a `None` field" risk shape this Android work just illustrated
-again. Also reconciling this Minor/Major model with `android/TESTING.md`'s
+**2026-08-21 (same day) — `web/` test infrastructure installed.** Added
+`vitest`, `@testing-library/react`, `@testing-library/jest-dom`,
+`@testing-library/user-event`, `jsdom` as dev dependencies; `npm test`
+now runs `vitest run`. `vite.config.ts` gained a `test` block
+(`environment: 'jsdom'`, `setupFiles: ['./src/setupTests.ts']`) via the
+`/// <reference types="vitest/config" />` triple-slash pattern (keeps
+one config file instead of a separate `vitest.config.ts`).
+`src/setupTests.ts` imports `@testing-library/jest-dom/vitest` for the
+`toBeInTheDocument()`-style matchers. One smoke test
+(`src/App.smoke.test.tsx`, renders `<App />`, asserts "RigCheck" shows)
+proves the harness end-to-end before any real tests are written against
+it — passes. `npm run build` (which typechecks `src/**` via `tsc -b`,
+test files included per `tsconfig.app.json`'s `include: ["src"]`) still
+clean.
+
+**2026-08-21 (same day) — App.tsx interaction tests written.** New
+`web/src/App.interaction.test.tsx`, five cases, all driven through the
+real rendered UI with `@testing-library/user-event` (`App.tsx` has no
+exported handlers to call directly - its ~10 handlers all read/write one
+shared `wizard` object via closures, so the UI is the only real entry
+point): (1) a full happy path - start a new rig, skip all three image
+steps, reach Results, confirm both `recentRigs` (localStorage) and
+`history` updated from the same `continueReview` call; (2) selecting an
+existing rig jumps straight to the scale step, skipping truck/trailer -
+written as a regression-shaped test ahead of any bug, mirroring the exact
+shape of the real bug `RigCheckNavHostTest` caught on Android 2026-08-18;
+(3) an extraction error clears once the user skips instead of lingering
+on `wizard.uploadError`; (4) scanning a tow-vehicle-only ticket fills the
+stand-alone-weight field and hides the pin-weight slider; (5) the
+pin-weight slider's value reaches `createBreakdown` as the raw 15-25
+whole number, not divided by 100 - the exact `pin_weight_pct` units-risk
+flagged below, now locked down from the Web side. `npm test`: 6/6 (5 new
++ the smoke test). `npm run build` still clean. New `web/TESTING.md`
+classifies this suite the way `tests/TESTING.md`/`android/TESTING.md` do
+for their platforms.
+
+**Not done yet**: function tests for `recentRigs.ts`/`api.ts` in
+isolation (currently covered only indirectly through the interaction
+suite's happy path); an inter-module interface fixture shared between
+`test_api.py` and a Web-side test for the `/api/breakdown` contract - the
+`pin_weight_pct` units convention (whole number 15–25 on the frontend vs.
+a 0.15–0.25 fraction in Python) is now asserted from the Web side, but
+nothing on the Python side asserts the matching expectation, the way
+`test_breakdown_golden_vectors.py` does for `compute_breakdown` itself;
+dedicated component-level tests for `ReviewStep`/`UploadStep`/
+`ResultsStep` (currently only indirect coverage via the interaction
+suite). Also reconciling this Minor/Major model with `android/TESTING.md`'s
 and `workers/scan-proxy/TESTING.md`'s existing sanity/daily/weekly/release
 tiers (a different, earlier scheme, still accurate for those two
 platforms as written).

@@ -1094,9 +1094,29 @@ than via Node's `fs`, since `tsconfig.app.json`'s `types: ["vite/client"]`
 doesn't include Node's ambient types and adding them project-wide felt
 like the wrong tradeoff for one test file.
 
-**Not done yet**: function tests for `recentRigs.ts`/rest of `api.ts` in
-isolation (currently covered only indirectly through the interaction
-suite's happy path); dedicated component-level tests for `ReviewStep`/
+**2026-08-21 (same day) — recentRigs.ts/api.ts function tests written.**
+New `web/src/recentRigs.test.ts` (9 cases): `loadRecentRigs`'s empty-vs-
+stored-vs-corrupt-JSON-vs-non-array-JSON cases; `saveRecentRig`'s
+prepend-and-persist, case-insensitive same-nickname replace-not-duplicate
+(and re-ordering to the front), the 5-rig cap dropping the oldest, and -
+the one genuinely interesting case - `saveRecentRig` still returns the
+computed list even when `localStorage.setItem` throws (quota exceeded),
+matching the source's own comment that in-memory state should keep
+working even when persistence silently fails. `web/src/api.test.ts`
+expanded from 1 test to 10: `createBreakdown` gained request-shape
+(truck/trailer/scale pass through unchanged), success, and error-handling
+(server `detail` message vs. the generic `Request failed (status)`
+fallback) cases alongside its existing pin-weight-pct interface test;
+`extractTruckTag` got the same success/error/request-shape coverage
+(confirms it posts `FormData` containing the file); `extractTrailerTag`/
+`extractScaleTicket` just confirm each hits its own distinct endpoint,
+since they're thin wrappers over the same `postFile` helper
+`extractTruckTag` already exercises fully - the one thing that actually
+varies between the three. `npm test`: 25/25 (was 7). `npm run build`
+still clean. This closes both of `web/TESTING.md`'s remaining function-
+test gaps from the retrofit's original plan order.
+
+**Not done yet**: dedicated component-level tests for `ReviewStep`/
 `UploadStep`/`ResultsStep` (currently only indirect coverage via the
 interaction suite). Also reconciling this Minor/Major model with
 `android/TESTING.md`'s and `workers/scan-proxy/TESTING.md`'s existing

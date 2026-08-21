@@ -1145,11 +1145,116 @@ fixed properly this time by moving `afterEach(cleanup)` into
 last item on `web/TESTING.md`'s known-gaps list — every gap identified
 when the retrofit started 2026-08-21 is now closed.
 
-**Not done yet**: reconciling this Minor/Major model with
-`android/TESTING.md`'s and `workers/scan-proxy/TESTING.md`'s existing
-sanity/daily/weekly/release tiers (a different, earlier scheme, still
-accurate for those two platforms as written) — the one item left on the
-list from the "what's next" discussion this session.
+**2026-08-21 (same day) — Minor/Major reconciled with the sanity/daily/
+weekly/release tiers.** New "Reconciling with per-platform network/
+cadence tiers" section in the root `TESTING.md`, cross-referenced from
+`android/TESTING.md` and `workers/scan-proxy/TESTING.md`. Turned out not
+to need a merge or a rewrite of either scheme — they're independent axes
+answering different questions: Minor/Major decides *which test
+categories* a specific change's diff calls for; sanity/daily/weekly/
+release decides *which network-dependency tier* a test belongs to (and
+how often that tier's real-world exposure runs at all), a property of the
+test itself, not of any one session's diff. Minor/Major only ever governs
+the already-offline tiers (Android's Unit+Daily, scan-proxy's
+Sanity+Daily); the real-network tiers (Android's Weekly, scan-proxy's
+Weekly/Release) sit outside Minor/Major entirely, on their own fixed
+cadence regardless of what changed, since what they guard against - a
+live integration/credential/environment failure - isn't something a
+diff's scope can predict. This was the last item on the tiered-test-
+strategy backlog; the framework itself (categories + Minor/Major scoping)
+is now fully documented and reconciled across every platform's own
+testing doc (`tests/TESTING.md`, `android/TESTING.md`,
+`workers/scan-proxy/TESTING.md`, `web/TESTING.md`). Applying it as a
+lived per-session discipline going forward remains ongoing, not a
+one-time task - not "done," just no longer blocked on anything.
+
+**2026-08-21 (same day) — web/ coverage audit against the reconciled
+framework, a real duplicated bug found and fixed, four more component
+tests written.** Went through every remaining untested file in
+`web/src` against the four categories and found: `wizard/RigStep.tsx`
+(the one wizard step left without a Module test, same shape as the three
+just written), `screens/History.tsx` (zero coverage, direct or indirect
+— no test anywhere even navigated to it), and `components/DisclaimerModal.tsx`
+(one real callback, only exercised via the full App happy path).
+
+**Real bug, not just a missing test**: auditing `History.tsx` surfaced
+that it rendered any verdict other than a literal `'pass'` as "Over
+Limit" with a warning badge — a `partial` or `insufficient` check
+(missing data, not an actual over-limit reading) got the same alarming
+mislabel as a genuine failure, and `App.tsx`'s `continueReview` genuinely
+can push a partial/insufficient entry into history. The identical bug
+was independently duplicated in `Dashboard.tsx`'s "Recent Checks" list.
+Fixed TDD-style: `History.test.tsx` written first, confirmed red against
+the live bug (two failing cases, `partial` and `insufficient` both
+showing "Over Limit"), then fixed by extracting a shared
+`src/verdictBadge.ts` (`VERDICT_BADGE` map: `pass`→"Safe to Tow"/success,
+`fail`→"Over Limit"/warning, `partial`→"Partially Checked"/insufficient,
+`insufficient`→"Not Enough Info"/insufficient) both files now read from,
+so the same mislabeling can't drift independently in each file again.
+Added a small `Dashboard.test.tsx` scoped to the same fix.
+
+New test files: `wizard/RigStep.test.tsx` (7 cases — recent-rig
+cards, the manufacturer-subtitle join and its omission, click dispatch,
+disabled-until-non-blank *and* the nickname gets trimmed before reaching
+`onStartNew`), `components/DisclaimerModal.test.tsx` (2 cases),
+`screens/History.test.tsx` (6 cases, including the bug-fix regression),
+`screens/Dashboard.test.tsx` (3 cases, the same fix). `npm test`: 69/69
+(was 51). `npm run build` still clean.
+
+**Flagged, not built**: no test proves the hand-written JSON fixtures
+used across this whole suite (`BreakdownItem`, `VerdictInfo`,
+`TruckTagData`, every `mockFetchOk(...)` body) still match what the real
+Python API returns — every web test mocks `fetch`/`./api`, so a real
+field rename on the Python side would never surface here. Same risk
+shape as the `estimated` field gap and `pin_weight_pct` fixture already
+closed, but for the full response shapes generally; bigger than the
+gaps closed this session (needs its own fixture or schema-diffing
+approach), recorded in `web/TESTING.md`'s known gaps rather than started.
+Also flagged and deliberately deferred: `Dashboard.tsx`'s own logic
+beyond the verdict badge (the recent-rigs grid, its subtitle join, the
+click targets) still has no dedicated Module test, only indirect
+coverage via `App.interaction.test.tsx` — lower priority since nothing
+found there suggested a real bug the way the verdict badge did.
+
+**2026-08-21 (same day) — the flagged API-shape-drift gap: a parked
+"Option C" doc, and "Option B" implemented for the two highest-traffic
+shapes.** Discussed three approaches for proving `web/`'s hand-written
+fixtures (`BreakdownItem`, `VerdictInfo`, `TruckTagData`, etc.) still
+match what the real Python API returns, since nothing did — every
+`web/` test mocks `fetch`/`./api`. Chose to park the most thorough
+option (a Pydantic `.model_json_schema()` export, validated against on
+the Web side with `ajv`) rather than build it now, since it's more
+machinery than the gap has earned yet: written up in a new root-level
+`FUTURE_API_SCHEMA_VALIDATION.md` (requirements, open decisions, when to
+actually pick it up), cross-referenced from `web/TESTING.md`'s known
+gaps and the root `TESTING.md`'s cross-platform section, specifically so
+it doesn't need to stay loaded in day-to-day context to not be lost.
+
+Then built "Option B" for `BreakdownItemOut`/`VerdictOut` (the two
+highest-traffic shapes, used across most of `web/`'s test fixtures): a
+third shared key-list fixture,
+`test-vectors/breakdown_response_shape_contract.json`, consumed by two
+paired tests. `tests/test_api.py::test_breakdown_response_matches_the_shared_api_contract`
+is the "ground truth" half — a real, unmocked `/api/breakdown` call
+asserting the response's keys match the shared file exactly.
+`web/src/apiShape.test.ts` is the "does our mirror still match" half —
+doesn't touch a real response, just proves `types.ts`'s
+`BreakdownItem`/`VerdictInfo` interfaces currently have exactly those
+keys, via a typed object literal. TypeScript's excess-property checking
+on that literal does real work: add a field to the interface without
+updating the literal and the build fails (missing property) before the
+test even runs; remove one without updating the literal and the build
+fails too (excess property) — either way a human is forced to touch the
+test file, whose own assertion then forces the shared contract (and the
+paired Python test) to be updated in step. Not a fully-derived contract
+(both sides can still drift if a human forgets to update the shared
+file itself) but a real tripwire on both known-risky ends, the same
+pattern that already worked for `pin_weight_pct`. `TruckTagOut`/
+`TrailerTagOut`/`ScaleTicketOut` remain uncovered by this — extending
+Option B to them would mean three more hand-maintained fixture files,
+exactly the scaling problem Option C is written up to eventually solve.
+`uv run pytest -q`: 88/88 (was 87). `npm test`: 71/71 (was 69). `npm run
+build` still clean.
 
 Original sketch, superseded by `TESTING.md` but kept here for history:
 

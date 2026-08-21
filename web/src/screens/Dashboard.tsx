@@ -2,6 +2,7 @@ import type { HistoryEntry, RecentRig } from '../types';
 import { Button } from '../design-system/Button';
 import { Card } from '../design-system/Card';
 import { Badge } from '../design-system/Badge';
+import { VERDICT_BADGE } from '../verdictBadge';
 
 interface DashboardProps {
   recentRigs: RecentRig[];
@@ -91,9 +92,7 @@ export function Dashboard({ recentRigs, history, onStartWizard }: DashboardProps
               </div>
               <div style={{ fontSize: 13, color: 'var(--fg-2)' }}>{h.date}</div>
             </div>
-            <Badge tone={h.verdict === 'pass' ? 'success' : 'warning'}>
-              {h.verdict === 'pass' ? 'Safe to Tow' : 'Over Limit'}
-            </Badge>
+            <Badge tone={VERDICT_BADGE[h.verdict].tone}>{VERDICT_BADGE[h.verdict].label}</Badge>
           </div>
         ))}
       </div>

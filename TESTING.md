@@ -152,13 +152,79 @@ test, not a golden-vector case: it only proves the *contract* (a whole
 number in, that same value ÷ 100 out) holds independently on each side of
 the boundary, not any particular breakdown math.
 
+**Also built 2026-08-21**, a third shared fixture, this time a plain key
+list rather than input/output values or a units conversion:
+`test-vectors/breakdown_response_shape_contract.json`, consumed by
+`tests/test_api.py`'s `test_breakdown_response_matches_the_shared_api_contract`
+(real, unmocked endpoint call — the "ground truth" half) and
+`web/src/apiShape.test.ts` (a type-literal check that `types.ts`'s
+`BreakdownItem`/`VerdictInfo` still declare exactly those keys — the
+"does our mirror still match" half). Every `web/` test otherwise mocks
+`fetch`/`./api`, so nothing there ever touches a real Python response; a
+field rename or drop in `schemas.py` would previously have gone uncaught
+by the entire `web/` suite. This is a manually-synced tripwire, not a
+fully-derived contract — see `FUTURE_API_SCHEMA_VALIDATION.md` for the
+Pydantic-JSON-Schema-export approach that would remove the manual-sync
+step entirely, parked for later rather than built now since this covers
+the two highest-traffic shapes (`BreakdownItemOut`/`VerdictOut`) at much
+lower cost; `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut` remain
+uncovered by either approach as of this writing.
+
+## Reconciling with per-platform network/cadence tiers
+
+`android/TESTING.md` and `workers/scan-proxy/TESTING.md` each describe
+their own tiers (Android: Unit/Daily/Weekly; scan-proxy: Sanity/Daily/
+Weekly/Release) — an earlier scheme, built before Minor/Major existed.
+These are **not competing schemes to pick between** — they answer two
+different questions, on two independent axes, and both stay in force:
+
+- **Minor/Major (this file)** answers *which test categories to run*,
+  scoped to *what a specific change touched*, decided fresh each session
+  against the real diff.
+- **Sanity/Daily/Weekly/Release** answers *which network-dependency tier*
+  a test belongs to — offline/mocked vs. real-but-bounded vs. real
+  against a live deployment — and *how often* that tier's real-world
+  exposure gets exercised. That classification doesn't change session to
+  session; it's a property of the test itself (does it touch a real
+  network boundary or not), not of whatever diff prompted running it.
+
+**How they compose**: Minor/Major only ever governs the tiers that are
+already offline/mocked — for Android that's Unit (JVM) + Daily
+(instrumented, no `Purchases.configure()`); for scan-proxy that's Sanity
++ Daily (both mocked, no real network). Concretely:
+
+- Android: a **Minor** change to a module runs that module's function and
+  interaction tests within Unit (JVM). A **Major** change runs the full
+  offline suite for that module — Unit (JVM) *and* Daily (instrumented) —
+  plus, if the change touches a shared interface, the other module's
+  Major suite and the golden-vector/interface tests (category 4).
+- `scan-proxy`: a **Minor** change runs that module's `[sanity]`-tagged
+  cases. A **Major** change runs the module's full `npm test` (the Daily
+  tier, which sanity is already a tagged subset of — the two tiers were
+  never separate test suites, just a fast/full split of the same one).
+
+The **real-network tiers** — Android's Weekly, scan-proxy's Weekly and
+Release — sit outside Minor/Major entirely. They run on their own fixed
+cadence (weekly, or before/after a deploy) regardless of what a given
+session's diff touched, because what they guard against — a live
+API/credential/environment integration failure — isn't something a
+diff's scope can predict or bound. A purely-internal Minor change and a
+sprawling Major one are equally unrelated to whether, say, RevenueCat's
+real sandbox still behaves as expected; that only degrades on its own
+schedule, external to any code change here.
+
+**In short**: read `android/TESTING.md`/`scan-proxy/TESTING.md`'s tier
+tables for *what network access a test needs and how often to run it at
+all*; read this file's Minor/Major rules for *which of those (already
+network-tiered) tests a specific session's change actually calls for*.
+Neither file's scheme needs to change to make room for the other.
+
 ## Status of this repo against the framework
 
 This framework was defined 2026-08-20, after most of this repo's existing
 tests were already written — they haven't been retroactively categorized
 against it, and the framework hasn't yet been applied as an actual
-per-session discipline. `android/TESTING.md` and `workers/scan-proxy/TESTING.md`
-still describe their sanity/daily/weekly/release tiers (a different,
-earlier scheme) — reconciling those with Minor/Major here is unstarted,
-tracked in `NEXT_STEPS.md`'s tiered-test-strategy section, not done
-silently by this file existing.
+per-session discipline. Reconciling the sanity/daily/weekly/release tiers
+with Minor/Major (immediately above) closes that specific gap as of
+2026-08-21; applying Minor/Major as a lived per-session discipline going
+forward is a separate, ongoing thing to keep honest, not a one-time task.

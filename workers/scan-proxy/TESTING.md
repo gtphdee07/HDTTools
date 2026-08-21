@@ -6,7 +6,11 @@ file documents the tiers themselves and what each individual test
 covers, so picking this back up doesn't require reading every test file
 cold. It's a reference for current state — see `NEXT_STEPS.md` for the
 narrative history (when each tier was built, what bugs were found along
-the way, why specific design choices were made).
+the way, why specific design choices were made). See the root
+`TESTING.md`'s "Reconciling with per-platform network/cadence tiers"
+section for how this tiering relates to that file's Minor/Major
+regression-scoping rules — the two are independent axes, not
+alternatives to choose between.
 
 ## Tiers
 

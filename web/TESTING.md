@@ -6,7 +6,7 @@ root `TESTING.md`. Written 2026-08-21, the same day the harness itself
 suite this package has ever had. See `NEXT_STEPS.md` for the narrative
 history.
 
-`npm test` (`vitest run`) — currently 51 tests, all passing.
+`npm test` (`vitest run`) — currently 71 tests, all passing.
 `npm run build` (`tsc -b && vite build`) typechecks `src/**`, test files
 included, since `tsconfig.app.json`'s `include` is just `["src"]`.
 
@@ -42,6 +42,10 @@ included, since `tsconfig.app.json`'s `include` is just `["src"]`.
 | `src/wizard/UploadStep.test.tsx` | Module | Fake props, no `App`/network involved. Title/instructions render; Extract Data is disabled with no file, enabled with one, and the drop zone's placeholder swaps to the filename; selecting a file calls `onFileSelected`; Extract Data calls `onExtract`; the error message renders when given; the scale module's two extra pieces (the "No CAT scale ticket?" hint and the second "Build Estimated Model" skip button, both wired to `onSkip`, plus the first skip button's label swapping to "No Image / Enter Weight Manually") are present only for the scale module, absent for every other one. |
 | `src/wizard/ReviewStep.test.tsx` | Module | Fake props. Each field renders from `data` (blank when missing); typing calls `onFieldChange(name, isNumber, value)`; the continue button (labelled `module.continueLabel`) calls `onContinue`; the error prop renders. The stand-alone-weight scan section: absent for non-truck modules and absent for the truck module when `onScanStandaloneTicket` isn't passed; its pin-weight slider shows only while `standalone_weight_lb` is unknown, hides once it's set (via `rerender`, not a fresh mount, to prove it's the same data change driving both states); the slider's `onChange` reports the numeric value. Scanning a ticket: shows "Reading…" and disables the button while the promise it's given is pending, re-enables once resolved; a rejection surfaces the scan's own local error text, distinct from the `error` prop — complements `App.interaction.test.tsx`'s standalone-scan case, which only exercises the resolved path. |
 | `src/wizard/ResultsStep.test.tsx` | Module | Fake props. Verdict headline/subline render; each breakdown item's label, badge, actual/rated weight, and note (present vs. `null`, via `rerender`) render correctly; the estimated-figures notice shows when any item is `estimated`, hidden when none are — the one thing `App.interaction.test.tsx` never exercises, since its `RESULT` fixture is always non-estimated; "Run Another Check"/"Back to Dashboard" call `onRestart`/`onGoHome`. |
+| `src/wizard/RigStep.test.tsx` | Module | Fake props. No rig cards when `recentRigs` is empty; each recent rig's nickname and a manufacturer subtitle render when at least one of truck/trailer has one, the subtitle line omitted entirely when neither does; clicking a card calls `onSelectExisting` with that rig; Start New Rig stays disabled for an empty or whitespace-only nickname, enables once typed, and calls `onStartNew` with the **trimmed** nickname — the interface contract a caller (`App.tsx`'s `startNewRig`) relies on to not receive stray whitespace. |
+| `src/apiShape.test.ts` | **Cross-platform interface** | "Option B" from the API-shape-drift discussion (see `FUTURE_API_SCHEMA_VALIDATION.md` for the fuller schema-export "Option C" this stops short of). Doesn't touch a real response — proves `BreakdownItem`/`VerdictInfo`, as currently declared in `types.ts`, have exactly the keys `test-vectors/breakdown_response_shape_contract.json` declares. Paired with `tests/test_api.py`'s `test_breakdown_response_matches_the_shared_api_contract`, which is the half that actually calls the real endpoint. TypeScript's excess-property checking on this file's object literals does real work here: add a field to `BreakdownItem` without adding it to the literal and the build fails (missing property) before this test even runs; remove one without removing it from the literal and the build fails too (excess property) — either way a human is forced to touch this file, and its own assertion then forces the shared contract (and the paired Python test) to be updated too. |
+| `src/components/DisclaimerModal.test.tsx` | Module | Renders the disclaimer heading; clicking "I Understand — Continue" calls `onAcknowledge`. Deliberately small — this component has exactly one behavior. |
+| `src/screens/History.test.tsx`, `src/screens/Dashboard.test.tsx` | Module | Both cover `verdictBadge.ts`'s `VERDICT_BADGE` map (`pass`→"Safe to Tow"/success, `fail`→"Over Limit"/warning, `partial`→"Partially Checked"/insufficient, `insufficient`→"Not Enough Info"/insufficient), which each file's verdict badge now reads from. **Regression tests for a real bug found 2026-08-21** auditing this suite's coverage: both files previously rendered *any* non-`'pass'` verdict as "Over Limit" with a warning badge — a partial or insufficient check (missing data, not an actual over-limit reading) got the same alarming label as a genuine failure. `History.test.tsx` also covers the title and per-entry nickname/date rendering; `Dashboard.test.tsx` is scoped narrowly to the verdict-labeling fix (the rest of `Dashboard.tsx` — the recent-rigs grid, its manufacturer-subtitle join, "+ Add a new rig" — remains covered only indirectly via `App.interaction.test.tsx`, a known gap below, not a full Module suite). |
 
 ## Known gaps (identified 2026-08-21, not yet closed)
 
@@ -54,3 +58,30 @@ included, since `tsconfig.app.json`'s `include` is just `["src"]`.
   cross-platform section.
 - ✅ **Closed 2026-08-21**: `ReviewStep`/`UploadStep`/`ResultsStep`
   component-level tests — see the three entries above.
+- ✅ **Closed 2026-08-21**: `RigStep`/`DisclaimerModal`/`History`
+  component-level tests, plus the `Dashboard`/`History` verdict-badge bug
+  found in the process — see the entries above.
+- ✅ **Partially closed 2026-08-21** ("Option B"): `BreakdownItemOut`/
+  `VerdictOut` — the two highest-traffic response shapes — now have a
+  real cross-platform interface test pair, `src/apiShape.test.ts` and
+  `tests/test_api.py`'s `test_breakdown_response_matches_the_shared_api_contract`,
+  via `test-vectors/breakdown_response_shape_contract.json`.
+- **Still not closed**: `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut`
+  (the three `/api/extract/*` response shapes, plus their nested
+  `TireSpecOut`) have no equivalent contract yet — extending Option B to
+  them would mean three more hand-maintained fixture files, which is
+  exactly the scaling problem that motivated writing up "Option C" (a
+  Pydantic JSON-Schema export, so nothing needs hand-syncing at all) in
+  `FUTURE_API_SCHEMA_VALIDATION.md` rather than starting it now.
+- **Not fully closed, scoped down deliberately**: `Dashboard.tsx`'s own
+  logic beyond the verdict badge (the recent-rigs grid, its
+  manufacturer-subtitle join, the "+ Add a new rig"/"Run Check" click
+  targets) has no dedicated Module test, only indirect coverage via
+  `App.interaction.test.tsx`'s happy path. Lower priority — nothing found
+  auditing it suggested a real bug the way the verdict badge did.
+- **Deliberately not tested**: `wizard/ProcessingStep.tsx`,
+  `components/StepPills.tsx`, `components/PredictiveEstimateNotice.tsx`,
+  and the `design-system/` primitives (`Badge`/`Button`/`Card`) — purely
+  presentational, no branching that affects correctness, the same
+  judgment call already made not to write a dedicated test for Android's
+  parallel `EstimatedFiguresNotice.kt`.

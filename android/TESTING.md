@@ -5,7 +5,10 @@ strategy: sanity/daily tiers are fully offline and mocked/faked;
 weekly/release tiers make real, bounded external calls and are built
 later. This file documents current state — see `NEXT_STEPS.md` for the
 narrative history of how it got built and what bugs were found along the
-way.
+way. See the root `TESTING.md`'s "Reconciling with per-platform network/
+cadence tiers" section for how this tiering relates to that file's
+Minor/Major regression-scoping rules — the two are independent axes, not
+alternatives to choose between.
 
 ## Tiers
 

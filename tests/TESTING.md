@@ -8,7 +8,7 @@ this suite predates the categories below; this is the first pass at
 labeling it, not a rewrite. See `NEXT_STEPS.md` for the narrative history
 of individual features/bugs each test file guards against.
 
-`uv run pytest -q` — currently 85 tests, all passing, no markers/tiers
+`uv run pytest -q` — currently 88 tests, all passing, no markers/tiers
 wired up yet (this repo has no CI; everything runs manually, matching the
 root `TESTING.md`'s "session regression" model rather than a cadence).
 
@@ -18,7 +18,7 @@ root `TESTING.md`'s "session regression" model rather than a cadence).
 |---|---|---|
 | `test_breakdown.py` | Module | `compute_breakdown`/`verdict_for`'s full public surface: axle-count/tongue-weight/pin-weight-pct math, the `estimated` flag, all four verdict tones, error-shaped edge cases (clamp-at-zero). |
 | `test_breakdown_golden_vectors.py` | **Cross-platform interface** | Runs `compute_breakdown`/`verdict_for` against `test-vectors/breakdown_cases.json`, the same cases the Kotlin port's `BreakdownGoldenVectorTest.kt` checks itself against — see the root `TESTING.md`'s cross-platform section. |
-| `test_api.py` | Module + **Interface** | FastAPI routing/schema validation with OCR mocked. The `test_breakdown_endpoint_*` cases exercise the real (unmocked) `main.py` → `breakdown.py` → `schemas.py` chain. `test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage` (2026-08-21) is a **cross-platform interface test**, paired with `web/src/api.test.ts` via `test-vectors/pin_weight_pct_contract.json` — confirms the endpoint's `pin_weight_pct` is a 0.15–0.25 fraction, and that sending the raw 15–25 UI number unconverted produces a visibly wrong (negative) result rather than a quietly-off one. |
+| `test_api.py` | Module + **Interface** | FastAPI routing/schema validation with OCR mocked. The `test_breakdown_endpoint_*` cases exercise the real (unmocked) `main.py` → `breakdown.py` → `schemas.py` chain. `test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage` (2026-08-21) is a **cross-platform interface test**, paired with `web/src/api.test.ts` via `test-vectors/pin_weight_pct_contract.json` — confirms the endpoint's `pin_weight_pct` is a 0.15–0.25 fraction, and that sending the raw 15–25 UI number unconverted produces a visibly wrong (negative) result rather than a quietly-off one. `test_breakdown_response_matches_the_shared_api_contract` (2026-08-21) is a second **cross-platform interface test**, paired with `web/src/apiShape.test.ts` via `test-vectors/breakdown_response_shape_contract.json` — the "ground truth" half proving `BreakdownItemOut`/`VerdictOut`'s real keys still match what `web/`'s hand-written fixtures assume (see that file's "Known gaps" for the `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut` shapes this doesn't yet cover, and `FUTURE_API_SCHEMA_VALIDATION.md` for the fuller schema-export approach parked for later). |
 | `test_scale_ticket_ocr_parsing.py` | Function | `_parse_fields`/`_find_str`/`_find_num` against transcribed OCR text, including a real (garbled) tow-vehicle-only ticket transcription. |
 | `test_truck_tag_ocr_parsing.py` | Function | `_parse_fields`/`_kg_lb` against transcribed OCR text, including a real garbled "LB read as 1B" regression case. |
 | `test_trailer_tag_ocr_parsing.py` | Function | `_parse_fields` against transcribed OCR text. |
@@ -45,7 +45,10 @@ root `TESTING.md`'s "session regression" model rather than a cadence).
   breakdown test does for `compute_breakdown`. Lower risk than the
   breakdown case since a genuine key mismatch here would at least show up
   as a `None` field in the UI rather than silently wrong math, but still
-  an unguarded contract.
+  an unguarded contract — the same species of gap as `web/TESTING.md`'s
+  `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut` one, and a candidate for
+  the same future fix (`FUTURE_API_SCHEMA_VALIDATION.md`) once/if that's
+  ever built.
 - **Not yet closed**: no test confirms `scale_ticket_ocr`/`truck_tag_ocr`/
   `trailer_tag_ocr`'s output dict keys still match what
   `streamlit_app/app.py`'s `FIELDS` dict (`fields.py`) expects to read via

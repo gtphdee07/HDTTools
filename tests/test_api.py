@@ -17,6 +17,9 @@ from hdttools.models import TireSpec
 _PIN_WEIGHT_PCT_CONTRACT = json.loads(
     (Path(__file__).resolve().parent.parent / "test-vectors" / "pin_weight_pct_contract.json").read_text()
 )
+_BREAKDOWN_RESPONSE_SHAPE_CONTRACT = json.loads(
+    (Path(__file__).resolve().parent.parent / "test-vectors" / "breakdown_response_shape_contract.json").read_text()
+)
 
 
 @pytest.fixture
@@ -233,6 +236,39 @@ def test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage()
     # obvious in the UI, not silently wrong.
     unconverted_value = float(unconverted_total["actualLabel"].replace(",", "").split()[0])
     assert unconverted_value < 0
+
+
+def test_breakdown_response_matches_the_shared_api_contract():
+    # Cross-platform interface test, paired with web/src/apiShape.test.ts
+    # via the shared test-vectors/breakdown_response_shape_contract.json
+    # fixture ("Option B" from the web/ API-shape-drift discussion - see
+    # FUTURE_API_SCHEMA_VALIDATION.md for the fuller schema-export
+    # approach this deliberately stops short of). Every web/ test mocks
+    # fetch/./api and works from hand-written fixtures typed against
+    # types.ts's interfaces - nothing on the Web side ever touches a real
+    # response, so a field rename/drop here would go uncaught by the
+    # entire web/ suite. This test is real, unmocked - it's the "ground
+    # truth" half of the pair; the Web-side test only proves its own
+    # fixtures match this same shared file, not that the file itself is
+    # still accurate, which is why this half has to hit the real endpoint.
+    with TestClient(main.app) as client:
+        payload = {
+            "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
+            "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+            "scale": {
+                "steer_axle_lb": 5620,
+                "drive_axle_lb": 9040,
+                "trailer_axle_lb": 11380,
+                "gross_weight_lb": 26040,
+            },
+        }
+        response = client.post("/api/breakdown", json=payload)
+
+    body = response.json()
+    item_keys = set(body["breakdownItems"][0].keys())
+    verdict_keys = set(body["verdictInfo"].keys())
+    assert item_keys == set(_BREAKDOWN_RESPONSE_SHAPE_CONTRACT["breakdown_item_keys"])
+    assert verdict_keys == set(_BREAKDOWN_RESPONSE_SHAPE_CONTRACT["verdict_keys"])
 
 
 def test_breakdown_endpoint_response_preserves_the_estimated_field():

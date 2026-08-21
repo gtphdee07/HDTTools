@@ -1,0 +1,21 @@
+{
+  "_readme": "Shared interface-contract fixture for /api/breakdown's response shape - Option B from the web/ API-shape-drift discussion (see FUTURE_API_SCHEMA_VALIDATION.md for the fuller Option C this deliberately stops short of). Declares the exact keys schemas.py's BreakdownItemOut/VerdictOut produce. Consumed by tests/test_api.py's test_breakdown_response_matches_the_shared_api_contract, which calls the real (unmocked) /api/breakdown endpoint and asserts its response has exactly these keys, and by web/src/apiShape.test.ts, which asserts a literal object typed against web/src/types.ts's BreakdownItem/VerdictInfo interfaces has exactly these keys. Neither side derives its list from the other - if schemas.py's fields change, one side's test goes red until a human updates this file AND the other side's code, which is the tripwire this fixture exists to be. If this file changes, update both tests' expectations stay correct automatically (they read from here), but double-check schemas.py/types.ts themselves still match reality.",
+  "breakdown_item_keys": [
+    "label",
+    "tone",
+    "badgeLabel",
+    "pct",
+    "barColor",
+    "actualLabel",
+    "limitLabel",
+    "note",
+    "estimated"
+  ],
+  "verdict_keys": [
+    "status",
+    "headline",
+    "subline",
+    "bandBg",
+    "icon"
+  ]
+}

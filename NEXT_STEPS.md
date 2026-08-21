@@ -840,16 +840,40 @@ this is a fully separate concern from Play Store distribution:
   eventual Play Store release) are fully independent until the user
   decides to actually publish.
 
-## 📐 Tiered test strategy: methodology decided 2026-08-20, retrofit not started
+## 📐 Tiered test strategy: methodology decided 2026-08-20, Python retrofit done 2026-08-21
 
 Raised 2026-08-15 as a parked idea; **the methodology itself was decided
 2026-08-20 and is now written down in `TESTING.md`** — a Minor/Major
 regression-scoping model (test scope driven by what a change actually
 touches: new library or interface change = Major, internal-only = Minor),
 replacing the sanity/regression/full framing originally sketched below.
-**Not done yet**: retroactively categorizing this repo's existing tests
-against the new framework, and reconciling it with `android/TESTING.md`'s
-and `workers/scan-proxy/TESTING.md`'s existing sanity/daily/weekly/release
+
+**2026-08-21 — Python side retrofitted.** `tests/TESTING.md` (new)
+classifies all 14 Python test files against the four categories. Found
+and closed one real gap in the process: nothing checked that
+`compute_breakdown`'s `estimated` field actually survives the real
+`/api/breakdown` → Pydantic `response_model` → JSON round trip — a
+rename/drop on either side of that boundary would have gone uncaught
+even with every other breakdown test passing. New interface test:
+`test_api.py::test_breakdown_endpoint_response_preserves_the_estimated_field`.
+Two more gaps identified but **not yet closed** (see `tests/TESTING.md`'s
+"Known gaps" section): the truck/trailer OCR-output-keys-vs-schema
+contract, and the OCR-output-keys-vs-Streamlit's-`FIELDS`-dict contract —
+both lower-risk (a mismatch shows up as a `None` field, not silently
+wrong math, unlike the breakdown case). `uv run pytest -q`: 75/75.
+
+**Not done yet**: `web/` and Android retrofits. Web has no test
+infrastructure installed at all yet (no Vitest, no test script in
+`package.json`) — discussed 2026-08-21 but not started; the plan
+(not yet written down anywhere durable) is Vitest + React Testing
+Library, prioritizing interaction tests for `App.tsx`'s ~10 handlers
+sharing one `wizard` state object (the same shared-mutable-state shape
+as the Streamlit bug above, just via React state instead of
+`st.session_state`), then function tests for `recentRigs.ts`/`api.ts`,
+then an inter-module interface fixture shared between `test_api.py` and
+a new Web test for the `/api/breakdown` request/response contract. Also
+reconciling this Minor/Major model with `android/TESTING.md`'s and
+`workers/scan-proxy/TESTING.md`'s existing sanity/daily/weekly/release
 tiers (a different, earlier scheme, still accurate for those two
 platforms as written).
 

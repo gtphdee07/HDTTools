@@ -177,3 +177,38 @@ def test_breakdown_endpoint_reports_insufficient_status_for_a_blank_rig():
     assert body["verdictInfo"]["status"] == "insufficient"
     assert body["verdictInfo"]["headline"] == "Not Enough Information"
     assert all(item["tone"] == "insufficient" for item in body["breakdownItems"])
+
+
+def test_breakdown_endpoint_response_preserves_the_estimated_field():
+    # Interface-contract test between breakdown.py (produces "estimated"
+    # per item) and schemas.py's BreakdownItemOut (declares it) - nothing
+    # else in this suite ever inspects this key, so a rename/drop on
+    # either side would go uncaught even though every other breakdown
+    # test would still pass. Real (non-mocked) compute_breakdown call -
+    # it has no I/O, so the client fixture's OCR mocks aren't needed here,
+    # same as the other /api/breakdown tests above.
+    with TestClient(main.app) as client:
+        # Truck: a real steer-axle reading (so "Front Axle (Steer)" gets a
+        # real, non-estimated pass/fail) but no drive-axle reading, so
+        # there's no full hitched combined reading - forces "Tow Vehicle
+        # Total (GVWR)" down the stand-alone-weight estimate branch.
+        # Trailer: no scale data at all - forces "Trailer Total (GVWR)"
+        # down the GVWR-fallback estimate branch too.
+        payload = {
+            "truck": {
+                "gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500,
+                "standalone_weight_lb": 6000,
+            },
+            "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+            "scale": {"steer_axle_lb": 5620},
+        }
+        response = client.post("/api/breakdown", json=payload)
+
+    assert response.status_code == 200
+    items = {item["label"]: item for item in response.json()["breakdownItems"]}
+    assert items["Tow Vehicle Total (GVWR)"]["estimated"] is True
+    assert items["Trailer Total (GVWR)"]["estimated"] is True
+    # A row driven by a real reading, not an estimate, must stay False -
+    # confirms the field isn't just always true/always present-but-unused.
+    assert items["Front Axle (Steer)"]["tone"] == "success"
+    assert items["Front Axle (Steer)"]["estimated"] is False

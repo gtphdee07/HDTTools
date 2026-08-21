@@ -7,6 +7,7 @@ import java.io.File
 import kotlin.math.roundToInt
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
@@ -33,15 +34,10 @@ import org.junit.Test
 // Update this set as the Kotlin port gains capabilities - see each
 // case's "requires" in the JSON file for what's still gated.
 //
-// "predictive_truck_estimate" is listed here DELIBERATELY AHEAD OF THE
-// FEATURE ITSELF (Round 2 - see NEXT_STEPS.md) - computeBreakdown has no
-// standalone-only truck-side estimate branch yet, so the two cases
-// needing it (predictive_truck_estimate,
-// standalone_without_hitched_falls_back_to_axle_estimate) now run for
-// real instead of being skipped, and are EXPECTED TO FAIL until that
-// branch is implemented. This is intentional red, written before the
-// code that makes it green - once the branch lands, these failures
-// should disappear with no changes needed here.
+// "predictive_truck_estimate" (added to computeBreakdown 2026-08-21,
+// Round 2) covers the standalone-only truck-side estimate branch -
+// predictive_truck_estimate and standalone_without_hitched_falls_back_to_axle_estimate
+// both exercise it now.
 private val SUPPORTED_CAPABILITIES = setOf(
     "insufficient_tone",
     "gvwr_fallback_trailer_estimate",
@@ -132,9 +128,7 @@ class BreakdownGoldenVectorTest {
                 assertEquals("$name/$label: actual_lb", expectedItem.int("actual_lb"), row.actual.roundToInt())
                 assertEquals("$name/$label: limit_lb", expectedItem.int("limit_lb"), row.limit.roundToInt())
                 assertEquals("$name/$label: pct", expectedItem.int("pct"), row.pct)
-                // "estimated" isn't compared - BreakdownItem has no such
-                // property yet. Add this assertion once the Kotlin port
-                // gains the field.
+                assertEquals("$name/$label: estimated", expectedItem["estimated"]!!.jsonPrimitive.boolean, row.estimated)
             }
         }
     }

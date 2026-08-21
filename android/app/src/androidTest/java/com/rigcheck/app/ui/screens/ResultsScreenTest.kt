@@ -17,9 +17,11 @@ class ResultsScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private fun item(label: String, tone: Tone, pct: Int, note: String? = null) = BreakdownItem(
-        label = label, tone = tone, actual = 1.0, limit = 1.0, margin = 0.0, pct = pct, note = note,
-    )
+    private fun item(label: String, tone: Tone, pct: Int, note: String? = null, estimated: Boolean = false) =
+        BreakdownItem(
+            label = label, tone = tone, actual = 1.0, limit = 1.0, margin = 0.0, pct = pct, note = note,
+            estimated = estimated,
+        )
 
     @Test
     fun allPassingRendersSafeToTowVerdict() {
@@ -62,5 +64,23 @@ class ResultsScreenTest {
         composeRule.setContent { ResultsScreen(breakdown = breakdown, verdict = verdictFor(breakdown)) }
 
         composeRule.onNodeWithText("Partially Checked").assertIsDisplayed()
+    }
+
+    @Test
+    fun estimatedFiguresNoticeShowsWhenAnyRowIsEstimated() {
+        val breakdown = listOf(
+            item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85, estimated = true),
+        )
+        composeRule.setContent { ResultsScreen(breakdown = breakdown, verdict = verdictFor(breakdown)) }
+
+        composeRule.onNodeWithText("⚠️ Estimated Figures — Confirm Before You Buy").assertIsDisplayed()
+    }
+
+    @Test
+    fun estimatedFiguresNoticeHiddenWhenNoRowIsEstimated() {
+        val breakdown = listOf(item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85))
+        composeRule.setContent { ResultsScreen(breakdown = breakdown, verdict = verdictFor(breakdown)) }
+
+        composeRule.onNodeWithText("⚠️ Estimated Figures — Confirm Before You Buy").assertDoesNotExist()
     }
 }

@@ -91,10 +91,18 @@ fun RigCheckNavHost(
         }
 
         composable<RigCheckRoute.TruckTagEntry> {
+            val context = LocalContext.current
             TruckTagEntryScreen(
                 truck = viewModel.truck,
                 onTruckChange = { viewModel.truck = it },
                 onContinue = { navController.navigate(RigCheckRoute.Chooser(EntryModule.TRAILER)) },
+                pinWeightPct = viewModel.pinWeightPct,
+                onPinWeightPctChange = { viewModel.updatePinWeightPct(it) },
+                scanState = viewModel.scanState,
+                onScanStandaloneTicket = { uri ->
+                    viewModel.performStandaloneScan(context.contentResolver, uri) {}
+                },
+                onDismissStandaloneScanError = { viewModel.clearScanError() },
             )
         }
 

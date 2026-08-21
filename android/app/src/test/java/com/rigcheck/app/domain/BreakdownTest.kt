@@ -166,13 +166,11 @@ class BreakdownTest {
         assertTrue(row.note!!.contains("85% of actual trailer weight"))
     }
 
-    // Round 2 (not built yet) - predictive standalone-only truck-side
-    // estimate, mirroring tests/test_breakdown.py's
+    // Predictive standalone-only truck-side estimate (Round 2, implemented
+    // 2026-08-21), mirroring tests/test_breakdown.py's
     // test_truck_total_estimates_from_standalone_weight_when_no_hitched_reading.
-    // Written ahead of the feature on purpose (see NEXT_STEPS.md and
-    // BreakdownGoldenVectorTest.kt's SUPPORTED_CAPABILITIES comment) -
-    // EXPECTED TO FAIL until computeBreakdown gains this branch. When it
-    // does, this test should pass with no changes.
+    // Written ahead of the feature on purpose (see NEXT_STEPS.md) - landed
+    // red first, now green with no changes to the test itself.
 
     @Test
     fun `tow vehicle total estimates from standalone weight when no hitched reading exists`() {

@@ -26,6 +26,7 @@ import com.rigcheck.app.domain.BreakdownItem
 import com.rigcheck.app.domain.Tone
 import com.rigcheck.app.domain.VerdictInfo
 import com.rigcheck.app.ui.components.BreakdownRow
+import com.rigcheck.app.ui.components.EstimatedFiguresNotice
 import com.rigcheck.app.ui.theme.DangerRed
 import com.rigcheck.app.ui.theme.DuskMauve
 import com.rigcheck.app.ui.theme.TrailGreen
@@ -62,6 +63,12 @@ fun ResultsScreen(breakdown: List<BreakdownItem>, verdict: VerdictInfo) {
             Column(modifier = Modifier.padding(start = 16.dp)) {
                 Text(verdict.headline, style = MaterialTheme.typography.titleLarge, color = toneColor)
                 Text(verdict.subline, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+
+        if (breakdown.any { it.estimated }) {
+            Column(modifier = Modifier.padding(bottom = 16.dp)) {
+                EstimatedFiguresNotice()
             }
         }
 

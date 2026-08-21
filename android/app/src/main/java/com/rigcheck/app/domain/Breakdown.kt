@@ -28,6 +28,7 @@ private data class Row(
     val limit: Double,
     val note: String?,
     val insufficient: Boolean,
+    val estimated: Boolean = false,
 )
 
 // Android-only enhancement, deliberately not ported back to breakdown.py/
@@ -98,6 +99,7 @@ fun computeBreakdown(
 
     val trailerTotalActual: Double
     val trailerTotalNote: String
+    var trailerTotalEstimated = false
     if (haveHitched && haveStandalone) {
         val tongueWeight = ((steer + drive) - standaloneWeight).coerceAtLeast(0.0)
         trailerTotalActual = trailerAxle + tongueWeight
@@ -108,28 +110,42 @@ fun computeBreakdown(
         trailerTotalNote = "Estimated total weight — assumes the axle reading is " +
             "${formatWholeNumber((1 - pinWeightPct) * 100)}% of actual trailer weight; " +
             "enter your truck's stand-alone weight for an exact figure."
+        trailerTotalEstimated = true
     } else {
         // No scale reading at all - nothing to divide, so estimate off the
         // trailer's rated GVWR instead. This is what makes a pre-purchase
         // "can I tow this" check possible before a real scale ticket
-        // exists (currently only for the trailer side - the matching
-        // truck-side predictive estimate is Round 2, not built yet).
+        // exists.
         trailerTotalActual = trailerGvwr
         trailerTotalNote = "Estimated total weight — no scale reading yet, so this assumes " +
             "the trailer is loaded to its rated GVWR; weigh it for a real figure."
+        trailerTotalEstimated = true
     }
 
-    // Truck total: a real hitched reading always wins. Without one, this
-    // row stays insufficient - the standalone-only predictive estimate
-    // (mirroring the trailer side's GVWR-fallback logic above) is Round 2,
-    // not built yet; test-vectors/breakdown_cases.json's
-    // predictive_truck_estimate case is expected to fail against this
-    // Kotlin port until then.
+    // Truck total: a real hitched reading always wins. Without one, but
+    // with a real tow-vehicle-alone reading, estimate the missing tongue
+    // weight off the trailer total above - mirrors breakdown.py's
+    // `elif have_standalone:` branch (added 2026-08-21). This is what
+    // answers the pre-purchase "can I tow this" question instead of
+    // leaving this row insufficient forever when only a standalone
+    // reading exists.
     val truckTotalActual: Double?
+    val truckTotalNote: String?
+    var truckTotalEstimated = false
     if (haveHitched) {
         truckTotalActual = steer + drive
+        truckTotalNote = towVehicleTotalNote(steer, drive, truckGvwr)
+    } else if (haveStandalone) {
+        val truckTongueWeightEstimate = trailerTotalActual * pinWeightPct
+        truckTotalActual = standaloneWeight + truckTongueWeightEstimate
+        truckTotalNote = "Estimated total weight — includes an estimated " +
+            "${formatWholeNumber(truckTongueWeightEstimate)} lb tongue weight " +
+            "(${formatWholeNumber(pinWeightPct * 100)}% of the trailer's estimated total); " +
+            "enter a real hitched scale reading for an exact figure."
+        truckTotalEstimated = true
     } else {
         truckTotalActual = null
+        truckTotalNote = null
     }
 
     val towVehicleInsufficient = truckTotalActual == null || truck.gvwrLb == null
@@ -149,14 +165,18 @@ fun computeBreakdown(
             "Tow Vehicle Total (GVWR)",
             truckTotalActual ?: 0.0,
             truckGvwr,
-            if (towVehicleInsufficient) null else towVehicleTotalNote(steer, drive, truckGvwr),
+            if (towVehicleInsufficient) null else truckTotalNote,
             towVehicleInsufficient,
+            truckTotalEstimated,
         ),
         Row(
             "Trailer Axle(s)", trailerAxle, gawrPerAxle * axleCount, axleCountNote,
             scale.trailerAxleLb == null || trailer.gawrPerAxleLb == null,
         ),
-        Row("Trailer Total (GVWR)", trailerTotalActual, trailerGvwr, trailerTotalNote, trailerTotalInsufficient),
+        Row(
+            "Trailer Total (GVWR)", trailerTotalActual, trailerGvwr, trailerTotalNote,
+            trailerTotalInsufficient, trailerTotalEstimated,
+        ),
         Row(
             "Combined Rig Weight",
             gross,
@@ -188,6 +208,7 @@ fun computeBreakdown(
                 margin = row.limit - row.actual,
                 pct = pct,
                 note = row.note,
+                estimated = row.estimated,
             )
         }
     }

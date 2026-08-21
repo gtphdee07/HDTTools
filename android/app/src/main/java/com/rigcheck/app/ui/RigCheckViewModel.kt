@@ -16,7 +16,9 @@ import com.rigcheck.app.data.ScanApiClient
 import com.rigcheck.app.data.ScanResult
 import com.rigcheck.app.data.encodePhotoForScan
 import com.rigcheck.app.data.mergeScanFields
+import com.rigcheck.app.data.standaloneWeightFrom
 import com.rigcheck.app.domain.BreakdownItem
+import com.rigcheck.app.domain.DEFAULT_PIN_WEIGHT_PCT
 import com.rigcheck.app.domain.VerdictInfo
 import com.rigcheck.app.domain.computeBreakdown
 import com.rigcheck.app.domain.model.RecentRig
@@ -55,6 +57,11 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     var disclaimerAcknowledged by mutableStateOf(false)
         private set
 
+    // Whole-number percentage (15-25, default 20), same convention as
+    // Web's wizard.pinWeightPct - converted to a fraction only at the
+    // computeBreakdown call site below.
+    var pinWeightPct by mutableStateOf((DEFAULT_PIN_WEIGHT_PCT * 100).toInt())
+
     // null = not loaded yet (distinct from a real 0-credit balance).
     var creditBalance by mutableStateOf<Int?>(null)
         private set
@@ -62,7 +69,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         private set
 
     val breakdown: List<BreakdownItem>
-        get() = computeBreakdown(truck, trailer, scale)
+        get() = computeBreakdown(truck, trailer, scale, pinWeightPct / 100.0)
 
     val verdict: VerdictInfo
         get() = verdictFor(breakdown)
@@ -83,6 +90,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         truck = rig.truck
         trailer = rig.trailer
         scale = ScaleTicket()
+        pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
     }
 
     fun startNewRig(nickname: String) {
@@ -90,6 +98,11 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         truck = TruckTag()
         trailer = TrailerTag()
         scale = ScaleTicket()
+        pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
+    }
+
+    fun updatePinWeightPct(value: Int) {
+        pinWeightPct = value
     }
 
     fun acknowledgeDisclaimer() {
@@ -129,6 +142,49 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
                     scanState = ScanUiState.Idle
                     refreshCreditBalance()
                     onDone(true)
+                }
+                is ScanResult.Failure -> {
+                    scanState = ScanUiState.Error(result.message)
+                    if (result.code != "insufficient_credits") refreshCreditBalance()
+                    onDone(false)
+                }
+            }
+        }
+    }
+
+    // Scans a tow-vehicle-only ticket (same scale_ticket doc type/endpoint
+    // as a real scale scan, no trailer attached) and maps its reading onto
+    // truck.standaloneWeightLb instead of the scale - mirrors Web's
+    // scanStandaloneTicket in App.tsx. Uses the same paid EntryModule.SCALE
+    // pipeline as a normal scan (this is Android's only OCR path, unlike
+    // Web's separate free-tier extraction endpoint), so it consumes a
+    // credit like any other scan.
+    fun performStandaloneScan(
+        contentResolver: ContentResolver,
+        photoUri: Uri,
+        onDone: (success: Boolean) -> Unit,
+    ) {
+        scanState = ScanUiState.Loading
+        viewModelScope.launch {
+            val result = runCatching {
+                val base64 = encodePhotoForScan(contentResolver, photoUri)
+                ScanApiClient.scan(RevenueCatManager.appUserId, EntryModule.SCALE, base64)
+            }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
+
+            when (result) {
+                is ScanResult.Success -> {
+                    val standalone = standaloneWeightFrom(result.fields)
+                    scanState = ScanUiState.Idle
+                    refreshCreditBalance()
+                    if (standalone != null) {
+                        truck = truck.copy(standaloneWeightLb = standalone)
+                        onDone(true)
+                    } else {
+                        scanState = ScanUiState.Error(
+                            "Couldn't find a weight on that ticket — try a clearer photo, or enter it manually.",
+                        )
+                        onDone(false)
+                    }
                 }
                 is ScanResult.Failure -> {
                     scanState = ScanUiState.Error(result.message)

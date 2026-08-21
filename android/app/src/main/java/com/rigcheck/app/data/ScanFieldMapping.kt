@@ -42,3 +42,15 @@ fun ScaleTicket.mergeScanFields(fields: JsonObject): ScaleTicket = copy(
     trailerAxleLb = fields.doubleField("trailer_axle_lb") ?: trailerAxleLb,
     grossWeightLb = fields.doubleField("gross_weight_lb") ?: grossWeightLb,
 )
+
+// A tow-vehicle-only CAT Scale ticket is the same scale_ticket doc type,
+// just without a trailer-axle line - so it's scanned via the same
+// EntryModule.SCALE endpoint and this only picks a different field back
+// out of the response, matching Web's scanStandaloneTicket in App.tsx.
+// Prefers steer+drive (a genuine 2-axle-group weighing); falls back to
+// gross_weight_lb for tickets that only report one combined figure.
+fun standaloneWeightFrom(fields: JsonObject): Double? {
+    val steer = fields.doubleField("steer_axle_lb")
+    val drive = fields.doubleField("drive_axle_lb")
+    return if (steer != null && drive != null) steer + drive else fields.doubleField("gross_weight_lb")
+}

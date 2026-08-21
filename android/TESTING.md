@@ -71,7 +71,9 @@ network involved:
   renders "Not Safe to Tow"; row labels/percentages display correctly;
   all-insufficient renders "Not Enough Information", a mix renders
   "Partially Checked" (added 2026-08-21 alongside the `Tone.INSUFFICIENT`
-  correctness fixes below).
+  correctness fixes below). The `EstimatedFiguresNotice` (Android port of
+  Web's `PredictiveEstimateNotice.tsx`) shows when any row is `estimated`,
+  hidden otherwise.
 - `BreakdownRowTest` — a row's note is hidden until tapped, then appears
   (the dynamic tongue-weight-explanation feature); a note-less row's tap
   is a no-op, doesn't crash; an insufficient row renders without crashing
@@ -94,6 +96,12 @@ network involved:
   than every field, proportionate to what's meaningfully different per
   screen — the underlying `LabeledTextField`/`LabeledNumberField`
   wiring is shared and identical everywhere it's used.
+  `TruckTagEntryScreenTest` additionally covers the predictive-estimate
+  section (added 2026-08-21): the pin-weight-% slider shows only when
+  `standaloneWeightLb` is unknown, hides once it's known; the "Scan
+  tow-vehicle-only ticket" button opens the same Take Photo/Choose from
+  Gallery dialog as `ChooserScreen`; a scan error shows the error dialog
+  and dismisses on OK.
 - `ChooserScreenTest` — the credit chip shows the given balance; Scan
   Photo with credits opens the Take Photo/Choose from Gallery dialog
   (dialog presence and button existence only — no Espresso-Intents, real
@@ -139,14 +147,22 @@ real `RigCheckNavHost` + `RigCheckViewModel`, offline via
 - **`android/app/src/androidTest/java/com/rigcheck/app/ExampleInstrumentedTest.kt`**
   — the unmodified AGP template test, left in place; harmless, not part
   of this suite's real coverage.
-- **Predictive standalone-only truck-side estimate** — the one remaining
-  capability the Kotlin port doesn't have yet ("Round 2" in
-  `NEXT_STEPS.md`). **Deliberately red as of 2026-08-21, not skipped**:
-  `predictive_truck_estimate` was added to `BreakdownGoldenVectorTest.kt`'s
-  `SUPPORTED_CAPABILITIES` and `BreakdownTest.kt` gained a new case
-  (`tow vehicle total estimates from standalone weight when no hitched
-  reading exists`) *before* `computeBreakdown` gained the branch itself —
-  both currently fail with clean, informative diffs (not crashes/compile
-  errors), TDD-style: tests written and landed first, against an
-  already-agreed spec (Python's existing behavior), implementation to
-  follow. `./gradlew testDebugUnitTest`: 31 tests, exactly these 2 fail.
+- ✅ **Predictive standalone-only truck-side estimate — implemented
+  2026-08-21 ("Round 2").** Landed TDD-style: `predictive_truck_estimate`
+  was added to `BreakdownGoldenVectorTest.kt`'s `SUPPORTED_CAPABILITIES`
+  and `BreakdownTest.kt` gained a red case *before* `computeBreakdown`
+  gained the branch itself; both went green with no changes to the tests
+  once the branch (mirroring `breakdown.py`'s `elif have_standalone:`)
+  landed. Golden vectors: 10/10 cases now fully supported, full parity
+  with Python. The UI half landed alongside it: a `pinWeightPct` state on
+  `RigCheckViewModel` (threaded into `computeBreakdown`), a "Scan
+  tow-vehicle-only ticket" entry point + pin-weight-% slider on
+  `TruckTagEntryScreen` (slider hidden once a stand-alone weight is
+  known), and `EstimatedFiguresNotice` on `ResultsScreen` (Android port of
+  Web's `PredictiveEstimateNotice.tsx`, shown whenever any row is
+  `estimated` — a new `BreakdownItem.estimated` field, mirroring Python's
+  `estimated`, added this round). Verified via `./gradlew
+  testDebugUnitTest` (31/31), `connectedDebugAndroidTest` (39/39), and a
+  full manual on-device walkthrough (truck-only standalone weight, no
+  scale data at all) confirming the 8,500 lb predictive tow-vehicle total
+  and the estimated-figures notice both render correctly.

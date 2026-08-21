@@ -986,20 +986,53 @@ statically-typed UI framework, flagged before starting); those land
 alongside their composables when the feature itself is built, not ahead
 of them. `uv run pytest -q` unaffected (86/86, no Python changes).
 
-**Next, whenever picked up**: implement `computeBreakdown`'s
-standalone-only truck-side branch (mirrors `breakdown.py`'s already-
-built `elif have_standalone:` branch — see that file for the exact
-formula) — the two red tests above should go green with no changes to
-themselves. Then the UI half: an `estimated`-equivalent flag/legal
-disclaimer notice (Web/Streamlit precedent: `PredictiveEstimateNotice.tsx`/
-`PREDICTIVE_ESTIMATE_NOTICE`), a tow-vehicle-only-ticket scan entry point
-on `TruckTagEntryScreen` (confirmed no `scan-proxy` change needed — the
-existing `scale_ticket` doc type already extracts
-`steer_axle_lb`/`drive_axle_lb`/`gross_weight_lb`; Android would compute
-`standalone_weight_lb` client-side from the scan result, exactly like
-Web's `scanStandaloneTicket` in `App.tsx`), and an adjustable pin-weight-%
-control (Round 1 already added the `pinWeightPct` parameter/plumbing;
-only the UI control itself is missing).
+**2026-08-21 (same day) — Round 2 implemented: predictive standalone-only
+truck-side estimate, domain + full UI.** `computeBreakdown` gained the
+standalone-only truck-side branch (mirrors `breakdown.py`'s
+`elif have_standalone:` exactly: `truckTongueWeightEstimate =
+trailerTotalActual * pinWeightPct`, `truckTotalActual = standaloneWeight +
+truckTongueWeightEstimate`) — the two red tests from earlier that day went
+green with no changes to themselves, and golden vectors went to 10/10
+(full parity with Python). Also added `BreakdownItem.estimated: Boolean`
+(mirrors Python's `estimated` field, deliberately deferred until now — see
+Round 1's note) and wired it through both the trailer-total branches and
+the new truck-total branch; `BreakdownGoldenVectorTest.kt` now asserts it
+too.
+
+UI half, all new this round: `RigCheckViewModel` gained `pinWeightPct`
+(whole-number percentage 15-25, default 20, same convention as Web's
+`wizard.pinWeightPct`) threaded into `computeBreakdown`, and
+`performStandaloneScan` — reuses the existing paid `EntryModule.SCALE`
+scan pipeline (Android's only OCR path, unlike Web's separate free-tier
+extraction endpoint, so a standalone scan consumes a credit like any
+other scan) and maps the result onto `truck.standaloneWeightLb` via a new
+`standaloneWeightFrom()` helper in `ScanFieldMapping.kt` (steer+drive if
+both present, else `gross_weight_lb` — mirrors Web's
+`scanStandaloneTicket`). `TruckTagEntryScreen` gained a "Don't know your
+tow vehicle's stand-alone weight?" section below the existing stand-alone
+field: a "Scan tow-vehicle-only ticket" button (own camera/gallery
+launchers + source-choice dialog, matching `ChooserScreen`'s pattern) and
+a pin-weight-% `Slider` (15-25, hidden once a stand-alone weight is
+known). `ResultsScreen` gained `EstimatedFiguresNotice` (new file,
+Android port of Web's `PredictiveEstimateNotice.tsx`, same legal copy),
+shown whenever `breakdown.any { it.estimated }`.
+
+Verified: `./gradlew testDebugUnitTest` 31/31 (all green, no reds left).
+`connectedDebugAndroidTest` 39/39 (33 prior + 6 new: 4 in
+`TruckTagEntryScreenTest` for the slider show/hide and scan dialog/error,
+2 in `ResultsScreenTest` for the notice show/hide). Full manual on-device
+walkthrough on `medium_phone` AVD: created a rig with only a truck GVWR/
+GAWRs + a manually-entered 6,000 lb stand-alone weight, no trailer scale
+data, no truck scale data at all — confirmed the pin-weight slider
+disappeared once stand-alone weight was entered, the "Scan tow-vehicle-
+only ticket" button opened the Take Photo/Choose from Gallery dialog
+correctly, and the Results screen showed the `EstimatedFiguresNotice`
+plus a correct "Tow Vehicle Total (GVWR): 8,500 lb" (6,000 standalone +
+20% of the 12,500 lb GVWR-fallback trailer estimate) and "Trailer Total
+(GVWR): 12,500 lb of 12,500 lb, 100%" — both exactly matching the
+`predictive_truck_estimate` golden vector's numbers for the same inputs.
+No Python/Web files changed this round (Android-only work, matching an
+already-built cross-platform spec).
 
 **Not done yet**: `web/` retrofit. Web has no test infrastructure
 installed at all yet (no Vitest, no test script in `package.json`) —

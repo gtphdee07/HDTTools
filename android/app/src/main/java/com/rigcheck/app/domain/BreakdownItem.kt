@@ -12,4 +12,9 @@ data class BreakdownItem(
     val margin: Double,
     val pct: Int,
     val note: String?,
+    // Mirrors breakdown.py's "estimated" field (added 2026-08-21, Round 2):
+    // true when `actual` comes from pin-weight-pct/GVWR-fallback math
+    // rather than a real scale reading. Drives the UI's estimated-figures
+    // disclaimer - never true on an insufficient row.
+    val estimated: Boolean = false,
 )

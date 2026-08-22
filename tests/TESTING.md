@@ -8,7 +8,7 @@ this suite predates the categories below; this is the first pass at
 labeling it, not a rewrite. See `NEXT_STEPS.md` for the narrative history
 of individual features/bugs each test file guards against.
 
-`uv run pytest -q` — currently 88 tests, all passing, no markers/tiers
+`uv run pytest -q` — currently 95 tests, all passing, no markers/tiers
 wired up yet (this repo has no CI; everything runs manually, matching the
 root `TESTING.md`'s "session regression" model rather than a cadence).
 
@@ -30,6 +30,7 @@ root `TESTING.md`'s "session regression" model rather than a cadence).
 | `test_vision_client.py` | Function | `extract_via_claude`'s happy path and its raise when Claude's response has no matching `tool_use` block. |
 | `test_database.py` | Function + Module | `_flatten` (Function); `save_scale_ticket`/`save_truck_tag`/`save_trailer_tag` against a real `tmp_path` SQLite file (Module — the module's three offered operations, including row-id increment behavior). |
 | `test_models.py` | Function | Dataclass defaults/structure for `TruckTagData`/`TrailerTagData`/`ScaleTicketData`/`TireSpec`. |
+| `test_ocr_output_key_contracts.py` | **Interface** | Two opposite-direction key-set checks per OCR module (2026-08-22): every `_parse_fields()` key must be a declared `schemas.py` field (the FastAPI `response_model`/`extra="ignore"` silent-drop risk), and every `fields.py`/`FIELDS` name must map to a real `_parse_fields()` key (the Streamlit `_extract_fields`'s `keep`-filter silent-drop risk, opposite direction since `FIELDS` deliberately shows only a curated subset of what OCR extracts). Both exclude the same known manual-only fields (`standalone_weight_lb`, `axle_count`). Calls `_parse_fields("")` — the full key set is structurally present regardless of match success, so no synthetic label text is needed, just the shape. |
 
 ## Known gaps (identified 2026-08-21, not all closed)
 
@@ -39,21 +40,20 @@ root `TESTING.md`'s "session regression" model rather than a cadence).
   added; a rename/drop on either side of the `breakdown.py`/`schemas.py`
   boundary would have gone uncaught even with every other breakdown test
   passing.
-- **Not yet closed**: no interface test confirms `truck_tag_ocr._parse_fields`'s
-  and `trailer_tag_ocr._parse_fields`'s output keys still match what
-  `TruckTagOut`/`TrailerTagOut` (schemas.py) declare, the way the new
-  breakdown test does for `compute_breakdown`. Lower risk than the
-  breakdown case since a genuine key mismatch here would at least show up
-  as a `None` field in the UI rather than silently wrong math, but still
-  an unguarded contract — the same species of gap as `web/TESTING.md`'s
-  `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut` one, and a candidate for
-  the same future fix (`FUTURE_API_SCHEMA_VALIDATION.md`) once/if that's
-  ever built.
-- **Not yet closed**: no test confirms `scale_ticket_ocr`/`truck_tag_ocr`/
-  `trailer_tag_ocr`'s output dict keys still match what
-  `streamlit_app/app.py`'s `FIELDS` dict (`fields.py`) expects to read via
-  `.get()` — a silent-`None` failure mode, same shape as the truck/trailer
-  API case above, just on the Streamlit side instead of the FastAPI side.
+- ✅ **Closed 2026-08-22**: `truck_tag_ocr._parse_fields`'s and
+  `trailer_tag_ocr._parse_fields`'s output keys (and `scale_ticket_ocr`'s,
+  for completeness) confirmed to still match what `TruckTagOut`/
+  `TrailerTagOut`/`ScaleTicketOut` (schemas.py) declare — see
+  `test_ocr_output_key_contracts.py` above. Still genuinely open: the
+  `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut`-vs-`web/`'s-hand-written-
+  fixtures gap `web/TESTING.md` flags (a different boundary — Python
+  internal vs. Python-to-TypeScript) and the fuller schema-export
+  approach in `FUTURE_API_SCHEMA_VALIDATION.md` remain their own,
+  separate, not-yet-started work.
+- ✅ **Closed 2026-08-22**: `scale_ticket_ocr`/`truck_tag_ocr`/
+  `trailer_tag_ocr`'s output dict keys confirmed to still match what
+  `streamlit_app/app.py`'s `FIELDS` dict (`fields.py`) expects — see
+  `test_ocr_output_key_contracts.py` above.
 - ✅ **Closed 2026-08-21**: `test_breakdown_golden_vectors.py` (new)
   loads `test-vectors/breakdown_cases.json`, shared with the Kotlin port's
   own `BreakdownGoldenVectorTest.kt` — see the root `TESTING.md`'s

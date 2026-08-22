@@ -12,12 +12,24 @@ dated narrative entry further down and leave this stale; the detailed
 deliberately just the ordered list so "what's next" never requires
 scrolling the whole history below.
 
-1. ⬜ **Python interface gaps** (`tests/TESTING.md`'s known gaps):
-   - OCR output keys vs. `TruckTagOut`/`TrailerTagOut` (`schemas.py`)
-   - OCR output keys vs. Streamlit's `FIELDS` dict
-   Cheapest, most proven pattern left — same shape as the three contract
-   tests already built this session (`pin_weight_pct`, the breakdown-
-   response-shape contract, `estimated`), no external dependencies.
+1. ✅ **Python interface gaps — done 2026-08-22.** New
+   `tests/test_ocr_output_key_contracts.py` (7 cases): every OCR
+   module's `_parse_fields()` key set checked against both real
+   downstream consumers, in the direction each one actually breaks
+   silently in — `schemas.py` (a `_parse_fields` key not declared there
+   would be silently dropped by FastAPI's `response_model`) and
+   `fields.py`'s `FIELDS` dict (a `FIELDS` name that doesn't match a real
+   `_parse_fields` key would never get pre-filled by Streamlit's
+   `_extract_fields`, opposite direction since `FIELDS` deliberately
+   shows only a curated subset of what OCR extracts — checking the wrong
+   direction here would have failed immediately on legitimate,
+   by-design fields like VIN/tire-spec/the `*_kg` values that OCR
+   extracts but the review form never shows). Both known manual-only
+   fields (`standalone_weight_lb`, `axle_count`) excluded explicitly. No
+   synthetic OCR text needed — `_parse_fields("")` still returns the full
+   key set, since every field key is always populated (with `None` on no
+   match), never omitted. `uv run pytest -q`: 95/95 (was 88). Both
+   `tests/TESTING.md` known-gap bullets closed.
 2. ⬜ **`scan-proxy`'s Release tier** (`workers/scan-proxy/TESTING.md`) —
    real API calls at the RevenueCat/Anthropic boundaries directly, error
    conditions included, gated on deciding to push a major Play Store

@@ -5,6 +5,7 @@
   "scripts": {
     "test": "node --test src/*.test.ts",
     "test:sanity": "node --test --test-name-pattern=\"\\[sanity\\]\" src/*.test.ts",
+    "test:weekly": "node --test src/weekly/*.test.ts",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit"

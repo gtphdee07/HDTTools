@@ -1478,10 +1478,34 @@ URL, before/after every `wrangler deploy`). Manual cadence, no CI —
     key). Both are pinned down by tests explicitly documenting today's
     behavior so a future change is a deliberate choice, not an accident.
   - Total: **47 tests, all passing, `tsc --noEmit` clean.**
-- **Weekly and release tiers — not started.** Needs a dedicated
-  disposable RevenueCat test customer (separate from `smoke-test-user`,
-  which stays reserved for manual Android field testing) before this can
-  begin — deliberately deferred until picked back up.
+- ✅ **Weekly tier started 2026-08-21 — the blocker is resolved.** Two
+  dedicated disposable RevenueCat test customers created via the public
+  Test Store SDK key's auto-create-on-lookup behavior (same mechanism
+  `smoke-test-user` was created with 2026-08-17 — a plain `GET
+  /v1/subscribers/{id}` call, no dashboard or mobile app needed):
+  `weekly-test-user` (granted the `RigCheck Pro` entitlement + 50 `SCAN`
+  credits via the dashboard, for a future real-scan-and-charge case) and
+  `weekly-test-user-no-credits` (left at its default zero balance, no
+  grant needed). Before granting credits, considered whether a
+  no-entitlement/expired-entitlement test customer was also needed —
+  investigated and confirmed it wouldn't exercise any real logic:
+  neither `scan.ts` nor the Android app ever check entitlement state at
+  all, only the `SCAN` balance (`spendCredit`'s 422 *is* the entitlement
+  check, per `scan.ts`'s own comment) — worth remembering if
+  entitlement-based gating is ever actually built, not worth a test
+  customer for today. First real Weekly-tier test written:
+  `workers/scan-proxy/src/weekly/scan.weekly.test.ts` — a real POST to
+  the live deployed Worker using `weekly-test-user-no-credits`, confirms
+  402/`insufficient_credits` and (implicitly, since the request short-
+  circuits) that no real Claude call happens — costs nothing to run
+  repeatedly. New `npm run test:weekly` script; the file lives in
+  `src/weekly/` specifically so `src/*.test.ts`'s glob (`npm test`/`npm
+  run test:sanity`) never picks it up — confirmed both still report the
+  same 47/7 counts as before. Ran the new test against the real
+  deployed Worker: passes. `weekly-test-user`'s real-scan-and-charge
+  case is not yet written — the account exists, the test doesn't yet.
+  Release tier is still fully deferred — no clear trigger point yet with
+  no CI in this repo.
 - **Also still flagged, not yet acted on**: no timeout on the Anthropic/
   RevenueCat `fetch` calls — a hung call currently means the Android
   loading spinner spins forever with no error, ever. Not a scan-proxy
@@ -1571,14 +1595,14 @@ URL, before/after every `wrangler deploy`). Manual cadence, no CI —
     specific `TextField` reliably — `LabeledTextField`'s existing
     `modifier` parameter already threaded through to the real field, so
     this needed no changes to the shared component itself.
-  - **Weekly-equivalent tier — not started**, same blocker as
-    `workers/scan-proxy`'s own weekly tier: needs the dedicated
-    disposable RevenueCat test customer. Would cover: `PaywallScreen`
-    rendering real Test Store offerings/prices, a real purchase
-    completing and incrementing the balance, a real scan against the
-    deployed Worker decrementing it. Tracked together with scan-proxy's
-    weekly tier — pick both up in the same session once that customer
-    exists.
+  - **Weekly-equivalent tier — the blocker is resolved (2026-08-21,
+    see the scan-proxy section above), the Android-side test code is
+    still not written.** `weekly-test-user`/`weekly-test-user-no-credits`
+    exist and are usable from Android too, not just scan-proxy's own
+    Node tests. Would cover: `PaywallScreen` rendering real Test Store
+    offerings/prices, a real purchase completing and incrementing the
+    balance, a real scan against the deployed Worker decrementing it —
+    same scope as originally planned, just not yet built.
 
 ## ✅ Done: tongue-weight fallback fix (implemented 2026-08-15)
 

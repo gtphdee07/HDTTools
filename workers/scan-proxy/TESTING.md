@@ -18,15 +18,21 @@ alternatives to choose between.
 |---|---|---|---|---|
 | **Sanity** | ✅ built | before every commit | none (mocked) | `npm run test:sanity` |
 | **Daily** | ✅ built | while actively working on this Worker | none (mocked) | `npm test` |
-| **Weekly** | not built | weekly / before an uncertain deploy | real, bounded, dedicated test customer | `npm run test:weekly` (doesn't exist yet) |
+| **Weekly** | 🟡 started (1 test) | weekly / before an uncertain deploy | real, bounded, dedicated test customer | `npm run test:weekly` |
 | **Release** | not built | before/after every `wrangler deploy` | real, against the live deployed Worker | `npm run test:release` (doesn't exist yet) |
 
 Sanity is a small subset of daily's tests, tagged `[sanity]` in their
 names and selected via `node --test`'s `--test-name-pattern`, not a
-separate set of test files. Weekly and release are deliberately deferred
-until a dedicated disposable RevenueCat test customer exists (separate
-from `smoke-test-user`, which is reserved for manual Android field
-testing) — see `NEXT_STEPS.md`'s scan-proxy section for that status.
+separate set of test files. Weekly and release both need real dedicated
+RevenueCat test customers (never `smoke-test-user`, which stays reserved
+for manual Android field testing) — `weekly-test-user` and
+`weekly-test-user-no-credits` were created 2026-08-21 for exactly this
+(see `NEXT_STEPS.md`'s scan-proxy section). Weekly tests live in
+`src/weekly/*.test.ts`, deliberately excluded from `src/*.test.ts`'s glob
+(so `npm test`/`npm run test:sanity` never pick them up) and run only via
+`npm run test:weekly`. Release is still deferred — it's meant to run
+against whatever's actually live right after a `wrangler deploy`, which
+doesn't have a clear trigger yet with no CI in this repo.
 
 All tiers are run manually — there is no CI in this repo.
 
@@ -118,7 +124,21 @@ tests also included in the sanity tier.
 - **malformed JSON body returns 400 bad_request, not a 500**.
 - **valid JSON that fails parseScanRequest returns 400 with that specific message, not swallowed** — proves `index.ts` passes `parseScanRequest`'s actual error message through rather than replacing it with something generic.
 
+### `weekly/scan.weekly.test.ts` — real network, against the live deployed Worker (`npm run test:weekly` only)
+
+- **a customer with no SCAN credits gets 402 insufficient_credits, never reaches Claude** — real POST to the deployed Worker using `weekly-test-user-no-credits` (0 balance, no entitlement granted). Costs nothing to run repeatedly: `spendCredit`'s real 422 short-circuits the request before any real Claude call happens, the same control-flow ordering `scan.test.ts`'s equivalent mocked case already proves — this is that same claim, proven for real. First test in this tier; `weekly-test-user` (a real credit balance, entitlement granted) exists for a future real-scan-and-charge case, not yet written.
+
 ## Known gaps (deliberately not tested, or not yet)
+
+- **Investigated 2026-08-21, confirmed not a gap**: whether a customer's
+  `RigCheck Pro` *entitlement* state (vs. its `SCAN` credit balance)
+  needs its own dedicated test customer/test case. It doesn't, currently
+  — neither `scan.ts` nor the Android app ever reads entitlement state at
+  all; `spendCredit`'s 422 on an empty balance is the only gate that
+  exists anywhere (see the comment in `scan.ts`). A no-entitlement or
+  expired-entitlement test customer would exercise no code path that
+  differs from a normal one. Revisit if entitlement-based gating is ever
+  actually built.
 
 - **No timeout on the Anthropic/RevenueCat `fetch` calls** — not a test gap so much as a missing feature (both here and Android-client-side); a hung call currently means the Android loading spinner never resolves. Raised, not yet a task.
 - **No request-level idempotency across client retries** — each `runScan` call mints its own key; a client retry after a timeout is a second real charge. Documented as current behavior in `scan.test.ts`, not fixed.

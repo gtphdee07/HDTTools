@@ -2,6 +2,63 @@
 
 Working notes for picking this back up on another machine. Written 2026-08-13.
 
+## 🗺️ Roadmap: prioritized plan (decided 2026-08-21)
+
+Consolidated, cross-platform view of everything still genuinely open, in
+the priority order agreed 2026-08-21. **Living section — update it
+directly as items complete** (check off / remove), don't just add a new
+dated narrative entry further down and leave this stale; the detailed
+"why" for each item lives in the linked file/section, this is
+deliberately just the ordered list so "what's next" never requires
+scrolling the whole history below.
+
+1. ⬜ **Python interface gaps** (`tests/TESTING.md`'s known gaps):
+   - OCR output keys vs. `TruckTagOut`/`TrailerTagOut` (`schemas.py`)
+   - OCR output keys vs. Streamlit's `FIELDS` dict
+   Cheapest, most proven pattern left — same shape as the three contract
+   tests already built this session (`pin_weight_pct`, the breakdown-
+   response-shape contract, `estimated`), no external dependencies.
+2. ⬜ **`scan-proxy`'s Release tier** (`workers/scan-proxy/TESTING.md`) —
+   real API calls at the RevenueCat/Anthropic boundaries directly, error
+   conditions included, gated on deciding to push a major Play Store
+   update rather than a calendar. Designed 2026-08-21, not built.
+3. ⬜ **`scan-proxy`'s Weekly tier, the rest of it** — the real-scan-and-
+   charge case (`weekly-test-user`) and the real refund/OCR-failure case
+   (a real cell-phone photo is ready to use for this one — see
+   `NEXT_STEPS.md`'s 2026-08-21 design-discussion entry). The
+   insufficient-credits case is already done.
+4. ⬜ **Android's Weekly-equivalent tier** — not started. Do this after
+   #2/#3, per the sequencing principle decided 2026-08-21 (cheap/isolated
+   boundary first, expensive/hard-to-debug device layer second — root
+   `TESTING.md` category 4). Also the only place the self-sustaining Test
+   Store purchase can be exercised at all — RevenueCat's REST API has no
+   way to simulate one; only the SDK against real platform billing can.
+5. ⬜ **Two real production gaps** (feature work, not test-writing) — no
+   timeout on the Anthropic/RevenueCat `fetch` calls (a hung call means
+   the Android spinner never resolves, ever); no request-level
+   idempotency across client retries (a retry after a timeout is a
+   second real charge). Worth their own scoped session since they change
+   production code, not just add coverage.
+6. ⬜ **Streamlit: a real `ExampleDocs/`-photo-driven `AppTest`
+   walkthrough** — flagged as the actual open gap for a long time; same
+   proven pattern that already found a real bug elsewhere (the
+   scale-ticket real-photo test).
+7. ⬜ **Lower priority — pick up when there's spare capacity, no
+   evidence of a real bug behind any of these**:
+   - `web/`'s `Dashboard.tsx`'s own logic beyond the verdict badge — no
+     dedicated Module test yet.
+   - The statically-generated regression-results dashboard script — the
+     docs half of this old backlog item is done for every platform now;
+     the script itself was never started.
+   - "Option C" (Pydantic JSON-Schema export) for the
+     `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut` interface gap — full
+     write-up in `FUTURE_API_SCHEMA_VALIDATION.md`.
+
+**Deliberately not on this list**: pricing/pack sizes (intentionally
+deferred until real cost/fee data is in hand, not a gap — see the
+pricing section below); Web hosting/deployment (deferred by your own
+explicit choice, local dev only for now, not a gap either).
+
 ## 🖼️ Web + Streamlit: skip-image entry and predictive tow-vehicle-alone weight — done 2026-08-20
 
 Two related, real-world-driven requests, scoped to Web + Streamlit only
@@ -1511,6 +1568,63 @@ URL, before/after every `wrangler deploy`). Manual cadence, no CI —
   loading spinner spins forever with no error, ever. Not a scan-proxy
   test gap so much as a missing feature (both here and client-side);
   raised during this review, not yet a task.
+
+**2026-08-21 (same night) — design discussion: what's actually left for
+Weekly/Release, and how the two platforms' real-network tiers relate.**
+Walked through what "started" actually meant for the Weekly tier (one
+real case proven, several real pieces of work still open — see the
+Weekly-tier bullet above) and worked through four design questions:
+
+1. **The Test Store purchase, to make `weekly-test-user` self-
+   sustaining.** Confirmed: yes, build it. But a real technical
+   constraint surfaced — RevenueCat's REST API has no "simulate a
+   purchase" endpoint; only the SDK talking to real platform billing can
+   complete one. So this piece can only live in Android's own
+   weekly-equivalent test, not in any scan-proxy Node test — scan-proxy's
+   real-scan-and-charge case will just draw down whatever balance exists,
+   replenished by Android's test running separately.
+2. **A real OCR-failure/refund-path test** — offered a real cell-phone
+   photo to use for this when it's picked up. Not built yet.
+3. **Release tier redesign** — proposed real API calls at the actual
+   service-provider boundaries (RevenueCat, Anthropic directly, not
+   mocks, not the deployed Worker as an intermediary), error conditions
+   included, gated on deciding to push a major Play Store update rather
+   than a calendar or `wrangler deploy`. Endorsed as sound design — a
+   direct extension of the real-boundary-contract pattern already proven
+   three times this session (`pin_weight_pct`, the breakdown-response-
+   shape contract, tonight's insufficient-credits test), just pointed
+   outward at third-party APIs instead of RigCheck's own. Documented in
+   `workers/scan-proxy/TESTING.md`'s Release tier section — designed, not
+   built.
+4. **Is Android's Weekly-equivalent tier the same thing as scan-proxy's
+   redesigned Release tier?** Clarified: same *gating trigger* (both
+   should fire on "about to push a major update," not a clock) — endorsed
+   unifying that. But different *content* — scan-proxy's Release tier
+   validates the Worker's own contract with RevenueCat/Anthropic, no
+   Android app involved; Android's tier validates the app's own real
+   integration (UI, RevenueCat SDK behavior including client-side caching
+   quirks a pure API test can't see — the credit-balance-cache bug found
+   2026-08-18 is the concrete example — navigation). Two suites under one
+   gating philosophy, not one test with two names.
+
+**Also decided: a sequencing principle for when a shared-interface
+change needs validating across both platforms** — run scan-proxy's real
+boundary tests first (a Node process, precise HTTP-level failures,
+`wrangler tail` for logs), and only proceed to Android's real-integration
+tests if those pass. Doesn't make the Android layer optional (some real
+bugs, like the balance-cache one, live entirely above what scan-proxy's
+tests can see) — it narrows where a failure in the expensive, hard-to-
+debug layer can be coming from, matching the order this project's own
+past bug-hunts already followed in practice without it being written
+down anywhere. Documented in the root `TESTING.md`'s category 4.
+
+**Purely a design/documentation session — nothing above is built yet**
+beyond what the previous Weekly-tier entry already covers. Updated:
+root `TESTING.md` (category 4's new sequencing note, the "Reconciling…"
+section's stale "fixed cadence" line corrected), `android/TESTING.md`
+(Weekly tier's blocker-resolved status, the relationship-to-Release
+clarification, the sequencing recommendation), `workers/scan-proxy/TESTING.md`
+(Release tier's full redesign write-up).
 
 **Android app:**
 - ✅ **`compute_breakdown`/`verdict_for` Kotlin port — done 2026-08-17.**

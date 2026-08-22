@@ -82,6 +82,25 @@ contain the exact field names `ScanFieldMapping.kt` on Android reads —
 the two modules' own tests couldn't see that field-name coupling on
 their own.
 
+**Sequencing, when validating a changed interface spans real, non-mocked
+systems** (decided 2026-08-21): run the cheapest, most isolated boundary
+first, and only proceed to the more expensive, harder-to-debug layer if
+that passes. Concretely: `workers/scan-proxy`'s real interface tests
+against RevenueCat/Anthropic (a Node process, precise HTTP-level
+failures, `wrangler tail` for logs) before Android's own real-integration
+tests (an emulator, Compose rendering, device state, a much larger space
+of things that could be wrong). This doesn't make the expensive layer
+optional — some real bugs live entirely above what the cheap layer can
+see (the RevenueCat SDK's client-side balance-cache bug found 2026-08-18
+is a concrete example: no API-contract test, however thorough, would
+have caught it). It just means a passing cheap layer meaningfully
+narrows where a failure in the expensive layer can be coming from, so
+debug there first, escalate second — the same order this project's own
+past bug-hunts have already followed in practice (the RevenueCat V1/V2
+key issue, the Kotlin golden-vector drift, the scale-ticket real-photo
+bug — all found at the cheaper/backend layer before or instead of the
+device layer).
+
 ## Regression scoping: Minor vs. Major
 
 Not a calendar cadence (no "daily"/"weekly" here) — scope is driven by
@@ -204,14 +223,21 @@ already offline/mocked — for Android that's Unit (JVM) + Daily
   never separate test suites, just a fast/full split of the same one).
 
 The **real-network tiers** — Android's Weekly, scan-proxy's Weekly and
-Release — sit outside Minor/Major entirely. They run on their own fixed
-cadence (weekly, or before/after a deploy) regardless of what a given
-session's diff touched, because what they guard against — a live
-API/credential/environment integration failure — isn't something a
-diff's scope can predict or bound. A purely-internal Minor change and a
-sprawling Major one are equally unrelated to whether, say, RevenueCat's
-real sandbox still behaves as expected; that only degrades on its own
-schedule, external to any code change here.
+Release — sit outside Minor/Major entirely. None of them run on a fixed
+calendar cadence despite the "Weekly" name, clarified 2026-08-21:
+scan-proxy's Weekly tier is just cheap enough to run anytime, ad hoc, no
+enforced schedule; Release (scan-proxy's and Android's, see each
+platform's own `TESTING.md` for how those two differ) is gated on a real
+decision — pushing a major update to the Play Store — not a clock. What
+they all guard against is the same regardless of trigger: a live
+API/credential/environment integration failure isn't something a
+session's diff scope can predict or bound. A purely-internal Minor
+change and a sprawling Major one are equally unrelated to whether, say,
+RevenueCat's real sandbox still behaves as expected; that only degrades
+on its own schedule, external to any code change here — which is
+exactly why these tiers are triggered by real-world events (a release
+decision, or just "enough time/uncertainty has passed to check") rather
+than folded into the diff-driven Minor/Major rules above.
 
 **In short**: read `android/TESTING.md`/`scan-proxy/TESTING.md`'s tier
 tables for *what network access a test needs and how often to run it at

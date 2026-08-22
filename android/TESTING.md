@@ -16,7 +16,7 @@ alternatives to choose between.
 |---|---|---|---|---|
 | **Unit (JVM)** | ✅ built | every commit | none | `./gradlew test` |
 | **Daily (instrumented, offline)** | ✅ built | before every commit touching UI/navigation | none (no `Purchases.configure()`) | `./gradlew connectedDebugAndroidTest` |
-| **Weekly (instrumented, real RevenueCat)** | not built | weekly / before an uncertain deploy | real, bounded, dedicated test customer | none yet |
+| **Weekly (instrumented, real RevenueCat)** | not built, blocker resolved | before pushing a major update to the Play Store, not a calendar cadence | real, bounded, dedicated test customer | none yet |
 
 The daily-equivalent instrumented tier runs with `CustomTestRunner`
 (`android/app/src/androidTest/java/com/rigcheck/app/CustomTestRunner.kt`),
@@ -30,13 +30,38 @@ real data — both call sites are already wrapped in `runCatching`, so an
 unconfigured `Purchases.sharedInstance` fails gracefully instead of
 crashing (no production-code change was needed to make this possible).
 
-The weekly tier is deliberately deferred, same trigger as
-`workers/scan-proxy`'s own weekly tier: it needs a dedicated disposable
-RevenueCat test customer (separate from `smoke-test-user`, which is
-reserved for manual Android field testing). Once that exists, it would
-cover: `PaywallScreen` rendering real Test Store offerings/prices, a real
-purchase completing and incrementing the balance, and a real scan
-against the deployed Worker decrementing it.
+**The blocker is resolved (2026-08-21)** — `weekly-test-user` and
+`weekly-test-user-no-credits` exist (see `workers/scan-proxy/TESTING.md`
+for how they were created), usable from Android too, not just
+scan-proxy's own Node tests. The test code itself is still not written.
+Once built, it would cover: `PaywallScreen` rendering real Test Store
+offerings/prices, a real purchase completing and incrementing the
+balance (this is also the *only* place in the whole test suite that can
+exercise a real purchase at all — RevenueCat's REST API has no
+"simulate a purchase" endpoint, only the SDK talking to real platform
+billing can do that, so any account-balance top-up via a real purchase
+has to happen here, not in any scan-proxy test), and a real scan against
+the deployed Worker decrementing it.
+
+**Not the same test as `workers/scan-proxy`'s Release tier, despite
+sharing a gating trigger** — discussed and clarified 2026-08-21. Both
+should be gated on the same real-world event (deciding to push a major
+update to the Play Store, not a calendar), but they test different
+layers: scan-proxy's Release tier validates the Worker's own contract
+with RevenueCat/Anthropic directly, no Android app involved at all; this
+tier validates the Android app's own real integration — UI rendering,
+RevenueCat SDK behavior (including client-side caching quirks a pure API
+test can't see, like the credit-balance-cache bug found 2026-08-18),
+navigation — layers scan-proxy's tests are structurally unable to see.
+
+**Recommended sequencing when a shared interface change needs both**:
+run scan-proxy's real-boundary tests first — cheaper, faster, and far
+easier to debug (a Node test's output and `wrangler tail` logs vs. an
+emulator, Compose rendering, and device state). If those pass, move to
+this tier; a real failure here is harder to isolate, but a passing
+scan-proxy layer first meaningfully narrows where the bug can be. See
+the root `TESTING.md`'s category 4 (inter-module interface tests) for
+the general version of this rule.
 
 ## What each test covers
 

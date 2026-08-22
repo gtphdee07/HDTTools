@@ -18,8 +18,8 @@ alternatives to choose between.
 |---|---|---|---|---|
 | **Sanity** | ✅ built | before every commit | none (mocked) | `npm run test:sanity` |
 | **Daily** | ✅ built | while actively working on this Worker | none (mocked) | `npm test` |
-| **Weekly** | 🟡 started (1 test) | weekly / before an uncertain deploy | real, bounded, dedicated test customer | `npm run test:weekly` |
-| **Release** | not built | before/after every `wrangler deploy` | real, against the live deployed Worker | `npm run test:release` (doesn't exist yet) |
+| **Weekly** | 🟡 started (1 test) | ongoing/ad hoc — cheap enough to run anytime, no enforced cadence | real, bounded, dedicated test customer | `npm run test:weekly` |
+| **Release** | designed, not built | before pushing a major update to the Play Store, not a fixed cadence | real, against RevenueCat/Anthropic directly | `npm run test:release` (doesn't exist yet) |
 
 Sanity is a small subset of daily's tests, tagged `[sanity]` in their
 names and selected via `node --test`'s `--test-name-pattern`, not a
@@ -30,9 +30,23 @@ for manual Android field testing) — `weekly-test-user` and
 (see `NEXT_STEPS.md`'s scan-proxy section). Weekly tests live in
 `src/weekly/*.test.ts`, deliberately excluded from `src/*.test.ts`'s glob
 (so `npm test`/`npm run test:sanity` never pick them up) and run only via
-`npm run test:weekly`. Release is still deferred — it's meant to run
-against whatever's actually live right after a `wrangler deploy`, which
-doesn't have a clear trigger yet with no CI in this repo.
+`npm run test:weekly`.
+
+**Release tier design, decided 2026-08-21, not yet built**: real API
+calls at the service-provider boundaries this Worker depends on —
+RevenueCat and Anthropic directly, not mocks, not the deployed Worker as
+an intermediary — including their error conditions, to catch a breaking
+change at either boundary before it reaches production. Gated on a real
+event (deciding to push a major update to the Play Store), not a
+calendar or a `wrangler deploy` — with no CI in this repo, "after every
+deploy" never had a real trigger anyway, whereas "before a major
+release" is a decision a person actually makes. Distinct from the Weekly
+tier above (Weekly is cheap enough to run anytime with no real cost;
+Release is the deliberate, thorough gate) and distinct from Android's
+own Weekly-equivalent tier despite sharing the same gating trigger — see
+`android/TESTING.md`'s tier notes for that relationship, and the root
+`TESTING.md`'s category 4 for the recommended sequencing (this tier
+first — cheaper and far easier to debug — before the Android layer).
 
 All tiers are run manually — there is no CI in this repo.
 

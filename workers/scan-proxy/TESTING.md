@@ -19,7 +19,7 @@ alternatives to choose between.
 | **Sanity** | ✅ built | before every commit | none (mocked) | `npm run test:sanity` |
 | **Daily** | ✅ built | while actively working on this Worker | none (mocked) | `npm test` |
 | **Weekly** | 🟡 started (1 test) | ongoing/ad hoc — cheap enough to run anytime, no enforced cadence | real, bounded, dedicated test customer | `npm run test:weekly` |
-| **Release** | designed, not built | before pushing a major update to the Play Store, not a fixed cadence | real, against RevenueCat/Anthropic directly | `npm run test:release` (doesn't exist yet) |
+| **Release** | 🟡 built, needs your local secrets to run | before pushing a major update to the Play Store, not a fixed cadence | real, against RevenueCat/Anthropic directly | `.\test-release.ps1` (`-SkipKeys` to allow skipping) |
 
 Sanity is a small subset of daily's tests, tagged `[sanity]` in their
 names and selected via `node --test`'s `--test-name-pattern`, not a
@@ -32,21 +32,61 @@ for manual Android field testing) — `weekly-test-user` and
 (so `npm test`/`npm run test:sanity` never pick them up) and run only via
 `npm run test:weekly`.
 
-**Release tier design, decided 2026-08-21, not yet built**: real API
-calls at the service-provider boundaries this Worker depends on —
-RevenueCat and Anthropic directly, not mocks, not the deployed Worker as
-an intermediary — including their error conditions, to catch a breaking
-change at either boundary before it reaches production. Gated on a real
-event (deciding to push a major update to the Play Store), not a
-calendar or a `wrangler deploy` — with no CI in this repo, "after every
-deploy" never had a real trigger anyway, whereas "before a major
-release" is a decision a person actually makes. Distinct from the Weekly
-tier above (Weekly is cheap enough to run anytime with no real cost;
-Release is the deliberate, thorough gate) and distinct from Android's
-own Weekly-equivalent tier despite sharing the same gating trigger — see
-`android/TESTING.md`'s tier notes for that relationship, and the root
-`TESTING.md`'s category 4 for the recommended sequencing (this tier
-first — cheaper and far easier to debug — before the Android layer).
+**Release tier, built 2026-08-22**: real API calls at the service-provider
+boundaries this Worker depends on — RevenueCat and Anthropic directly
+(`revenuecat.ts`/`claude.ts`'s own functions called in-process), not
+mocks and not routed through the deployed Worker as an intermediary —
+including their error conditions, to catch a breaking change at either
+boundary before it reaches production. Gated on a real event (deciding
+to push a major update to the Play Store), not a calendar or a `wrangler
+deploy` — with no CI in this repo, "after every deploy" never had a real
+trigger anyway, whereas "before a major release" is a decision a person
+actually makes. Distinct from the Weekly tier above (Weekly is cheap
+enough to run anytime with no real cost; Release is the deliberate,
+thorough gate) and distinct from Android's own Weekly-equivalent tier
+despite sharing the same gating trigger — see `android/TESTING.md`'s
+tier notes for that relationship, and the root `TESTING.md`'s category 4
+for the recommended sequencing (this tier first — cheaper and far easier
+to debug — before the Android layer).
+
+**Needs `ANTHROPIC_API_KEY` and `REVENUECAT_SECRET_KEY` exported in your
+own shell before running** — the same two values already set as this
+Worker's deployed secrets via `wrangler secret put`, read from
+`process.env` here instead of ever being typed into chat.
+
+**Default behavior is strict, not a graceful skip (revised 2026-08-22,
+per explicit direction)**: run via `.\test-release.ps1` (or `npm run
+test:release`/`SKIP_KEYS=1 npm run test:release` directly — the
+enforcement lives in the test file itself, not the wrapper, so it holds
+regardless of entry point). With no `-SkipKeys`, a missing key stops the
+*entire file* before any test runs — reported as one failed test naming
+which key is missing, not a silent per-test skip, since a silent skip
+here would be indistinguishable from "this boundary was never actually
+checked this release." Pass `-SkipKeys` (`.\test-release.ps1 -SkipKeys`,
+or `SKIP_KEYS=1 npm run test:release`) to explicitly allow a missing key
+to fall back to a per-boundary skip instead — RevenueCat and Anthropic
+skip independently, so you can verify one without having a key for the
+other.
+
+**A key that *is* present but wrong is never just a generic assertion
+mismatch, either** — `assertNotAuthFailure`/`rejectingAuthFailureAsBadKey`
+in the test file turn a real 401/403 from either service into an
+explicit `"<ENV_VAR_NAME> appears invalid"` failure, with the real error
+body attached, naming exactly which key. Verified 2026-08-22 with a
+deliberately garbage `REVENUECAT_SECRET_KEY`: both RevenueCat cases
+failed with `REVENUECAT_SECRET_KEY appears invalid - RevenueCat returned
+401: {"message":"Invalid API key."...}`, not a bare "expected 200, got
+401."
+
+**Real cost note**: the Anthropic happy-path case makes one real, billed
+Claude call (~$0.01, same baseline as a real user scan) — infrequent by
+design, matching the tier's gating trigger, but not free. The
+RevenueCat-side cases are free (currency-ledger adjustments only) and
+net zero balance change (`weekly-test-user`'s spend is immediately
+refunded back). **Found while first verifying this tier**:
+`ANTHROPIC_API_KEY` was already set ambiently in this dev machine's
+shell environment (not deliberately) — worth checking for ambient
+secrets before running anything that could hit a paid API unexpectedly.
 
 All tiers are run manually — there is no CI in this repo.
 
@@ -141,6 +181,15 @@ tests also included in the sanity tier.
 ### `weekly/scan.weekly.test.ts` — real network, against the live deployed Worker (`npm run test:weekly` only)
 
 - **a customer with no SCAN credits gets 402 insufficient_credits, never reaches Claude** — real POST to the deployed Worker using `weekly-test-user-no-credits` (0 balance, no entitlement granted). Costs nothing to run repeatedly: `spendCredit`'s real 422 short-circuits the request before any real Claude call happens, the same control-flow ordering `scan.test.ts`'s equivalent mocked case already proves — this is that same claim, proven for real. First test in this tier; `weekly-test-user` (a real credit balance, entitlement granted) exists for a future real-scan-and-charge case, not yet written.
+
+### `release/scan.release.test.ts` — real API calls directly at the RevenueCat/Anthropic boundaries (`.\test-release.ps1` / `npm run test:release`, needs your local secrets)
+
+- **Module-level hard stop, not a per-test skip, when a key is missing and `SKIP_KEYS` isn't set** — the whole file throws before any test runs, reported as one failed test naming which env var is missing. `SKIP_KEYS=1` (set by `-SkipKeys`) is required to fall back to the per-boundary skips below.
+- **spendCredit against a real funded customer succeeds, and refundCredit reverses it** — `weekly-test-user`, net zero balance change (spend then immediately refund with the paired idempotency key). Proves the real `Authorization`/`Idempotency-Key`/adjustment-body request shape `revenuecat.ts` sends is still accepted for both a debit and a credit.
+- **spendCredit against a real customer with zero balance gets the real 422 `scan.ts` depends on** — `weekly-test-user-no-credits`, calling `revenuecat.ts` directly rather than through the Worker (the Weekly tier's equivalent case goes through the deployed Worker's full request/response envelope; this one isolates the RevenueCat boundary itself).
+- **Both of the above fail explicitly as a bad-key problem, not a bare status mismatch, if `REVENUECAT_SECRET_KEY` is present but wrong** — `assertNotAuthFailure` turns a real 401/403 into `"REVENUECAT_SECRET_KEY appears invalid - RevenueCat returned <status>: <real error body>"`. Verified 2026-08-22 with a deliberately garbage key.
+- **extractFields against the real Anthropic API extracts real fields from a real truck tag photo** — `ExampleDocs/AddieTag.jpg`, the same file the original 2026-08-17 scan-proxy smoke test used. Proves the real request shape (model name, forced `tool_choice`, image content block) is still accepted and still returns a matching `tool_use` block with real field names — not any particular extracted value, since real vision accuracy isn't this test's concern (that's `tests/test_scale_ticket_real_photo.py`'s job on the Python/Tesseract side; this is the same idea applied directly to Claude). The one real, billed call in this file — fails explicitly as `"ANTHROPIC_API_KEY appears invalid"` (via `rejectingAuthFailureAsBadKey`), not a bare SDK error, if the real key is present but wrong.
+- **extractFields against the real Anthropic API rejects an invalid key with a real auth error** — free (fails before any billed inference), proves the auth-failure shape `extractFields`'s error handling assumes is still what a real 401 actually looks like. (This one's *point* is a bad key being correctly rejected, so it's not wrapped in `rejectingAuthFailureAsBadKey` — that wrapper is for `ANTHROPIC_API_KEY` unexpectedly being the thing that's wrong, not this test's own deliberately-bad key.)
 
 ## Known gaps (deliberately not tested, or not yet)
 

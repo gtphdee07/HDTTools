@@ -30,10 +30,46 @@ scrolling the whole history below.
    key set, since every field key is always populated (with `None` on no
    match), never omitted. `uv run pytest -q`: 95/95 (was 88). Both
    `tests/TESTING.md` known-gap bullets closed.
-2. ⬜ **`scan-proxy`'s Release tier** (`workers/scan-proxy/TESTING.md`) —
-   real API calls at the RevenueCat/Anthropic boundaries directly, error
-   conditions included, gated on deciding to push a major Play Store
-   update rather than a calendar. Designed 2026-08-21, not built.
+2. ✅ **`scan-proxy`'s Release tier — built 2026-08-22.** New
+   `src/release/scan.release.test.ts` (4 cases), `npm run test:release`:
+   `spendCredit`/`refundCredit` called directly against real RevenueCat
+   (`weekly-test-user`, net zero balance change; `weekly-test-user-no-credits`
+   for the real 422), and `extractFields` called directly against real
+   Anthropic (a real `ExampleDocs/AddieTag.jpg` extraction, and a real
+   invalid-key auth-failure case). Needs `ANTHROPIC_API_KEY`/
+   `REVENUECAT_SECRET_KEY` exported locally — skips cleanly, per boundary,
+   when either is missing. **Real finding while verifying this**:
+   `ANTHROPIC_API_KEY` turned out to already be set in this machine's
+   ambient shell environment (not deliberately), so the two Anthropic
+   cases ran for real during verification, not just a skip check — a
+   small real cost (~$0.01) was incurred, and both passed against the
+   live API. Worth checking for ambient secrets before running a command
+   that could hit a paid API, next time. `REVENUECAT_SECRET_KEY` wasn't
+   set anywhere, so those two cases correctly skipped. `npm test`/`npm
+   run test:sanity` unaffected (47/7, same as before — the new directory
+   is excluded from their glob the same way `src/weekly/` is).
+
+   **Revised same day, per explicit direction**: the graceful per-boundary
+   skip above was too permissive by default — a missing key should stop
+   the whole run, not quietly skip, unless skipping is explicitly
+   requested. New `test-release.ps1` wrapper with a `-SkipKeys` switch;
+   the actual enforcement lives in `scan.release.test.ts` itself via a
+   `SKIP_KEYS` env var (so it holds regardless of entry point, not just
+   through the wrapper). Without `-SkipKeys`/`SKIP_KEYS=1`, a missing key
+   now throws at module load, before any test runs — reported as one
+   failed test naming which key is missing, not a silent skip. Also
+   added: a key that's *present but wrong* no longer just fails as a
+   generic status mismatch — `assertNotAuthFailure` (RevenueCat) and
+   `rejectingAuthFailureAsBadKey` (Anthropic) turn a real 401/403 into an
+   explicit `"<ENV_VAR_NAME> appears invalid"` failure with the real
+   error body attached. All three behaviors verified for real, at zero
+   unnecessary cost: the strict default stopping (free — no keys were
+   changed), `-SkipKeys` skipping cleanly with both keys temporarily
+   removed (free), and the bad-key report with `REVENUECAT_SECRET_KEY`
+   set to a deliberately garbage value while `ANTHROPIC_API_KEY` was
+   temporarily unset (free — confirmed RevenueCat's real auth-failure
+   status is 401, and the failure message correctly named the bad key
+   and quoted RevenueCat's real "Invalid API key" response body).
 3. ⬜ **`scan-proxy`'s Weekly tier, the rest of it** — the real-scan-and-
    charge case (`weekly-test-user`) and the real refund/OCR-failure case
    (a real cell-phone photo is ready to use for this one — see

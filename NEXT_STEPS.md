@@ -86,28 +86,19 @@ reading anything else.
    for free. Design-correction detail (why a normal wrong photo *can't*
    demonstrate "OCR failure" for this Worker) in `ARCHIVE_TESTING.md`.
    `npm test`/`npm run test:sanity` unaffected.
-4. ⬜ **Android's Weekly-equivalent tier** — not started. Do this after
-   #2/#3, per the sequencing principle decided 2026-08-21 (cheap/isolated
-   boundary first, expensive/hard-to-debug device layer second — root
-   `TESTING.md` category 4). Also the only place the self-sustaining Test
-   Store purchase can be exercised at all — RevenueCat's REST API has no
-   way to simulate one; only the SDK against real platform billing can.
-   **Also add coverage tooling to the Android test suite as part of this
-   item** (JaCoCo, AGP's built-in `enableUnitTestCoverage`/
-   `enableAndroidTestCoverage` flags) — decided 2026-08-23, ahead of
-   charging money for a release, per the same motivation as items 4a/7
-   below. Unit + Daily tiers get coverage now; Weekly-tier coverage
-   deliberately deferred (documented nice-to-have, not built).
-
-   **Plan approved 2026-08-23, not yet executed** — full plan (new
-   `WeeklyTestApplication`/`WeeklyTestRunner`, `PaywallScreenWeeklyTest.kt`,
-   `test-weekly.ps1`) is written out in full at
-   `C:\Users\Angela\.claude\plans\i-would-like-to-toasty-dusk.md` — that
-   path is local to this machine, not in the repo, so if you're picking
-   this up cold (a new machine, or that plan file is gone), the summary
-   above plus this file's own conventions (mirror `CustomTestRunner.kt`
-   and `workers/scan-proxy/test-release.ps1`) are enough to reconstruct
-   it without the plan file itself.
+4. 🔶 **Android's Weekly-equivalent tier** — Part A ✅ done and verified
+   for real 2026-08-23 (`.\test-weekly.ps1` → `OK (3 tests)`, real
+   RevenueCat Test Store + real Worker call, `weekly-test-user`'s balance
+   moved both ways for real). Full narrative — three rejected mechanisms
+   for routing a second Application class into one test APK, a real
+   main-thread-only purchase-trigger bug, a Daily-tier contamination gap
+   closed via `notClass` — in `ARCHIVE_ANDROID.md`. **Part B (JaCoCo
+   coverage tooling for Unit + Daily tiers) not started** — decided
+   2026-08-23, ahead of charging money for a release, per the same
+   motivation as items 4a/7 below; Weekly-tier coverage deliberately
+   deferred (documented nice-to-have, not built). Full original plan
+   detail at `C:\Users\Angela\.claude\plans\i-would-like-to-toasty-dusk.md`
+   — local to this machine, not in the repo.
 4a. ⬜ **Wire up Python coverage reporting** — decided 2026-08-23, right
    after #4. Nearly free: `pytest-cov` is already a dev dependency and
    `pyproject.toml`'s `[tool.coverage.run]` already scopes to

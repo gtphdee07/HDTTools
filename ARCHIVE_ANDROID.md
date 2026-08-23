@@ -475,7 +475,110 @@ this is a fully separate concern from Play Store distribution:
     specific `TextField` reliably — `LabeledTextField`'s existing
     `modifier` parameter already threaded through to the real field, so
     this needed no changes to the shared component itself.
-  - **Weekly-equivalent tier — the blocker is resolved (2026-08-21,
-    see `ARCHIVE_MONETIZATION.md`), the Android-side test code is
-    still not written as of 2026-08-23 — see `NEXT_STEPS.md`'s roadmap
-    item #4 (plan approved, not yet executed).**
+- ✅ **Weekly-equivalent tier — built and verified for real, 2026-08-23**
+  (roadmap item #4, Part A). `PaywallScreenWeeklyTest.kt` (3 cases, see
+  `android/TESTING.md` for what each covers) passes end-to-end against
+  the real RevenueCat Test Store and the real deployed Worker
+  (`.\test-weekly.ps1` → `OK (3 tests)`), incrementing/decrementing
+  `weekly-test-user`'s real balance both ways.
+
+  **Real bug found while diagnosing an unrelated user report, found via
+  live device driving, not guessed.** Before starting this work, the
+  user reported the app "skipping" the Trailer step after a truck scan.
+  Rather than guess, drove the actual installed APK live via
+  `uiautomator dump` + `adb shell input tap` (screenshotting each step)
+  — a full manual-entry walkthrough (Truck → Trailer → Scale) proved the
+  navigation code itself was correct; the real culprit was almost
+  certainly the AVD's fake virtual-scene camera returning garbage OCR
+  data (a known, already-documented limitation, not a new bug). This
+  hands-on-driving technique — `uiautomator dump` for exact element
+  bounds/resource-ids, `adb shell input tap`/`screencap` to drive and
+  observe — turned out to be exactly what this tier's own tests needed
+  too, since it's what surfaces a native (non-Compose) dialog's real
+  structure.
+
+  **Three mechanisms tried for "one test APK, two Application classes,
+  chosen at run time" before one actually worked — each rejected only
+  after hands-on proof, not assumption:**
+  1. A second, separately-named `AndroidJUnitRunner` subclass
+     (`WeeklyTestRunner`) with its own `<instrumentation>` manifest
+     entry. **Doesn't work** — AGP's manifest merger treats
+     `<instrumentation>` as a singleton merge point regardless of
+     `android:name`; the second entry's attributes (confirmed via the
+     merged manifest in `build/intermediates/`) silently fold into the
+     *existing* `CustomTestRunner` entry instead of registering as an
+     invocable component. `am instrument ... WeeklyTestRunner` then
+     fails outright: `INSTRUMENTATION_FAILED`.
+  2. Reusing `CustomTestRunner`, branching on `-e weekly true` read via
+     `InstrumentationRegistry.getArguments()` inside `newApplication()`.
+     **Doesn't work** — crashed the *Daily* tier too (this runner is
+     shared): `IllegalStateException: No instrumentation arguments
+     registered!`. `AndroidJUnitRunner` hadn't registered the static
+     registry yet when `newApplication()` fired.
+  3. Same branch, but capturing the `Bundle` from `onCreate(Bundle)`'s
+     own parameter into an instance field first (Android's own docs say
+     `onCreate` runs "before any application code is loaded", i.e.
+     before `newApplication()`). **Also doesn't work**, and this one is
+     worth remembering precisely: timestamped `Log.i` calls proved
+     `newApplication()` actually fires *before* `onCreate()` in this
+     AGP/androidx.test version — the documented order is reversed in
+     practice.
+  4. **What actually worked**: a device-side marker file
+     (`/data/local/tmp/rigcheck_weekly_mode`), touched by
+     `test-weekly.ps1` via `adb shell` *before* `am instrument` runs,
+     checked with plain synchronous `java.io.File.exists()` in
+     `newApplication()` — no lifecycle-ordering dependency at all, since
+     it doesn't go through the Instrumentation object's own state.
+     Removed again after the run so a later `./gradlew
+     connectedDebugAndroidTest` is unaffected regardless.
+
+  **A second real gap, found only because the Daily tier was rerun as a
+  regression check after each attempt (per this project's TDD/no-silent-
+  regression discipline) rather than trusting the Weekly-tier change was
+  isolated:** simply adding `PaywallScreenWeeklyTest.kt` to the shared
+  `androidTest` source set meant `./gradlew connectedDebugAndroidTest`
+  picked it up too — JUnit discovers every `@Test` class in the source
+  set regardless of which tier "owns" it. Since the Daily tier never
+  sets the weekly marker, this test would have silently tried real
+  network as an unconfigured `Purchases` instance. Fixed with
+  `testInstrumentationRunnerArguments["notClass"]` in
+  `app/build.gradle.kts` (Gradle-invocation-only, doesn't affect
+  `test-weekly.ps1`'s raw `adb shell am instrument` call at all — the
+  two invocation paths are fully independent).
+
+  **A real threading bug in the purchase test itself**: calling
+  `RevenueCatManager.purchasePackage(...)` from the instrumentation
+  thread (the default for `runBlocking`/`async` here) never triggered
+  RevenueCat's Test Store confirmation dialog at all — not slow, just
+  never happened, confirmed by widening the wait to 25s with no change.
+  A real manual button tap (which always runs on the main thread) opens
+  it instantly. Fixed by wrapping the call in
+  `async(Dispatchers.Main) { ... }`.
+
+  **The dialog itself was screenshotted and confirmed hands-on before
+  encoding it into the test**, reusing the already-installed app (same
+  RevenueCat Test Store dialog regardless of app-user-id, so no need to
+  build the Weekly APK first just to see it): a standard native
+  `AlertDialog` with `android:id/button1`/`button2`/`button3`
+  ("TEST VALID PURCHASE" / "TEST FAILED PURCHASE" / "CANCEL"), title
+  "Test Store Purchase", body text stating outright "This is a test
+  purchase and should only be used during development" — confirms the
+  plan's second hands-on-check item (no real charge) directly from the
+  SDK's own UI, not RevenueCat's docs. Triggering it also proved the
+  first hands-on-check item: yes, a real purchase needs exactly one UI
+  interaction beyond the app's own Buy button (this dialog), consistent
+  with what Phase 3/4's manual verification already found. New
+  `androidx.test.uiautomator:uiautomator` dependency drives it (`By.res`/
+  `UiDevice.wait`/`Until.findObject`), since it's outside the Compose
+  semantics tree `composeRule` can see.
+
+  **One more real, unrelated bug caught by the compiler, not guessed**:
+  `rendersRealOfferingsFromTestStore() = runBlocking { ... }`'s body
+  ended in `assertIsDisplayed()`, which returns a chainable
+  `SemanticsNodeInteraction`, not `Unit` — JUnit rejects any `@Test`
+  method whose inferred return type isn't void. Fixed by switching to a
+  block body (`{ runBlocking { ... } }`) so the method's return type is
+  unambiguous regardless of the last expression inside.
+
+  Part B (Unit/Daily JaCoCo coverage tooling) not started — see
+  `NEXT_STEPS.md`'s roadmap item #4.

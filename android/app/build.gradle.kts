@@ -18,6 +18,17 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "com.rigcheck.app.CustomTestRunner"
+
+        // PaywallScreenWeeklyTest needs real network + weekly-test-user
+        // (via -e weekly true, only test-weekly.ps1 passes it) and would
+        // otherwise be picked up by ./gradlew connectedDebugAndroidTest's
+        // unfiltered run too, since JUnit discovers every @Test class in
+        // the androidTest source set regardless of which tier "owns" it -
+        // confirmed hands-on 2026-08-23 when the Daily tier's run tried to
+        // execute it. testInstrumentationRunnerArguments only applies to
+        // Gradle-invoked runs (test-weekly.ps1's raw `adb shell am
+        // instrument` is unaffected), so this excludes it from Daily only.
+        testInstrumentationRunnerArguments["notClass"] = "com.rigcheck.app.ui.screens.PaywallScreenWeeklyTest"
     }
 
     buildTypes {
@@ -60,6 +71,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.uiautomator)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

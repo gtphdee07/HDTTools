@@ -16,7 +16,7 @@ alternatives to choose between.
 |---|---|---|---|---|
 | **Unit (JVM)** | ✅ built | every commit | none | `./gradlew test` |
 | **Daily (instrumented, offline)** | ✅ built | before every commit touching UI/navigation | none (no `Purchases.configure()`) | `./gradlew connectedDebugAndroidTest` |
-| **Weekly (instrumented, real RevenueCat)** | not built, blocker resolved | before pushing a major update to the Play Store, not a calendar cadence | real, bounded, dedicated test customer | none yet |
+| **Weekly (instrumented, real RevenueCat)** | ✅ built | before pushing a major update to the Play Store, not a calendar cadence | real, bounded, dedicated test customer (`weekly-test-user`) | `.\test-weekly.ps1` |
 
 The daily-equivalent instrumented tier runs with `CustomTestRunner`
 (`android/app/src/androidTest/java/com/rigcheck/app/CustomTestRunner.kt`),
@@ -30,18 +30,42 @@ real data — both call sites are already wrapped in `runCatching`, so an
 unconfigured `Purchases.sharedInstance` fails gracefully instead of
 crashing (no production-code change was needed to make this possible).
 
-**The blocker is resolved (2026-08-21)** — `weekly-test-user` and
-`weekly-test-user-no-credits` exist (see `workers/scan-proxy/TESTING.md`
-for how they were created), usable from Android too, not just
-scan-proxy's own Node tests. The test code itself is still not written.
-Once built, it would cover: `PaywallScreen` rendering real Test Store
-offerings/prices, a real purchase completing and incrementing the
+**Built and verified for real 2026-08-23** (`.\test-weekly.ps1` → `OK (3
+tests)`, real network throughout), using the dedicated `weekly-test-user`
+RevenueCat test customer (see `workers/scan-proxy/TESTING.md` for how it
+was created). Uses the *same* `CustomTestRunner` as the Daily tier, not a
+second runner — AGP's manifest merger only allows one `<instrumentation>`
+element per test APK, so a separately-named runner class silently loses
+its identity when merged. Instead, `test-weekly.ps1` touches a
+device-side marker file
+(`/data/local/tmp/rigcheck_weekly_mode`) before invoking `am instrument`;
+`CustomTestRunner.newApplication()` checks for that file (plain
+synchronous `java.io.File.exists()` — no lifecycle-ordering dependency)
+and substitutes `WeeklyTestApplication` (real `Purchases.configure()`
+against `weekly-test-user`) instead of the Daily tier's plain offline
+`Application`. The marker is removed again afterward so a later
+`./gradlew connectedDebugAndroidTest` run is unaffected either way; that
+Gradle task also explicitly excludes `PaywallScreenWeeklyTest` via
+`testInstrumentationRunnerArguments["notClass"]` in
+`app/build.gradle.kts`, since JUnit otherwise discovers every `@Test`
+class in the `androidTest` source set regardless of which tier "owns"
+it. Full narrative of the three approaches tried before this one worked
+— including an instrumentation-args race and a main-thread requirement
+for triggering the real purchase dialog — in `ARCHIVE_ANDROID.md`.
+
+`PaywallScreenWeeklyTest.kt` covers: `PaywallScreen` rendering real Test
+Store offerings/prices, a real purchase completing and incrementing the
 balance (this is also the *only* place in the whole test suite that can
-exercise a real purchase at all — RevenueCat's REST API has no
-"simulate a purchase" endpoint, only the SDK talking to real platform
-billing can do that, so any account-balance top-up via a real purchase
-has to happen here, not in any scan-proxy test), and a real scan against
-the deployed Worker decrementing it.
+exercise a real purchase at all — RevenueCat's REST API has no "simulate
+a purchase" endpoint, only the SDK talking to real platform billing can
+do that, so any account-balance top-up via a real purchase has to happen
+here, not in any scan-proxy test), and a real scan against the deployed
+Worker (using a copy of `ExampleDocs/AddieTag.jpg` at
+`android/app/src/androidTest/assets/AddieTag.jpg`) decrementing it by
+exactly 1. **Real cost per full run**: one real ~$0.01 Claude call (the
+scan case); the purchase case is free — RevenueCat's Test Store dialog
+states outright it's a dev-only purchase, confirmed hands-on by
+triggering one and reading its own text.
 
 **Not the same test as `workers/scan-proxy`'s Release tier, despite
 sharing a gating trigger** — discussed and clarified 2026-08-21. Both
@@ -163,6 +187,44 @@ real `RigCheckNavHost` + `RigCheckViewModel`, offline via
   disclaimer does *not* reappear on this second checkout in the same
   session.
 
+### Weekly (instrumented, real RevenueCat) — `.\test-weekly.ps1`
+
+- `PaywallScreenWeeklyTest.kt` — three cases, run under the same
+  `CustomTestRunner` as the Daily tier but with the weekly marker file
+  set (`weekly-test-user`) — see the tier description above:
+  - `rendersRealOfferingsFromTestStore` — fetches the real package
+    directly via `RevenueCatManager.getOfferings()` first (so the
+    assertion checks a concrete known value, not a guess about UI
+    internals), then confirms `PaywallScreen` renders that real
+    `pkg.product.title`/`price.formatted` text instead of the daily
+    tier's "Couldn't load offers" error state.
+  - `realPurchaseIncrementsBalance` — calls
+    `RevenueCatManager.purchasePackage`/`getScanCreditBalance()`
+    directly (not through the Compose button — the daily tier's
+    fake-lambda `PaywallScreenTest.kt` already covers that the button
+    wiring itself works; this test's value is the real network round
+    trip), launched on `Dispatchers.Main` specifically — calling it from
+    the instrumentation thread never triggered RevenueCat's Test Store
+    confirmation dialog at all, confirmed hands-on (real button taps
+    always run on main; a background-thread call silently never opened
+    it, even with a 25s wait). Drives that native (non-Compose)
+    `AlertDialog` via `UiDevice`/`UiAutomator`
+    (`android:id/button1` — standard resource-id, screenshotted and
+    confirmed hands-on before writing this). Asserts the balance
+    increased, not a hardcoded amount, since the exact grant depends on
+    the Test Store package's current config.
+  - `realScanDecrementsBalance` — reads
+    `android/app/src/androidTest/assets/AddieTag.jpg` (a copy of
+    `ExampleDocs/AddieTag.jpg`), base64-encodes it directly (no need to
+    route through `PhotoEncoding.kt`'s Uri/downscaling path — that
+    path's own logic isn't what this test verifies), calls
+    `ScanApiClient.scan(...)` directly against the deployed Worker,
+    asserts a `ScanResult.Success` with non-empty fields, then asserts
+    the balance dropped by exactly 1.
+  - Uses `createAndroidComposeRule<ComponentActivity>()`, not the daily
+    tier's `createComposeRule()`, since `purchasePackage` needs a real
+    `Activity` (`composeRule.activity`).
+
 ## Known gaps (deliberately not tested, or not yet)
 
 - **Real camera/gallery intents** — `ChooserScreenTest` confirms the
@@ -170,9 +232,6 @@ real `RigCheckNavHost` + `RigCheckViewModel`, offline via
   tapping them dispatches the correct Android intent or that a real
   capture/pick completes. Low regression risk (well-understood platform
   API); real flows stay covered by manual on-device testing.
-- **Real RevenueCat integration** (Paywall real offerings/pricing, a
-  real purchase, a real scan against the deployed Worker) — the weekly
-  tier above, deferred until the dedicated test customer exists.
 - **`android/app/src/androidTest/java/com/rigcheck/app/ExampleInstrumentedTest.kt`**
   — the unmodified AGP template test, left in place; harmless, not part
   of this suite's real coverage.

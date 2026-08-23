@@ -3,9 +3,9 @@
 Mirrors `workers/scan-proxy/TESTING.md`'s structure and the same tiered
 strategy: sanity/daily tiers are fully offline and mocked/faked;
 weekly/release tiers make real, bounded external calls and are built
-later. This file documents current state — see `NEXT_STEPS.md` for the
-narrative history of how it got built and what bugs were found along the
-way. See the root `TESTING.md`'s "Reconciling with per-platform network/
+later. This file documents current state — see `ARCHIVE_ANDROID.md` (repo
+root) for the narrative history of how it got built and what bugs were
+found along the way. See the root `TESTING.md`'s "Reconciling with per-platform network/
 cadence tiers" section for how this tiering relates to that file's
 Minor/Major regression-scoping rules — the two are independent axes, not
 alternatives to choose between.
@@ -70,24 +70,25 @@ the general version of this rule.
 - `BreakdownTest.kt`, `VerdictTest.kt`, `NumberFormattingTest.kt` — the
   `compute_breakdown`/`verdict_for` Kotlin port, ported from
   `tests/test_breakdown.py` plus Android-only edge cases (see
-  `NEXT_STEPS.md` for detail).
+  `ARCHIVE_ANDROID.md` at the repo root for detail).
 - `BreakdownGoldenVectorTest.kt` — runs the shared
   `test-vectors/breakdown_cases.json` cases against this port, the same
   cases `tests/test_breakdown_golden_vectors.py` runs against Python (the
   source of truth). Cases needing a capability this port doesn't have yet
   are skipped, not silently passed — the test's own console output
   reports the count every run. See the root `TESTING.md`'s cross-platform
-  section and `NEXT_STEPS.md` for what running this the first time found
-  (several generations of drift, including a live bug this exact
-  mechanism proved and then verified fixed).
+  section and `ARCHIVE_TESTING.md` (repo root) for what running this the
+  first time found (several generations of drift, including a live bug
+  this exact mechanism proved and then verified fixed).
 - `RevenueCatManagerTest.kt` — the balance-cache-invalidation bug fixed
   2026-08-18: `getScanCreditBalance()` must call
   `invalidateVirtualCurrenciesCache()` before reading the balance, not
   after (asserted via `verifyOrder`); balance-present, balance-absent,
   and `appUserId`-passthrough cases. Uses MockK against
   `Purchases.Companion` and the real callback-based
-  `getVirtualCurrencies(...)` method — see `NEXT_STEPS.md` for the two
-  MockK deadlocks hit and worked around while writing this.
+  `getVirtualCurrencies(...)` method — see `ARCHIVE_ANDROID.md` (repo
+  root) for the two MockK deadlocks hit and worked around while writing
+  this.
 
 ### Daily (instrumented) — `./gradlew connectedDebugAndroidTest`
 

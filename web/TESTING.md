@@ -3,8 +3,8 @@
 Classifies `web/`'s test suite against the four categories defined in the
 root `TESTING.md`. Written 2026-08-21, the same day the harness itself
 (Vitest + React Testing Library) was installed — this is the first test
-suite this package has ever had. See `NEXT_STEPS.md` for the narrative
-history.
+suite this package has ever had. See `ARCHIVE_TESTING.md` and
+`ARCHIVE_WEB_STREAMLIT.md` (repo root) for the narrative history.
 
 `npm test` (`vitest run`) — currently 71 tests, all passing.
 `npm run build` (`tsc -b && vite build`) typechecks `src/**`, test files

@@ -17,7 +17,7 @@ rename, drop, or type change in `schemas.py` would go completely
 uncaught by every test in `web/` — they'd all stay green, because none
 of them touch real Python output.
 
-**Option B** (built 2026-08-21, see `NEXT_STEPS.md` for that writeup)
+**Option B** (built 2026-08-21, see `ARCHIVE_TESTING.md` at the repo root for that writeup)
 closes this for `BreakdownItemOut`/`VerdictOut` specifically, via a
 shared key-list fixture (`test-vectors/breakdown_response_shape_contract.json`)
 that a real Python test and a Web type-literal test both check against.

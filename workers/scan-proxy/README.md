@@ -3,8 +3,8 @@
 Server-side proxy for the Android app's paid "scan instead of type" feature.
 Holds `ANTHROPIC_API_KEY` (which can never ship inside the app) and charges
 one RevenueCat virtual-currency credit per scan before calling Claude
-vision. See `NEXT_STEPS.md` at the repo root for the full monetization
-design thread this implements.
+vision. See `ARCHIVE_MONETIZATION.md` at the repo root for the full
+monetization design thread this implements.
 
 ## What it does
 
@@ -121,8 +121,9 @@ npm run deploy
 
 ## Not done yet
 
-See `NEXT_STEPS.md` at the repo root — its "🧪 Tests still outstanding"
-section is the maintained list of what testing is still missing here and
-what unlocks each item; this README doesn't duplicate it. Source code
+See `NEXT_STEPS.md` at the repo root — its roadmap and "🧪 Tests still
+outstanding" sections are the maintained list of what testing is still
+missing here and what unlocks each item; this README doesn't duplicate
+it. Source code
 only, nothing is deployed yet, and the Android app has no code calling
 this endpoint.

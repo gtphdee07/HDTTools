@@ -44,8 +44,8 @@ it still holds for the default path.
 of typing values in, the user can photograph the label/ticket and have
 Claude vision extract the fields (same idea as the web/Streamlit OCR
 step, just cloud-vision instead of on-device Tesseract). This is gated
-by credits — see `NEXT_STEPS.md`'s "Android monetization" section for
-the full reasoning (lifetime purchase + consumable credit packs;
+by credits — see `ARCHIVE_MONETIZATION.md` (repo root) for the full
+reasoning (lifetime purchase + consumable credit packs;
 subscription was considered and explicitly rejected). Backend:
 `workers/scan-proxy/` (Cloudflare Worker, already in this repo, not yet
 deployed) exposes `POST /v1/scan` — charges one RevenueCat credit,
@@ -146,7 +146,8 @@ being a numbers-and-safety tool.
    out. The 2026-08-17 mockup is a bespoke, brand-matched layout (not a
    generic paywall) — build this as a custom Compose screen rather than
    RevenueCat's prebuilt Paywall UI, which wouldn't match. Pricing itself
-   is deliberately still undecided (see `NEXT_STEPS.md`) — the mockup
+   is deliberately still undecided (see `NEXT_STEPS.md`'s roadmap and
+   `ARCHIVE_MONETIZATION.md`) — the mockup
    shows "Price TBD" placeholders; don't hard-code dollar amounts
    anywhere they'd be annoying to change later.
 6. **Credit balance indicator** — not a dedicated screen; a persistent,
@@ -247,7 +248,8 @@ already corrected — unlike `ExampleDocs/`'s swapped names, see below):
 These are re-exported, corrected copies — not the original
 `ExampleDocs/AddieTag.jpg` / `ExampleDocs/GooseTag.jpg`, whose filenames
 are swapped relative to what they imply (already noted in
-`NEXT_STEPS.md`, not fixed there since it wasn't part of that ask). Two
+`ARCHIVE_EARLY_HISTORY.md`, not fixed there since it wasn't part of that
+ask). Two
 edits were made for this export: the truck tag photo's EXIF orientation
 was corrected (it displayed sideways), and both tag photos have their VIN
 line and/or barcode redacted with an opaque block, since they're real
@@ -295,6 +297,6 @@ up on this Windows machine, project scaffolded at `android/`,
 verified, and Phase 3 (rig picker, chooser, all three entry screens,
 disclaimer, results — matching the mockups reconciled above) built and
 confirmed working end-to-end via a real on-device walkthrough with real
-data — see `NEXT_STEPS.md` for the full detail. Not yet started: Phase 4
+data — see `ARCHIVE_ANDROID.md` (repo root) for the full detail. Not yet started: Phase 4
 (the optional paid scan feature — RevenueCat SDK, photo capture, the
 paywall screen).

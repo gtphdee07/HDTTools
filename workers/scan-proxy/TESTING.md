@@ -1,12 +1,12 @@
 # scan-proxy testing
 
 This Worker's tests are organized into tiers, matching the tiered
-regression strategy described in the root repo's `NEXT_STEPS.md`. This
+regression strategy described in the root repo's `TESTING.md`. This
 file documents the tiers themselves and what each individual test
 covers, so picking this back up doesn't require reading every test file
-cold. It's a reference for current state — see `NEXT_STEPS.md` for the
-narrative history (when each tier was built, what bugs were found along
-the way, why specific design choices were made). See the root
+cold. It's a reference for current state — see `ARCHIVE_TESTING.md` (repo
+root) for the narrative history (when each tier was built, what bugs were
+found along the way, why specific design choices were made). See the root
 `TESTING.md`'s "Reconciling with per-platform network/cadence tiers"
 section for how this tiering relates to that file's Minor/Major
 regression-scoping rules — the two are independent axes, not
@@ -27,7 +27,7 @@ separate set of test files. Weekly and release both need real dedicated
 RevenueCat test customers (never `smoke-test-user`, which stays reserved
 for manual Android field testing) — `weekly-test-user` and
 `weekly-test-user-no-credits` were created 2026-08-21 for exactly this
-(see `NEXT_STEPS.md`'s scan-proxy section). Weekly tests live in
+(see `ARCHIVE_TESTING.md` at the repo root). Weekly tests live in
 `src/weekly/*.test.ts`, deliberately excluded from `src/*.test.ts`'s glob
 (so `npm test`/`npm run test:sanity` never pick them up) and run only via
 `npm run test:weekly`.

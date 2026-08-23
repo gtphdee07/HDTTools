@@ -2,8 +2,8 @@
 
 This defines the test categories and regression-scoping rules used across
 the whole repo (Python backend, Web, Streamlit, Android, `scan-proxy`).
-Decided 2026-08-20 — see `NEXT_STEPS.md`'s tiered-test-strategy section
-for the narrative history of how this was arrived at. Platform-specific
+Decided 2026-08-20 — see `ARCHIVE_TESTING.md` at the repo root for the
+narrative history of how this was arrived at. Platform-specific
 files (`android/TESTING.md`, `workers/scan-proxy/TESTING.md`) document
 each platform's *actual* current tests against this framework — this file
 only defines the framework itself.
@@ -153,7 +153,8 @@ implementation.
 declares a `requires` list of capabilities it depends on; Kotlin's runner
 skips (not silently passes) any case needing something its current port
 doesn't have. First run that day found real drift (4 of 9 cases
-supported, including a live bug — see `NEXT_STEPS.md` for that writeup);
+supported, including a live bug — see `ARCHIVE_TESTING.md` at the repo
+root for that writeup);
 by the end of the same day's follow-up work, the Kotlin port had gained
 every missing capability and this file reports **10 of 10 cases fully
 supported** — full parity with Python.

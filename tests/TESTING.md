@@ -5,8 +5,10 @@ Classifies this repo's Python test suite (`tests/`, covering
 four categories defined in the root `TESTING.md`. Written 2026-08-21,
 retrofitted onto tests written before that framework existed — most of
 this suite predates the categories below; this is the first pass at
-labeling it, not a rewrite. See `NEXT_STEPS.md` for the narrative history
-of individual features/bugs each test file guards against.
+labeling it, not a rewrite. See this repo's `ARCHIVE_*.md` files (repo
+root — `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_TESTING.md`,
+`ARCHIVE_EARLY_HISTORY.md`) for the narrative history of individual
+features/bugs each test file guards against.
 
 `uv run pytest -q` — currently 95 tests, all passing, no markers/tiers
 wired up yet (this repo has no CI; everything runs manually, matching the
@@ -57,5 +59,5 @@ root `TESTING.md`'s "session regression" model rather than a cadence).
 - ✅ **Closed 2026-08-21**: `test_breakdown_golden_vectors.py` (new)
   loads `test-vectors/breakdown_cases.json`, shared with the Kotlin port's
   own `BreakdownGoldenVectorTest.kt` — see the root `TESTING.md`'s
-  cross-platform section and `NEXT_STEPS.md` for what running it against
-  Kotlin found.
+  cross-platform section and `ARCHIVE_TESTING.md` (repo root) for what
+  running it against Kotlin found.

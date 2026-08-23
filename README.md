@@ -24,10 +24,12 @@ This repo also contains the underlying Python extraction toolkit
 (`hdttools`) that the Desktop/Web OCR paths are built on — usable
 directly as a library, see "Underlying toolkit" below.
 
-For the full project history, decisions, and current status (including
-the Android monetization backend, deployment notes, and everything below
-this file's scope), see [`NEXT_STEPS.md`](NEXT_STEPS.md) — the
-maintained, cross-session record.
+For current status and the prioritized roadmap, see
+[`NEXT_STEPS.md`](NEXT_STEPS.md) — the maintained, cross-session record.
+Detailed project history (the Android monetization backend, deployment
+notes, and everything below this file's scope) lives in that file's
+linked `ARCHIVE_*.md` files, split by topic to keep `NEXT_STEPS.md`
+itself cheap to read.
 
 ## Desktop (Streamlit)
 
@@ -64,7 +66,7 @@ Tesseract — see below. See [`web/README.md`](web/README.md) for more.
 Native Kotlin/Compose app — manual entry is free and fully offline by
 default, with an optional paid Claude-vision "scan instead of type"
 feature backed by `workers/scan-proxy/` (a Cloudflare Worker — already
-deployed and verified end-to-end, see `NEXT_STEPS.md`).
+deployed and verified end-to-end, see `ARCHIVE_MONETIZATION.md`).
 
 **Current status**: all 6 planned phases are done and verified on a real
 emulator — truck tag, trailer tag, and CAT Scale ticket entry (manual or
@@ -73,8 +75,9 @@ shortcuts, and the paid scan feature end to end: take a photo or choose
 an existing one from the gallery, RevenueCat-managed credit balance, and
 a custom paywall with real Test Store pricing. A committed Compose UI
 test suite (30 tests, fully offline) now backs the screens and
-navigation flow — see `android/TESTING.md`. See `NEXT_STEPS.md` for the
-full build-out history and remaining polish/test gaps.
+navigation flow — see `android/TESTING.md`. See `ARCHIVE_ANDROID.md` for
+the full build-out history, or `NEXT_STEPS.md`'s roadmap for remaining
+polish/test gaps.
 
 ```
 cd android
@@ -153,9 +156,9 @@ cd workers/scan-proxy && npm test              # full mocked regression suite (d
 ```
 
 The Worker's tests are organized into tiers (sanity → daily → weekly →
-release); only sanity and daily exist so far — see
+release); weekly and release tiers are now built too — see
 [`workers/scan-proxy/TESTING.md`](workers/scan-proxy/TESTING.md) for what
-each tier and individual test covers, or `NEXT_STEPS.md` for the
+each tier and individual test covers, or `ARCHIVE_TESTING.md` for the
 narrative history of how it got built.
 
 ## Project layout
@@ -174,4 +177,5 @@ narrative history of how it got built.
 - `android/` — native Kotlin/Compose app (RigCheck Android)
 - `workers/scan-proxy/` — Cloudflare Worker backing Android's paid scan feature
 - `ANDROID_DESIGN_BRIEF.md` — Android screen-by-screen design reference
-- `NEXT_STEPS.md` — the maintained, cross-session project record
+- `NEXT_STEPS.md` — the maintained, cross-session project record (roadmap
+  + current status; links out to `ARCHIVE_*.md` for detailed history)

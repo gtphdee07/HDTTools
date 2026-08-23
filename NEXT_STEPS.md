@@ -101,6 +101,20 @@ scrolling the whole history below.
    `TESTING.md` category 4). Also the only place the self-sustaining Test
    Store purchase can be exercised at all — RevenueCat's REST API has no
    way to simulate one; only the SDK against real platform billing can.
+   **Also add coverage tooling to the Android test suite as part of this
+   item** (JaCoCo, or Kotlin's equivalent) — decided 2026-08-23, ahead of
+   charging money for a release, per the same motivation as items 4a/7
+   below.
+4a. ⬜ **Wire up Python coverage reporting** — decided 2026-08-23, right
+   after #4. Nearly free: `pytest-cov` is already a dev dependency and
+   `pyproject.toml`'s `[tool.coverage.run]` already scopes to
+   `src/hdttools`; just needs `--cov` actually wired into a run command
+   (`uv run pytest --cov` or a new script), which isn't the case today —
+   `uv run pytest -q` (what's been run all session) never invokes it, so
+   no coverage numbers exist yet anywhere in this repo. Doing this now,
+   right after Android's item #4, means every Python test written for
+   items #5 onward shows up as a visible coverage delta instead of
+   everything getting measured retroactively at the end.
 5. ⬜ **Two real production gaps** (feature work, not test-writing) — no
    timeout on the Anthropic/RevenueCat `fetch` calls (a hung call means
    the Android spinner never resolves, ever); no request-level
@@ -110,7 +124,13 @@ scrolling the whole history below.
 6. ⬜ **Streamlit: a real `ExampleDocs/`-photo-driven `AppTest`
    walkthrough** — flagged as the actual open gap for a long time; same
    proven pattern that already found a real bug elsewhere (the
-   scale-ticket real-photo test).
+   scale-ticket real-photo test). **Bundle in widening Python coverage's
+   scope to include `streamlit_app/`** (decided 2026-08-23) — today's
+   `[tool.coverage.run]` only covers `src/hdttools`, so Streamlit's own
+   code isn't measured at all yet even once #4a turns coverage on. Doing
+   this alongside the new walkthrough test means its real coverage
+   contribution is visible immediately, not measured cold with nothing
+   to compare against.
 7. ⬜ **Lower priority — pick up when there's spare capacity, no
    evidence of a real bug behind any of these**:
    - `web/`'s `Dashboard.tsx`'s own logic beyond the verdict badge — no
@@ -121,6 +141,11 @@ scrolling the whole history below.
    - "Option C" (Pydantic JSON-Schema export) for the
      `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut` interface gap — full
      write-up in `FUTURE_API_SCHEMA_VALIDATION.md`.
+   - Coverage tooling for `web/` (Vitest's built-in `coverage` provider)
+     and `workers/scan-proxy` (Node's `--experimental-test-coverage`) —
+     neither raised explicitly yet (2026-08-23 discussion was scoped to
+     Android/Python/Streamlit specifically), flagged here so the gap
+     doesn't get lost before a paid release.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see the

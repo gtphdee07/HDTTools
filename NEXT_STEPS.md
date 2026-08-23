@@ -70,11 +70,31 @@ scrolling the whole history below.
    temporarily unset (free — confirmed RevenueCat's real auth-failure
    status is 401, and the failure message correctly named the bad key
    and quoted RevenueCat's real "Invalid API key" response body).
-3. ⬜ **`scan-proxy`'s Weekly tier, the rest of it** — the real-scan-and-
-   charge case (`weekly-test-user`) and the real refund/OCR-failure case
-   (a real cell-phone photo is ready to use for this one — see
-   `NEXT_STEPS.md`'s 2026-08-21 design-discussion entry). The
-   insufficient-credits case is already done.
+3. ✅ **`scan-proxy`'s Weekly tier — the rest of it, built and verified
+   for real 2026-08-22.** Three new cases in `scan.weekly.test.ts`
+   (4 total, up from 1): a real successful scan of `ExampleDocs/AddieTag.jpg`
+   against `weekly-test-user` (proves the full spend → real Claude call →
+   return-fields pipeline, real cost ~$0.01 + 1 credit every run); a real
+   scan of the WTWT logo (`streamlit_app/assets/wtwt_logo.png`, swapped
+   in for the cell-phone photo originally offered) proving a valid-but-
+   irrelevant image still succeeds and is charged, not refunded — because
+   `claude.ts` forces Claude's `tool_choice`, so it can't refuse an
+   off-topic photo, only return an empty result; and the same logo
+   deliberately truncated to 200 bytes, undecodable, triggering the real
+   refund path for free (Anthropic rejects it before any billed call).
+   All three run for real once, individually, to verify without wasting
+   money re-running the whole file. `npm test`/`npm run test:sanity`
+   confirmed unaffected (47/7, unchanged).
+
+   **Design correction before building this**: the roadmap originally
+   assumed a normal photo could demonstrate "OCR failure." It can't, for
+   this Worker specifically - forced `tool_choice` means Claude always
+   returns *some* tool_use result, so a merely-wrong-but-valid image
+   can't reproduce the refund path; only a genuinely undecodable image
+   can, since that's rejected before Claude is even called. Asked which
+   to build; chose "build both" (the truncated-logo refund case *and*
+   the valid-logo charged-not-refunded case), since they're two
+   different, both-real, both-useful outcomes.
 4. ⬜ **Android's Weekly-equivalent tier** — not started. Do this after
    #2/#3, per the sequencing principle decided 2026-08-21 (cheap/isolated
    boundary first, expensive/hard-to-debug device layer second — root

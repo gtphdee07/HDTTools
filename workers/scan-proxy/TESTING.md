@@ -18,7 +18,7 @@ alternatives to choose between.
 |---|---|---|---|---|
 | **Sanity** | ✅ built | before every commit | none (mocked) | `npm run test:sanity` |
 | **Daily** | ✅ built | while actively working on this Worker | none (mocked) | `npm test` |
-| **Weekly** | 🟡 started (1 test) | ongoing/ad hoc — cheap enough to run anytime, no enforced cadence | real, bounded, dedicated test customer | `npm run test:weekly` |
+| **Weekly** | ✅ built (4 tests) | ongoing/ad hoc — the free case is cheap enough to run anytime; the other three each spend a real credit and (for two of them) a real Claude call | real, bounded, dedicated test customer | `npm run test:weekly` |
 | **Release** | 🟡 built, needs your local secrets to run | before pushing a major update to the Play Store, not a fixed cadence | real, against RevenueCat/Anthropic directly | `.\test-release.ps1` (`-SkipKeys` to allow skipping) |
 
 Sanity is a small subset of daily's tests, tagged `[sanity]` in their
@@ -180,7 +180,10 @@ tests also included in the sanity tier.
 
 ### `weekly/scan.weekly.test.ts` — real network, against the live deployed Worker (`npm run test:weekly` only)
 
-- **a customer with no SCAN credits gets 402 insufficient_credits, never reaches Claude** — real POST to the deployed Worker using `weekly-test-user-no-credits` (0 balance, no entitlement granted). Costs nothing to run repeatedly: `spendCredit`'s real 422 short-circuits the request before any real Claude call happens, the same control-flow ordering `scan.test.ts`'s equivalent mocked case already proves — this is that same claim, proven for real. First test in this tier; `weekly-test-user` (a real credit balance, entitlement granted) exists for a future real-scan-and-charge case, not yet written.
+- **a customer with no SCAN credits gets 402 insufficient_credits, never reaches Claude** — real POST to the deployed Worker using `weekly-test-user-no-credits` (0 balance, no entitlement granted). Costs nothing to run repeatedly: `spendCredit`'s real 422 short-circuits the request before any real Claude call happens, the same control-flow ordering `scan.test.ts`'s equivalent mocked case already proves — this is that same claim, proven for real.
+- **a real scan of a real truck tag succeeds and returns real extracted fields** (2026-08-22) — `weekly-test-user`, `ExampleDocs/AddieTag.jpg`. The real-scan-and-charge case: proves the full Worker pipeline (spend → real Claude call → return fields) works end-to-end for a genuine success, not just the failure paths the other three cases in this file cover. **Real cost: one SCAN credit and one billed Claude call (~$0.01) every run** — not free to re-run repeatedly, unlike the case above.
+- **a real scan of a valid but irrelevant image still succeeds and is charged, not refunded** (2026-08-22) — the WTWT logo (`streamlit_app/assets/wtwt_logo.png`), a real, valid, real-world image that just isn't a truck tag. Exists because `claude.ts` forces Claude's `tool_choice` to the extraction tool — it can't refuse just because the photo is wrong, so it returns a (mostly-empty) result instead of erroring. Proves `scan.ts`'s refund path is genuinely conditioned on `extractFields` throwing, not on "was the result useful" — a real user who photographs the wrong thing still gets charged, matching current intended behavior. Same real cost as the case above.
+- **a corrupted/undecodable image triggers the real refund path** (2026-08-22) — the same logo file, deliberately truncated to its first 200 bytes so Anthropic's API genuinely rejects it before any model call happens (free — a rejected request is never billed). The response itself is the proof the refund succeeded: `code: "extraction_failed"` only appears when `refundCredit`'s own real call also succeeded; `"extraction_failed_no_refund"` would mean the refund itself failed, a different, worse real outcome this test would also have caught.
 
 ### `release/scan.release.test.ts` — real API calls directly at the RevenueCat/Anthropic boundaries (`.\test-release.ps1` / `npm run test:release`, needs your local secrets)
 

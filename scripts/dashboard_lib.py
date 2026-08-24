@@ -126,7 +126,14 @@ def render_dashboard_svg(rows: list[PlatformRow]) -> str:
     """
     row_height = 44
     header_height = 36
-    col_widths = [130, 90, 90, 90, 160]
+    # External's real labels ("1/1 (2026-08-24)") are much longer than
+    # Minor/Major's ("31/31") - left-aligned rendering (below) means each
+    # column's own width just needs to fit its own longest realistic
+    # content; it can never overflow into the next column's text the way
+    # centered-with-a-fixed-offset rendering did (real bug, found from a
+    # screenshot of scan-proxy's row: "1/1 (2026-08-24)" ran straight into
+    # "100.0%").
+    col_widths = [130, 80, 80, 170, 160]
     width = sum(col_widths)
     height = header_height + row_height * len(rows)
 
@@ -155,20 +162,19 @@ def render_dashboard_svg(rows: list[PlatformRow]) -> str:
         )
         cells = [row.minor, row.major, row.external]
         for col, cell in enumerate(cells, start=1):
-            cx = cell_x(col) + col_widths[col] // 2
+            left = cell_x(col) + 8
             cy = y + row_height // 2
             if cell is None:
                 svg_parts.append(
-                    f'<text x="{cx}" y="{cy + 5}" fill="#8b949e" '
-                    f'text-anchor="middle">n/a</text>'
+                    f'<text x="{left}" y="{cy + 5}" fill="#8b949e">n/a</text>'
                 )
                 continue
             color, label = cell
             svg_parts.append(
-                f'<circle cx="{cx - 26}" cy="{cy}" r="7" fill="{_COLOR_HEX[color]}"/>'
+                f'<circle cx="{left + 7}" cy="{cy}" r="7" fill="{_COLOR_HEX[color]}"/>'
             )
             svg_parts.append(
-                f'<text x="{cx - 12}" y="{cy + 5}" fill="#c9d1d9">{label}</text>'
+                f'<text x="{left + 21}" y="{cy + 5}" fill="#c9d1d9">{label}</text>'
             )
         coverage_col = 4
         cx = cell_x(coverage_col) + 8

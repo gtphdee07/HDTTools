@@ -110,12 +110,77 @@ reading anything else.
    anywhere in this repo. Doing this right after Android's item #4 means
    every Python test written for items #5 onward shows up as a visible
    coverage delta instead of everything getting measured retroactively.
-5. ⬜ **Two real production gaps** (feature work, not test-writing) — no
-   timeout on the Anthropic/RevenueCat `fetch` calls (a hung call means
-   the Android spinner never resolves, ever); no request-level
-   idempotency across client retries (a retry after a timeout is a
-   second real charge). Worth their own scoped session since they change
-   production code, not just add coverage.
+5. ⬜ **Two real production gaps in `workers/scan-proxy`** (feature work,
+   not test-writing) — plan fully worked out 2026-08-23, not yet
+   implemented. Both decisions below are confirmed, ready to build from
+   cold.
+
+   **Gap A — no timeout on outbound calls.** `src/claude.ts`'s Anthropic
+   SDK call and `src/revenuecat.ts`'s raw `fetch()` to RevenueCat both
+   have no explicit timeout — a hung upstream ties up the Worker until
+   Cloudflare's platform execution limit kills it uncontrolled, instead
+   of a clean mapped error.
+   - `claude.ts`: pass `timeout: 20_000` to the Anthropic SDK client
+     (**20s, decided 2026-08-23** — has to be shorter than Android's own
+     `ScanApiClient` 60s `readTimeout` or it's pointless).
+   - `revenuecat.ts`: its raw `fetch()` needs an explicit
+     `AbortSignal.timeout(ms)` (no SDK client here) — ~10s, RevenueCat's
+     endpoint is a simple ledger write so this can be tighter.
+   - Map both timeout failures to the same error codes `scan.ts`
+     already returns at that exact spot (`billing_error` /
+     an extraction-failure code) — client-facing response shape
+     shouldn't change.
+   - New tests (`scan.test.ts` + friends) using an injected dep that
+     never resolves, proving a clean bounded error, not a hang.
+
+   **Gap B — no request-level idempotency.** The real mechanism, found
+   by reading the code, not guessed: `runScan` (`scan.ts`) already sends
+   RevenueCat's spend/refund calls with an `Idempotency-Key` header
+   (`revenuecat.ts`) — RevenueCat's own docs confirm that header
+   guarantees "executed at most one time." But the key is minted fresh
+   via `crypto.randomUUID()` on *every* Worker invocation, so a client
+   retry after a lost/timed-out response generates a new key and charges
+   the credit balance again. The idempotency machinery already exists —
+   it's keyed to the wrong thing.
+   - Add an optional `client_request_id` field to `ScanRequest`/
+     `parseScanRequest` (`request.ts`) — client-generated, stable across
+     retries of the same logical attempt. Absent → falls back to
+     today's random-UUID behavior (backward compatible with any caller
+     that doesn't send it, including any already-shipped app build).
+   - `runScan` uses `request.client_request_id` (if present) as the
+     RevenueCat idempotency key instead of a fresh random one.
+   - Android: `RigCheckViewModel.performScan` generates one UUID per
+     logical scan attempt (no existing retry loop, so this is simple —
+     one id per user-initiated tap), threads it through
+     `ScanApiClient.scan(...)`.
+   - **Accepted tradeoff, decided 2026-08-23**: this protects the
+     RevenueCat *credit balance* from double-charging, but does **not**
+     stop the Worker calling Claude twice on a genuine retry —
+     `extractFields` still runs unconditionally every request. Fully
+     closing that would need caching the extraction result somewhere
+     (Workers KV), which breaks the Worker's deliberately stateless
+     design (see its `README.md`'s "No database" note). Decided to
+     accept the small residual Claude-cost duplication (bounded, rare,
+     ~$0.01) and keep the Worker stateless, rather than add real state.
+   - **Verify hands-on before trusting the design**: send two identical
+     real spend requests with the same idempotency key against a real
+     RevenueCat test customer, confirm the balance moves exactly once —
+     this can be done without any new credentials (the already-deployed
+     Worker + `weekly-test-user` + the existing public SDK key are
+     enough), no user action needed.
+   - New tests: two `runScan` calls with the same `client_request_id`
+     spend exactly once (fake `spendCredit` asserts the same key both
+     times); a request without it behaves exactly as today.
+
+   **Definition of done**: a hung Anthropic/RevenueCat call returns a
+   clean bounded error (proven via injected never-resolving deps, not
+   code review); two same-`client_request_id` scans produce exactly one
+   real credit deduction (verified against real RevenueCat); omitting
+   `client_request_id` is unchanged from today's behavior; `npm run
+   test:sanity`/`npm test`/weekly-release tiers all still pass;
+   `workers/scan-proxy/README.md`/`TESTING.md` document the new field,
+   the timeout values (and why), and the idempotency guarantee in plain
+   terms.
 6. ⬜ **Streamlit: a real `ExampleDocs/`-photo-driven `AppTest`
    walkthrough** — flagged as the actual open gap for a long time; same
    proven pattern that already found a real bug elsewhere (the

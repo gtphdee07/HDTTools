@@ -41,101 +41,41 @@ dated narrative entry further down and leave this stale; the detailed
 deliberately just the ordered list so "what's next" never requires
 reading anything else.
 
-1. ✅ **Python interface gaps — done 2026-08-22.** New
-   `tests/test_ocr_output_key_contracts.py` (7 cases): every OCR
-   module's `_parse_fields()` key set checked against both real
-   downstream consumers, in the direction each one actually breaks
-   silently in — `schemas.py` (a `_parse_fields` key not declared there
-   would be silently dropped by FastAPI's `response_model`) and
-   `fields.py`'s `FIELDS` dict (a `FIELDS` name that doesn't match a real
-   `_parse_fields` key would never get pre-filled by Streamlit's
-   `_extract_fields`, opposite direction since `FIELDS` deliberately
-   shows only a curated subset of what OCR extracts — checking the wrong
-   direction here would have failed immediately on legitimate,
-   by-design fields like VIN/tire-spec/the `*_kg` values that OCR
-   extracts but the review form never shows). Both known manual-only
-   fields (`standalone_weight_lb`, `axle_count`) excluded explicitly. No
-   synthetic OCR text needed — `_parse_fields("")` still returns the full
-   key set, since every field key is always populated (with `None` on no
-   match), never omitted. `uv run pytest -q`: 95/95 (was 88). Both
-   `tests/TESTING.md` known-gap bullets closed.
-2. ✅ **`scan-proxy`'s Release tier — built 2026-08-22.** New
-   `src/release/scan.release.test.ts` (4 cases), `npm run test:release`:
-   `spendCredit`/`refundCredit` called directly against real RevenueCat
-   (`weekly-test-user`, net zero balance change; `weekly-test-user-no-credits`
-   for the real 422), and `extractFields` called directly against real
-   Anthropic (a real `ExampleDocs/AddieTag.jpg` extraction, and a real
-   invalid-key auth-failure case). Strict-by-default key handling: a
-   missing `ANTHROPIC_API_KEY`/`REVENUECAT_SECRET_KEY` stops the whole
-   run before any test executes (reported as one failed test naming
-   which key is missing), not a silent skip — `-SkipKeys`/`SKIP_KEYS=1`
-   explicitly opts into the permissive per-boundary-skip behavior
-   instead. A key that's *present but wrong* is caught and reported as
-   `"<ENV_VAR_NAME> appears invalid"` with the real error body attached,
-   not a generic status-mismatch failure. Full design/verification detail
-   (including the real ~$0.01 cost incurred from an ambient
-   `ANTHROPIC_API_KEY` during verification) in `ARCHIVE_TESTING.md`.
-   `npm test`/`npm run test:sanity` unaffected (47/7).
-3. ✅ **`scan-proxy`'s Weekly tier — the rest of it, built and verified
-   for real 2026-08-22.** Three new cases in `scan.weekly.test.ts`
-   (4 total): a real successful scan of `ExampleDocs/AddieTag.jpg`
-   against `weekly-test-user`; a real scan of a valid-but-irrelevant
-   image (the WTWT logo) proving it's charged, not refunded (Claude's
-   forced `tool_choice` can't refuse an off-topic photo); the same logo
-   truncated to 200 bytes, undecodable, triggering the real refund path
-   for free. Design-correction detail (why a normal wrong photo *can't*
-   demonstrate "OCR failure" for this Worker) in `ARCHIVE_TESTING.md`.
-   `npm test`/`npm run test:sanity` unaffected.
+1. ✅ **Python interface gaps — done 2026-08-22.**
+   `tests/test_ocr_output_key_contracts.py` (7 cases): every OCR module's
+   key set checked against both real consumers (`schemas.py`,
+   `fields.py`'s `FIELDS`). `uv run pytest -q`: 95/95 (was 88).
+2. ✅ **`scan-proxy`'s Release tier — built 2026-08-22.**
+   `npm run test:release` (4 cases): `spendCredit`/`refundCredit`/
+   `extractFields` against real RevenueCat/Anthropic, strict-by-default
+   key handling. Full detail in `ARCHIVE_TESTING.md`.
+3. ✅ **`scan-proxy`'s Weekly tier — built and verified for real,
+   2026-08-22.** `scan.weekly.test.ts` (4 cases): real successful scan, a
+   valid-but-irrelevant photo (charged not refunded), a corrupted photo
+   (real refund path). Full detail in `ARCHIVE_TESTING.md`.
 4. ✅ **Android's Weekly-equivalent tier + Unit/Daily coverage tooling —
-   both parts done and verified for real, 2026-08-23.** Part A:
-   `.\test-weekly.ps1` → `OK (3 tests)`, real RevenueCat Test Store +
-   real Worker call, `weekly-test-user`'s balance moved both ways for
-   real. Part B: real JaCoCo coverage via AGP's built-in support (Unit
-   7% app-wide / `RevenueCatManager.kt` 38%; Daily 71% app-wide /
-   `ResultsScreen.kt` 100%), zero regression (31/31 unit, 39/39 daily
-   unaffected); Weekly-tier coverage deliberately deferred (documented
-   nice-to-have, not built). Full narrative for both parts — three
-   rejected mechanisms for routing a second Application class into one
-   test APK, a real main-thread-only purchase-trigger bug, the coverage
-   DSL's nested-block form confirmed only by a real build since AGP's
-   own docs pages didn't render — in `ARCHIVE_ANDROID.md`; real report
-   paths and task names in `android/TESTING.md`'s new "Coverage"
-   section.
-4a. ✅ **Python coverage reporting wired up — 2026-08-24, done alongside
-   item #6.** `uv run pytest --cov --cov-report=term-missing`; real
-   numbers and the `[tool.coverage.run]` config in `tests/TESTING.md`'s
-   new "Coverage" section.
-5. ✅ **Two real production gaps in `workers/scan-proxy` (outbound
-   timeouts, request-level idempotency) — closed and verified for real,
-   2026-08-23**, including a genuine stale-deploy bug the hands-on
-   verification itself caught (fixed by redeploying, then closed for
-   good with a `pretest:weekly` deploy-guard hook). Accepted tradeoff:
-   protects the RevenueCat credit balance from double-charging, not
-   Claude's own per-call cost on a retry (small, bounded, ~$0.01,
-   deliberate — Worker stays stateless). Also closed the same day: the
-   emulator screen-sleep gotcha is now automated away
-   (`wakeEmulatorForInstrumentedTests`), not just documented. Full
-   narrative in `ARCHIVE_MONETIZATION.md` and `ARCHIVE_TESTING.md`.
-6. ✅ **Streamlit: a real `ExampleDocs/`-photo-driven `AppTest`
-   walkthrough — closed 2026-08-24.** New `ExampleDocs/golden_fields.json`
-   (real, user-verified ground truth + valid rig tuples — single source
-   of truth for both new test files) backs
-   `test_streamlit_app.py::test_full_walkthrough_with_real_photos_reaches_a_real_verdict`
-   (all four real photos of one rig, real Tesseract, real "Not Safe to
-   Tow" verdict, hand-verified against `compute_breakdown`/`verdict_for`)
-   and the new parametrized `test_real_photo_ocr_accuracy.py` (closes
-   item #7's truck/trailer real-photo gap too). Found and fixed two real
-   regex bugs along the way; two genuine remaining OCR-accuracy limits
-   documented as `xfail`, not hidden. `streamlit_app/` coverage now real
-   (80% `app.py`) via #4a, bundled in the same pass. 116 tests (was 95),
-   zero regression. Full narrative in `ARCHIVE_WEB_STREAMLIT.md`.
+   done 2026-08-23.** `.\test-weekly.ps1` — real RevenueCat + Worker
+   round trip; real JaCoCo coverage (Unit 7%, Daily 71% app-wide). Full
+   narrative in `ARCHIVE_ANDROID.md`; real numbers in
+   `android/TESTING.md`.
+4a. ✅ **Python coverage reporting wired up — 2026-08-24.**
+   `uv run pytest --cov --cov-report=term-missing`; real numbers in
+   `tests/TESTING.md`.
+5. ✅ **Two real production gaps in `workers/scan-proxy` closed —
+   2026-08-23** (outbound timeouts, request-level idempotency), including
+   a genuine stale-deploy bug the hands-on verification itself caught.
+   Full narrative in `ARCHIVE_MONETIZATION.md`/`ARCHIVE_TESTING.md`.
+6. ✅ **Streamlit: real four-photo `AppTest` walkthrough — closed
+   2026-08-24.** `ExampleDocs/golden_fields.json` backs a real walkthrough
+   + parametrized OCR-accuracy test; two real regex bugs found and fixed.
+   `streamlit_app/` coverage now real (80%). 116 tests (was 95). Full
+   narrative in `ARCHIVE_WEB_STREAMLIT.md`.
 7. ⬜ **Lower priority — pick up when there's spare capacity, no
    evidence of a real bug behind any of these**:
    - `web/`'s `Dashboard.tsx`'s own logic beyond the verdict badge — no
      dedicated Module test yet.
-   - The statically-generated regression-results dashboard script — the
-     docs half of this old backlog item is done for every platform now;
-     the script itself was never started.
+   - The statically-generated regression-results dashboard script —
+     paused 2026-08-24, mid-design; see item #9.
    - "Option C" (Pydantic JSON-Schema export) for the
      `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut` interface gap — full
      write-up in `FUTURE_API_SCHEMA_VALIDATION.md`.
@@ -175,6 +115,62 @@ reading anything else.
      interaction-level test `test_streamlit_app.py` already uses for
      Streamlit's own UI).
 
+9. 🔶 **Testing nomenclature redesign: event-based Minor/Major replacing
+   time-based Sanity/Daily/Weekly/Release, plus a release-time
+   coverage-gate script** — raised 2026-08-24, mid-design-discussion, not
+   yet a formal implementation plan. Started as planning for item #7's
+   dashboard script; surfaced that the dashboard's own "minor/major/
+   integration" framing didn't match this repo's real, established
+   vocabulary (`TESTING.md`'s Minor/Major regression-*scoping* rule is a
+   different, orthogonal thing from each platform's Sanity/Daily/Weekly/
+   Release *network-tier* naming — see `ARCHIVE_TESTING.md` for the full
+   three-concept unpacking). Paused the dashboard specifically to settle
+   this first, since it would otherwise report against a scheme about to
+   change.
+   **Decided so far:**
+   - Drop the time-cadence framing entirely (`Daily`/`Weekly` never
+     actually ran on a real cadence in practice — confirmed in
+     `ARCHIVE_TESTING.md`: "just cheap enough to run anytime, ad hoc, no
+     enforced schedule") in favor of purely event-based triggers, applied
+     *consistently across all four platforms* — today only Android and
+     `scan-proxy` have tier language at all; Web and Python never did.
+     **Retire the Sanity/Daily/Weekly/Release and Unit/Daily/Weekly
+     tables in each platform's `TESTING.md` once the new model lands** —
+     not kept as a parallel scheme, fully replaced.
+   - New 5th test category, **External** (peer to Function/Interaction/
+     Module/Interface — name confirmed): verifies a real 3rd-party
+     boundary (RevenueCat, Anthropic) hasn't silently changed, since
+     that's a fundamentally different question than any internal contract
+     Interface tests check. Two trigger conditions, not one: (a)
+     diff-driven, same logic as Interface today — a Major change touching
+     boundary-calling code triggers it; (b) event-driven, independent of
+     any diff — release-gated, a 3rd-party SDK/API version bump, or
+     explicit suspicion of drift.
+   - Today's real Weekly-vs-Release *scope* distinction (through-our-own-
+     deployed-service vs. direct-provider-boundary — genuinely different
+     tests, not the same tests on different clocks) is preserved as two
+     suites *within* External, not flattened into one and not kept as
+     separate named tiers either.
+   - Android's Unit-vs-instrumented(Daily) split is judged **orthogonal**
+     to this redesign — a real runtime-environment fact (JVM vs. needs-a-
+     device), not a time-cadence fiction — and stays as-is, undisturbed.
+   - **The coverage-gate script and the release-event model apply to all
+     four platforms uniformly, including Web and Streamlit** — neither
+     has a real release/push event *today* (Streamlit Cloud auto-deploys
+     from git push; Web has no hosting at all yet), but both are expected
+     to gain one, and the design shouldn't special-case them out now just
+     because that event doesn't exist yet. Same nomenclature and test
+     process as Android across the board, not an Android/scan-proxy-only
+     scheme with Web/Streamlit bolted on differently later.
+   **Still open:**
+   - Not yet formalized into an implementation plan (no `ClaudePlans/`
+     file yet) — next step once resumed.
+   - Exactly how the coverage-gate script behaves for a platform with no
+     release event yet (Web/Streamlit today) — report-only until one
+     exists, or some other interim behavior — not yet worked out.
+   Full discussion narrative, including how the terminology confusion was
+   found and unpacked, in `ARCHIVE_TESTING.md`.
+
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see
 `ARCHIVE_MONETIZATION.md`); Web hosting/deployment (deferred by your own
@@ -188,13 +184,12 @@ mentioned in conversation, so it survives a machine switch. See
 `Claude.md`'s "NEXT_STEPS.md Maintenance" section for the standing rule
 behind this. Most items that used to live in this section are now either
 done (moved to the roadmap above as ✅ entries) or captured as roadmap
-items #4-#7 above — check there first. The one item below isn't yet
-represented anywhere else:
+items #4-#9 above — check there first.
 
-- **Truck tag / trailer tag real-photo OCR tests** — same real-`ExampleDocs/`-
-  photo pattern already proven for the scale-ticket reader (found a real
-  bug there, see `ARCHIVE_WEB_STREAMLIT.md`), not yet built for the other
-  two readers. Also tracked in roadmap item #7.
+Nothing currently outstanding beyond what's already tracked in the
+roadmap above (the truck/trailer real-photo OCR gap that used to be
+listed here was closed by item #6's `test_real_photo_ocr_accuracy.py`,
+2026-08-24).
 
 Full historical detail for everything that used to be tracked here
 (sanity/daily tier builds, real bugs found while testing, per-platform

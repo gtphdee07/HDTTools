@@ -35,4 +35,4 @@ dev = [
 testpaths = ["tests"]
 
 [tool.coverage.run]
-source = ["src/hdttools"]
+source = ["src/hdttools", "streamlit_app"]

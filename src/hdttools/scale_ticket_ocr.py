@@ -77,8 +77,13 @@ def _parse_fields(raw_text: str) -> dict:
         if all_weights:
             fields["gross_weight_lb"] = float(all_weights[-1].replace(",", ""))
 
+    # [:;,]? not just :? - real bug found 2026-08-24: a real ExampleDocs/
+    # CatScale-GooseOnly.jpg scan printed "Location, LOVES COUNTRY..." (a
+    # comma, not the colon this pattern originally required), so the comma
+    # itself was captured as the start of location_name instead of being
+    # skipped past.
     location_block = _find_str(
-        r"LOCATION:?\s*(.{1,150}?)\s*(?:STEER\s*AXLE|\*?\s*GROSS\s*WEI[GC]HT)", flat
+        r"LOCATION[:;,]?\s*(.{1,150}?)\s*(?:STEER\s*AXLE|\*?\s*GROSS\s*WEI[GC]HT)", flat
     )
     location_name = None
     state = None

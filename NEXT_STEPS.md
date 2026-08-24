@@ -101,15 +101,10 @@ reading anything else.
    own docs pages didn't render — in `ARCHIVE_ANDROID.md`; real report
    paths and task names in `android/TESTING.md`'s new "Coverage"
    section.
-4a. ⬜ **Wire up Python coverage reporting** — decided 2026-08-23, right
-   after #4. Nearly free: `pytest-cov` is already a dev dependency and
-   `pyproject.toml`'s `[tool.coverage.run]` already scopes to
-   `src/hdttools`; just needs `--cov` actually wired into a run command
-   (`uv run pytest --cov` or a new script), which isn't the case today —
-   `uv run pytest -q` never invokes it, so no coverage numbers exist yet
-   anywhere in this repo. Doing this right after Android's item #4 means
-   every Python test written for items #5 onward shows up as a visible
-   coverage delta instead of everything getting measured retroactively.
+4a. ✅ **Python coverage reporting wired up — 2026-08-24, done alongside
+   item #6.** `uv run pytest --cov --cov-report=term-missing`; real
+   numbers and the `[tool.coverage.run]` config in `tests/TESTING.md`'s
+   new "Coverage" section.
 5. ✅ **Two real production gaps in `workers/scan-proxy` (outbound
    timeouts, request-level idempotency) — closed and verified for real,
    2026-08-23**, including a genuine stale-deploy bug the hands-on
@@ -121,16 +116,19 @@ reading anything else.
    emulator screen-sleep gotcha is now automated away
    (`wakeEmulatorForInstrumentedTests`), not just documented. Full
    narrative in `ARCHIVE_MONETIZATION.md` and `ARCHIVE_TESTING.md`.
-6. ⬜ **Streamlit: a real `ExampleDocs/`-photo-driven `AppTest`
-   walkthrough** — flagged as the actual open gap for a long time; same
-   proven pattern that already found a real bug elsewhere (the
-   scale-ticket real-photo test — see `ARCHIVE_WEB_STREAMLIT.md`).
-   **Bundle in widening Python coverage's scope to include
-   `streamlit_app/`** (decided 2026-08-23) — today's `[tool.coverage.run]`
-   only covers `src/hdttools`, so Streamlit's own code isn't measured at
-   all yet even once #4a turns coverage on. Doing this alongside the new
-   walkthrough test means its real coverage contribution is visible
-   immediately, not measured cold with nothing to compare against.
+6. ✅ **Streamlit: a real `ExampleDocs/`-photo-driven `AppTest`
+   walkthrough — closed 2026-08-24.** New `ExampleDocs/golden_fields.json`
+   (real, user-verified ground truth + valid rig tuples — single source
+   of truth for both new test files) backs
+   `test_streamlit_app.py::test_full_walkthrough_with_real_photos_reaches_a_real_verdict`
+   (all four real photos of one rig, real Tesseract, real "Not Safe to
+   Tow" verdict, hand-verified against `compute_breakdown`/`verdict_for`)
+   and the new parametrized `test_real_photo_ocr_accuracy.py` (closes
+   item #7's truck/trailer real-photo gap too). Found and fixed two real
+   regex bugs along the way; two genuine remaining OCR-accuracy limits
+   documented as `xfail`, not hidden. `streamlit_app/` coverage now real
+   (80% `app.py`) via #4a, bundled in the same pass. 116 tests (was 95),
+   zero regression. Full narrative in `ARCHIVE_WEB_STREAMLIT.md`.
 7. ⬜ **Lower priority — pick up when there's spare capacity, no
    evidence of a real bug behind any of these**:
    - `web/`'s `Dashboard.tsx`'s own logic beyond the verdict badge — no
@@ -146,17 +144,13 @@ reading anything else.
      neither raised explicitly yet (2026-08-23 discussion was scoped to
      Android/Python/Streamlit specifically), flagged here so the gap
      doesn't get lost before a paid release.
-   - Truck tag / trailer tag real-photo OCR pytest coverage — the scale
-     ticket reader already has this (`tests/test_scale_ticket_real_photo.py`,
-     see `ARCHIVE_WEB_STREAMLIT.md`); truck tag and trailer tag readers
-     don't yet. Same pattern, straightforward to replicate.
 8. ⬜ **Increase test coverage across the board** — now that real
-   coverage tooling exists for Android (#4) and is coming for Python
-   (#4a) and Streamlit (#6), use those real numbers to find and close
-   the biggest gaps rather than just having the tooling in place with
-   nothing acted on. No target percentage decided yet — prioritize by
-   where coverage is lowest and where a gap plausibly hides a real bug,
-   not an arbitrary global number.
+   coverage tooling exists for Android (#4) and Python/Streamlit (#4a,
+   #6), use those real numbers to find and close the biggest gaps rather
+   than just having the tooling in place with nothing acted on. No
+   target percentage decided yet — prioritize by where coverage is
+   lowest and where a gap plausibly hides a real bug, not an arbitrary
+   global number.
    - **Android's initial real baseline (2026-08-23)** — see
      `android/TESTING.md`'s Coverage section for the full reference.
      Unit tier: 7% instruction coverage app-wide (expected low, Unit
@@ -170,6 +164,16 @@ reading anything else.
      packages isn't already well covered by the Daily tier's 30
      instrumented tests once both tiers' numbers are compared side by
      side, not yet done.
+   - **Python/Streamlit's initial real baseline (2026-08-24)** — see
+     `tests/TESTING.md`'s Coverage section. 79% total (`src/hdttools` +
+     `streamlit_app`); `streamlit_app/app.py` 80%, `fields.py` 100%,
+     `recent_rigs.py` 79%. Biggest visible gaps: `parse_label.py` 0%
+     (dead/unused code — worth confirming that and removing it rather
+     than writing tests for it, not yet checked) and `review_form.py`
+     31% (tkinter UI, same class of gap as Android's uncovered Compose
+     screens — not easily unit-testable, likely needs the same kind of
+     interaction-level test `test_streamlit_app.py` already uses for
+     Streamlit's own UI).
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see

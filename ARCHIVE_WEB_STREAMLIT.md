@@ -218,3 +218,124 @@ load, with "This session's checks" nested conditionally beneath it).
   through `AppTest`, it needs this same fixture** — it isn't automatic
   across files.
 - `uv run pytest -q`: still 74/74.
+
+---
+
+## ✅ Real four-photo walkthrough + Python coverage wired up (roadmap items #6/#4a, plus #7's truck/trailer real-photo gap) — 2026-08-24
+
+**The actual gap, precisely.** `test_streamlit_app.py` already had one
+real-photo `AppTest` case (the standalone tow-vehicle-only scan, above) —
+proof the pattern works and finds real bugs a mocked test can't. But
+nothing drove all three main modules (truck, trailer, scale) with real
+photos in one continuous walkthrough to a real Results verdict; every
+"full walkthrough" anywhere in this repo (this file's own tests and
+`web/`'s Playwright suite) only ever exercised the zero-image,
+skip-everything path.
+
+**Golden ground-truth data, supplied directly by the user, not guessed
+from a first OCR run.** New `ExampleDocs/golden_fields.json`, structured
+like `test-vectors/breakdown_cases.json` (a self-documenting `_readme`,
+same shared-vectors spirit) but split into two parts on the user's own
+insight: `"photos"` (independent, per-document ground truth - what OCR
+*should* read off one specific image) and `"rigs"` (valid,
+physically-coherent `(truck, trailer, scale)` tuples - because a scale
+ticket's axle weights are only physically meaningful for the *exact*
+combination actually weighed together; a truck tag and trailer tag can
+each be independently real while still being an invalid pairing for a
+mismatched scale ticket). The user also pointed out mid-build that the
+walkthrough should eventually exercise varied combinations rather than
+always the same pairing - resolved as `@pytest.mark.parametrize` over
+`"rigs"` rather than `random.choice`, since true runtime randomness in a
+test makes failures non-reproducible and silently skips untested
+combinations on any given run; parametrization gets the same real goal
+(a growing pool means growing coverage) with full determinism.
+
+**Four real photos, one real rig.** `AddieTag.jpg` (truck, Ford,
+GVWR 14000/6000/9900), `GooseTag.jpg` (trailer, Brinkley RV,
+GVWR 23500/8000-per-axle/3 axles/UVW 20554), `CatScale-Ticket.jpg` (the
+full rig weighed together: steer 5640/drive 9080/trailer-axle
+19680/gross 34400), and `CatScale-GooseOnly.jpg` (the *same* truck
+weighed alone: steer 5560/drive 4420/gross 9980 - already used by the
+existing standalone test, now sourced from the same golden file instead
+of a second hardcoded copy of the same numbers). **Known naming
+curiosity, not a data error**: the scale ticket's own printed text reads
+"TRACTOR # GOOSE TRAILER # ADDIE" - the fleet nicknames on the ticket
+are reversed from the photo filenames (confirmed with the user directly:
+`AddieTag.jpg` is the truck, `GooseTag.jpg` is the trailer) - doesn't
+affect any field's correctness, just worth knowing if it's ever
+confusing later.
+
+**The real verdict, computed for real, not guessed.** With all four
+photos scanned (the standalone reading present), `compute_breakdown`
+takes its more precise tongue-weight branch rather than the
+`pin_weight_pct`-estimate one: Tow Vehicle Total (steer+drive=14,720 vs
+GVWR 14,000, 720 lb over) and Trailer Total (19,680 axle + 4,740 lb
+tongue weight = 24,420 vs GVWR 23,500, 920 lb over) both exceed their
+limits, landing on a genuine **"Not Safe to Tow"** verdict - run through
+the real `compute_breakdown`/`verdict_for` functions directly (not
+hand-derived arithmetic trusted blindly) before being written into
+`golden_fields.json`, then proven again for real by the walkthrough test
+itself reaching that same verdict through the full UI.
+
+**✅ Real bug #1, found and fixed**: `truck_tag_ocr._kg_lb`'s regex
+required `label:?\s*` immediately before the digit group. Real OCR on
+`AddieTag.jpg` produced `"REARGAWR: <?>4491KG(99001B)"` - a stray
+replacement-character glyph right after the colon - which matched
+`front_gawr` fine (clean text) but made `rear_gawr_kg`/`rear_gawr_lb`
+both return `None` on the very same tag. Fixed by widening the
+label-to-value gap from `:?\s*` to `\W{0,4}` (tolerates a few stray
+non-word characters, never crosses into the actual digits since `\W`
+excludes them) - same spirit as the `[L1I][B8]` tolerance already built
+into this function for the "9900 LB" → "99001B" class of OCR noise, just
+not comprehensive enough before this.
+
+**✅ Real bug #2, found and fixed**: `scale_ticket_ocr`'s `location_name`
+regex required `LOCATION:?\s*` before the location text. Real OCR on
+`CatScale-GooseOnly.jpg` produced `"Location, LOVES COUNTRY STORES..."`
+(a comma, not a colon) - so the comma itself became the first character
+of the captured `location_name` instead of being skipped. Fixed by
+widening the prefix to `LOCATION[:;,]?\s*`.
+
+**Two genuine, real OCR-accuracy limits found - documented, not chased
+or hidden.** Both `xfail(strict=True)` in `test_real_photo_ocr_accuracy.py`
+with the real reason recorded on `golden_fields.json`'s
+`known_ocr_limitations`, so a value real OCR doesn't actually produce is
+never silently asserted as passing, and if either genuinely starts
+passing later, the strict xfail turns into a hard failure demanding the
+note be removed, not a silent pass:
+1. `GooseTag.jpg`'s `gawr_per_axle_lb` reads as `800.0`, not `8000.0` - a
+   genuine digit-drop on the repeated trailing zero (the paired kg value,
+   3629, parses correctly and converts to the real 8000 lb, confirming
+   what's actually printed). No safe regex change reliably distinguishes
+   a genuine 3-digit reading from a dropped-zero 4-digit one without risk
+   of introducing false corrections elsewhere - a real character-recognition
+   miss, not a pattern-matching bug.
+2. `CatScale-Ticket.jpg`'s `location_name` returns `None` entirely - its
+   real OCR read "GROSS WEIGHT" as `"crossweicHT"` (the leading G misread
+   as a c, a different letter, not just noise around a correct one), so
+   the boundary keyword the capture group looks for to know where to stop
+   never matches. `CatScale-GooseOnly.jpg`'s otherwise-identical ticket
+   format has a different, real limit instead: its capture *does* find
+   the right boundary but swallows unrelated column-2 boilerplate text
+   along the way (`scale_ticket_ocr.py`'s own module docstring already
+   documents this two-column-layout jumbling as a known limitation of
+   plain linear OCR reading order). Not chased further - not worth a
+   fragile G/c-substitution heuristic for one label on one boundary
+   pattern.
+
+**Manual-only fields, entered like a real user would.** `axle_count`
+(trailer) is never present in real `_parse_fields()` output (confirmed
+by `test_ocr_output_key_contracts.py`'s existing exclusion list) - the
+walkthrough test drives its `number_input` widget directly after the
+trailer upload, exactly as a real user filling in a field OCR can't
+read would.
+
+**Verification, in full.** `uv run pytest -q`: 116 (was 95) - 113
+passing, 3 deliberate `xfail`. Zero regression on every pre-existing
+test. Python coverage wired up in the same pass (roadmap item #4a,
+"nearly free" as planned): `[tool.coverage.run]`'s `source` widened to
+include `streamlit_app`; `uv run pytest --cov --cov-report=term-missing`
+now works bare (no `--cov=PATH` needed - coverage.py picks up the
+configured `source` automatically). Real numbers: 79% total,
+`streamlit_app/app.py` 80%, `fields.py` 100%, `recent_rigs.py` 79% - see
+`tests/TESTING.md`'s new "Coverage" section.

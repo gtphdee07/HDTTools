@@ -1,0 +1,71 @@
+{
+  "_readme": "Ground-truth field values for ExampleDocs/ real photos, provided directly by the project owner from the physical tags/tickets (not derived from OCR output - this is what real OCR is being tested against; see NEXT_STEPS.md item #6 / ARCHIVE_WEB_STREAMLIT.md). Used by tests/test_real_photo_ocr_accuracy.py (parametrized per-field over 'photos', proves real Tesseract reads each document correctly) and tests/test_streamlit_app.py's full walkthrough (parametrized over 'rigs', drives the real app end-to-end through a genuinely valid combination). A scale ticket's axle weights are only physically meaningful for the exact truck+trailer combination actually weighed together - 'rigs' entries name a real weighing event, not an assumed-compatible mix-and-match of independently-real photos. Add a new brand/format by adding new photo file(s) plus 'photos' entries plus (if it forms a complete, valid combination) a new 'rigs' entry - no new test code needed, both tests pick it up via parametrization. A 'known_ocr_limitations' entry on a photo names a field where real Tesseract genuinely misreads this real scan (a digit drop, a two-column layout jumble, a boundary-keyword letter substitution) - the 'fields' value stays the true ground truth (what's really printed), and the accuracy test xfails that one field with the given reason instead of either lying about what OCR produces or silently skipping the check. Known naming curiosity, not a data error: the scale ticket's own printed text reads 'TRACTOR # GOOSE TRAILER # ADDIE' - the fleet nicknames on the ticket are reversed from the photo filenames below (AddieTag.jpg is the truck, GooseTag.jpg is the trailer, per the project owner directly) - doesn't affect any field's correctness.",
+  "photos": {
+    "AddieTag.jpg": {
+      "doc_type": "truck_tag",
+      "fields": {
+        "manufacturer": "FORD MOTOR CO",
+        "gvwr_lb": 14000.0,
+        "front_gawr_lb": 6000.0,
+        "rear_gawr_lb": 9900.0
+      }
+    },
+    "GooseTag.jpg": {
+      "doc_type": "trailer_tag",
+      "fields": {
+        "manufacturer": "Brinkley RV",
+        "gvwr_lb": 23500.0,
+        "gawr_per_axle_lb": 8000.0,
+        "uvw_lb": 20554.0
+      },
+      "_note": "axle_count deliberately excluded here - it's a manual-only field (see test_ocr_output_key_contracts.py), never present in real _parse_fields() output. This rig's real axle_count (3) lives on the 'rigs' entry below, entered manually in the walkthrough like a real user would.",
+      "known_ocr_limitations": {
+        "gawr_per_axle_lb": "Real Tesseract reads this specific scan as 800.0, not 8000.0 - a genuine digit-drop on the repeated trailing zero, not a regex bug (the paired kg value, 3629, parses correctly and converts to 8000 lb, confirming 8000 is the real printed ground truth). Found 2026-08-24 by tests/test_real_photo_ocr_accuracy.py; not fixed, since no safe regex change reliably distinguishes a genuine 3-digit value from a dropped-zero 4-digit one without risking false corrections elsewhere."
+      }
+    },
+    "CatScale-Ticket.jpg": {
+      "doc_type": "scale_ticket",
+      "description": "Full rig - truck and trailer weighed together.",
+      "fields": {
+        "location_name": "LOVES COUNTRY STORES I 25 EXIT 49 WALSENBURG CO",
+        "scale_number": "3274",
+        "steer_axle_lb": 5640.0,
+        "drive_axle_lb": 9080.0,
+        "trailer_axle_lb": 19680.0,
+        "gross_weight_lb": 34400.0
+      },
+      "known_ocr_limitations": {
+        "location_name": "Real Tesseract on this scan returns None. _parse_fields' location capture stops at the 'GROSS WEIGHT' boundary keyword, but this scan's OCR read that as 'crossweicHT' (G misread as c) - a different first letter, not just noise around it, so the boundary regex never matches and the capture fails outright. Documented, not chased with a speculative G/c substitution rule - src/hdttools/scale_ticket_ocr.py's own module docstring already scopes location_name as best-effort. Found 2026-08-24 by tests/test_real_photo_ocr_accuracy.py."
+      }
+    },
+    "CatScale-GooseOnly.jpg": {
+      "doc_type": "scale_ticket",
+      "description": "Truck only, no trailer hitched - same real rig/scale visit as CatScale-Ticket.jpg's standalone counterpart.",
+      "fields": {
+        "location_name": "LOVES COUNTRY STORES I 25 EXIT 49 WALSENBURG CO",
+        "scale_number": "3274",
+        "steer_axle_lb": 5560.0,
+        "drive_axle_lb": 4420.0,
+        "trailer_axle_lb": 0.0,
+        "gross_weight_lb": 9980.0
+      },
+      "known_ocr_limitations": {
+        "location_name": "Real Tesseract on this scan finds the right boundary (unlike CatScale-Ticket.jpg's case, this scan's 'GrossweicHt' does start with a real G) but the capture still swallows unrelated column-2 boilerplate text between 'Location' and that boundary ('...TRAILER AXLE 00 LB PUBLIC WEIGHMASTER'S ee CERTIFICATE OF WALSENBURG' instead of just the true location text) - the two-column layout jumbling src/hdttools/scale_ticket_ocr.py's own module docstring already documents as a known limitation of plain linear OCR reading order. Found 2026-08-24 by tests/test_real_photo_ocr_accuracy.py."
+      }
+    }
+  },
+  "rigs": [
+    {
+      "name": "addie_and_goose",
+      "truck_photo": "AddieTag.jpg",
+      "trailer_photo": "GooseTag.jpg",
+      "scale_photo": "CatScale-Ticket.jpg",
+      "standalone_scale_photo": "CatScale-GooseOnly.jpg",
+      "trailer_axle_count": 3,
+      "pin_weight_pct": 0.20,
+      "expected_verdict_status": "fail",
+      "expected_verdict_headline": "Not Safe to Tow",
+      "_verdict_note": "Computed for real via compute_breakdown/verdict_for (src/hdttools/api/breakdown.py) against this rig's exact golden values (all four photos scanned, including the standalone ticket), 2026-08-24 - not hand-guessed. With the standalone reading present, compute_breakdown uses its more precise tongue-weight branch (not the pin_weight_pct estimate): Tow Vehicle Total (steer+drive=14720 vs GVWR 14000, 720 lb over) and Trailer Total (19680 axle + 4740 lb tongue weight = 24420 vs GVWR 23500, 920 lb over, estimated=false) both exceed their limits; every other row passes. Without the standalone reading, Trailer Total would instead be an estimated 24600 (1100 lb over) via the pin_weight_pct branch - same overall fail verdict either way, different specific numbers."
+    }
+  ]
+}

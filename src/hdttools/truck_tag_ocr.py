@@ -43,7 +43,12 @@ def _preprocess(image_path):
 def _kg_lb(label_pattern: str, text: str) -> tuple[float | None, float | None]:
     # "LB" is tolerant of common OCR digit/letter confusion on tightly-kerned
     # labels (e.g. "9900 LB)" misread as "99001B)" — L→1, B→8 are frequent).
-    match = re.search(rf"{label_pattern}:?\s*([\d,]+)\s*KG\s*\(?\s*([\d,]+)\s*[L1I][B8]", text, re.IGNORECASE)
+    # \W{0,4} (not just ":?\s*") tolerates a stray misread glyph between the
+    # label and the value too - real bug found 2026-08-24 against a real
+    # ExampleDocs/AddieTag.jpg scan: "REARGAWR: <?>4491KG(99001B)" (a
+    # garbled replacement character right after the colon) matched front_gawr
+    # fine on the same tag but made rear_gawr return None, None entirely.
+    match = re.search(rf"{label_pattern}\W{{0,4}}([\d,]+)\s*KG\s*\(?\s*([\d,]+)\s*[L1I][B8]", text, re.IGNORECASE)
     if not match:
         return None, None
     return float(match.group(1).replace(",", "")), float(match.group(2).replace(",", ""))

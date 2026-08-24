@@ -10,9 +10,31 @@ root — `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_TESTING.md`,
 `ARCHIVE_EARLY_HISTORY.md`) for the narrative history of individual
 features/bugs each test file guards against.
 
-`uv run pytest -q` — currently 95 tests, all passing, no markers/tiers
+`uv run pytest -q` — currently 116 tests (113 passing, 3 deliberate
+`xfail`s — see `test_real_photo_ocr_accuracy.py` below), no markers/tiers
 wired up yet (this repo has no CI; everything runs manually, matching the
 root `TESTING.md`'s "session regression" model rather than a cadence).
+
+## Coverage
+
+`pytest-cov` is a dev dependency; `[tool.coverage.run]`'s `source` in
+`pyproject.toml` covers both `src/hdttools` and `streamlit_app` (widened
+to include the latter 2026-08-24, roadmap item #6 — previously
+`streamlit_app/` had zero coverage measurement at all). Real, repeatable
+command:
+
+```bash
+uv run pytest --cov --cov-report=term-missing
+```
+
+(Bare `--cov` — no `--cov=PATH` needed — because `[tool.coverage.run]`'s
+`source` already tells coverage.py what to measure.) Real numbers as of
+2026-08-24: 79% total, `streamlit_app/app.py` 80% (223 statements, 44
+missed), `streamlit_app/fields.py` 100%, `streamlit_app/recent_rigs.py`
+79%. Kept as an explicit, separate command rather than a default
+`pytest -q` `addopts` — matching Android's Unit/Daily tiers, coverage
+reporting stays a deliberate, occasional check, not overhead on every
+routine run.
 
 ## By file
 
@@ -24,9 +46,10 @@ root `TESTING.md`'s "session regression" model rather than a cadence).
 | `test_scale_ticket_ocr_parsing.py` | Function | `_parse_fields`/`_find_str`/`_find_num` against transcribed OCR text, including a real (garbled) tow-vehicle-only ticket transcription. |
 | `test_truck_tag_ocr_parsing.py` | Function | `_parse_fields`/`_kg_lb` against transcribed OCR text, including a real garbled "LB read as 1B" regression case. |
 | `test_trailer_tag_ocr_parsing.py` | Function | `_parse_fields` against transcribed OCR text. |
-| `test_scale_ticket_real_photo.py` | Function + **Interface** | Real Tesseract against a real `ExampleDocs/` file — the module-level `_parse_fields` case is Function (real input, one function); the `/api/extract/scale-ticket` case is Interface (the real endpoint, no mocks anywhere in the chain). The only file in this suite that never mocks Tesseract itself. |
+| `test_scale_ticket_real_photo.py` | Function + **Interface** | Real Tesseract against a real `ExampleDocs/` file — the module-level `_parse_fields` case is Function (real input, one function); the `/api/extract/scale-ticket` case is Interface (the real endpoint, no mocks anywhere in the chain). |
+| `test_real_photo_ocr_accuracy.py` | Function, real-photo, parametrized | New 2026-08-24 (roadmap item #6, closes item #7's truck/trailer real-photo OCR gap too). Real Tesseract against every real `ExampleDocs/` photo in `ExampleDocs/golden_fields.json`'s `"photos"` — one parametrized case per field, so a future brand/format needs only a new JSON entry, no new test code. Found and fixed two real regex bugs (a stray OCR glyph breaking `truck_tag_ocr._kg_lb`'s label match; a comma `scale_ticket_ocr`'s `location_name` prefix didn't tolerate) — see `ARCHIVE_WEB_STREAMLIT.md`. Two remaining real OCR-accuracy limits (a digit-drop, a two-column layout jumble) are `xfail(strict=True)` with the real reason recorded on `golden_fields.json` — a value real OCR doesn't currently produce is never silently asserted or hidden. |
 | `test_readers_integration.py` | Module | Each `read_*_tag`/`read_scale_ticket`'s one public entry point, every I/O boundary (file picker, vision, review form, database) mocked. Explicit sequential composition (each step's output passed to the next as an argument) — no implicit shared state, so this is module-surface testing, not interaction testing, despite the docstring's "orchestration and control flow" framing. |
-| `test_streamlit_app.py` | **Interaction** | The clearest interaction-test example in this repo. `_render_review` and `_render_standalone_ticket_section`/`_module_step` in `streamlit_app/app.py` share `st.session_state` implicitly, across reruns — these tests drive the real multi-step sequence (skip → rerun → review → scan → rerun → review again) and assert the net state, which is exactly what caught the real stale-widget-value bug a solitary test of either function could not have seen. |
+| `test_streamlit_app.py` | **Interaction**, real-photo | The clearest interaction-test example in this repo. `_render_review` and `_render_standalone_ticket_section`/`_module_step` in `streamlit_app/app.py` share `st.session_state` implicitly, across reruns — these tests drive the real multi-step sequence and assert the net state, which is exactly what caught the real stale-widget-value bug a solitary test of either function could not have seen. `test_full_walkthrough_with_real_photos_reaches_a_real_verdict` (new 2026-08-24, parametrized over `golden_fields.json`'s `"rigs"`) is the first test anywhere in this repo to drive all four real ExampleDocs/ photos of one rig (truck tag, standalone ticket, trailer tag, full-rig scale ticket) through the real app to a real, hand-verified Results verdict — every prior "full walkthrough" (this file and `web/`'s Playwright suite both) only ever exercised the zero-image, skip-everything path. |
 | `test_review_form_coerce.py` | Function | `_coerce`'s type conversion + its `ValueError` on invalid input. |
 | `test_file_picker.py` | Function | `select_image_file`/`prompt_vehicle_name`'s cancel/blank-input error paths. |
 | `test_vision_client.py` | Function | `extract_via_claude`'s happy path and its raise when Claude's response has no matching `tool_use` block. |
@@ -61,3 +84,14 @@ root `TESTING.md`'s "session regression" model rather than a cadence).
   own `BreakdownGoldenVectorTest.kt` — see the root `TESTING.md`'s
   cross-platform section and `ARCHIVE_TESTING.md` (repo root) for what
   running it against Kotlin found.
+- ✅ **Closed 2026-08-24**: truck tag / trailer tag real-photo OCR
+  coverage (the scale ticket reader already had this) — see
+  `test_real_photo_ocr_accuracy.py` above, driven by the new
+  `ExampleDocs/golden_fields.json` (ground truth for every real photo,
+  plus valid `(truck, trailer, scale)` "rigs" tuples — a scale ticket's
+  weights are only physically meaningful for the exact combination
+  actually weighed together, so this isn't a flat interchangeable photo
+  pool). Same data also backs `test_streamlit_app.py`'s new full
+  walkthrough. Full narrative — two real regex bugs found and fixed,
+  two real OCR-accuracy limits found and documented — in
+  `ARCHIVE_WEB_STREAMLIT.md`.

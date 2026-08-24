@@ -110,49 +110,17 @@ reading anything else.
    anywhere in this repo. Doing this right after Android's item #4 means
    every Python test written for items #5 onward shows up as a visible
    coverage delta instead of everything getting measured retroactively.
-5. ✅ **Two real production gaps in `workers/scan-proxy` — closed and
-   verified for real, 2026-08-23.** Gap A: `claude.ts`'s Anthropic client
-   now times out at 20s (`ANTHROPIC_TIMEOUT_MS`), `revenuecat.ts`'s
-   `fetch()` at 10s (`AbortSignal.timeout`); `scan.ts`'s `spendCredit`
-   call site now catches a rejection (what a real timeout produces) and
-   maps it to `billing_error` instead of letting it propagate uncaught —
-   closing a gap `scan.test.ts` had explicitly pinned down as known-but-
-   unfixed. Gap B: new optional `client_request_id` field
-   (`request.ts`/`ScanRequest`) reused as the RevenueCat idempotency key
-   in `scan.ts`; Android's `RigCheckViewModel.performScan`/
-   `performStandaloneScan` generate one UUID per tap, threaded through
-   `ScanApiClient.scan(...)`. 57/57 `scan-proxy` unit tests (was 46),
-   4/4 real Weekly-tier, deployed to Cloudflare
-   (`2743feea-fe1c-40d0-b9a3-4471a6b8839d`). **Real hands-on
-   verification** (new `PaywallScreenWeeklyTest.realDuplicateScan...`):
-   first run against the *not-yet-redeployed* Worker genuinely spent
-   twice (53→52 expected, got 51) — confirming the local fix alone
-   wasn't the whole story; a `wrangler deploy` was required before the
-   client-side fix actually took effect. After deploying, the same test
-   passed for real: two scans sharing one `client_request_id` moved
-   `weekly-test-user`'s balance by exactly 1. Zero regression: Android
-   Unit 31/31, Daily 39/39, Weekly 4/4 (one transient RevenueCat network
-   blip and one transient Compose-timeout on `RigCheckNavHostTest` both
-   reproduced clean on an isolated re-run — the already-documented
-   emulator-screen-sleep gotcha, not a real regression). Full narrative
-   in `ARCHIVE_MONETIZATION.md`.
-
-   **✅ Two process gaps this verification exposed, both closed
-   2026-08-23** (user-prompted: "shouldn't the test script catch this
-   itself?"). (1) The stale-deploy near-miss above was a real script
-   bug, not just a one-off mistake — `workers/scan-proxy/package.json`
-   now has a `pretest:weekly` hook (npm's own pre-script convention) that
-   runs `typecheck` then `deploy` before `test:weekly` ever runs, so the
-   deployed Worker structurally can't go stale again; `test-weekly.ps1`
-   got the equivalent explicit step. (2) The screen-sleep gotcha is now
-   automated away too, not just documented: `wakeEmulatorForInstrumentedTests`,
-   a Gradle `Exec` task `connectedDebugAndroidTest` depends on, wakes the
-   emulator before every Daily-tier run regardless of invocation.
-   Verifying the wake-task fix surfaced a second, unrelated real
-   infrastructure issue (the emulator's own launcher ANR'd and its
-   dialog was stealing window focus, after `system_server` itself
-   crashed from a long session's cumulative load) — full story in
-   `ARCHIVE_TESTING.md`, not a regression from either fix.
+5. ✅ **Two real production gaps in `workers/scan-proxy` (outbound
+   timeouts, request-level idempotency) — closed and verified for real,
+   2026-08-23**, including a genuine stale-deploy bug the hands-on
+   verification itself caught (fixed by redeploying, then closed for
+   good with a `pretest:weekly` deploy-guard hook). Accepted tradeoff:
+   protects the RevenueCat credit balance from double-charging, not
+   Claude's own per-call cost on a retry (small, bounded, ~$0.01,
+   deliberate — Worker stays stateless). Also closed the same day: the
+   emulator screen-sleep gotcha is now automated away
+   (`wakeEmulatorForInstrumentedTests`), not just documented. Full
+   narrative in `ARCHIVE_MONETIZATION.md` and `ARCHIVE_TESTING.md`.
 6. ⬜ **Streamlit: a real `ExampleDocs/`-photo-driven `AppTest`
    walkthrough** — flagged as the actual open gap for a long time; same
    proven pattern that already found a real bug elsewhere (the

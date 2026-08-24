@@ -32,6 +32,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            testCoverage {
+                enableUnitTestCoverage = true
+                enableAndroidTestCoverage = true
+            }
+        }
         release {
             optimization {
                 enable = false

@@ -87,6 +87,66 @@ scan-proxy layer first meaningfully narrows where the bug can be. See
 the root `TESTING.md`'s category 4 (inter-module interface tests) for
 the general version of this rule.
 
+## Coverage
+
+Real JaCoCo coverage numbers for the Unit and Daily tiers, built and
+verified for real 2026-08-23 — via AGP's own built-in support, no
+third-party plugin. Enabled in `app/build.gradle.kts`'s `debug {}`
+build type:
+
+```kotlin
+buildTypes {
+    debug {
+        testCoverage {
+            enableUnitTestCoverage = true
+            enableAndroidTestCoverage = true
+        }
+    }
+    release { /* ... */ }
+}
+```
+
+**Nested `testCoverage { }` block, not flat properties directly on
+`debug { }`** — confirmed hands-on by running a real build; AGP 9.3.1's
+docs pages for this are JS-rendered SPAs that don't return real content
+to a plain fetch, so this had to be resolved empirically rather than
+from research. Matches this file's existing AGP-9-style nested DSL
+elsewhere (`compileSdk { version = release(37) }`,
+`optimization { enable = false }`).
+
+| Command | Real report path (confirmed 2026-08-23) |
+|---|---|
+| `./gradlew testDebugUnitTest createDebugUnitTestCoverageReport` | `app/build/reports/coverage/test/debug/index.html` |
+| `./gradlew connectedDebugAndroidTest createDebugAndroidTestCoverageReport` | `app/build/reports/coverage/androidTest/debug/connected/index.html` |
+| `./gradlew createDebugCoverageReport` | Runs both of the above — an aggregator task, not a separate merged report of its own (confirmed by checking the actual output directories; no third report path exists). |
+
+Confirmed real, non-zero coverage on first run: Unit tier — 7% overall
+instruction coverage app-wide (expected; Unit only exercises business
+logic, not UI), `RevenueCatManager.kt` specifically at 38% (44 of 71
+instructions missed), `com.rigcheck.app.domain` (the
+`compute_breakdown`/`verdict_for` port) at 99%. Daily tier — 71% overall
+instruction coverage app-wide (much higher than Unit, as expected — it
+exercises real Compose UI), `ResultsScreen.kt` at 100%.
+
+Both tiers' existing plain commands (`./gradlew test`, `./gradlew
+connectedDebugAndroidTest`, no coverage tasks) are unaffected — this is
+purely additive, reconfirmed at 31/31 and 39/39 respectively after
+adding the flags. If any covered test fails, AGP correctly skips
+generating that report rather than producing a partial one — the right
+failure mode if this is ever seen, not a tooling bug.
+
+**Weekly-tier coverage is a deliberately deferred, documented
+nice-to-have — not built.** Its marginal contribution is small
+(Daily/Unit already exercise most of the same non-network code paths
+its own screens touch), and getting a `.ec` file out of a bare `adb
+shell am instrument` invocation into AGP's report task isn't guaranteed
+to plug in cleanly without its own separate investigation. Fallback
+shape for whenever this is picked up: add `-e coverage true -e
+coverageFile <device-path>` to `test-weekly.ps1`'s `adb shell am
+instrument` line, `adb pull` the resulting `.ec` file, then either the
+JaCoCo CLI directly or a small custom `JacocoReport` Gradle task pointed
+at the pulled file.
+
 ## What each test covers
 
 ### Unit (JVM) — `./gradlew test`

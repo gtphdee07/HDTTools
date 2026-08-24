@@ -86,19 +86,21 @@ reading anything else.
    for free. Design-correction detail (why a normal wrong photo *can't*
    demonstrate "OCR failure" for this Worker) in `ARCHIVE_TESTING.md`.
    `npm test`/`npm run test:sanity` unaffected.
-4. 🔶 **Android's Weekly-equivalent tier** — Part A ✅ done and verified
-   for real 2026-08-23 (`.\test-weekly.ps1` → `OK (3 tests)`, real
-   RevenueCat Test Store + real Worker call, `weekly-test-user`'s balance
-   moved both ways for real). Full narrative — three rejected mechanisms
-   for routing a second Application class into one test APK, a real
-   main-thread-only purchase-trigger bug, a Daily-tier contamination gap
-   closed via `notClass` — in `ARCHIVE_ANDROID.md`. **Part B (JaCoCo
-   coverage tooling for Unit + Daily tiers) not started** — decided
-   2026-08-23, ahead of charging money for a release, per the same
-   motivation as items 4a/7 below; Weekly-tier coverage deliberately
-   deferred (documented nice-to-have, not built). Full original plan
-   detail at `C:\Users\Angela\.claude\plans\i-would-like-to-toasty-dusk.md`
-   — local to this machine, not in the repo.
+4. ✅ **Android's Weekly-equivalent tier + Unit/Daily coverage tooling —
+   both parts done and verified for real, 2026-08-23.** Part A:
+   `.\test-weekly.ps1` → `OK (3 tests)`, real RevenueCat Test Store +
+   real Worker call, `weekly-test-user`'s balance moved both ways for
+   real. Part B: real JaCoCo coverage via AGP's built-in support (Unit
+   7% app-wide / `RevenueCatManager.kt` 38%; Daily 71% app-wide /
+   `ResultsScreen.kt` 100%), zero regression (31/31 unit, 39/39 daily
+   unaffected); Weekly-tier coverage deliberately deferred (documented
+   nice-to-have, not built). Full narrative for both parts — three
+   rejected mechanisms for routing a second Application class into one
+   test APK, a real main-thread-only purchase-trigger bug, the coverage
+   DSL's nested-block form confirmed only by a real build since AGP's
+   own docs pages didn't render — in `ARCHIVE_ANDROID.md`; real report
+   paths and task names in `android/TESTING.md`'s new "Coverage"
+   section.
 4a. ⬜ **Wire up Python coverage reporting** — decided 2026-08-23, right
    after #4. Nearly free: `pytest-cov` is already a dev dependency and
    `pyproject.toml`'s `[tool.coverage.run]` already scopes to
@@ -143,6 +145,26 @@ reading anything else.
      ticket reader already has this (`tests/test_scale_ticket_real_photo.py`,
      see `ARCHIVE_WEB_STREAMLIT.md`); truck tag and trailer tag readers
      don't yet. Same pattern, straightforward to replicate.
+8. ⬜ **Increase test coverage across the board** — now that real
+   coverage tooling exists for Android (#4) and is coming for Python
+   (#4a) and Streamlit (#6), use those real numbers to find and close
+   the biggest gaps rather than just having the tooling in place with
+   nothing acted on. No target percentage decided yet — prioritize by
+   where coverage is lowest and where a gap plausibly hides a real bug,
+   not an arbitrary global number.
+   - **Android's initial real baseline (2026-08-23)** — see
+     `android/TESTING.md`'s Coverage section for the full reference.
+     Unit tier: 7% instruction coverage app-wide (expected low, Unit
+     only covers business logic, not UI); `RevenueCatManager.kt`
+     specifically at 38%; the `compute_breakdown`/`verdict_for` port
+     (`com.rigcheck.app.domain`) at 99%. Daily tier: 71% instruction
+     coverage app-wide; `ResultsScreen.kt` at 100%. Biggest visible gap:
+     `com.rigcheck.app.ui.screens`/`.ui.components`/`.ui.navigation` all
+     show 0% under the Unit tier alone (expected — no unit test targets
+     Compose UI directly); real remaining headroom is whichever of those
+     packages isn't already well covered by the Daily tier's 30
+     instrumented tests once both tiers' numbers are compared side by
+     side, not yet done.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see

@@ -580,5 +580,84 @@ this is a fully separate concern from Play Store distribution:
   block body (`{ runBlocking { ... } }`) so the method's return type is
   unambiguous regardless of the last expression inside.
 
-  Part B (Unit/Daily JaCoCo coverage tooling) not started — see
-  `NEXT_STEPS.md`'s roadmap item #4.
+- ✅ **Part B — Unit/Daily JaCoCo coverage tooling, built and verified
+  for real, 2026-08-23** (roadmap item #4, Part B). Real, non-zero
+  coverage reports for both tiers via AGP's built-in JaCoCo support, no
+  third-party plugin. Full command/task/report-path reference lives in
+  `android/TESTING.md`'s new "Coverage" section — summary here.
+
+  **The DSL form was resolved empirically, not from docs — confirmed
+  right the first time.** `app/build.gradle.kts` already used AGP
+  9.3.1's newer nested-block style elsewhere
+  (`compileSdk { version = release(37) }`,
+  `optimization { enable = false }` under `release`), raising a real
+  question of whether `enableUnitTestCoverage`/`enableAndroidTestCoverage`
+  were still flat properties on `debug {}` or had moved into a nested
+  block too. Tried `developer.android.com`'s AGP 9.3 API reference pages
+  (`BuildType`, `TestCoverage`) via `WebFetch` first — both are
+  JS-rendered SPAs that return only navigation chrome to a plain fetch,
+  not the real property tables, so this genuinely couldn't be resolved
+  by reading docs. What the search *did* surface — a dedicated
+  `com.android.build.api.dsl.TestCoverage` interface confirmed to exist
+  in AGP 9.3 — was real evidence (not proof) that coverage had moved
+  into its own nested `testCoverage { }` block, matching this file's
+  existing pattern. Tried that form first, confirmed correct by running
+  `./gradlew :app:tasks --all` immediately after — resolved cleanly, no
+  fallback to the flat form needed:
+  ```kotlin
+  buildTypes {
+      debug {
+          testCoverage {
+              enableUnitTestCoverage = true
+              enableAndroidTestCoverage = true
+          }
+      }
+      release { /* unchanged */ }
+  }
+  ```
+  Confirmed the three expected tasks exist:
+  `createDebugUnitTestCoverageReport`,
+  `createDebugAndroidTestCoverageReport`, `createDebugCoverageReport`.
+
+  **`createDebugCoverageReport` turned out to be an aggregator, not a
+  separate merged report** — running it just re-runs
+  `createDebugUnitTestCoverageReport` and
+  `createDebugAndroidTestCoverageReport` in sequence; checking the
+  actual output directories confirmed no third, combined report path
+  exists. Worth knowing before expecting a single merged HTML report
+  that isn't there.
+
+  **Real coverage numbers, confirmed non-zero on the first real run**:
+  Unit tier — 7% instruction coverage app-wide (expected low; Unit only
+  exercises business logic, not UI), `RevenueCatManager.kt` specifically
+  at 38% (44 of 71 instructions missed, has `RevenueCatManagerTest.kt`),
+  `com.rigcheck.app.domain` (the `compute_breakdown`/`verdict_for` port)
+  at 99% instructions / 91% branches. Daily tier — 71% instruction
+  coverage app-wide (much higher than Unit, as expected — it exercises
+  real Compose UI through 39 tests), `ResultsScreen.kt` at 100%
+  (0 of 344 instructions missed).
+
+  **Real report paths** (neither of the two paths guessed in the
+  original plan was exactly right):
+  `app/build/reports/coverage/test/debug/index.html` (Unit) and
+  `app/build/reports/coverage/androidTest/debug/connected/index.html`
+  (Daily) — both under `build/reports/coverage/`, not
+  `build/outputs/reports/coverage/`.
+
+  **Zero regression, confirmed by rerunning both tiers' plain commands**:
+  31/31 unit tests (1+4+2+15+6+3 across
+  `ExampleUnitTest`/`RevenueCatManagerTest`/`BreakdownGoldenVectorTest`/
+  `BreakdownTest`/`VerdictTest`/`NumberFormattingTest`, confirmed via the
+  real JUnit XML reports, not just a green Gradle exit code) and 39/39
+  daily instrumented tests — both exactly matching the counts from
+  before the coverage flags were added. The Daily-tier run also hit the
+  same already-documented emulator-screen-sleep gotcha from
+  `ARCHIVE_TESTING.md` (misleading "No compose hierarchies found"
+  errors) mid-session — `adb shell svc power stayon true` fixed it
+  again, confirming that fix isn't permanent across a long session and
+  is worth reapplying if this error reappears.
+
+  Weekly-tier coverage remains a deliberately deferred, documented
+  nice-to-have — see `android/TESTING.md`'s Coverage section for the
+  fallback shape whenever it's picked up. Both parts of roadmap item #4
+  are now done.

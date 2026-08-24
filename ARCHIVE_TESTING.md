@@ -136,6 +136,46 @@ reclassification flagged in the plan and approved). UI: `BreakdownRow`/
   `screen_off_timeout` setting); `adb shell svc power stayon true`
   (stay-awake-while-charging, always true for an emulator) fixed it for
   good. Worth remembering if this ever needs reproducing.
+
+  **✅ Automated, 2026-08-23** (prompted by the user asking, after this
+  gotcha bit a real run again during roadmap item #5's verification, "why
+  isn't this just part of the test script?"). `android/app/build.gradle.kts`
+  now has a `wakeEmulatorForInstrumentedTests` task (an `Exec` task -
+  not a `doLast { project.exec {} }` block, which isn't
+  configuration-cache-compatible) that `connectedDebugAndroidTest`
+  `dependsOn`, resolving `adb` from `ANDROID_SDK_ROOT`/`ANDROID_HOME` or
+  `local.properties`' `sdk.dir` and running the same wake + stay-awake
+  commands automatically before every Daily-tier run, however it's
+  invoked - a raw `./gradlew connectedDebugAndroidTest` is covered too,
+  not just a wrapper script. `test-weekly.ps1` got the equivalent
+  explicit step for its own raw `adb shell am instrument` invocation.
+  Verified hands-on: wiring confirmed via `--dry-run` (task appears
+  immediately before `connectedDebugAndroidTest` in the graph), then via
+  a real run with zero "No compose hierarchies found" failures.
+
+  **A second, unrelated failure mode found and fixed during that same
+  verification pass**: after several consecutive full instrumented runs
+  in one session, the emulator's `system_server` genuinely crashed
+  (`INSTRUMENTATION_ABORTED: System has crashed`), and even after an
+  in-place `adb reboot` recovered it, one specific test
+  (`RigCheckNavHostTest.recentRigSelectionRoutesThroughTheChooserAndSkipsTheDisclaimerSecondTime`)
+  kept failing with `RootViewWithoutFocusException` ("window focus" never
+  granted) - a different signature from the screen-sleep one, so the new
+  wake task alone didn't explain it. `adb shell dumpsys window | grep
+  mCurrentFocus` showed why: the emulator's Pixel Launcher itself had
+  ANR'd ("Pixel Launcher isn't responding"), and its own ANR dialog was
+  holding window focus system-wide, starving every other window
+  (confirmed visually via `adb exec-out screencap`). Dismissing it
+  (`adb shell input tap` on "Close app") immediately restored normal
+  focus and the test passed clean. Root cause of the crash/ANR itself
+  was never pinned down precisely - most likely cumulative resource
+  exhaustion from a long session of repeated full builds - and a full
+  cold restart of the AVD (not just `adb reboot`) was what actually
+  brought total suite runtime back from 27 minutes to under 2. Recorded
+  here since "a test window loses focus and times out" is exactly the
+  kind of failure that looks like a real bug but is actually emulator
+  infrastructure state - check `dumpsys window`'s `mCurrentFocus` before
+  assuming otherwise.
 - Golden-vector status after Round 1: **8 of 10 cases fully supported**
   by the Kotlin port (was 4 of 9 before Round 1 — the standalone-zero fix
   above didn't change this count, it was caught by `BreakdownTest.kt`,

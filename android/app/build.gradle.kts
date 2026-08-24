@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -51,6 +53,50 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+// An idle/sleeping emulator screen makes instrumented Compose tests fail
+// with a misleading "No compose hierarchies found in the app" error
+// instead of a clear one (see ARCHIVE_TESTING.md) - this has caused real
+// flakiness on ./gradlew connectedDebugAndroidTest runs.
+// test-weekly.ps1 has its own explicit wake step since it drives `adb`
+// directly, but a raw connectedDebugAndroidTest invocation (no wrapper
+// script) had no such protection - wired in as a task dependency instead
+// so it's automatic regardless of how the Daily tier gets invoked.
+val adbExecutable: File = run {
+    val sdkDir = System.getenv("ANDROID_SDK_ROOT")
+        ?: System.getenv("ANDROID_HOME")
+        ?: run {
+            val localProperties = File(rootDir, "local.properties")
+            val props = Properties()
+            if (localProperties.exists()) {
+                localProperties.inputStream().use { props.load(it) }
+            }
+            props.getProperty("sdk.dir")
+                ?: throw GradleException(
+                    "Can't resolve the Android SDK dir for wakeEmulatorForInstrumentedTests - " +
+                        "set ANDROID_SDK_ROOT/ANDROID_HOME or ensure android/local.properties has sdk.dir.",
+                )
+        }
+    val candidate = File(sdkDir, "platform-tools/adb.exe")
+    if (candidate.exists()) candidate else File(sdkDir, "platform-tools/adb")
+}
+
+// Exec (not a doLast { project.exec {...} } block) - the latter isn't
+// configuration-cache compatible, since task actions can't safely close
+// over `project`. A single adb shell invocation runs both commands
+// (adb shell concatenates every argument after "shell" with spaces into
+// one remote command line), so one Exec task is enough.
+tasks.register<Exec>("wakeEmulatorForInstrumentedTests") {
+    commandLine(
+        adbExecutable.path, "shell",
+        "input", "keyevent", "KEYCODE_WAKEUP;",
+        "svc", "power", "stayon", "true",
+    )
+}
+
+afterEvaluate {
+    tasks.findByName("connectedDebugAndroidTest")?.dependsOn("wakeEmulatorForInstrumentedTests")
 }
 
 dependencies {

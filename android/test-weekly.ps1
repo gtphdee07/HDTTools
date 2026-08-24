@@ -16,6 +16,18 @@
     late, newApplication() runs before instrumentation args are readable
     in this environment). Both confirmed hands-on 2026-08-23.
 
+    First redeploys workers/scan-proxy (typecheck, then `wrangler
+    deploy`) so the Worker these instrumented tests hit against is
+    guaranteed to match what's on disk right now, not whatever was last
+    manually deployed - found the hard way 2026-08-23, when a real
+    hands-on verification against the Android app genuinely failed
+    because the deployed Worker was stale (see NEXT_STEPS.md /
+    ARCHIVE_MONETIZATION.md item #5). Also wakes the emulator screen
+    before running - an idle/sleeping screen makes instrumented Compose
+    tests fail with a misleading "No compose hierarchies found" error
+    (see ARCHIVE_TESTING.md), a flakiness source that's bitten this tier
+    before.
+
     Builds the debug + androidTest APKs, installs both on the attached
     device/emulator, sets the marker, runs PaywallScreenWeeklyTest, then
     clears the marker so a later Daily-tier run is unaffected either way.
@@ -46,6 +58,24 @@ if ($adbCmd) {
     throw 'adb not found on PATH and neither ANDROID_SDK_ROOT nor ANDROID_HOME is set.'
 }
 if (-not (Test-Path $adb)) { throw "adb not found at resolved path: $adb" }
+
+# Redeploy the Worker first, every time - these tests hit the real deployed
+# URL (ScanApiClient.kt's SCAN_ENDPOINT), so if this step is skipped a
+# stale deploy passes silently while actually testing yesterday's code.
+# --prefix runs npm against workers/scan-proxy's own package.json without
+# needing to cd there and back. Typecheck runs first so a real syntax/type
+# error stops this before anything gets deployed, not after.
+& npm run typecheck --prefix ..\workers\scan-proxy
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& npm run deploy --prefix ..\workers\scan-proxy
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# An idle/sleeping emulator screen makes instrumented Compose tests fail
+# with a misleading "No compose hierarchies found in the app" error
+# instead of a clear one - see ARCHIVE_TESTING.md. Wake it and keep it
+# awake for the duration of this run.
+& $adb shell input keyevent KEYCODE_WAKEUP
+& $adb shell svc power stayon true
 
 & .\gradlew.bat assembleDebug assembleDebugAndroidTest
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

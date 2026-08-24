@@ -6,6 +6,14 @@
 // via `npm run test:weekly`, not on every commit. No local secrets
 // needed here (unlike the Release tier) - every case below only ever
 // talks to the public /v1/scan endpoint, the same way a real client does.
+//
+// package.json's `pretest:weekly` hook (npm's own pre-script convention)
+// runs `typecheck` then `deploy` before this file ever runs, so "the
+// deployed Worker" above always means Worker code that matches what's on
+// disk right now - not whatever was last manually deployed. Found the
+// hard way 2026-08-23: a real hands-on idempotency check against the
+// Android app genuinely failed because the local fix wasn't live yet -
+// see NEXT_STEPS.md / ARCHIVE_MONETIZATION.md item #5.
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { readFileSync } from "node:fs";

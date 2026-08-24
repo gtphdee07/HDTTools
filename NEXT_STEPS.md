@@ -21,8 +21,9 @@ this one.
   entry, predictive tow-vehicle-alone weight, real-photo bug hunts).
 - `ARCHIVE_MONETIZATION.md` — RevenueCat + Cloudflare Worker (`scan-proxy`)
   billing build-out and account setup.
-- `ARCHIVE_TESTING.md` — how the Minor/Major test-category model and the
-  Sanity/Daily/Weekly/Release tiers were designed and built, per platform.
+- `ARCHIVE_TESTING.md` — how the Minor/Major/External test-category model
+  was designed and built per platform, including the 2026-08-24 redesign
+  that retired the old Sanity/Daily/Weekly/Release tier names.
 - `ARCHIVE_EARLY_HISTORY.md` — the earliest (pre-Android) breakdown-logic
   fixes.
 
@@ -30,6 +31,15 @@ this one.
 `✅ **Real bug`, `**Decided`, `**Design correction`, `**Fix implemented`,
 etc. — so `Grep` for a tag (or a keyword/error message) across the archive
 files finds a specific past event without reading a whole file.
+
+## 🛠️ Dev environment reference
+
+**`DEV_ENVIRONMENT.md`** — this machine's real tool paths and run
+commands (Android SDK/emulator/AVD name, Tesseract, Node, `uv`) across
+every product line. Machine-specific info that doesn't survive a context
+compaction if it's only ever rediscovered ad hoc — check this file
+before re-discovering a path via `Get-Command`/`where`/hunting through
+env vars again.
 
 ## 🗺️ Roadmap: prioritized plan (decided 2026-08-21)
 

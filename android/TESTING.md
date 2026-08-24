@@ -1,24 +1,29 @@
 # Android testing
 
-Mirrors `workers/scan-proxy/TESTING.md`'s structure and the same tiered
-strategy: sanity/daily tiers are fully offline and mocked/faked;
-weekly/release tiers make real, bounded external calls and are built
-later. This file documents current state — see `ARCHIVE_ANDROID.md` (repo
+Mirrors `workers/scan-proxy/TESTING.md`'s structure and the same
+event-based strategy (retired the old time-cadence tier names
+2026-08-24 — see the root `TESTING.md`'s "Event-based tiers, not
+time-cadence tiers" section): Minor/Major suites are fully offline and
+mocked/faked; the External suite makes real, bounded external calls.
+This file documents current state — see `ARCHIVE_ANDROID.md` (repo
 root) for the narrative history of how it got built and what bugs were
-found along the way. See the root `TESTING.md`'s "Reconciling with per-platform network/
-cadence tiers" section for how this tiering relates to that file's
-Minor/Major regression-scoping rules — the two are independent axes, not
-alternatives to choose between.
+found along the way. See the root `TESTING.md`'s Minor/Major/External
+sections for how this maps to that file's regression-scoping rules —
+the commands below are unchanged from before the rename, only the tier
+names changed.
 
-## Tiers
+## Categories
 
-| Tier | Status | Cadence | Network calls | Command |
+| Category | Status | Trigger | Network calls | Command |
 |---|---|---|---|---|
-| **Unit (JVM)** | ✅ built | every commit | none | `./gradlew test` |
-| **Daily (instrumented, offline)** | ✅ built | before every commit touching UI/navigation | none (no `Purchases.configure()`) | `./gradlew connectedDebugAndroidTest` |
-| **Weekly (instrumented, real RevenueCat)** | ✅ built | before pushing a major update to the Play Store, not a calendar cadence | real, bounded, dedicated test customer (`weekly-test-user`) | `.\test-weekly.ps1` |
+| **Minor (Unit, JVM)** | ✅ built | a Minor change (internal-only) | none | `./gradlew test` |
+| **Major (instrumented, offline)** | ✅ built | a Major change (public-interface/new-library) touching UI/navigation | none (no `Purchases.configure()`) | `./gradlew connectedDebugAndroidTest` |
+| **External (instrumented, real RevenueCat)** | ✅ built | event-driven: before pushing a major update to the Play Store, not a calendar cadence; also diff-driven whenever a Major change touches boundary-calling code (`RevenueCatManager.kt`) | real, bounded, dedicated test customer (`weekly-test-user`) | `.\test-weekly.ps1` |
 
-The daily-equivalent instrumented tier runs with `CustomTestRunner`
+(Command names — `test-weekly.ps1` etc. — are unrenamed this pass;
+see `NEXT_STEPS.md` item #9 for the deferred mechanical rename.)
+
+The Major-suite instrumented category runs with `CustomTestRunner`
 (`android/app/src/androidTest/java/com/rigcheck/app/CustomTestRunner.kt`),
 which substitutes a plain `Application` for the real `RigCheckApplication`
 so `Purchases.configure()` never runs — confirmed via a full test run
@@ -33,7 +38,7 @@ crashing (no production-code change was needed to make this possible).
 **Built and verified for real 2026-08-23** (`.\test-weekly.ps1` → `OK (3
 tests)`, real network throughout), using the dedicated `weekly-test-user`
 RevenueCat test customer (see `workers/scan-proxy/TESTING.md` for how it
-was created). Uses the *same* `CustomTestRunner` as the Daily tier, not a
+was created). Uses the *same* `CustomTestRunner` as the Major suite, not a
 second runner — AGP's manifest merger only allows one `<instrumentation>`
 element per test APK, so a separately-named runner class silently loses
 its identity when merged. Instead, `test-weekly.ps1` touches a
@@ -42,13 +47,13 @@ device-side marker file
 `CustomTestRunner.newApplication()` checks for that file (plain
 synchronous `java.io.File.exists()` — no lifecycle-ordering dependency)
 and substitutes `WeeklyTestApplication` (real `Purchases.configure()`
-against `weekly-test-user`) instead of the Daily tier's plain offline
+against `weekly-test-user`) instead of the Major suite's plain offline
 `Application`. The marker is removed again afterward so a later
 `./gradlew connectedDebugAndroidTest` run is unaffected either way; that
 Gradle task also explicitly excludes `PaywallScreenWeeklyTest` via
 `testInstrumentationRunnerArguments["notClass"]` in
 `app/build.gradle.kts`, since JUnit otherwise discovers every `@Test`
-class in the `androidTest` source set regardless of which tier "owns"
+class in the `androidTest` source set regardless of which category "owns"
 it. Full narrative of the three approaches tried before this one worked
 — including an instrumentation-args race and a main-thread requirement
 for triggering the real purchase dialog — in `ARCHIVE_ANDROID.md`.
@@ -71,13 +76,13 @@ case); the purchase case is free — RevenueCat's Test Store dialog states
 outright it's a dev-only purchase, confirmed hands-on by triggering one
 and reading its own text.
 
-**Not the same test as `workers/scan-proxy`'s Release tier, despite
-sharing a gating trigger** — discussed and clarified 2026-08-21. Both
-should be gated on the same real-world event (deciding to push a major
-update to the Play Store, not a calendar), but they test different
-layers: scan-proxy's Release tier validates the Worker's own contract
-with RevenueCat/Anthropic directly, no Android app involved at all; this
-tier validates the Android app's own real integration — UI rendering,
+**Not the same test as `workers/scan-proxy`'s direct-provider-boundary
+External suite, despite sharing a gating trigger** — discussed and
+clarified 2026-08-21. Both should be gated on the same real-world event
+(deciding to push a major update to the Play Store, not a calendar), but
+they test different layers: scan-proxy's External suite validates the
+Worker's own contract with RevenueCat/Anthropic directly, no Android app
+involved at all; this suite validates the Android app's own real integration — UI rendering,
 RevenueCat SDK behavior (including client-side caching quirks a pure API
 test can't see, like the credit-balance-cache bug found 2026-08-18),
 navigation — layers scan-proxy's tests are structurally unable to see.
@@ -86,14 +91,14 @@ navigation — layers scan-proxy's tests are structurally unable to see.
 run scan-proxy's real-boundary tests first — cheaper, faster, and far
 easier to debug (a Node test's output and `wrangler tail` logs vs. an
 emulator, Compose rendering, and device state). If those pass, move to
-this tier; a real failure here is harder to isolate, but a passing
+this suite; a real failure here is harder to isolate, but a passing
 scan-proxy layer first meaningfully narrows where the bug can be. See
 the root `TESTING.md`'s category 4 (inter-module interface tests) for
 the general version of this rule.
 
 ## Coverage
 
-Real JaCoCo coverage numbers for the Unit and Daily tiers, built and
+Real JaCoCo coverage numbers for the Minor and Major suites, built and
 verified for real 2026-08-23 — via AGP's own built-in support, no
 third-party plugin. Enabled in `app/build.gradle.kts`'s `debug {}`
 build type:
@@ -124,24 +129,24 @@ elsewhere (`compileSdk { version = release(37) }`,
 | `./gradlew connectedDebugAndroidTest createDebugAndroidTestCoverageReport` | `app/build/reports/coverage/androidTest/debug/connected/index.html` |
 | `./gradlew createDebugCoverageReport` | Runs both of the above — an aggregator task, not a separate merged report of its own (confirmed by checking the actual output directories; no third report path exists). |
 
-Confirmed real, non-zero coverage on first run: Unit tier — 7% overall
-instruction coverage app-wide (expected; Unit only exercises business
+Confirmed real, non-zero coverage on first run: Minor suite — 7% overall
+instruction coverage app-wide (expected; Minor only exercises business
 logic, not UI), `RevenueCatManager.kt` specifically at 38% (44 of 71
 instructions missed), `com.rigcheck.app.domain` (the
-`compute_breakdown`/`verdict_for` port) at 99%. Daily tier — 71% overall
-instruction coverage app-wide (much higher than Unit, as expected — it
+`compute_breakdown`/`verdict_for` port) at 99%. Major suite — 71% overall
+instruction coverage app-wide (much higher than Minor, as expected — it
 exercises real Compose UI), `ResultsScreen.kt` at 100%.
 
-Both tiers' existing plain commands (`./gradlew test`, `./gradlew
+Both suites' existing plain commands (`./gradlew test`, `./gradlew
 connectedDebugAndroidTest`, no coverage tasks) are unaffected — this is
 purely additive, reconfirmed at 31/31 and 39/39 respectively after
 adding the flags. If any covered test fails, AGP correctly skips
 generating that report rather than producing a partial one — the right
 failure mode if this is ever seen, not a tooling bug.
 
-**Weekly-tier coverage is a deliberately deferred, documented
+**External-suite coverage is a deliberately deferred, documented
 nice-to-have — not built.** Its marginal contribution is small
-(Daily/Unit already exercise most of the same non-network code paths
+(Major/Minor already exercise most of the same non-network code paths
 its own screens touch), and getting a `.ec` file out of a bare `adb
 shell am instrument` invocation into AGP's report task isn't guaranteed
 to plug in cleanly without its own separate investigation. Fallback
@@ -151,9 +156,14 @@ instrument` line, `adb pull` the resulting `.ec` file, then either the
 JaCoCo CLI directly or a small custom `JacocoReport` Gradle task pointed
 at the pulled file.
 
+**These Major-suite numbers (71% app-wide) are the enforced baseline
+`scripts/coverage_gate.py` checks Android against at release time** —
+see the root `TESTING.md`'s "Coverage gate" section; the gate fails only
+on regression below this real baseline, not an arbitrary target.
+
 ## What each test covers
 
-### Unit (JVM) — `./gradlew test`
+### Minor (Unit, JVM) — `./gradlew test`
 
 - `BreakdownTest.kt`, `VerdictTest.kt`, `NumberFormattingTest.kt` — the
   `compute_breakdown`/`verdict_for` Kotlin port, ported from
@@ -178,7 +188,7 @@ at the pulled file.
   root) for the two MockK deadlocks hit and worked around while writing
   this.
 
-### Daily (instrumented) — `./gradlew connectedDebugAndroidTest`
+### Major (instrumented) — `./gradlew connectedDebugAndroidTest`
 
 **Screen-level tests** (`ui/screens/`, `ui/components/`) — fake
 parameters passed directly to each composable, no ViewModel/NavHost/
@@ -232,7 +242,7 @@ network involved:
 - `PaywallScreenTest` — the credit-balance header text (singular/plural),
   the offline "Couldn't load offers" error state (see the `Purchases`
   note above), and the Restore Purchase link's presence. Real Test Store
-  offerings/pricing is the weekly tier.
+  offerings/pricing is the External suite.
 
 **Navigation-flow tests** (`ui/navigation/RigCheckNavHostTest.kt`) — the
 real `RigCheckNavHost` + `RigCheckViewModel`, offline via
@@ -251,20 +261,20 @@ real `RigCheckNavHost` + `RigCheckViewModel`, offline via
   disclaimer does *not* reappear on this second checkout in the same
   session.
 
-### Weekly (instrumented, real RevenueCat) — `.\test-weekly.ps1`
+### External (instrumented, real RevenueCat) — `.\test-weekly.ps1`
 
 - `PaywallScreenWeeklyTest.kt` — four cases, run under the same
-  `CustomTestRunner` as the Daily tier but with the weekly marker file
-  set (`weekly-test-user`) — see the tier description above:
+  `CustomTestRunner` as the Major suite but with the weekly marker file
+  set (`weekly-test-user`) — see the category description above:
   - `rendersRealOfferingsFromTestStore` — fetches the real package
     directly via `RevenueCatManager.getOfferings()` first (so the
     assertion checks a concrete known value, not a guess about UI
     internals), then confirms `PaywallScreen` renders that real
-    `pkg.product.title`/`price.formatted` text instead of the daily
-    tier's "Couldn't load offers" error state.
+    `pkg.product.title`/`price.formatted` text instead of the Major
+    suite's "Couldn't load offers" error state.
   - `realPurchaseIncrementsBalance` — calls
     `RevenueCatManager.purchasePackage`/`getScanCreditBalance()`
-    directly (not through the Compose button — the daily tier's
+    directly (not through the Compose button — the Major suite's
     fake-lambda `PaywallScreenTest.kt` already covers that the button
     wiring itself works; this test's value is the real network round
     trip), launched on `Dispatchers.Main` specifically — calling it from
@@ -294,8 +304,8 @@ real `RigCheckNavHost` + `RigCheckViewModel`, offline via
     real `wrangler deploy`, not just a local code change) and again
     after deploying (passed for real). Full narrative in
     `ARCHIVE_MONETIZATION.md`.
-  - Uses `createAndroidComposeRule<ComponentActivity>()`, not the daily
-    tier's `createComposeRule()`, since `purchasePackage` needs a real
+  - Uses `createAndroidComposeRule<ComponentActivity>()`, not the Major
+    suite's `createComposeRule()`, since `purchasePackage` needs a real
     `Activity` (`composeRule.activity`).
 
 ## Known gaps (deliberately not tested, or not yet)

@@ -1,6 +1,6 @@
 # Web (React) testing
 
-Classifies `web/`'s test suite against the four categories defined in the
+Classifies `web/`'s test suite against the categories defined in the
 root `TESTING.md`. Written 2026-08-21, the same day the harness itself
 (Vitest + React Testing Library) was installed — this is the first test
 suite this package has ever had. See `ARCHIVE_TESTING.md` and
@@ -9,6 +9,39 @@ suite this package has ever had. See `ARCHIVE_TESTING.md` and
 `npm test` (`vitest run`) — currently 71 tests, all passing.
 `npm run build` (`tsc -b && vite build`) typechecks `src/**`, test files
 included, since `tsconfig.app.json`'s `include` is just `["src"]`.
+
+## Event-based tiers
+
+Per the root `TESTING.md`'s Minor/Major/External model (retired
+2026-08-24, roadmap item #9): this suite has never tagged a fast subset,
+so today a full `npm test` run covers both **Minor** and **Major**
+undifferentiated — documented honestly here rather than inventing a
+split that doesn't exist. Scoping which specific test files a given
+change actually calls for (Minor vs. Major, per the root file's
+regression-scoping rules) is still a per-session judgment call against
+the real diff, same as any other platform. **No External suite exists
+here today** — every network call (`./api`'s `extractTruckTag`/etc.) is
+mocked in this suite; nothing here calls a real 3rd-party boundary
+directly, so that category is N/A for this platform, not a gap.
+
+## Coverage
+
+Real coverage, wired up 2026-08-24 (roadmap item #9) via
+`@vitest/coverage-v8`:
+
+```bash
+npm run test:coverage
+```
+
+(`vitest run --coverage`, configured in `vite.config.ts`'s `test.coverage`
+block — `provider: 'v8'`, `reporter: ['text', 'json-summary']`, so the
+machine-readable total lands at `coverage/coverage-summary.json`.) Real
+numbers as of 2026-08-24: 91.41% statements overall (181/198); weakest
+files `UploadStep.tsx` (85.71%) and `App.tsx` (86.95%). **No release
+event exists for Web yet** (see `NEXT_STEPS.md`'s "Deliberately not on
+this list" — local dev only), so `scripts/coverage_gate.py` reports this
+number **report-only**, not enforced — see the root `TESTING.md`'s
+"Coverage gate" section.
 
 ## Harness
 

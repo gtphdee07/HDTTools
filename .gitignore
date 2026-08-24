@@ -7,6 +7,7 @@ __pycache__/
 # Testing
 .pytest_cache/
 .coverage
+coverage.json
 htmlcov/
 
 # Local runtime data

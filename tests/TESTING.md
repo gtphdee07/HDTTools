@@ -2,7 +2,7 @@
 
 Classifies this repo's Python test suite (`tests/`, covering
 `src/hdttools/`, `src/hdttools/api/`, and `streamlit_app/`) against the
-four categories defined in the root `TESTING.md`. Written 2026-08-21,
+categories defined in the root `TESTING.md`. Written 2026-08-21,
 retrofitted onto tests written before that framework existed — most of
 this suite predates the categories below; this is the first pass at
 labeling it, not a rewrite. See this repo's `ARCHIVE_*.md` files (repo
@@ -10,10 +10,25 @@ root — `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_TESTING.md`,
 `ARCHIVE_EARLY_HISTORY.md`) for the narrative history of individual
 features/bugs each test file guards against.
 
-`uv run pytest -q` — currently 116 tests (113 passing, 3 deliberate
-`xfail`s — see `test_real_photo_ocr_accuracy.py` below), no markers/tiers
-wired up yet (this repo has no CI; everything runs manually, matching the
-root `TESTING.md`'s "session regression" model rather than a cadence).
+`uv run pytest -q` — currently 127 tests (124 passing, 3 deliberate
+`xfail`s — see `test_real_photo_ocr_accuracy.py` below), no CI; everything
+runs manually, matching the root `TESTING.md`'s "session regression"
+model rather than a cadence.
+
+## Event-based tiers
+
+Per the root `TESTING.md`'s Minor/Major/External model (retired
+2026-08-24, roadmap item #9): this suite has never tagged a fast subset,
+so today a full `uv run pytest -q` run covers both **Minor** and
+**Major** undifferentiated — there's no `[sanity]`-equivalent marker
+splitting them yet, documented honestly here rather than inventing a
+split that doesn't exist. Scoping which specific test files a given
+change actually calls for (Minor vs. Major, per the root file's
+regression-scoping rules) is still a per-session judgment call against
+the real diff, same as any other platform. **No External suite exists
+here today** — nothing in `src/hdttools`/`streamlit_app` calls a real
+3rd-party boundary directly (OCR is local Tesseract, not a network
+call), so that category is N/A for this platform, not a gap.
 
 ## Coverage
 
@@ -32,9 +47,14 @@ uv run pytest --cov --cov-report=term-missing
 2026-08-24: 79% total, `streamlit_app/app.py` 80% (223 statements, 44
 missed), `streamlit_app/fields.py` 100%, `streamlit_app/recent_rigs.py`
 79%. Kept as an explicit, separate command rather than a default
-`pytest -q` `addopts` — matching Android's Unit/Daily tiers, coverage
+`pytest -q` `addopts` — matching Android's Minor/Major suites, coverage
 reporting stays a deliberate, occasional check, not overhead on every
 routine run.
+
+**This 79% total is the enforced baseline `scripts/coverage_gate.py`
+checks Python against at release time** — see the root `TESTING.md`'s
+"Coverage gate" section; the gate fails only on regression below this
+real baseline, not an arbitrary target.
 
 ## By file
 
@@ -56,6 +76,7 @@ routine run.
 | `test_database.py` | Function + Module | `_flatten` (Function); `save_scale_ticket`/`save_truck_tag`/`save_trailer_tag` against a real `tmp_path` SQLite file (Module — the module's three offered operations, including row-id increment behavior). |
 | `test_models.py` | Function | Dataclass defaults/structure for `TruckTagData`/`TrailerTagData`/`ScaleTicketData`/`TireSpec`. |
 | `test_ocr_output_key_contracts.py` | **Interface** | Two opposite-direction key-set checks per OCR module (2026-08-22): every `_parse_fields()` key must be a declared `schemas.py` field (the FastAPI `response_model`/`extra="ignore"` silent-drop risk), and every `fields.py`/`FIELDS` name must map to a real `_parse_fields()` key (the Streamlit `_extract_fields`'s `keep`-filter silent-drop risk, opposite direction since `FIELDS` deliberately shows only a curated subset of what OCR extracts). Both exclude the same known manual-only fields (`standalone_weight_lb`, `axle_count`). Calls `_parse_fields("")` — the full key set is structurally present regardless of match success, so no synthetic label text is needed, just the shape. |
+| `test_coverage_gate.py` | Function | New 2026-08-24 (roadmap item #9). `../scripts/coverage_gate.py`'s pure parsers (`parse_android_report`/`parse_python_report`/`parse_web_report`/`parse_scan_proxy_output`) and `PlatformResult.passed`'s threshold logic, loaded via `importlib` since the script lives outside the `hdttools` package. The `get_*_result` functions that actually shell out to each platform's toolchain (gradlew/pytest/npm) are deliberately not unit-tested here — thin I/O glue, exercised for real by the script's own manual runs (see `ARCHIVE_TESTING.md`). |
 
 ## Known gaps (identified 2026-08-21, not all closed)
 

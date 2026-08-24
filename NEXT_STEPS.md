@@ -74,23 +74,26 @@ reading anything else.
    evidence of a real bug behind any of these**:
    - `web/`'s `Dashboard.tsx`'s own logic beyond the verdict badge — no
      dedicated Module test yet.
-   - The statically-generated regression-results dashboard script —
-     paused 2026-08-24, mid-design; see item #9.
+   - The statically-generated regression-results dashboard script — was
+     paused on item #9's redesign, now unblocked (#9 closed 2026-08-24);
+     not yet started.
    - "Option C" (Pydantic JSON-Schema export) for the
      `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut` interface gap — full
      write-up in `FUTURE_API_SCHEMA_VALIDATION.md`.
-   - Coverage tooling for `web/` (Vitest's built-in `coverage` provider)
-     and `workers/scan-proxy` (Node's `--experimental-test-coverage`) —
-     neither raised explicitly yet (2026-08-23 discussion was scoped to
-     Android/Python/Streamlit specifically), flagged here so the gap
-     doesn't get lost before a paid release.
 8. ⬜ **Increase test coverage across the board** — now that real
-   coverage tooling exists for Android (#4) and Python/Streamlit (#4a,
-   #6), use those real numbers to find and close the biggest gaps rather
-   than just having the tooling in place with nothing acted on. No
-   target percentage decided yet — prioritize by where coverage is
-   lowest and where a gap plausibly hides a real bug, not an arbitrary
-   global number.
+   coverage tooling exists for all four platforms (Android #4, Python/
+   Streamlit #4a/#6, Web and scan-proxy #9), use those real numbers to
+   find and close the biggest gaps rather than just having the tooling in
+   place with nothing acted on. No target percentage decided yet —
+   prioritize by where coverage is lowest and where a gap plausibly hides
+   a real bug, not an arbitrary global number.
+   - **Web's initial real baseline (2026-08-24)** — see `web/TESTING.md`'s
+     Coverage section. 91.41% statements overall; weakest files
+     `UploadStep.tsx` (85.71%) and `App.tsx` (86.95%).
+   - **scan-proxy's initial real baseline (2026-08-24)** — see
+     `workers/scan-proxy/TESTING.md`'s Coverage section. 100% line/
+     branch/function coverage already — the Major suite's 57 tests
+     already exercise every line; no gap to close here today.
    - **Android's initial real baseline (2026-08-23)** — see
      `android/TESTING.md`'s Coverage section for the full reference.
      Unit tier: 7% instruction coverage app-wide (expected low, Unit
@@ -115,61 +118,17 @@ reading anything else.
      interaction-level test `test_streamlit_app.py` already uses for
      Streamlit's own UI).
 
-9. 🔶 **Testing nomenclature redesign: event-based Minor/Major replacing
-   time-based Sanity/Daily/Weekly/Release, plus a release-time
-   coverage-gate script** — raised 2026-08-24, mid-design-discussion, not
-   yet a formal implementation plan. Started as planning for item #7's
-   dashboard script; surfaced that the dashboard's own "minor/major/
-   integration" framing didn't match this repo's real, established
-   vocabulary (`TESTING.md`'s Minor/Major regression-*scoping* rule is a
-   different, orthogonal thing from each platform's Sanity/Daily/Weekly/
-   Release *network-tier* naming — see `ARCHIVE_TESTING.md` for the full
-   three-concept unpacking). Paused the dashboard specifically to settle
-   this first, since it would otherwise report against a scheme about to
-   change.
-   **Decided so far:**
-   - Drop the time-cadence framing entirely (`Daily`/`Weekly` never
-     actually ran on a real cadence in practice — confirmed in
-     `ARCHIVE_TESTING.md`: "just cheap enough to run anytime, ad hoc, no
-     enforced schedule") in favor of purely event-based triggers, applied
-     *consistently across all four platforms* — today only Android and
-     `scan-proxy` have tier language at all; Web and Python never did.
-     **Retire the Sanity/Daily/Weekly/Release and Unit/Daily/Weekly
-     tables in each platform's `TESTING.md` once the new model lands** —
-     not kept as a parallel scheme, fully replaced.
-   - New 5th test category, **External** (peer to Function/Interaction/
-     Module/Interface — name confirmed): verifies a real 3rd-party
-     boundary (RevenueCat, Anthropic) hasn't silently changed, since
-     that's a fundamentally different question than any internal contract
-     Interface tests check. Two trigger conditions, not one: (a)
-     diff-driven, same logic as Interface today — a Major change touching
-     boundary-calling code triggers it; (b) event-driven, independent of
-     any diff — release-gated, a 3rd-party SDK/API version bump, or
-     explicit suspicion of drift.
-   - Today's real Weekly-vs-Release *scope* distinction (through-our-own-
-     deployed-service vs. direct-provider-boundary — genuinely different
-     tests, not the same tests on different clocks) is preserved as two
-     suites *within* External, not flattened into one and not kept as
-     separate named tiers either.
-   - Android's Unit-vs-instrumented(Daily) split is judged **orthogonal**
-     to this redesign — a real runtime-environment fact (JVM vs. needs-a-
-     device), not a time-cadence fiction — and stays as-is, undisturbed.
-   - **The coverage-gate script and the release-event model apply to all
-     four platforms uniformly, including Web and Streamlit** — neither
-     has a real release/push event *today* (Streamlit Cloud auto-deploys
-     from git push; Web has no hosting at all yet), but both are expected
-     to gain one, and the design shouldn't special-case them out now just
-     because that event doesn't exist yet. Same nomenclature and test
-     process as Android across the board, not an Android/scan-proxy-only
-     scheme with Web/Streamlit bolted on differently later.
-   **Still open:**
-   - Not yet formalized into an implementation plan (no `ClaudePlans/`
-     file yet) — next step once resumed.
-   - Exactly how the coverage-gate script behaves for a platform with no
-     release event yet (Web/Streamlit today) — report-only until one
-     exists, or some other interim behavior — not yet worked out.
-   Full discussion narrative, including how the terminology confusion was
-   found and unpacked, in `ARCHIVE_TESTING.md`.
+9. ✅ **Testing nomenclature redesign: event-based Minor/Major/External
+   replacing time-based Sanity/Daily/Weekly/Release, plus a cross-platform
+   coverage-gate script — closed 2026-08-24.** Every platform's
+   `TESTING.md` now describes only Minor/Major/External (old tier tables
+   retired, not kept in parallel); `web/` and `workers/scan-proxy` both
+   gained real coverage tooling for the first time. `scripts/coverage_gate.py`
+   (`uv run scripts/coverage_gate.py`) enforces a baseline-floor for
+   Android (71%), Python (79%), and scan-proxy (100%), and reports Web
+   (91%) until it has a real release event. Full narrative, including how
+   the terminology confusion was found and unpacked, in
+   `ARCHIVE_TESTING.md`.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see

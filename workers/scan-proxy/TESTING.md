@@ -1,53 +1,58 @@
 # scan-proxy testing
 
-This Worker's tests are organized into tiers, matching the tiered
-regression strategy described in the root repo's `TESTING.md`. This
-file documents the tiers themselves and what each individual test
-covers, so picking this back up doesn't require reading every test file
-cold. It's a reference for current state — see `ARCHIVE_TESTING.md` (repo
-root) for the narrative history (when each tier was built, what bugs were
-found along the way, why specific design choices were made). See the root
-`TESTING.md`'s "Reconciling with per-platform network/cadence tiers"
-section for how this tiering relates to that file's Minor/Major
-regression-scoping rules — the two are independent axes, not
-alternatives to choose between.
+This Worker's tests are organized around the root repo's `TESTING.md`
+Minor/Major/External model. This file documents each category's real
+current commands and what each individual test covers, so picking this
+back up doesn't require reading every test file cold. It's a reference
+for current state — see `ARCHIVE_TESTING.md` (repo root) for the
+narrative history (when each category was built, what bugs were found
+along the way, why specific design choices were made). **Retired
+2026-08-24 (roadmap item #9)**: this file used to describe its own
+Sanity/Daily/Weekly/Release tiers as a second axis alongside Minor/
+Major — see the root `TESTING.md`'s "Event-based tiers, not
+time-cadence tiers" section for why that's now one axis, not two.
 
-## Tiers
+## Categories
 
-| Tier | Status | Cadence | Network calls | Command |
+| Category | Status | Trigger | Network calls | Command |
 |---|---|---|---|---|
-| **Sanity** | ✅ built | before every commit | none (mocked) | `npm run test:sanity` |
-| **Daily** | ✅ built | while actively working on this Worker | none (mocked) | `npm test` |
-| **Weekly** | ✅ built (4 tests) | ongoing/ad hoc — the free case is cheap enough to run anytime; the other three each spend a real credit and (for two of them) a real Claude call | real, bounded, dedicated test customer | `npm run test:weekly` |
-| **Release** | 🟡 built, needs your local secrets to run | before pushing a major update to the Play Store, not a fixed cadence | real, against RevenueCat/Anthropic directly | `.\test-release.ps1` (`-SkipKeys` to allow skipping) |
+| **Minor** | ✅ built | a Minor change (internal-only) | none (mocked) | `npm run test:sanity` |
+| **Major** | ✅ built | a Major change (public-interface/new-library) | none (mocked) | `npm test` |
+| **External (through-our-service)** | ✅ built (4 tests) | event-driven — ongoing/ad hoc, cheap enough to run anytime; also diff-driven whenever a Major change touches boundary-calling code | real, bounded, dedicated test customer | `npm run test:weekly` |
+| **External (direct-provider-boundary)** | 🟡 built, needs your local secrets to run | event-driven — before pushing a major update to the Play Store, not a fixed cadence; also diff-driven, same trigger as above | real, against RevenueCat/Anthropic directly | `.\test-release.ps1` (`-SkipKeys` to allow skipping) |
 
-Sanity is a small subset of daily's tests, tagged `[sanity]` in their
-names and selected via `node --test`'s `--test-name-pattern`, not a
-separate set of test files. Weekly and release both need real dedicated
+(Command names — `test:sanity`, `test:weekly`, `test-release.ps1` —
+are unrenamed this pass; see `NEXT_STEPS.md` item #9 for the deferred
+mechanical rename.)
+
+Minor's cases are a small subset of Major's tests, tagged `[sanity]` in
+their names and selected via `node --test`'s `--test-name-pattern`, not a
+separate set of test files. Both External suites need real dedicated
 RevenueCat test customers (never `smoke-test-user`, which stays reserved
 for manual Android field testing) — `weekly-test-user` and
 `weekly-test-user-no-credits` were created 2026-08-21 for exactly this
-(see `ARCHIVE_TESTING.md` at the repo root). Weekly tests live in
-`src/weekly/*.test.ts`, deliberately excluded from `src/*.test.ts`'s glob
-(so `npm test`/`npm run test:sanity` never pick them up) and run only via
-`npm run test:weekly`.
+(see `ARCHIVE_TESTING.md` at the repo root). The through-our-service
+suite's tests live in `src/weekly/*.test.ts`, deliberately excluded from
+`src/*.test.ts`'s glob (so `npm test`/`npm run test:sanity` never pick
+them up) and run only via `npm run test:weekly`.
 
-**Release tier, built 2026-08-22**: real API calls at the service-provider
-boundaries this Worker depends on — RevenueCat and Anthropic directly
-(`revenuecat.ts`/`claude.ts`'s own functions called in-process), not
-mocks and not routed through the deployed Worker as an intermediary —
-including their error conditions, to catch a breaking change at either
-boundary before it reaches production. Gated on a real event (deciding
-to push a major update to the Play Store), not a calendar or a `wrangler
-deploy` — with no CI in this repo, "after every deploy" never had a real
-trigger anyway, whereas "before a major release" is a decision a person
-actually makes. Distinct from the Weekly tier above (Weekly is cheap
-enough to run anytime with no real cost; Release is the deliberate,
-thorough gate) and distinct from Android's own Weekly-equivalent tier
-despite sharing the same gating trigger — see `android/TESTING.md`'s
-tier notes for that relationship, and the root `TESTING.md`'s category 4
-for the recommended sequencing (this tier first — cheaper and far easier
-to debug — before the Android layer).
+**Direct-provider-boundary External suite, built 2026-08-22**: real API
+calls at the service-provider boundaries this Worker depends on —
+RevenueCat and Anthropic directly (`revenuecat.ts`/`claude.ts`'s own
+functions called in-process), not mocks and not routed through the
+deployed Worker as an intermediary — including their error conditions,
+to catch a breaking change at either boundary before it reaches
+production. Gated on a real event (deciding to push a major update to
+the Play Store), not a calendar or a `wrangler deploy` — with no CI in
+this repo, "after every deploy" never had a real trigger anyway, whereas
+"before a major release" is a decision a person actually makes. Distinct
+from the through-our-service suite above (that one is cheap enough to
+run anytime with no real cost; this one is the deliberate, thorough
+gate) and distinct from Android's own External suite despite sharing the
+same gating trigger — see `android/TESTING.md`'s tier notes for that
+relationship, and the root `TESTING.md`'s category 4 for the recommended
+sequencing (this suite first — cheaper and far easier to debug — before
+the Android layer).
 
 **Needs `ANTHROPIC_API_KEY` and `REVENUECAT_SECRET_KEY` exported in your
 own shell before running** — the same two values already set as this
@@ -90,12 +95,33 @@ secrets before running anything that could hit a paid API unexpectedly.
 
 All tiers are run manually — there is no CI in this repo.
 
+## Coverage
+
+Real coverage for the Major suite, wired up 2026-08-24 (roadmap item #9)
+via Node's own built-in `--experimental-test-coverage` flag — no
+third-party dependency needed:
+
+```bash
+npm run test:coverage
+```
+
+(`node --test --experimental-test-coverage src/*.test.ts` — the same
+files `npm test` already runs, with coverage instrumentation added.)
+Real numbers as of 2026-08-24: **100.00%** line/branch/function coverage
+across every source file (`claude.ts`, `docTypes.ts`, `http.ts`,
+`index.ts`, `request.ts`, `revenuecat.ts`, `scan.ts`) — the Major suite's
+57 tests already exercise every line. **This is the enforced baseline
+`scripts/coverage_gate.py` checks scan-proxy against at release time**
+(see the root `TESTING.md`'s "Coverage gate" section) — since it starts
+at 100%, in practice the gate can only ever catch a real regression, not
+demand improvement that isn't there to make.
+
 ## What each test covers
 
 Organized by file, in the order a request actually flows through the
 Worker (`index.ts` → `request.ts` → `scan.ts` → `revenuecat.ts` /
 `claude.ts` → `http.ts`/`docTypes.ts` as shared support). `[sanity]` marks
-tests also included in the sanity tier.
+tests also included in the Minor category.
 
 ### `docTypes.test.ts` — the static prompt/schema config per document type
 
@@ -189,7 +215,7 @@ tests also included in the sanity tier.
 
 - **Module-level hard stop, not a per-test skip, when a key is missing and `SKIP_KEYS` isn't set** — the whole file throws before any test runs, reported as one failed test naming which env var is missing. `SKIP_KEYS=1` (set by `-SkipKeys`) is required to fall back to the per-boundary skips below.
 - **spendCredit against a real funded customer succeeds, and refundCredit reverses it** — `weekly-test-user`, net zero balance change (spend then immediately refund with the paired idempotency key). Proves the real `Authorization`/`Idempotency-Key`/adjustment-body request shape `revenuecat.ts` sends is still accepted for both a debit and a credit.
-- **spendCredit against a real customer with zero balance gets the real 422 `scan.ts` depends on** — `weekly-test-user-no-credits`, calling `revenuecat.ts` directly rather than through the Worker (the Weekly tier's equivalent case goes through the deployed Worker's full request/response envelope; this one isolates the RevenueCat boundary itself).
+- **spendCredit against a real customer with zero balance gets the real 422 `scan.ts` depends on** — `weekly-test-user-no-credits`, calling `revenuecat.ts` directly rather than through the Worker (the through-our-service suite's equivalent case goes through the deployed Worker's full request/response envelope; this one isolates the RevenueCat boundary itself).
 - **Both of the above fail explicitly as a bad-key problem, not a bare status mismatch, if `REVENUECAT_SECRET_KEY` is present but wrong** — `assertNotAuthFailure` turns a real 401/403 into `"REVENUECAT_SECRET_KEY appears invalid - RevenueCat returned <status>: <real error body>"`. Verified 2026-08-22 with a deliberately garbage key.
 - **extractFields against the real Anthropic API extracts real fields from a real truck tag photo** — `ExampleDocs/AddieTag.jpg`, the same file the original 2026-08-17 scan-proxy smoke test used. Proves the real request shape (model name, forced `tool_choice`, image content block) is still accepted and still returns a matching `tool_use` block with real field names — not any particular extracted value, since real vision accuracy isn't this test's concern (that's `tests/test_scale_ticket_real_photo.py`'s job on the Python/Tesseract side; this is the same idea applied directly to Claude). The one real, billed call in this file — fails explicitly as `"ANTHROPIC_API_KEY appears invalid"` (via `rejectingAuthFailureAsBadKey`), not a bare SDK error, if the real key is present but wrong.
 - **extractFields against the real Anthropic API rejects an invalid key with a real auth error** — free (fails before any billed inference), proves the auth-failure shape `extractFields`'s error handling assumes is still what a real 401 actually looks like. (This one's *point* is a bad key being correctly rejected, so it's not wrapped in `rejectingAuthFailureAsBadKey` — that wrapper is for `ANTHROPIC_API_KEY` unexpectedly being the thing that's wrong, not this test's own deliberately-bad key.)

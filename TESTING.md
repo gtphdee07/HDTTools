@@ -101,6 +101,33 @@ key issue, the Kotlin golden-vector drift, the scale-ticket real-photo
 bug — all found at the cheaper/backend layer before or instead of the
 device layer).
 
+### 5. External tests
+
+Verifies a real 3rd-party boundary (RevenueCat, Anthropic) hasn't
+silently changed — a fundamentally different question than any internal
+contract category 4 checks, since nothing internal to this codebase can
+prove a *provider's* behavior is still what it was. Two trigger
+conditions, not one:
+
+- **(a) Diff-driven** — same logic as category 4: a **Major** change
+  (below) that touches boundary-calling code (e.g. `revenuecat.ts`,
+  `claude.ts`, `RevenueCatManager.kt`) also runs the External suite for
+  that boundary. Not a separate thing to remember — it's folded into
+  "what a Major change on this module requires."
+- **(b) Event-driven** — independent of any diff: release-gated (before
+  pushing a major update), a 3rd-party SDK/API version bump, or explicit
+  suspicion of drift. This is what used to be called "Weekly"/"Release"
+  (scan-proxy) or "Weekly" (Android) — see "Event-based tiers, not
+  time-cadence tiers" below for why those names were retired.
+
+Where a platform's real boundary has two genuinely different scopes —
+through-our-own-deployed-service vs. direct-provider-boundary — those
+are two suites *within* External, not two separate categories and not
+kept as separately named tiers. `scan-proxy` is the concrete example:
+its real-network suite against the deployed Worker itself, and its
+real-network suite calling RevenueCat/Anthropic directly, are both
+External, distinguished by scope not by name.
+
 ## Regression scoping: Minor vs. Major
 
 Not a calendar cadence (no "daily"/"weekly" here) — scope is driven by
@@ -119,7 +146,9 @@ diff:
   confident claim. Run that module's **full** suite (all three
   file-level categories above). If the changed interface is shared with
   another module, run that other module's Major suite too, plus the
-  inter-module interface tests between them (category 4).
+  inter-module interface tests between them (category 4). If the change
+  touches code that calls a real 3rd-party boundary, also run that
+  boundary's **External** suite (category 5's diff-driven trigger).
 - **Session regression** — the actual set of tests run in a session is
   assembled from the rules above against what really changed, not a
   fixed tier. A session might run one module's Minor suite, another
@@ -190,61 +219,78 @@ the two highest-traffic shapes (`BreakdownItemOut`/`VerdictOut`) at much
 lower cost; `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut` remain
 uncovered by either approach as of this writing.
 
-## Reconciling with per-platform network/cadence tiers
+## Event-based tiers, not time-cadence tiers
 
-`android/TESTING.md` and `workers/scan-proxy/TESTING.md` each describe
-their own tiers (Android: Unit/Daily/Weekly; scan-proxy: Sanity/Daily/
-Weekly/Release) — an earlier scheme, built before Minor/Major existed.
-These are **not competing schemes to pick between** — they answer two
-different questions, on two independent axes, and both stay in force:
+Retired 2026-08-24 (roadmap item #9): `android/TESTING.md` used to
+describe its own Unit/Daily/Weekly tiers and `workers/scan-proxy/TESTING.md`
+its own Sanity/Daily/Weekly/Release tiers, coexisting alongside Minor/
+Major as a second, independent axis (a test's network-dependency
+classification, orthogonal to what a given session's diff scoped in).
+That two-axis model is gone — **Minor/Major/External is the one axis
+now, used identically on every platform**:
 
-- **Minor/Major (this file)** answers *which test categories to run*,
-  scoped to *what a specific change touched*, decided fresh each session
-  against the real diff.
-- **Sanity/Daily/Weekly/Release** answers *which network-dependency tier*
-  a test belongs to — offline/mocked vs. real-but-bounded vs. real
-  against a live deployment — and *how often* that tier's real-world
-  exposure gets exercised. That classification doesn't change session to
-  session; it's a property of the test itself (does it touch a real
-  network boundary or not), not of whatever diff prompted running it.
+- **Minor** — a change confined to internal logic (see "Regression
+  scoping" above). Runs a module's offline function + interaction tests.
+  This is what "Sanity" (scan-proxy) and "Unit" (Android) used to mean —
+  same tests, same commands, new name.
+- **Major** — a new library, or the module's public interface changed,
+  or a large enough internal change that "internal-only" isn't a
+  confident claim. Runs a module's full offline suite (all of category
+  1-3, plus category 4 if an interface is shared). This is what "Daily"
+  (both platforms) used to mean — same tests, same commands, new name.
+- **External** (category 5, above) — real, live calls to a genuine
+  3rd-party boundary. This is what "Weekly" (Android, scan-proxy) and
+  "Release" (scan-proxy) used to mean, now unified as External's two
+  trigger conditions rather than two more separately-named tiers. Where
+  a platform has two real scopes (through-our-service vs.
+  direct-provider-boundary — scan-proxy's old Weekly-vs-Release split),
+  those are External's two suites, not two tiers.
 
-**How they compose**: Minor/Major only ever governs the tiers that are
-already offline/mocked — for Android that's Unit (JVM) + Daily
-(instrumented, no `Purchases.configure()`); for scan-proxy that's Sanity
-+ Daily (both mocked, no real network). Concretely:
+**Why the time-cadence names were dropped**: "Daily"/"Weekly" never
+actually ran on a real cadence in practice, confirmed 2026-08-21 —
+scan-proxy's Weekly tier was "just cheap enough to run anytime, ad hoc,
+no enforced schedule," and Release was gated on a real decision (pushing
+a major update), never a calendar. The names implied a clock that was
+never actually there; **Minor/Major/External names what actually
+triggers a test running** — a change's real scope, or a real-world event
+(a release, a dependency bump, suspicion of drift) — which is what was
+really governing these tiers all along.
 
-- Android: a **Minor** change to a module runs that module's function and
-  interaction tests within Unit (JVM). A **Major** change runs the full
-  offline suite for that module — Unit (JVM) *and* Daily (instrumented) —
-  plus, if the change touches a shared interface, the other module's
-  Major suite and the golden-vector/interface tests (category 4).
-- `scan-proxy`: a **Minor** change runs that module's `[sanity]`-tagged
-  cases. A **Major** change runs the module's full `npm test` (the Daily
-  tier, which sanity is already a tagged subset of — the two tiers were
-  never separate test suites, just a fast/full split of the same one).
+**Applied uniformly across all four platforms**, including Web and
+Python/Streamlit, even though neither ever had tier language before —
+see `web/TESTING.md`'s and `tests/TESTING.md`'s own "Event-based tiers"
+sections. Neither currently has a real External suite (no direct
+3rd-party boundary call exists in either today), which is a fact about
+what those platforms do, not a gap in the model.
 
-The **real-network tiers** — Android's Weekly, scan-proxy's Weekly and
-Release — sit outside Minor/Major entirely. None of them run on a fixed
-calendar cadence despite the "Weekly" name, clarified 2026-08-21:
-scan-proxy's Weekly tier is just cheap enough to run anytime, ad hoc, no
-enforced schedule; Release (scan-proxy's and Android's, see each
-platform's own `TESTING.md` for how those two differ) is gated on a real
-decision — pushing a major update to the Play Store — not a clock. What
-they all guard against is the same regardless of trigger: a live
-API/credential/environment integration failure isn't something a
-session's diff scope can predict or bound. A purely-internal Minor
-change and a sprawling Major one are equally unrelated to whether, say,
-RevenueCat's real sandbox still behaves as expected; that only degrades
-on its own schedule, external to any code change here — which is
-exactly why these tiers are triggered by real-world events (a release
-decision, or just "enough time/uncertainty has passed to check") rather
-than folded into the diff-driven Minor/Major rules above.
+## Coverage gate
 
-**In short**: read `android/TESTING.md`/`scan-proxy/TESTING.md`'s tier
-tables for *what network access a test needs and how often to run it at
-all*; read this file's Minor/Major rules for *which of those (already
-network-tiered) tests a specific session's change actually calls for*.
-Neither file's scheme needs to change to make room for the other.
+`scripts/coverage_gate.py` (`uv run scripts/coverage_gate.py`) — a
+single cross-platform orchestrator, run at release time, reporting real
+coverage for all four platforms from their own native coverage tooling
+(JaCoCo for Android, `coverage.py` for Python, Vitest's `coverage-v8`
+provider for Web, Node's `--experimental-test-coverage` for scan-proxy).
+
+**Enforced (baseline-floor, not an arbitrary target)** for Android,
+Python, and scan-proxy — the three platforms with both an established
+real baseline (see `NEXT_STEPS.md` item #8) and a real release-gating
+event today (Android/scan-proxy's shared "before a major Play Store
+push" trigger; Python/Streamlit's suite is what that same push exercises
+on the backend side). The gate fails only if a platform's real coverage
+number drops *below* its last known-good baseline (2026-08-24: Android
+71%, Python 79%, scan-proxy 100%); it never demands an arbitrary
+round-number target, consistent with item #8's "no target percentage
+decided, prioritize by where coverage is lowest" stance.
+
+**Report-only** for Web — the one platform with no real release event
+yet (no hosting at all today; see `NEXT_STEPS.md`'s "Deliberately not on
+this list"). The script prints its real number with an explicit "not
+gated — no release event yet" note and always exits 0 for it. Once Web
+gains a real release event, its threshold flips to enforced the same way
+the other three already are.
+
+The script's overall exit code reflects only the platforms actually
+gated — a Web coverage dip alone never fails the gate.
 
 ## Status of this repo against the framework
 
@@ -252,6 +298,9 @@ This framework was defined 2026-08-20, after most of this repo's existing
 tests were already written — they haven't been retroactively categorized
 against it, and the framework hasn't yet been applied as an actual
 per-session discipline. Reconciling the sanity/daily/weekly/release tiers
-with Minor/Major (immediately above) closes that specific gap as of
-2026-08-21; applying Minor/Major as a lived per-session discipline going
-forward is a separate, ongoing thing to keep honest, not a one-time task.
+with Minor/Major closed that specific gap 2026-08-21; retiring those
+tier names entirely in favor of the single Minor/Major/External axis
+(immediately above), plus standing up the coverage gate, closed the
+remaining redesign 2026-08-24. Applying Minor/Major/External as a lived
+per-session discipline going forward remains a separate, ongoing thing
+to keep honest, not a one-time task.

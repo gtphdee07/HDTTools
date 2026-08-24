@@ -644,21 +644,100 @@ schedule"). Decided:
   doesn't exist yet — same nomenclature and test process as Android
   across the board from the start, not bolted on differently later.
 
-**Still open, not yet resolved:**
-- Not yet formalized into an implementation plan or `ClaudePlans/` file —
-  this was paused specifically to work through the concepts in
-  conversation first, per the user's explicit choice.
-- Exactly how the coverage-gate script should behave for a platform with
-  no release event yet (Web/Streamlit today) — report-only until one
-  exists, or some other interim behavior.
-- Whether/how to update `TESTING.md` and each platform's own `TESTING.md`
-  to reflect the new model once implementation actually starts (the
-  decision to retire the old tier tables is made; the mechanics of doing
-  so aren't).
-- The dashboard project itself (`NEXT_STEPS.md` item #7's remaining
-  bullet) resumes once this redesign is either implemented or at least
-  further formalized — it was paused specifically because it would
-  otherwise report against a scheme that's about to change underneath it.
+**Resolved 2026-08-24** (all four "still open" items above, closed the
+same session): formalized into `ClaudePlans/2026-08-24-testing-nomenclature-redesign.md`
+and implemented for real. See the "✅ Implemented" entry immediately
+below for what actually landed.
+
+## ✅ Implemented: event-based Minor/Major/External + coverage gate, 2026-08-24
+
+Full build-out of the redesign above, same session it was decided in.
+Plan approved via Plan Mode and saved to
+`ClaudePlans/2026-08-24-testing-nomenclature-redesign.md`; four
+clarifying decisions were pinned down before writing any file (docs-only
+this pass, no test-file/script renames; the confirmed Sanity→Minor/
+Daily→Major/Weekly+Release→External tier mapping; full four-platform
+coverage scope, not just Android/Python; Web/Streamlit report-only in
+the gate since neither has a release event).
+
+**Docs**: `TESTING.md` (root) gained a `### 5. External tests` category
+definition (both triggers spelled out), a new "Event-based tiers, not
+time-cadence tiers" section replacing the old "Reconciling with
+per-platform network/cadence tiers" two-axis framing, and a "Coverage
+gate" section. `android/TESTING.md` and `workers/scan-proxy/TESTING.md`
+had their tier tables/prose relabeled to Minor/Major/External throughout
+(commands themselves unrenamed — `test-weekly.ps1`, `test:sanity`, etc.
+all still work exactly as before). `tests/TESTING.md` and
+`web/TESTING.md` (neither ever had tier language) each gained a short
+"Event-based tiers" section documenting honestly that today's whole
+suite is Minor+Major undifferentiated (no `[sanity]`-equivalent split
+exists yet) and that neither platform has a real External suite (no
+direct 3rd-party boundary call in either).
+
+**New coverage tooling, real numbers, 2026-08-24**:
+- `web/`: `@vitest/coverage-v8` installed, `test:coverage` script added
+  (`vitest run --coverage`), `vite.config.ts`'s `test.coverage` block
+  configured (`provider: 'v8'`, `reporter: ['text', 'json-summary']`).
+  Real baseline: **91.41%** statements (181/198); weakest files
+  `UploadStep.tsx` (85.71%) and `App.tsx` (86.95%).
+- `workers/scan-proxy`: no new dependency needed — Node's own
+  `--experimental-test-coverage` flag wired into a new `test:coverage`
+  script. Real baseline: **100.00%** line/branch/function coverage
+  across every source file — the Major suite's 57 tests already exercise
+  every line.
+
+**A real environment gap found and worked around**: getting Android's
+real Major-suite (`connectedDebugAndroidTest`) coverage number required
+a connected device, and none was running — `adb` wasn't even on PATH in
+the shell used for this session. Asked the user how to proceed rather
+than silently falling back to the Unit-only number or skipping Android
+entirely; user chose to actually start an emulator. Found the SDK at
+`G:\Android\Sdk` (`ANDROID_SDK_ROOT`), listed the existing `medium_phone`
+AVD, launched it, waited for `sys.boot_completed`, then ran
+`connectedDebugAndroidTest createDebugAndroidTestCoverageReport` for
+real (39/39 passed, ~4 min). Confirmed real Android baseline: **71.09%**
+instruction coverage (4,259 missed of 14,731) — matches the
+already-documented 71% from 2026-08-23 almost exactly.
+
+**`scripts/coverage_gate.py`** (new) — a Python orchestrator
+(`uv run scripts/coverage_gate.py`), covered by
+`tests/test_coverage_gate.py` (11 Function tests on the pure
+parsing/threshold logic; the I/O-shelling-out functions are deliberately
+not unit-tested, exercised for real by the script's own manual runs
+instead, matching this repo's established judgment call for thin I/O
+glue). Parses each platform's *own* native report format — JaCoCo's HTML
+`Total` row for Android (no XML report configured; the HTML `Total`
+row's `missed of total` numbers give an exact percentage without one),
+`coverage.py`'s `coverage.json` (`--cov-report=json`) for Python,
+Vitest's `coverage-summary.json` for Web, and a regex over Node's
+`--experimental-test-coverage` stdout/stderr `all files` line for
+scan-proxy (no summary file, so this one always re-runs rather than
+reading a cached report). Real end-to-end run, 2026-08-24:
+
+```
+Platform       Coverage   Baseline  Status
+-------------------------------------------------------
+Android          71.09%     71.00%  PASS
+Python           79.44%     79.00%  PASS
+Web              91.41%          -  REPORT-ONLY
+             not gated - no release event yet
+scan-proxy      100.00%    100.00%  PASS
+```
+
+**A self-caught inconsistency in the approved plan, corrected during
+implementation**: the plan's Step 7 grouped "Web and scan-proxy" together
+as report-only, copying the "no release event yet" language from the
+Q4 clarifying question — but that question was scoped to Web/Streamlit
+specifically (Step 4's own text), and scan-proxy has *always* had a real
+release event (the "before pushing a major update to the Play Store"
+gate its own Release/External-boundary suite already runs on, documented
+since 2026-08-22). Enforcing scan-proxy (like Android and Python) rather
+than treating it as report-only (like Web) is what the rest of this same
+plan's own facts already implied — corrected before writing the script
+rather than propagating a contradiction the codebase's own docs would
+have immediately disagreed with. Root `TESTING.md`'s "Coverage gate"
+section reflects the corrected grouping (Android/Python/scan-proxy
+enforced, Web alone report-only).
 
 ## 🧪 Tests still outstanding — historical detail (superseded items)
 

@@ -26,6 +26,7 @@ import json
 import os
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import coverage_gate
@@ -238,7 +239,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     rows = build_rows(args.refresh)
-    svg = dashboard_lib.render_dashboard_svg(rows)
+    generated = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    svg = dashboard_lib.render_dashboard_svg(rows, generated)
     DASHBOARD_SVG.write_text(svg, encoding="utf-8")
     print(f"Wrote {DASHBOARD_SVG}")
     for row in rows:

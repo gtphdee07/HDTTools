@@ -2,6 +2,7 @@
 
 import sys
 import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -122,29 +123,32 @@ def test_format_external_cell_returns_none_when_never_recorded():
 
 def test_format_external_cell_single_suite_passed_is_blue():
     color, label = dashboard_lib.format_external_cell(
-        [{"passed": True, "timestamp": "2026-08-24T16:50:57Z"}]
+        [{"passed": True, "timestamp": "2026-08-24T16:50:57Z"}],
+        now="2026-08-24T18:00:00Z",
     )
     assert color == "blue"
-    assert label == "1/1 (2026-08-24)"
+    assert label == "1/1 (0d)"
 
 
 def test_format_external_cell_single_suite_failed_is_red():
     color, label = dashboard_lib.format_external_cell(
-        [{"passed": False, "timestamp": "2026-08-20T00:00:00Z"}]
+        [{"passed": False, "timestamp": "2026-08-20T00:00:00Z"}],
+        now="2026-08-24T00:00:00Z",
     )
     assert color == "red"
-    assert label == "0/1 (2026-08-20)"
+    assert label == "0/1 (4d)"
 
 
-def test_format_external_cell_combines_two_suites_and_uses_oldest_timestamp():
+def test_format_external_cell_combines_two_suites_and_uses_the_older_age():
     color, label = dashboard_lib.format_external_cell(
         [
             {"passed": True, "timestamp": "2026-08-24T00:00:00Z"},
             {"passed": True, "timestamp": "2026-08-20T00:00:00Z"},
-        ]
+        ],
+        now="2026-08-24T00:00:00Z",
     )
     assert color == "blue"
-    assert label == "2/2 (2026-08-20)"
+    assert label == "2/2 (4d)"
 
 
 def test_format_external_cell_one_of_two_failed_is_red():
@@ -153,9 +157,19 @@ def test_format_external_cell_one_of_two_failed_is_red():
         [
             {"passed": True, "timestamp": "2026-08-24T00:00:00Z"},
             {"passed": False, "timestamp": "2026-08-24T00:00:00Z"},
-        ]
+        ],
+        now="2026-08-24T00:00:00Z",
     )
     assert color == "red"
+
+
+def test_format_external_cell_defaults_now_to_the_real_current_time():
+    """Without an explicit `now`, a just-recorded status is ~0 days old -
+    proves the default path (real datetime.now()) works, not just the
+    injectable-`now` path every other test uses."""
+    just_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    _, label = dashboard_lib.format_external_cell([{"passed": True, "timestamp": just_now}])
+    assert label == "1/1 (0d)"
 
 
 # --- render_dashboard_svg ---
@@ -172,17 +186,22 @@ def _sample_row(name="Android"):
 
 
 def test_render_dashboard_svg_produces_well_formed_xml():
-    svg = dashboard_lib.render_dashboard_svg([_sample_row()])
+    svg = dashboard_lib.render_dashboard_svg([_sample_row()], generated="2026-08-24")
     root = ET.fromstring(svg)  # raises if not well-formed
     assert root.tag.endswith("svg")
 
 
 def test_render_dashboard_svg_includes_each_platform_name():
     svg = dashboard_lib.render_dashboard_svg(
-        [_sample_row("Android"), _sample_row("Web")]
+        [_sample_row("Android"), _sample_row("Web")], generated="2026-08-24"
     )
     assert "Android" in svg
     assert "Web" in svg
+
+
+def test_render_dashboard_svg_shows_the_generated_date_in_the_header():
+    svg = dashboard_lib.render_dashboard_svg([_sample_row()], generated="2026-08-24")
+    assert "Graphic generated: 2026-08-24" in svg
 
 
 def test_render_dashboard_svg_handles_a_not_yet_recorded_external_cell():
@@ -193,7 +212,7 @@ def test_render_dashboard_svg_handles_a_not_yet_recorded_external_cell():
         external=None,
         coverage=(100.0, "blue"),
     )
-    svg = dashboard_lib.render_dashboard_svg([row])
+    svg = dashboard_lib.render_dashboard_svg([row], generated="2026-08-24")
     ET.fromstring(svg)  # still well-formed
     assert "n/a" in svg
 
@@ -206,7 +225,7 @@ def test_render_dashboard_svg_handles_missing_coverage_data():
         external=None,
         coverage=None,
     )
-    svg = dashboard_lib.render_dashboard_svg([row])
+    svg = dashboard_lib.render_dashboard_svg([row], generated="2026-08-24")
     ET.fromstring(svg)
     assert "n/a" in svg
 
@@ -222,7 +241,30 @@ def test_render_dashboard_svg_still_shows_a_real_percent_for_report_only_coverag
         coverage=(91.41, "green"),
         coverage_gated=False,
     )
-    svg = dashboard_lib.render_dashboard_svg([row])
+    svg = dashboard_lib.render_dashboard_svg([row], generated="2026-08-24")
     ET.fromstring(svg)
     assert "91.4%" in svg
     assert "report-only" in svg
+
+
+def test_render_dashboard_svg_fits_a_long_external_label_without_overlapping_coverage():
+    """Regression test for the real layout bug found from a screenshot:
+    a long External label ran into the Coverage column's text."""
+    row = dashboard_lib.PlatformRow(
+        name="scan-proxy",
+        minor=("blue", "9/9"),
+        major=("blue", "57/57"),
+        external=("blue", "1/1 (0d)"),
+        coverage=(100.0, "blue"),
+    )
+    svg = dashboard_lib.render_dashboard_svg([row], generated="2026-08-24")
+    root = ET.fromstring(svg)
+    texts = root.findall(".//{http://www.w3.org/2000/svg}text")
+    external_text = next(t for t in texts if t.text == "1/1 (0d)")
+    coverage_text = next(t for t in texts if t.text == "100.0%")
+    external_x = int(external_text.get("x"))
+    coverage_x = int(coverage_text.get("x"))
+    # A rough but real check: the external label's start plus a generous
+    # per-character width estimate must still land left of where the
+    # coverage text starts.
+    assert external_x + len(external_text.text) * 8 < coverage_x

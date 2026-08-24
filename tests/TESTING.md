@@ -10,7 +10,7 @@ root — `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_TESTING.md`,
 `ARCHIVE_EARLY_HISTORY.md`) for the narrative history of individual
 features/bugs each test file guards against.
 
-`uv run pytest -q` — currently 153 tests (150 passing, 3 deliberate
+`uv run pytest -q` — currently 156 tests (153 passing, 3 deliberate
 `xfail`s — see `test_real_photo_ocr_accuracy.py` below), no CI; everything
 runs manually, matching the root `TESTING.md`'s "session regression"
 model rather than a cadence.

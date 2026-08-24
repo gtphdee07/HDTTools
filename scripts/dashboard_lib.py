@@ -20,8 +20,11 @@ a `<failure>`/`<error>` child on each `<testcase>`.
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal, NamedTuple
+
+_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 Color = Literal["blue", "green", "yellow", "red"]
 
@@ -86,6 +89,8 @@ def parse_junit_xml(paths: str | Path | list[str | Path]) -> tuple[int, int]:
 
 def format_external_cell(
     statuses: list[dict],
+    *,
+    now: str | None = None,
 ) -> tuple[Color, str] | None:
     """Combines one or more recorded External-suite statuses (each
     {"passed": bool, "timestamp": str}) into one dashboard cell.
@@ -94,18 +99,32 @@ def format_external_cell(
     service + direct-provider-boundary) is scored as passed/total via the
     same color_for_percent banding the rest of the dashboard uses, for
     visual consistency - not a separate ad hoc pass/fail look. The label
-    shows the oldest of the given timestamps, since that's the more
-    conservative "how stale is this data" signal to surface. None (not an
-    empty list) means "never recorded" - a genuinely different state from
-    "recorded and failing."
+    shows the *age* (in days) of the oldest given timestamp, not the raw
+    date - relative age is the "how stale is this data" signal a reader
+    actually wants at a glance, and unlike a raw date (which can run
+    arbitrarily long once External has been recorded a while - a real
+    layout bug this caused once already) an age in days stays short
+    forever. The graphic's own generation date lives once in the header
+    instead (render_dashboard_svg's `generated` argument) - it answers a
+    different question (when was this SVG built) than this cell does
+    (when was this specific External suite last actually verified), so
+    one doesn't replace the other. None (not an empty list) means "never
+    recorded" - a genuinely different state from "recorded and failing."
+    `now` is injectable for tests; defaults to the real current time.
     """
     if not statuses:
         return None
     passed_count = sum(1 for s in statuses if s["passed"])
     percent = passed_count / len(statuses) * 100
     oldest = min(s["timestamp"] for s in statuses)
-    date_only = oldest.split("T", 1)[0]
-    return color_for_percent(percent), f"{passed_count}/{len(statuses)} ({date_only})"
+    oldest_dt = datetime.strptime(oldest, _TIMESTAMP_FORMAT).replace(tzinfo=timezone.utc)
+    now_dt = (
+        datetime.strptime(now, _TIMESTAMP_FORMAT).replace(tzinfo=timezone.utc)
+        if now is not None
+        else datetime.now(timezone.utc)
+    )
+    age_days = max(0, (now_dt - oldest_dt).days)
+    return color_for_percent(percent), f"{passed_count}/{len(statuses)} ({age_days}d)"
 
 
 class PlatformRow(NamedTuple):
@@ -120,22 +139,26 @@ class PlatformRow(NamedTuple):
 _CATEGORY_LABELS = ("Minor", "Major", "External", "Coverage")
 
 
-def render_dashboard_svg(rows: list[PlatformRow]) -> str:
-    """Renders a small grid: one row per platform, one column per category
-    plus coverage. Pure string templating - no image library dependency.
+def render_dashboard_svg(rows: list[PlatformRow], generated: str) -> str:
+    """Renders a small grid: a "Graphic generated" meta line, one row per
+    platform, one column per category plus coverage. Pure string
+    templating - no image library dependency. `generated` is a caller-
+    supplied date string (e.g. "2026-08-24") - not computed internally,
+    so this stays a pure, deterministic function to test.
     """
+    meta_height = 22
     row_height = 44
     header_height = 36
-    # External's real labels ("1/1 (2026-08-24)") are much longer than
-    # Minor/Major's ("31/31") - left-aligned rendering (below) means each
-    # column's own width just needs to fit its own longest realistic
-    # content; it can never overflow into the next column's text the way
+    # External's real labels ("1/1 (12d)") are longer than Minor/Major's
+    # ("31/31") - left-aligned rendering (below) means each column's own
+    # width just needs to fit its own longest realistic content; it can
+    # never overflow into the next column's text the way
     # centered-with-a-fixed-offset rendering did (real bug, found from a
-    # screenshot of scan-proxy's row: "1/1 (2026-08-24)" ran straight into
-    # "100.0%").
+    # screenshot of scan-proxy's row: an earlier, unbounded-length raw-date
+    # version of this label ran straight into "100.0%").
     col_widths = [130, 80, 80, 170, 160]
     width = sum(col_widths)
-    height = header_height + row_height * len(rows)
+    height = meta_height + header_height + row_height * len(rows)
 
     def cell_x(col: int) -> int:
         return sum(col_widths[:col])
@@ -145,17 +168,19 @@ def render_dashboard_svg(rows: list[PlatformRow]) -> str:
         f'height="{height}" font-family="Segoe UI, Arial, sans-serif" '
         f'font-size="13">',
         f'<rect x="0" y="0" width="{width}" height="{height}" fill="#0d1117"/>',
+        f'<text x="8" y="{meta_height - 7}" fill="#8b949e" font-size="11">'
+        f"Graphic generated: {generated}</text>",
     ]
 
     headers = ["Platform", *_CATEGORY_LABELS]
     for col, label in enumerate(headers):
         svg_parts.append(
-            f'<text x="{cell_x(col) + 8}" y="{header_height - 12}" '
+            f'<text x="{cell_x(col) + 8}" y="{meta_height + header_height - 12}" '
             f'fill="#c9d1d9" font-weight="bold">{label}</text>'
         )
 
     for row_index, row in enumerate(rows):
-        y = header_height + row_index * row_height
+        y = meta_height + header_height + row_index * row_height
         svg_parts.append(
             f'<text x="{cell_x(0) + 8}" y="{y + row_height // 2 + 5}" '
             f'fill="#c9d1d9">{row.name}</text>'

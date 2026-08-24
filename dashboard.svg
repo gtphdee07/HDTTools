@@ -1,37 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="620" height="212" font-family="Segoe UI, Arial, sans-serif" font-size="13">
-<rect x="0" y="0" width="620" height="212" fill="#0d1117"/>
-<text x="8" y="24" fill="#c9d1d9" font-weight="bold">Platform</text>
-<text x="138" y="24" fill="#c9d1d9" font-weight="bold">Minor</text>
-<text x="218" y="24" fill="#c9d1d9" font-weight="bold">Major</text>
-<text x="298" y="24" fill="#c9d1d9" font-weight="bold">External</text>
-<text x="468" y="24" fill="#c9d1d9" font-weight="bold">Coverage</text>
-<text x="8" y="63" fill="#c9d1d9">Android</text>
-<circle cx="145" cy="58" r="7" fill="#2563eb"/>
-<text x="159" y="63" fill="#c9d1d9">31/31</text>
-<circle cx="225" cy="58" r="7" fill="#2563eb"/>
-<text x="239" y="63" fill="#c9d1d9">39/39</text>
-<text x="298" y="63" fill="#8b949e">n/a</text>
-<text x="468" y="63" fill="#dc2626">71.1%</text>
-<text x="8" y="107" fill="#c9d1d9">Python</text>
-<circle cx="145" cy="102" r="7" fill="#16a34a"/>
-<text x="159" y="107" fill="#c9d1d9">124/127</text>
-<circle cx="225" cy="102" r="7" fill="#16a34a"/>
-<text x="239" y="107" fill="#c9d1d9">124/127</text>
-<text x="298" y="107" fill="#8b949e">n/a</text>
-<text x="468" y="107" fill="#dc2626">79.4%</text>
-<text x="8" y="151" fill="#c9d1d9">Web</text>
-<circle cx="145" cy="146" r="7" fill="#2563eb"/>
-<text x="159" y="151" fill="#c9d1d9">71/71</text>
-<circle cx="225" cy="146" r="7" fill="#2563eb"/>
-<text x="239" y="151" fill="#c9d1d9">71/71</text>
-<text x="298" y="151" fill="#8b949e">n/a</text>
-<text x="468" y="151" fill="#16a34a">91.4% (report-only)</text>
-<text x="8" y="195" fill="#c9d1d9">scan-proxy</text>
-<circle cx="145" cy="190" r="7" fill="#2563eb"/>
-<text x="159" y="195" fill="#c9d1d9">9/9</text>
-<circle cx="225" cy="190" r="7" fill="#2563eb"/>
-<text x="239" y="195" fill="#c9d1d9">57/57</text>
-<circle cx="305" cy="190" r="7" fill="#2563eb"/>
-<text x="319" y="195" fill="#c9d1d9">1/1 (2026-08-24)</text>
-<text x="468" y="195" fill="#2563eb">100.0%</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="234" font-family="Segoe UI, Arial, sans-serif" font-size="13">
+<rect x="0" y="0" width="620" height="234" fill="#0d1117"/>
+<text x="8" y="15" fill="#8b949e" font-size="11">Graphic generated: 2026-08-24</text>
+<text x="8" y="46" fill="#c9d1d9" font-weight="bold">Platform</text>
+<text x="138" y="46" fill="#c9d1d9" font-weight="bold">Minor</text>
+<text x="218" y="46" fill="#c9d1d9" font-weight="bold">Major</text>
+<text x="298" y="46" fill="#c9d1d9" font-weight="bold">External</text>
+<text x="468" y="46" fill="#c9d1d9" font-weight="bold">Coverage</text>
+<text x="8" y="85" fill="#c9d1d9">Android</text>
+<circle cx="145" cy="80" r="7" fill="#2563eb"/>
+<text x="159" y="85" fill="#c9d1d9">31/31</text>
+<circle cx="225" cy="80" r="7" fill="#2563eb"/>
+<text x="239" y="85" fill="#c9d1d9">39/39</text>
+<text x="298" y="85" fill="#8b949e">n/a</text>
+<text x="468" y="85" fill="#dc2626">71.1%</text>
+<text x="8" y="129" fill="#c9d1d9">Python</text>
+<circle cx="145" cy="124" r="7" fill="#16a34a"/>
+<text x="159" y="129" fill="#c9d1d9">124/127</text>
+<circle cx="225" cy="124" r="7" fill="#16a34a"/>
+<text x="239" y="129" fill="#c9d1d9">124/127</text>
+<text x="298" y="129" fill="#8b949e">n/a</text>
+<text x="468" y="129" fill="#dc2626">79.4%</text>
+<text x="8" y="173" fill="#c9d1d9">Web</text>
+<circle cx="145" cy="168" r="7" fill="#2563eb"/>
+<text x="159" y="173" fill="#c9d1d9">71/71</text>
+<circle cx="225" cy="168" r="7" fill="#2563eb"/>
+<text x="239" y="173" fill="#c9d1d9">71/71</text>
+<text x="298" y="173" fill="#8b949e">n/a</text>
+<text x="468" y="173" fill="#16a34a">91.4% (report-only)</text>
+<text x="8" y="217" fill="#c9d1d9">scan-proxy</text>
+<circle cx="145" cy="212" r="7" fill="#2563eb"/>
+<text x="159" y="217" fill="#c9d1d9">9/9</text>
+<circle cx="225" cy="212" r="7" fill="#2563eb"/>
+<text x="239" y="217" fill="#c9d1d9">57/57</text>
+<circle cx="305" cy="212" r="7" fill="#2563eb"/>
+<text x="319" y="217" fill="#c9d1d9">1/1 (0d)</text>
+<text x="468" y="217" fill="#2563eb">100.0%</text>
 </svg>

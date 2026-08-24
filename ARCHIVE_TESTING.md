@@ -835,6 +835,34 @@ was exercised for real as the pipeline proof).
 full suite (153 tests, 150 passing + 3 xfail, was 127) shows zero
 regressions from any of this work.
 
+**✅ Real layout bug found from a screenshot, and a design correction,
+2026-08-24 (same day, right after the commit above)**: a real screenshot
+of the rendered dashboard showed scan-proxy's External label
+("1/1 (2026-08-24)") running straight into the Coverage column's text —
+the cell rendering used a centered layout with a fixed offset sized for
+short labels like "31/31", which the real External label (much longer)
+overflowed past. Fixed by switching to left-aligned cell rendering (each
+column's own width only needs to fit its own content, can't bleed into
+the next column) and widening the External column.
+
+While discussing that fix, a better design emerged (user-proposed):
+rather than widening columns to fit an ever-growing raw date, shorten
+what's displayed. Two changes: (1) `format_external_cell`'s label now
+shows the oldest recorded timestamp's *age in days* ("1/1 (0d)") instead
+of a raw date — stays short regardless of how stale External ever gets,
+and a relative age is arguably more scannable than a date anyway; (2) a
+new "Graphic generated: <date>" line was added to the SVG's own header
+(`render_dashboard_svg`'s new `generated` parameter) — a genuinely new
+piece of info (previously nothing indicated when the graphic itself was
+last regenerated) that specifically *doesn't* replace the per-cell
+External age, since Minor/Major/Coverage are always fresh as of the
+header date but External deliberately isn't - collapsing both into one
+date would have hidden a stale External result behind a fresh-looking
+header. `<title>` SVG tooltips were considered and rejected for hiding
+the date instead of shortening it - GitHub renders the README's embedded
+SVG via `<img>`, which doesn't support hover tooltips at all, so that
+path wouldn't have worked regardless.
+
 ## 🧪 Tests still outstanding — historical detail (superseded items)
 
 Everything below was originally tracked in `NEXT_STEPS.md`'s living

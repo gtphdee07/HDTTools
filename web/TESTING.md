@@ -49,6 +49,26 @@ item #7, new 2026-08-24): `npm run test:report` runs the same suite as
 `test-results/junit.xml` (gitignored) — see the root `TESTING.md`'s
 "Dashboard" section.
 
+## Dead code
+
+`knip` is a dev dependency (roadmap item #10, added 2026-08-24):
+
+```bash
+npm run check:dead-code
+```
+
+Real run, 2026-08-24: found 4 exported types/interfaces (`FieldType`/
+`FieldDef` in `mockData.ts`, `TireSpec`/`WizardSubStep` in `types.ts`)
+that were genuinely used, just unnecessarily `export`ed — nothing outside
+their own file ever imported them by name (their consuming types,
+`ModuleDef`/`WizardState`, *are* imported elsewhere, and TypeScript's
+structural typing means a consumer never needs the inner type imported
+by name too). Fixed by removing the unneeded `export` keyword, not by
+deleting anything — confirmed via `git grep` for each name before
+touching it, and via a clean `npm run build` + `npm test` afterward. No
+genuine dead code found. Command exits clean (0 findings) as of this
+writing.
+
 ## Harness
 
 - `vite.config.ts`'s `test` block (`environment: 'jsdom'`, one

@@ -1,8 +1,8 @@
 import type { DocType } from "./docTypes.ts";
 import type { MediaType } from "./types.ts";
 
-export const DOC_TYPES = new Set<DocType>(["truck_tag", "trailer_tag", "scale_ticket"]);
-export const MEDIA_TYPES = new Set<MediaType>(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const DOC_TYPES = new Set<DocType>(["truck_tag", "trailer_tag", "scale_ticket"]);
+const MEDIA_TYPES = new Set<MediaType>(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 export interface ScanRequest {
   app_user_id: string;

@@ -1,4 +1,4 @@
-export interface TireSpec {
+interface TireSpec {
   tire?: string;
   rim?: string;
   cold_pressure_kpa?: number;
@@ -79,7 +79,7 @@ export interface HistoryEntry {
 }
 
 export type Screen = 'home' | 'history' | 'wizard';
-export type WizardSubStep = 'upload' | 'processing' | 'review' | 'error' | 'finalizing';
+type WizardSubStep = 'upload' | 'processing' | 'review' | 'error' | 'finalizing';
 
 export interface WizardState {
   step: number; // 0 = select rig, 1 = truck, 2 = trailer, 3 = scale, 4 = results

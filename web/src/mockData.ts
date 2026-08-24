@@ -1,6 +1,6 @@
-export type FieldType = 'text' | 'number';
+type FieldType = 'text' | 'number';
 
-export interface FieldDef {
+interface FieldDef {
   name: string;
   label: string;
   type: FieldType;

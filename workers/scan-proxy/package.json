@@ -13,7 +13,8 @@
     "test:release": "node --test src/release/*.test.ts",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:dead-code": "knip"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0"
@@ -21,6 +22,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260811.1",
     "@types/node": "^24.0.0",
+    "knip": "^6.32.2",
     "typescript": "^5.7.0",
     "wrangler": "^4.0.0"
   },

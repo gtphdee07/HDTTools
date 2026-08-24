@@ -24,6 +24,9 @@ this one.
 - `ARCHIVE_TESTING.md` — how the Minor/Major/External test-category model
   was designed and built per platform, including the 2026-08-24 redesign
   that retired the old Sanity/Daily/Weekly/Release tier names.
+- `ARCHIVE_DEAD_CODE.md` — the dead-code sweep (roadmap item #10):
+  per-platform tool selection, the allowlist/ignore problem, real
+  findings and closures.
 - `ARCHIVE_EARLY_HISTORY.md` — the earliest (pre-Android) breakdown-logic
   fixes.
 
@@ -112,27 +115,28 @@ reading anything else.
      already exercise every line; no gap to close here today.
    - **Android's initial real baseline (2026-08-23)** — see
      `android/TESTING.md`'s Coverage section for the full reference.
-     Unit tier: 7% instruction coverage app-wide (expected low, Unit
+     Minor suite: 7% instruction coverage app-wide (expected low, Minor
      only covers business logic, not UI); `RevenueCatManager.kt`
      specifically at 38%; the `compute_breakdown`/`verdict_for` port
-     (`com.rigcheck.app.domain`) at 99%. Daily tier: 71% instruction
+     (`com.rigcheck.app.domain`) at 99%. Major suite: 71% instruction
      coverage app-wide; `ResultsScreen.kt` at 100%. Biggest visible gap:
      `com.rigcheck.app.ui.screens`/`.ui.components`/`.ui.navigation` all
-     show 0% under the Unit tier alone (expected — no unit test targets
+     show 0% under the Minor suite alone (expected — no unit test targets
      Compose UI directly); real remaining headroom is whichever of those
-     packages isn't already well covered by the Daily tier's 30
-     instrumented tests once both tiers' numbers are compared side by
-     side, not yet done.
+     packages isn't already well covered by the Major suite's 30
+     instrumented tests once both numbers are compared side by side, not
+     yet done.
    - **Python/Streamlit's initial real baseline (2026-08-24)** — see
      `tests/TESTING.md`'s Coverage section. 79% total (`src/hdttools` +
      `streamlit_app`); `streamlit_app/app.py` 80%, `fields.py` 100%,
-     `recent_rigs.py` 79%. Biggest visible gaps: `parse_label.py` 0%
-     (dead/unused code — worth confirming that and removing it rather
-     than writing tests for it, not yet checked) and `review_form.py`
-     31% (tkinter UI, same class of gap as Android's uncovered Compose
-     screens — not easily unit-testable, likely needs the same kind of
-     interaction-level test `test_streamlit_app.py` already uses for
-     Streamlit's own UI).
+     `recent_rigs.py` 79%. ✅ **`parse_label.py`'s 0% coverage — confirmed
+     dead code and removed, 2026-08-24** (roadmap item #10): a stray
+     prototype file, never imported anywhere, already git-excluded before
+     removal — see `ARCHIVE_DEAD_CODE.md`. Biggest remaining visible gap:
+     `review_form.py` 31% (tkinter UI, same class of gap as Android's
+     uncovered Compose screens — not easily unit-testable, likely needs
+     the same kind of interaction-level test `test_streamlit_app.py`
+     already uses for Streamlit's own UI).
 
 9. ✅ **Testing nomenclature redesign: event-based Minor/Major/External
    replacing time-based Sanity/Daily/Weekly/Release, plus a cross-platform
@@ -145,6 +149,33 @@ reading anything else.
    (91%) until it has a real release event. Full narrative, including how
    the terminology confusion was found and unpacked, in
    `ARCHIVE_TESTING.md`.
+10. 🔶 **Dead-code sweep: one real, low-false-positive tool per
+    platform, plus an allowlist for framework-wired/intentionally-public
+    code** — started 2026-08-24. Plan saved to
+    `ClaudePlans/2026-08-24-dead-code-sweep.md`; full narrative in
+    `ARCHIVE_DEAD_CODE.md`.
+    - ✅ Closed the one already-known candidate (`parse_label.py`, see
+      item #8's Python baseline bullet above).
+    - ✅ Python: `vulture` (`uv run vulture src/hdttools streamlit_app
+      vulture_whitelist.py`) — 65 real findings, all false positives
+      (FastAPI route handlers, Pydantic/dataclass fields, the deliberate
+      public library API), documented in `vulture_whitelist.py`. Zero
+      genuine dead code found.
+    - ✅ Web + `scan-proxy`: `knip` (`npm run check:dead-code` in each) —
+      4 real findings total, all the same "genuinely used but
+      unnecessarily `export`ed" shape, fixed by tightening visibility
+      (no deletions needed). Zero genuine dead code found.
+    - 🔶 Android: **blocked, deferred** — `detekt` 1.23.8 (latest
+      stable) crashes on this machine's JDK 25 even with a real,
+      auto-provisioned JDK 21 toolchain (a real Gradle-plugin bug:
+      `jdkHome` doesn't actually redirect the CLI process). The
+      actively-developed successor (`dev.detekt`) only has alpha
+      releases, no stable one yet. All detekt config fully reverted
+      (not left half-working). Next step when resumed: force the whole
+      Gradle daemon onto JDK 21 (`org.gradle.java.home`, an invasive
+      but real fix), adopt the alpha `dev.detekt`, or check again later
+      for a new stable release — none attempted yet, this is a real
+      open decision, not forgotten scope.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see

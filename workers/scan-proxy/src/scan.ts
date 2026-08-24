@@ -25,7 +25,7 @@ const defaultExtractFields: typeof ExtractFields = async (...args) => {
   return extractFields(...args);
 };
 
-export const defaultScanDeps: ScanDeps = {
+const defaultScanDeps: ScanDeps = {
   spendCredit,
   refundCredit,
   extractFields: defaultExtractFields,

@@ -64,6 +64,31 @@ Minor and Major dashboard cells show the same number, since (as noted
 above) nothing here tags a fast subset yet — see the root `TESTING.md`'s
 "Dashboard" section.
 
+## Dead code
+
+`vulture` is a dev dependency (roadmap item #10, added 2026-08-24):
+
+```bash
+uv run vulture src/hdttools streamlit_app vulture_whitelist.py
+```
+
+Real run against `src/hdttools`/`streamlit_app` found 65 "unused"
+findings at default confidence, 2026-08-24 — every single one a false
+positive across three known categories (see `vulture_whitelist.py`'s own
+comments for the full reasoning, spot-checked against real code before
+being whitelisted, not blindly kept from vulture's own
+`--make-whitelist` stub): FastAPI route handlers (reachable only via
+`@app.post(...)` decorators, e.g. `extract_truck_tag`), Pydantic/
+dataclass model field declarations (`schemas.py`/`models.py` — a
+well-known vulture false-positive class), and this repo's deliberate
+public library API (`read_scale_ticket`/`read_truck_tag`/
+`read_trailer_tag`/etc. — see `README.md`'s "Underlying toolkit"
+section; meant for external callers, so "no in-repo caller" is expected,
+not a sign of dead code). **No genuine dead code found** beyond the one
+already-known candidate closed before this tool was even installed —
+see `ARCHIVE_DEAD_CODE.md` for `parse_label.py`'s closure. With the
+whitelist applied, the command above exits clean (0 findings).
+
 ## By file
 
 | File | Category | Covers |

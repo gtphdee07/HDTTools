@@ -126,6 +126,24 @@ test:report:sanity` (Minor) run the same test files as `test`/
 to `test-results/junit-major.xml`/`test-results/junit-minor.xml`
 (gitignored) — see the root `TESTING.md`'s "Dashboard" section.
 
+## Dead code
+
+`knip` is a dev dependency (roadmap item #10, added 2026-08-24):
+
+```bash
+npm run check:dead-code
+```
+
+Real run, 2026-08-24: found 3 unnecessarily-`export`ed names
+(`DOC_TYPES`/`MEDIA_TYPES` in `request.ts`, `defaultScanDeps` in
+`scan.ts`) — each genuinely used, but only within its own file
+(`defaultScanDeps` backs `runScan`'s default parameter value; nothing
+outside `scan.ts` ever calls `runScan` with an explicit `deps` argument,
+confirmed via grep across `src/` and every test file). Fixed by removing
+the unneeded `export` keyword, not by deleting anything — confirmed via
+`npm run typecheck` and a full `npm test` (57/57) afterward. No genuine
+dead code found. Command exits clean (0 findings) as of this writing.
+
 ## What each test covers
 
 Organized by file, in the order a request actually flows through the

@@ -165,17 +165,13 @@ reading anything else.
       4 real findings total, all the same "genuinely used but
       unnecessarily `export`ed" shape, fixed by tightening visibility
       (no deletions needed). Zero genuine dead code found.
-    - 🔶 Android: **blocked, deferred** — `detekt` 1.23.8 (latest
-      stable) crashes on this machine's JDK 25 even with a real,
-      auto-provisioned JDK 21 toolchain (a real Gradle-plugin bug:
-      `jdkHome` doesn't actually redirect the CLI process). The
-      actively-developed successor (`dev.detekt`) only has alpha
-      releases, no stable one yet. All detekt config fully reverted
-      (not left half-working). Next step when resumed: force the whole
-      Gradle daemon onto JDK 21 (`org.gradle.java.home`, an invasive
-      but real fix), adopt the alpha `dev.detekt`, or check again later
-      for a new stable release — none attempted yet, this is a real
-      open decision, not forgotten scope.
+    - 🔶 Android: **blocked, deferred** — `detekt` crashes on this
+      machine's JDK 25, a real Gradle-plugin/JDK incompatibility, not a
+      config mistake. Full investigation, options considered, and the
+      proposed fix (a Gradle toolchain pin, needs a scratch-repo
+      experiment first) written up in
+      `REPORT_KOTLIN_DETEKT_TOOLCHAIN.md` — a side effort, not yet
+      executed.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see

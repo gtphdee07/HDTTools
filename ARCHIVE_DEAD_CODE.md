@@ -111,53 +111,20 @@ check:dead-code` commands exit clean (0 findings) as of this writing.
 
 ## 🔶 Android: `detekt` deferred - a real plugin/JDK incompatibility, 2026-08-24
 
-Attempted: `detekt` (`io.gitlab.arturbosch.detekt`) 1.23.8 — the latest
-stable release — added as a Gradle plugin, scoped deliberately narrow
-(`buildUponDefaultConfig = false`, only `UnusedImports`/
-`UnusedPrivateMember` active, chosen for low false-positive risk vs.
-detekt's full default rule set or whole-program public-symbol
-reachability).
+Attempted `detekt` 1.23.8 (latest stable) as a Gradle plugin, scoped
+narrow (private-visibility rules only). Hit a real, reproducible crash —
+detekt's bundled Kotlin compiler doesn't recognize this machine's JDK 25
+— that a `jdkHome`-toolchain workaround didn't actually fix (a real gap
+in detekt's Gradle plugin API, not a config mistake). All detekt-related
+changes were fully reverted (`git status` confirmed clean) rather than
+left half-working. Python (`vulture`) and Web/`scan-proxy` (`knip`) above
+are unaffected and fully done.
 
-**Real, reproducible failure, not a config mistake**: `./gradlew detekt`
-crashed with `IllegalArgumentException: 25.0.2` deep in detekt's bundled
-Kotlin compiler (`KotlinEnvironmentUtilsKt.createKotlinCoreEnvironment`)
-— it doesn't recognize this machine's real JDK (Android Studio's bundled
-JBR, JDK 25) when parsing its own runtime `java.version` string,
-independent of the `--jvm-target` compile flag (fixed first, separately,
-by pinning `jvmTarget = "21"` on the Detekt task — that got past the
-*first* error, "Invalid value (25)... must be one of [1.6, 1.8, 9-22]",
-before hitting this second, deeper one).
-
-**Worked around the JVM issue, but the plugin itself didn't honor it**:
-configured the Detekt task's `jdkHome` to a Gradle-managed JDK 21
-toolchain (auto-provisioned for real via the foojay resolver already
-configured in `settings.gradle.kts` — confirmed a real
-`eclipse_adoptium-21-amd64-windows.2` install landed in
-`G:\GradleUserHome\jdks\`, ~2.5 minutes to download). Re-ran — **same
-crash**. `jdkHome` on the `Detekt` task type apparently doesn't actually
-redirect which JVM process runs the CLI invocation (likely only affects
-classpath resolution for type-analysis, not process launch) - a real gap
-in detekt 1.23.8's Gradle plugin API, not a config error on this side.
-
-**Checked for a newer fix before giving up**: detekt's Maven Central
-metadata confirms 1.23.8 genuinely is the latest release under the
-`io.gitlab.arturbosch.detekt` group. The project has migrated to a new
-`dev.detekt` group for its actively-developed successor, but that group
-only has alpha pre-releases published (`2.0.0-alpha.0` through
-`2.0.0-alpha.6` — no stable release yet) — confirmed via that group's own
-`maven-metadata.xml`, not guessed from training-data memory (which would
-be stale this far past this session's own knowledge cutoff anyway).
-
-**Decided (user's call, presented with the real tradeoffs)**: defer
-Android's dead-code tool rather than force a fix. The two remaining
-options — force the whole Gradle daemon onto the already-downloaded JDK
-21 via `org.gradle.java.home` (works, but changes the JVM for *every*
-Gradle invocation on this machine going forward, not just this one dev
-tool), or adopt `dev.detekt` 2.0.0-alpha.6 (alpha software risk for a
-routine dev-tool addition) — were both judged worse than simply not
-having this one tool yet. All detekt-related changes were fully reverted
-(`git status` confirmed clean) rather than left half-working in the
-build files. Python (`vulture`) and Web/`scan-proxy` (`knip`) are fully
-done and clean; picking this back up (either option above, or checking
-again later for a stable `dev.detekt` release) is tracked as open in
-`NEXT_STEPS.md` item #10.
+This turned into its own substantial investigation (real error traces,
+Maven Central version checks, a `dev.detekt` alpha finding, and a full
+options/tradeoffs discussion covering downgrading Android Studio vs.
+pinning a Gradle toolchain vs. adopting alpha software) — written up as
+its own standalone report rather than inline here, since it's a side
+effort with its own proposed test plan, not part of this sweep's own
+scope: **`REPORT_KOTLIN_DETEKT_TOOLCHAIN.md`** (repo root). Current
+status tracked in `NEXT_STEPS.md` item #10.

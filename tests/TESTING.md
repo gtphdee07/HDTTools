@@ -10,7 +10,7 @@ root — `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_TESTING.md`,
 `ARCHIVE_EARLY_HISTORY.md`) for the narrative history of individual
 features/bugs each test file guards against.
 
-`uv run pytest -q` — currently 127 tests (124 passing, 3 deliberate
+`uv run pytest -q` — currently 153 tests (150 passing, 3 deliberate
 `xfail`s — see `test_real_photo_ocr_accuracy.py` below), no CI; everything
 runs manually, matching the root `TESTING.md`'s "session regression"
 model rather than a cadence.
@@ -56,6 +56,14 @@ checks Python against at release time** — see the root `TESTING.md`'s
 "Coverage gate" section; the gate fails only on regression below this
 real baseline, not an arbitrary target.
 
+**Structured pass-rate reporting for the README dashboard** (roadmap
+item #7, new 2026-08-24): `scripts/generate_dashboard.py` runs `uv run
+pytest -q --junitxml=junit.xml` (repo root, gitignored) — the same suite
+`uv run pytest -q` already runs, with a JUnit XML report added. Python's
+Minor and Major dashboard cells show the same number, since (as noted
+above) nothing here tags a fast subset yet — see the root `TESTING.md`'s
+"Dashboard" section.
+
 ## By file
 
 | File | Category | Covers |
@@ -76,7 +84,10 @@ real baseline, not an arbitrary target.
 | `test_database.py` | Function + Module | `_flatten` (Function); `save_scale_ticket`/`save_truck_tag`/`save_trailer_tag` against a real `tmp_path` SQLite file (Module — the module's three offered operations, including row-id increment behavior). |
 | `test_models.py` | Function | Dataclass defaults/structure for `TruckTagData`/`TrailerTagData`/`ScaleTicketData`/`TireSpec`. |
 | `test_ocr_output_key_contracts.py` | **Interface** | Two opposite-direction key-set checks per OCR module (2026-08-22): every `_parse_fields()` key must be a declared `schemas.py` field (the FastAPI `response_model`/`extra="ignore"` silent-drop risk), and every `fields.py`/`FIELDS` name must map to a real `_parse_fields()` key (the Streamlit `_extract_fields`'s `keep`-filter silent-drop risk, opposite direction since `FIELDS` deliberately shows only a curated subset of what OCR extracts). Both exclude the same known manual-only fields (`standalone_weight_lb`, `axle_count`). Calls `_parse_fields("")` — the full key set is structurally present regardless of match success, so no synthetic label text is needed, just the shape. |
-| `test_coverage_gate.py` | Function | New 2026-08-24 (roadmap item #9). `../scripts/coverage_gate.py`'s pure parsers (`parse_android_report`/`parse_python_report`/`parse_web_report`/`parse_scan_proxy_output`) and `PlatformResult.passed`'s threshold logic, loaded via `importlib` since the script lives outside the `hdttools` package. The `get_*_result` functions that actually shell out to each platform's toolchain (gradlew/pytest/npm) are deliberately not unit-tested here — thin I/O glue, exercised for real by the script's own manual runs (see `ARCHIVE_TESTING.md`). |
+| `test_coverage_gate.py` | Function | New 2026-08-24 (roadmap item #9). `../scripts/coverage_gate.py`'s `PlatformResult.passed` baseline-floor logic, loaded via `importlib` since the script lives outside the `hdttools` package. The report parsers themselves moved to `coverage_lib.py` 2026-08-24 (item #7) — see `test_coverage_lib.py` below. The `get_*_result` functions that actually shell out to each platform's toolchain (gradlew/pytest/npm) are deliberately not unit-tested here — thin I/O glue, exercised for real by the script's own manual runs (see `ARCHIVE_TESTING.md`). |
+| `test_coverage_lib.py` | Function | New 2026-08-24 (roadmap item #7). `../scripts/coverage_lib.py`'s four pure coverage-report parsers (`parse_android_report`/`parse_python_report`/`parse_web_report`/`parse_scan_proxy_output`), shared by `coverage_gate.py` and `generate_dashboard.py` — extracted from `test_coverage_gate.py` when the parsers themselves moved out of that script. |
+| `test_dashboard_lib.py` | Function | New 2026-08-24 (roadmap item #7). `../scripts/dashboard_lib.py`'s `color_for_percent` threshold banding, `parse_junit_xml` (real schema differences across pytest/Vitest/Android/Node's JUnit XML output — see that module's own docstring), `format_external_cell`'s never-recorded/single-suite/multi-suite-combining logic, and `render_dashboard_svg` (well-formedness + content checks, not a pixel-level snapshot). |
+| `test_record_external_result.py` | Function | New 2026-08-24 (roadmap item #7). `../scripts/record_external_result.py`'s `record()` — writes a new entry, maps a nonzero exit code to `passed: false`, preserves other platforms'/suites' existing entries untouched, and overwrites a stale entry for the same platform+suite. Uses `monkeypatch` on the module's `STATUS_FILE` constant rather than touching the real `scripts/dashboard_data/external_status.json`. |
 
 ## Known gaps (identified 2026-08-21, not all closed)
 

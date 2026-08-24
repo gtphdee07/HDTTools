@@ -18,12 +18,15 @@ time-cadence tiers" section for why that's now one axis, not two.
 |---|---|---|---|---|
 | **Minor** | ✅ built | a Minor change (internal-only) | none (mocked) | `npm run test:sanity` |
 | **Major** | ✅ built | a Major change (public-interface/new-library) | none (mocked) | `npm test` |
-| **External (through-our-service)** | ✅ built (4 tests) | event-driven — ongoing/ad hoc, cheap enough to run anytime; also diff-driven whenever a Major change touches boundary-calling code | real, bounded, dedicated test customer | `npm run test:weekly` |
+| **External (through-our-service)** | ✅ built (4 tests) | event-driven — ongoing/ad hoc, cheap enough to run anytime; also diff-driven whenever a Major change touches boundary-calling code | real, bounded, dedicated test customer | `.\test-weekly.ps1` |
 | **External (direct-provider-boundary)** | 🟡 built, needs your local secrets to run | event-driven — before pushing a major update to the Play Store, not a fixed cadence; also diff-driven, same trigger as above | real, against RevenueCat/Anthropic directly | `.\test-release.ps1` (`-SkipKeys` to allow skipping) |
 
-(Command names — `test:sanity`, `test:weekly`, `test-release.ps1` —
-are unrenamed this pass; see `NEXT_STEPS.md` item #9 for the deferred
-mechanical rename.)
+(Command names — `test:sanity`, `test-release.ps1` — are unrenamed this
+pass; see `NEXT_STEPS.md` item #9 for the deferred mechanical rename.
+`test-weekly.ps1` is new 2026-08-24, roadmap item #7 — a thin wrapper
+around the previously-bare `npm run test:weekly`, added so this suite's
+real result can be recorded for the README dashboard; see the root
+`TESTING.md`'s "Dashboard" section and `scripts/record_external_result.py`.)
 
 Minor's cases are a small subset of Major's tests, tagged `[sanity]` in
 their names and selected via `node --test`'s `--test-name-pattern`, not a
@@ -115,6 +118,13 @@ across every source file (`claude.ts`, `docTypes.ts`, `http.ts`,
 (see the root `TESTING.md`'s "Coverage gate" section) — since it starts
 at 100%, in practice the gate can only ever catch a real regression, not
 demand improvement that isn't there to make.
+
+**Structured pass-rate reporting for the README dashboard** (roadmap
+item #7, new 2026-08-24): `npm run test:report` (Major) and `npm run
+test:report:sanity` (Minor) run the same test files as `test`/
+`test:sanity` but with Node's built-in `--test-reporter=junit`, writing
+to `test-results/junit-major.xml`/`test-results/junit-minor.xml`
+(gitignored) — see the root `TESTING.md`'s "Dashboard" section.
 
 ## What each test covers
 

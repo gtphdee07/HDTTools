@@ -8,6 +8,7 @@ __pycache__/
 .pytest_cache/
 .coverage
 coverage.json
+junit.xml
 htmlcov/
 
 # Local runtime data

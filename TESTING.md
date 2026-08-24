@@ -292,6 +292,48 @@ the other three already are.
 The script's overall exit code reflects only the platforms actually
 gated — a Web coverage dip alone never fails the gate.
 
+## Dashboard
+
+`scripts/generate_dashboard.py` (`uv run scripts/generate_dashboard.py`)
+— generates `dashboard.svg`, embedded at the top of `README.md`
+(roadmap item #7). One row per platform, one column per Minor/Major/
+External plus a coverage column, color-coded with the same Blue-100/
+Green->90/Yellow->80/Red-<80 banding the coverage gate uses.
+
+**Minor/Major run fresh on every regen** — cheap, offline, so there's no
+reason not to. Their real pass-rate is parsed from each platform's own
+structured test report (JUnit XML — pytest's `--junitxml`, Vitest's/
+Node's built-in `junit` reporters, and AGP's already-automatic reports
+for Android), via `scripts/dashboard_lib.py`'s `parse_junit_xml` (shared
+logic across all four platforms' genuinely different report shapes — see
+that module's own docstring for the real schema differences found while
+building this).
+
+**Coverage reuses `coverage_gate.py`'s own run-or-read functions
+directly** (`get_android_result`/`get_python_result`/`get_web_result`/
+`get_scan_proxy_result`) rather than re-implementing coverage retrieval
+— one source of truth, so the dashboard and the release gate can never
+silently disagree about the same number. Web's real percentage still
+displays even though `coverage_gate.py` doesn't enforce it yet (report-
+only, not hidden — see that script's own "not gated" note).
+
+**External never re-runs from the dashboard** — those suites cost real
+money/time (a real Claude call, a booted emulator), and regenerating a
+README graphic shouldn't trigger that. Instead, `scripts/record_external_result.py`
+is called from the *end* of each real External wrapper script
+(`android/test-weekly.ps1`, `workers/scan-proxy/test-weekly.ps1`,
+`workers/scan-proxy/test-release.ps1` — all three, whenever they're
+actually run for real) and persists the result to the git-tracked
+`scripts/dashboard_data/external_status.json`. The dashboard just reads
+that file — a platform's External cell shows `n/a` until its wrapper has
+actually been run at least once. `workers/scan-proxy/test-weekly.ps1` is
+new as of this work — before it existed, that suite only ever ran via
+bare `npm run test:weekly`, with no way to record a result anywhere.
+
+`--refresh` on either `coverage_gate.py` or `generate_dashboard.py`
+forces every already-cached report to be regenerated instead of reused;
+without it, an existing report on disk is read as-is.
+
 ## Status of this repo against the framework
 
 This framework was defined 2026-08-20, after most of this repo's existing

@@ -8,6 +8,12 @@ limit. It's an experimental learning project, not a certified safety
 tool — every version shows a blocking "not for safety decisions"
 disclaimer before results.
 
+![RigCheck test status](dashboard.svg)
+
+Per-platform test status (Minor/Major, run fresh) and External status
+(last real run) and code coverage — regenerate via `uv run
+scripts/generate_dashboard.py`, see `TESTING.md`'s "Dashboard" section.
+
 RigCheck ships on three platforms, each self-contained (no shared backend
 or database):
 
@@ -148,17 +154,18 @@ cd android && ./gradlew connectedDebugAndroidTest   # Compose UI tests (screens,
 The instrumented suite runs fully offline (a custom test `Application`
 skips RevenueCat configuration) — see
 [`android/TESTING.md`](android/TESTING.md) for what each test covers and
-what's deliberately deferred to a later, real-RevenueCat tier.
+what's deliberately deferred to the real-RevenueCat External suite.
 
 ```
-cd workers/scan-proxy && npm run test:sanity   # fast smoke subset, <1s, no network — run before every commit
-cd workers/scan-proxy && npm test              # full mocked regression suite (daily tier), no network
+cd workers/scan-proxy && npm run test:sanity   # Minor: fast smoke subset, <1s, no network — run before every commit
+cd workers/scan-proxy && npm test              # Major: full mocked regression suite, no network
 ```
 
-The Worker's tests are organized into tiers (sanity → daily → weekly →
-release); weekly and release tiers are now built too — see
+The Worker's tests are organized around the root `TESTING.md`'s
+Minor/Major/External model (`test:sanity` = Minor, `test` = Major,
+`test:weekly`/`test:release` = External's two suites) — see
 [`workers/scan-proxy/TESTING.md`](workers/scan-proxy/TESTING.md) for what
-each tier and individual test covers, or `ARCHIVE_TESTING.md` for the
+each category and individual test covers, or `ARCHIVE_TESTING.md` for the
 narrative history of how it got built.
 
 ## Project layout

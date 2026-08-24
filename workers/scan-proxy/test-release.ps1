@@ -37,4 +37,11 @@ if ($SkipKeys) {
 }
 
 npm run test:release
-exit $LASTEXITCODE
+$testExitCode = $LASTEXITCODE
+
+# Records this real run's result for the README dashboard (roadmap item
+# #7) - so generating the dashboard graphic never has to re-run this
+# suite just to know its status; see scripts/record_external_result.py.
+& uv run --project ..\.. ..\..\scripts\record_external_result.py scan_proxy release $testExitCode
+
+exit $testExitCode

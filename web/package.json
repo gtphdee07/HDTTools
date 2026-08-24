@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:report": "vitest run --reporter=junit --outputFile=test-results/junit.xml"
   },
   "dependencies": {
     "lucide-react": "^1.31.0",

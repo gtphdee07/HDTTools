@@ -739,6 +739,102 @@ have immediately disagreed with. Root `TESTING.md`'s "Coverage gate"
 section reflects the corrected grouping (Android/Python/scan-proxy
 enforced, Web alone report-only).
 
+## ✅ Implemented: README-embedded test-status dashboard, 2026-08-24
+
+Roadmap item #7's dashboard bullet, unblocked by the Minor/Major/External
+redesign above. Plan approved via Plan Mode, saved to
+`ClaudePlans/2026-08-24-readme-dashboard.md`. Design discussion (before
+formal planning) settled: reuse `coverage_gate.py`'s parsers via a new
+shared `scripts/coverage_lib.py` rather than direct coupling; Minor/Major
+run fresh on every regen, External reflects its last real run instead
+(External suites cost real money/time — a real Claude call, a booted
+emulator — so regenerating a README graphic shouldn't trigger that);
+pass-rate data from structured test reports (JUnit XML), not
+stdout-scraping; output as a generated SVG (pure Python string
+templating, no new dependency).
+
+**`scripts/coverage_lib.py`** (new) — the four pure parsers extracted
+from `coverage_gate.py` unchanged; `coverage_gate.py` now imports them.
+Pure refactor, verified byte-identical CLI output before/after.
+
+**Real JUnit XML schema differences found across all four platforms'
+tools** (this session's most surprising discovery, documented in
+`dashboard_lib.py`'s own module docstring): pytest and Vitest both nest
+`<testsuite tests=... failures=...>` under a `<testsuites>` root (Vitest's
+root also carries its own aggregate counts, but not `skipped` — summing
+the child `<testsuite>` elements instead of trusting the root avoids
+undercounting); Android's AGP-generated reports use a bare `<testsuite>`
+root for the Unit tier's per-class files, and a wrapped one for the
+instrumented tier's single file; **Node's built-in
+`--test-reporter=junit` is a real outlier** — `<testcase>` elements sit
+directly under `<testsuites>` with *no* `<testsuite>` wrapper and no
+aggregate counts anywhere, so pass/fail has to be counted by
+presence/absence of a `<failure>`/`<error>` child on each `<testcase>`.
+`dashboard_lib.py`'s `parse_junit_xml` handles both schemas in one
+function, verified against real generated output from all four tools
+(not just synthetic fixtures) before being wired into the orchestrator —
+confirmed exact matches against already-known real counts: Python
+124/127, Web 71/71, scan-proxy 57/57, Android Minor 31/31, Android Major
+39/39.
+
+**A real path bug found and fixed while verifying the External-recording
+wrappers**: `workers/scan-proxy/test-release.ps1` and the new
+`test-weekly.ps1` both initially called `uv run --project ..
+..\scripts\record_external_result.py` — wrong, since
+`workers/scan-proxy/` is *two* directory levels below the repo root, not
+one (`..` from there resolves to `workers/`, not the repo root). Found by
+actually running `.\test-weekly.ps1` for real (not just reading the
+code) — it ran the 4 real weekly tests successfully (real cost incurred,
+~$0.01-0.02) but then failed with "Failed to spawn" on the recording
+step. Fixed to `..\..\scripts\record_external_result.py` /
+`--project ..\..`; `android/test-weekly.ps1` was already correct (only
+one level below the repo root). Re-ran the recording call standalone
+(the real weekly test run had already succeeded, so this wasn't a fake
+result) and confirmed `scripts/dashboard_data/external_status.json`
+updated for real: `scan_proxy.weekly` → passed, real timestamp.
+
+**Verified the pipeline reflects reality, not stale/hardcoded data**: on
+this session's real numbers, `dashboard.svg`'s Web row showed
+`("blue", "71/71")`. Deliberately broke a real Web test (`recentRigs.test.ts`,
+changed an assertion to something false), regenerated Web's JUnit report
+for real (`npm run test:report`), regenerated the dashboard, and
+confirmed the cell changed to `("green", "70/71")` — a real, non-hardcoded
+reaction to a real regression (green not red/yellow, correctly, since
+98.6% still clears the >90% band). Reverted the deliberate break,
+regenerated both the report and the dashboard again, confirmed it
+returned to `("blue", "71/71")`, and confirmed `git diff` on the test file
+showed no residual change.
+
+**Coverage cell semantics refined during implementation**: the original
+`PlatformRow.coverage` design used `None` to mean "report-only" (Web's
+case) - but that would have hidden Web's real 91.41% number entirely,
+which is wrong; report-only means *not enforced*, not *not shown*.
+Revised to `coverage: tuple[float, Color] | None` (`None` now means
+genuinely no data, e.g. a report failed to generate) plus a separate
+`coverage_gated: bool` flag the renderer uses to append a "(report-only)"
+suffix next to Web's real, still-displayed percentage.
+
+Final real end-to-end run, 2026-08-24 (`uv run scripts/generate_dashboard.py`):
+
+```
+Android:    minor=(blue, 31/31)  major=(blue, 39/39)  external=n/a               coverage=(71.09%, red)
+Python:     minor=(green,124/127) major=(green,124/127) external=n/a             coverage=(79.44%, red)
+Web:        minor=(blue, 71/71) major=(blue, 71/71)  external=n/a               coverage=(91.41%, green, report-only)
+scan-proxy: minor=(blue, 9/9)  major=(blue, 57/57)  external=(blue,1/1,2026-08-24) coverage=(100.00%, blue)
+```
+
+Android's and Python's External cells are `n/a` — not a bug, genuinely
+`n/a` for Python (no real 3rd-party boundary in that platform at all) and
+not-yet-recorded for Android (its `test-weekly.ps1` wasn't run for real
+this session — costs real emulator time + a real purchase-flow scan,
+higher cost than scan-proxy's equivalent, so only scan-proxy's wrapper
+was exercised for real as the pipeline proof).
+
+`tests/test_coverage_lib.py`, `tests/test_dashboard_lib.py`, and
+`tests/test_record_external_result.py` (33 new tests total) all pass; the
+full suite (153 tests, 150 passing + 3 xfail, was 127) shows zero
+regressions from any of this work.
+
 ## 🧪 Tests still outstanding — historical detail (superseded items)
 
 Everything below was originally tracked in `NEXT_STEPS.md`'s living

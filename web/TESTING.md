@@ -43,6 +43,12 @@ this list" — local dev only), so `scripts/coverage_gate.py` reports this
 number **report-only**, not enforced — see the root `TESTING.md`'s
 "Coverage gate" section.
 
+**Structured pass-rate reporting for the README dashboard** (roadmap
+item #7, new 2026-08-24): `npm run test:report` runs the same suite as
+`npm test` with Vitest's built-in `junit` reporter, writing to
+`test-results/junit.xml` (gitignored) — see the root `TESTING.md`'s
+"Dashboard" section.
+
 ## Harness
 
 - `vite.config.ts`'s `test` block (`environment: 'jsdom'`, one

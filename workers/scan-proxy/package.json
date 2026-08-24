@@ -6,6 +6,8 @@
     "test": "node --test src/*.test.ts",
     "test:sanity": "node --test --test-name-pattern=\"\\[sanity\\]\" src/*.test.ts",
     "test:coverage": "node --test --experimental-test-coverage src/*.test.ts",
+    "test:report": "node --test --test-reporter=junit --test-reporter-destination=test-results/junit-major.xml src/*.test.ts",
+    "test:report:sanity": "node --test --test-reporter=junit --test-reporter-destination=test-results/junit-minor.xml --test-name-pattern=\"\\[sanity\\]\" src/*.test.ts",
     "pretest:weekly": "npm run typecheck && npm run deploy",
     "test:weekly": "node --test src/weekly/*.test.ts",
     "test:release": "node --test src/release/*.test.ts",

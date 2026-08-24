@@ -32,11 +32,17 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+from coverage_lib import (
+    parse_android_report,
+    parse_python_report,
+    parse_scan_proxy_output,
+    parse_web_report,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -76,44 +82,6 @@ class PlatformResult:
         if not self.gated or self.baseline is None or self.percent is None:
             return True
         return self.percent >= self.baseline
-
-
-# --- Pure parsers (each takes already-read text/data, no I/O of its own) ---
-
-
-def parse_android_report(html: str) -> float:
-    """Instruction coverage from the JaCoCo HTML report's Total row."""
-    match = re.search(
-        r'<tfoot><tr><td>Total</td><td class="bar">([\d,]+) of ([\d,]+)</td>',
-        html,
-    )
-    if not match:
-        raise ValueError("No 'Total' row found in the JaCoCo HTML report")
-    missed = int(match.group(1).replace(",", ""))
-    total = int(match.group(2).replace(",", ""))
-    if total == 0:
-        raise ValueError("JaCoCo report's Total row reports zero instructions")
-    return (total - missed) / total * 100
-
-
-def parse_python_report(data: dict) -> float:
-    """Statement coverage from pytest-cov's --cov-report=json output."""
-    return data["totals"]["percent_covered"]
-
-
-def parse_web_report(data: dict) -> float:
-    """Statement coverage from Vitest's v8-provider coverage-summary.json."""
-    return data["total"]["statements"]["pct"]
-
-
-def parse_scan_proxy_output(text: str) -> float:
-    """Line coverage from Node's --experimental-test-coverage summary."""
-    match = re.search(r"all files\s*\|\s*([\d.]+)\s*\|", text)
-    if not match:
-        raise ValueError(
-            "No 'all files' coverage summary line found in scan-proxy's test output"
-        )
-    return float(match.group(1))
 
 
 # --- Run-or-read per platform ---

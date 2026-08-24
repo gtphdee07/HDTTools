@@ -161,6 +161,16 @@ at the pulled file.
 see the root `TESTING.md`'s "Coverage gate" section; the gate fails only
 on regression below this real baseline, not an arbitrary target.
 
+**Structured pass-rate reporting for the README dashboard** (roadmap
+item #7, new 2026-08-24): needs no new flags or scripts — AGP already
+writes real JUnit XML for both `./gradlew test`
+(`app/build/test-results/testDebugUnitTest/*.xml`, one file per test
+class) and `./gradlew connectedDebugAndroidTest`
+(`app/build/outputs/androidTest-results/connected/debug/*.xml`) with
+zero config. `scripts/generate_dashboard.py` just reads whichever of
+these already exist, or runs the plain command to produce them — see the
+root `TESTING.md`'s "Dashboard" section.
+
 ## What each test covers
 
 ### Minor (Unit, JVM) — `./gradlew test`

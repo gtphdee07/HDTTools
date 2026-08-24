@@ -36,6 +36,27 @@ same way.
    X happened? Here's what I found...") don't need this — only questions
    where a real response is being waited on.
 
+## Planning Procedure
+Whenever the user asks for a plan — directly, or via language like
+"what's the plan for X, including goals, steps, how results will be
+measured, and the definition of done" — every plan (built via Claude
+Code's Plan Mode) follows this shape:
+- **Context**: why this work is happening, what prompted it.
+- **Goal**: what "success" is aiming at, in one or two sentences.
+- **Steps**: the concrete sequence of changes/actions.
+- **Definition of Done**: the specific, checkable conditions that mean
+  this is actually finished — not just "code written," but verified.
+- **Verification**: exactly how to confirm each part works for real.
+
+Once the user approves a plan (`ExitPlanMode` returns approved), before
+any other implementation action: save the full approved plan content to
+`ClaudePlans/YYYY-MM-DD-<short-title>.md` in the project root (create
+the directory if it doesn't exist). Derive `<short-title>` from the
+plan's own heading — short, hyphen-separated, no spaces or punctuation
+that needs escaping on any filesystem. This is a deliberate, standing
+step of the planning procedure itself — do it every time a plan is
+approved, not only when separately asked to save one.
+
 ## System Tool Installs
 
 Before installing any system-wide application or tool (e.g. via

@@ -4,7 +4,7 @@
 import { DOC_TYPE_CONFIG } from "./docTypes.ts";
 import { json } from "./http.ts";
 import type { ScanRequest } from "./request.ts";
-import { refundCredit, spendCredit } from "./revenuecat.ts";
+import { refundCredit, spendCredit, type TransactionResult } from "./revenuecat.ts";
 import type { Env } from "./types.ts";
 // Type-only — doesn't pull in claude.ts (and the Anthropic SDK it imports)
 // at module-load time. See defaultExtractFields below for the real link.
@@ -36,12 +36,29 @@ export async function runScan(
   request: ScanRequest,
   deps: ScanDeps = defaultScanDeps,
 ): Promise<Response> {
-  const idempotencyKey = crypto.randomUUID();
+  // A client-supplied id (stable across retries of the same logical scan
+  // attempt) makes the RevenueCat spend/refund idempotent across a lost or
+  // timed-out response; falling back to a fresh random key when absent
+  // matches today's behavior for any caller that doesn't send one yet.
+  const idempotencyKey = request.client_request_id ?? crypto.randomUUID();
 
   // Spend the credit before doing anything costly. RevenueCat's 422 on
   // insufficient balance doubles as the entitlement check, so a user with
   // no credits never triggers a Claude call (which we'd be paying for).
-  const spend = await deps.spendCredit(env, request.app_user_id, idempotencyKey);
+  // A thrown rejection (RevenueCat unreachable, or its own timeout firing)
+  // is mapped to the same billing_error response as a non-ok status, so a
+  // hung upstream still returns a clean bounded error instead of failing
+  // the whole request ungracefully.
+  let spend: TransactionResult;
+  try {
+    spend = await deps.spendCredit(env, request.app_user_id, idempotencyKey);
+  } catch (err) {
+    console.error("spendCredit threw", err);
+    return json(
+      { ok: false, code: "billing_error", message: "Could not verify scan credits." },
+      502,
+    );
+  }
   if (!spend.ok) {
     console.error("spendCredit failed", spend.status, JSON.stringify(spend.body));
     if (spend.status === 422) {

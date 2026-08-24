@@ -264,3 +264,139 @@ a full happy-path charge + extraction, all confirmed) — nothing left to
 do here until the Android app exists to actually call it. That app now
 exists — see `ARCHIVE_ANDROID.md`. The billing-model decision itself is
 done — see above.
+
+---
+
+## ✅ Two real production gaps closed: outbound timeouts + request-level idempotency (roadmap item #5, 2026-08-23)
+
+**The gaps, found by reading the code, not guessed.** `src/claude.ts`'s
+Anthropic SDK call and `src/revenuecat.ts`'s raw `fetch()` had no explicit
+timeout — a hung upstream would tie up the Worker until Cloudflare's own
+platform execution limit killed it uncontrolled, not a clean mapped error
+(Gap A). Separately, `scan.ts`'s idempotency machinery already existed —
+`revenuecat.ts` already sent an `Idempotency-Key` header, and RevenueCat's
+own docs confirm that header guarantees "executed at most one time" — but
+the key was minted fresh via `crypto.randomUUID()` on *every* Worker
+invocation, so a client retry after a lost/timed-out response generated a
+new key and charged the credit balance again (Gap B).
+
+**Gap A fix.** `claude.ts` exports `ANTHROPIC_TIMEOUT_MS = 20_000`, passed
+to the SDK client's own `timeout` option — deliberately shorter than
+Android's `ScanApiClient` 60s `readTimeout`, or a Worker-side timeout would
+never fire before the app's own client had already given up.
+`revenuecat.ts` exports `REVENUECAT_TIMEOUT_MS = 10_000`, passed as
+`signal: AbortSignal.timeout(...)` to its raw `fetch()` — tighter, since
+it's a simple ledger write, not a vision model call. Confirmed by reading
+`@anthropic-ai/sdk`'s `client.js` that the SDK already builds a per-request
+`AbortController` and wires its `signal` into `fetch` — the timeout option
+was genuinely missing, not silently a no-op.
+
+The less obvious half of Gap A: `claude.ts`'s own thrown errors were
+already caught generically by `scan.ts`'s existing `extractFields`
+try/catch (mapped to `extraction_failed` + a refund attempt) — no code
+change needed there. But `revenuecat.ts`'s `spendCredit` call had **no**
+catch around it at all; `scan.test.ts` had an existing test explicitly
+documenting this as a known, unfixed gap ("propagates out of runScan
+rather than being caught"). Closing Gap A properly meant also adding that
+catch — otherwise a real timeout would just be a *faster* uncaught
+crash, not a clean `billing_error`. That test was rewritten (not just
+patched) to assert the new behavior; `revenuecat.test.ts`'s matching
+"known gap" comment was corrected too, since it was about to go stale.
+
+**Gap B fix.** `request.ts`'s `ScanRequest` gained an optional
+`client_request_id?: string`, client-generated and stable across retries
+of the same logical attempt — absent falls back to today's random-UUID
+behavior, so any already-shipped app build stays compatible.
+`scan.ts`'s `runScan` uses `request.client_request_id ?? crypto.randomUUID()`
+as the idempotency key. On Android, `RigCheckViewModel.performScan` and
+`performStandaloneScan` each generate one `UUID.randomUUID()` per
+user-initiated tap (no existing client-side retry loop, so "one id per
+logical attempt" is just "one id per call") and thread it through
+`ScanApiClient.scan(...)`'s new optional `clientRequestId` parameter.
+
+**Accepted tradeoff, decided 2026-08-23 (confirmed by the user before
+implementation):** this protects the RevenueCat *credit balance* from
+double-charging, but does **not** stop the Worker calling Claude twice on
+a genuine retry — `extractFields` still runs unconditionally every
+request. Fully closing that would need caching the extraction result
+somewhere (Workers KV), which breaks the Worker's deliberately stateless
+design (see its `README.md`'s "No database" note). Decided to accept the
+small residual Claude-cost duplication (bounded, rare, ~$0.01, only on a
+lost/retried response) and keep the Worker stateless. Also confirmed:
+20s for `ANTHROPIC_TIMEOUT_MS` specifically (the 10s RevenueCat figure
+was the plan's own proposal, not separately re-confirmed, but is a low-
+stakes value with headroom either way).
+
+**✅ Real bug caught by the hands-on verification step, not by review.**
+The plan called for sending two identical real scans with the same
+`client_request_id` against real RevenueCat and confirming the balance
+moves exactly once. First run (before remembering to deploy): balance
+went from 53 to 52 after **two** scans — i.e. it moved twice, not once.
+The local source change was correct and all 57 unit tests (fakes only)
+passed, but the **deployed** Cloudflare Worker the Android app actually
+talks to was still running the old code — `npm run deploy` had not been
+run. This is exactly the kind of gap unit tests with injected fakes can
+never catch: they prove the *logic* is right, not that the *live system*
+has it. After confirming with the user and running `npm run deploy`
+(version `2743feea-fe1c-40d0-b9a3-4471a6b8839d`), the identical test
+passed for real: two scans sharing one `client_request_id` moved
+`weekly-test-user`'s balance by exactly 1.
+
+**New tests.** `scan.test.ts`: a `spendCredit` rejection (standing in for
+what a real timeout eventually produces) maps to a clean `billing_error`,
+not a hang; an `extractFields` timeout-shaped rejection still refunds and
+maps to `extraction_failed` like any other extraction failure (pinning
+down that the existing generic catch already covers this case); two
+`runScan` calls sharing one `client_request_id` reuse the same
+idempotency key; a request without it still gets a fresh random key each
+call, unchanged from today. `request.test.ts`: parses/passes through
+`client_request_id`; null treated as absent (matching `media_type`'s
+existing convention); blank or wrong-typed values rejected the same way
+other known fields are. `claude.test.ts`: `ANTHROPIC_TIMEOUT_MS` is
+20,000 and is asserted to be less than Android's 60,000ms read timeout —
+constructing a real `Anthropic` client and reading back its own `.timeout`
+property, since the SDK's internal timer isn't otherwise observable
+without actually waiting for one to fire. `revenuecat.test.ts`: `fetch`
+is called with a real `AbortSignal` (proving the wiring exists, not that
+it fires). New Android instrumented test,
+`PaywallScreenWeeklyTest.realDuplicateScanWithSameClientRequestIdSpendsOnce`
+— the hands-on real-network proof described above; costs one extra real
+~$0.01 Claude call each time this specific test runs, on top of the
+existing suite's cost.
+
+**Verification, in full.** `npm test` (scan-proxy): 57/57 (was 46).
+`npm run test:weekly`: 4/4 real, against the deployed Worker. `npm run
+typecheck`: clean. Android `./gradlew test` (Unit): 31/31 unchanged.
+Android `./gradlew connectedDebugAndroidTest` (Daily): 39/39 — one
+`RigCheckNavHostTest` failure (`ComposeTimeoutException`) on the full run
+reproduced clean on an isolated re-run after waking the emulator screen,
+matching the already-documented screen-sleep flakiness gotcha
+(`ARCHIVE_TESTING.md`), not a real regression; unrelated to this change's
+files either way. `.\test-weekly.ps1` (all 4 cases): one
+`realPurchaseIncrementsBalance` failure (`PurchasesException: Error
+performing request` from RevenueCat's own virtual-currency endpoint, not
+the Worker) on the full run, also reproduced clean in isolation — a
+transient RevenueCat network blip, unrelated to `client_request_id` or
+timeout wiring. The Release tier (`npm run test:release`) was not
+re-run this pass — no `REVENUECAT_SECRET_KEY` in this shell, and per its
+own design it's gated to major Play Store release timing, not every
+change; nothing in this change alters `spendCredit`/`refundCredit`/
+`extractFields`'s call signatures in a way the Release tier would newly
+exercise differently.
+
+**Follow-up, same day**: the stale-deploy near-miss above (the first
+real hands-on run genuinely spending twice because the fix wasn't
+deployed yet) was pointed out by the user as a real gap in the test
+script itself, not just a one-off mistake to remember next time - "why
+doesn't the test verify the remote is current?" `workers/scan-proxy/package.json`
+now has a `pretest:weekly` hook (`npm run typecheck && npm run deploy`,
+using npm's own pre-script convention - it runs automatically before
+`test:weekly`, no separate invocation needed) so `npm run test:weekly`
+can never again silently test a stale deployed Worker; verified by
+running it for real immediately after adding it (deploy + 4/4 real
+tests, in one command). `android/test-weekly.ps1` got the equivalent
+explicit typecheck+deploy step via `npm run ... --prefix ..\workers\scan-proxy`,
+before it builds/installs anything. Full detail, including a second,
+unrelated real infrastructure issue (an emulator launcher ANR) found
+while verifying the *other* fix from this same conversation (the
+screen-wake Gradle task), in `ARCHIVE_TESTING.md`.

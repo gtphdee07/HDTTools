@@ -67,6 +67,28 @@ test("rejects an array payload the same way as any other non-conforming object",
   assert.match(parseScanRequest(["truck_tag"]) as string, /app_user_id/);
 });
 
+test("parses a request with client_request_id and passes it through", () => {
+  const result = parseScanRequest({ ...validBody, client_request_id: "attempt-1" });
+  assert.equal((result as { client_request_id?: string }).client_request_id, "attempt-1");
+});
+
+test("omitting client_request_id leaves it absent, not defaulted to a value", () => {
+  const result = parseScanRequest(validBody);
+  assert.deepEqual(result, validBody);
+  assert.ok(!("client_request_id" in (result as object)));
+});
+
+test("an explicit null client_request_id is treated the same as an omitted one", () => {
+  const result = parseScanRequest({ ...validBody, client_request_id: null });
+  assert.deepEqual(result, validBody);
+});
+
+test("rejects a blank or wrong-typed client_request_id", () => {
+  assert.match(parseScanRequest({ ...validBody, client_request_id: "" }) as string, /client_request_id/);
+  assert.match(parseScanRequest({ ...validBody, client_request_id: "   " }) as string, /client_request_id/);
+  assert.match(parseScanRequest({ ...validBody, client_request_id: 42 }) as string, /client_request_id/);
+});
+
 test("silently ignores unknown extra fields rather than rejecting them", () => {
   const result = parseScanRequest({ ...validBody, extra_field: "should be ignored", another: 42 });
   assert.deepEqual(result, validBody);

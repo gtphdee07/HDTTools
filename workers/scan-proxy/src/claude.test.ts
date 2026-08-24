@@ -3,10 +3,11 @@
 // extractFields is the only module that touches the real @anthropic-ai/sdk,
 // and scan.ts deliberately isolates it behind an injectable dependency so
 // scan.test.ts never has to go near it. This file is the SDK's own coverage.
+import Anthropic from "@anthropic-ai/sdk";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DOC_TYPE_CONFIG } from "./docTypes.ts";
-import { extractFields } from "./claude.ts";
+import { ANTHROPIC_TIMEOUT_MS, extractFields } from "./claude.ts";
 
 const config = DOC_TYPE_CONFIG.truck_tag;
 
@@ -93,4 +94,18 @@ test("a tool_use block with a different tool name is not accepted", async (t) =>
   );
 
   await assert.rejects(() => extractFields("sk-ant-test", "aGVsbG8=", "image/jpeg", config));
+});
+
+// A hung Claude call must not tie up the Worker until Cloudflare's platform
+// execution limit kills it uncontrolled - extractFields relies on the SDK's
+// own timeout enforcement (an AbortController per request, confirmed by
+// reading @anthropic-ai/sdk's client.js) rather than reimplementing one, so
+// what this pins down is the *value* actually reaching the client, since
+// that's the part that's easy to silently drop in a refactor.
+test("[sanity] the Anthropic client is constructed with ANTHROPIC_TIMEOUT_MS, shorter than Android's 60s read timeout", () => {
+  assert.equal(ANTHROPIC_TIMEOUT_MS, 20_000);
+  assert.ok(ANTHROPIC_TIMEOUT_MS < 60_000, "must be shorter than ScanApiClient's readTimeout or it's pointless");
+
+  const client = new Anthropic({ apiKey: "sk-ant-test", timeout: ANTHROPIC_TIMEOUT_MS });
+  assert.equal(client.timeout, ANTHROPIC_TIMEOUT_MS);
 });

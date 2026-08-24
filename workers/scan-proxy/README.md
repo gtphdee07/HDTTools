@@ -20,7 +20,8 @@ Worker ports those exact prompts/schemas to TypeScript
   "app_user_id": "the RevenueCat customer id (anonymous UUID the app generates)",
   "doc_type": "truck_tag" | "trailer_tag" | "scale_ticket",
   "image_base64": "...",
-  "media_type": "image/jpeg"
+  "media_type": "image/jpeg",
+  "client_request_id": "optional - see Idempotency below"
 }
 ```
 
@@ -28,9 +29,37 @@ Worker ports those exact prompts/schemas to TypeScript
 
 **Errors:**
 - `402` `insufficient_credits` — no credits left, nothing was charged
-- `502` `extraction_failed` — Claude couldn't read the image; the credit was refunded
-- `502` `billing_error` — couldn't reach RevenueCat
+- `502` `extraction_failed` — Claude couldn't read the image (including a
+  timed-out call); the credit was refunded
+- `502` `billing_error` — couldn't reach RevenueCat, including a timed-out
+  request (spending never happened, so nothing to refund)
 - `400` `bad_request` — malformed request
+
+**Timeouts.** Both outbound calls are bounded so a hung upstream returns a
+clean error instead of tying up the Worker until Cloudflare's platform
+execution limit kills it: the Anthropic call (`src/claude.ts`) times out at
+20s (`ANTHROPIC_TIMEOUT_MS`) — shorter than the Android client's own 60s
+read timeout, or a Worker-side timeout would never fire first. The
+RevenueCat call (`src/revenuecat.ts`) times out at 10s
+(`REVENUECAT_TIMEOUT_MS`), tighter since it's a simple ledger write.
+
+**Idempotency.** `client_request_id` is an optional, client-generated id,
+stable across retries of the same logical scan attempt (the Android app
+generates one UUID per user-initiated tap). When present, it's used as the
+RevenueCat `Idempotency-Key` for both the spend and refund, so a retry
+after a lost/timed-out response spends the credit at most once — verified
+hands-on against the real deployed Worker and real RevenueCat (two
+identical scans with the same `client_request_id` moved the balance by
+exactly 1). Omitting it falls back to a fresh random key per request, the
+original behavior, so any already-shipped app build stays compatible.
+**Known accepted gap**: this protects the RevenueCat credit balance, but
+not Claude's own per-call cost — `extractFields` still runs on every
+request, since this Worker is deliberately stateless (see "No database"
+below) and doesn't cache extraction results. A retry after a lost response
+can still trigger a second, real, billed Claude call; the residual cost is
+small and rare (~$0.01, only on a lost/retried response) and was an
+explicit tradeoff against adding real state (e.g. Workers KV) purely to
+close it.
 
 ## Testing
 
@@ -49,8 +78,11 @@ and only loads `claude.ts` (and the Anthropic SDK it needs) lazily, on
 first real use — so the tests can swap in fakes and never touch the SDK,
 RevenueCat, or the network. See `src/scan.test.ts` for the cases that
 matter most: a zero-credit user never reaches Claude, a failed extraction
-refunds the same user exactly once, and a failed refund attempt doesn't
-crash the request.
+refunds the same user exactly once, a failed refund attempt doesn't
+crash the request, a `spendCredit` rejection (what a real timeout
+eventually produces) maps to a clean `billing_error` instead of a hang,
+and two calls sharing one `client_request_id` reuse the same idempotency
+key.
 
 What these tests *don't* cover: the real Anthropic SDK call shape, the real
 RevenueCat API response shape (only the request side is asserted — the

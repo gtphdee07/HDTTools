@@ -28,6 +28,7 @@ import com.rigcheck.app.domain.model.TruckTag
 import com.rigcheck.app.domain.verdictFor
 import com.rigcheck.app.ui.navigation.EntryModule
 import com.revenuecat.purchases.Package
+import java.util.UUID
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -127,9 +128,15 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     ) {
         scanState = ScanUiState.Loading
         viewModelScope.launch {
+            // One id per user-initiated tap - the Worker uses this to dedupe
+            // the RevenueCat charge if this attempt has to be retried after
+            // a lost/timed-out response. There's no existing client-side
+            // retry loop, so generating it once here (not inside
+            // ScanApiClient) is enough to cover "the same logical attempt."
+            val clientRequestId = UUID.randomUUID().toString()
             val result = runCatching {
                 val base64 = encodePhotoForScan(contentResolver, photoUri)
-                ScanApiClient.scan(RevenueCatManager.appUserId, module, base64)
+                ScanApiClient.scan(RevenueCatManager.appUserId, module, base64, clientRequestId = clientRequestId)
             }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
 
             when (result) {
@@ -166,9 +173,15 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     ) {
         scanState = ScanUiState.Loading
         viewModelScope.launch {
+            val clientRequestId = UUID.randomUUID().toString()
             val result = runCatching {
                 val base64 = encodePhotoForScan(contentResolver, photoUri)
-                ScanApiClient.scan(RevenueCatManager.appUserId, EntryModule.SCALE, base64)
+                ScanApiClient.scan(
+                    RevenueCatManager.appUserId,
+                    EntryModule.SCALE,
+                    base64,
+                    clientRequestId = clientRequestId,
+                )
             }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
 
             when (result) {

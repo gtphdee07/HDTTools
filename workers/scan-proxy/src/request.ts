@@ -9,6 +9,12 @@ export interface ScanRequest {
   doc_type: DocType;
   image_base64: string;
   media_type: MediaType;
+  // Client-generated, stable across retries of the same logical scan
+  // attempt - used as the RevenueCat idempotency key so a retry after a
+  // lost/timed-out response doesn't spend a second credit. Optional and
+  // backward compatible: omitted (e.g. by an already-shipped app build)
+  // falls back to a fresh random key per request, today's behavior.
+  client_request_id?: string;
 }
 
 // Returns the parsed request, or an error message string describing what's wrong.
@@ -38,10 +44,19 @@ export function parseScanRequest(payload: unknown): ScanRequest | string {
     return "media_type must be image/jpeg, image/png, image/webp, or image/gif.";
   }
 
-  return {
+  const clientRequestId = body.client_request_id ?? undefined;
+  if (clientRequestId !== undefined && (typeof clientRequestId !== "string" || !clientRequestId.trim())) {
+    return "client_request_id must be a non-empty string when present.";
+  }
+
+  const parsed: ScanRequest = {
     app_user_id: appUserId,
     doc_type: docType as DocType,
     image_base64: imageBase64,
     media_type: mediaType as MediaType,
   };
+  if (typeof clientRequestId === "string") {
+    parsed.client_request_id = clientRequestId;
+  }
+  return parsed;
 }

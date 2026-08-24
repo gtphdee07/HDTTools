@@ -7,13 +7,18 @@ import type { MediaType } from "./types.ts";
 // Sonnet 5). See NEXT_STEPS.md's monetization thread for the cost baseline.
 const MODEL = "claude-haiku-4-5-20251001";
 
+// Must be shorter than Android's own ScanApiClient 60s readTimeout, or a
+// timeout here would never actually fire before the app's own client had
+// already given up and shown its own error.
+export const ANTHROPIC_TIMEOUT_MS = 20_000;
+
 export async function extractFields(
   apiKey: string,
   imageBase64: string,
   mediaType: MediaType,
   config: DocTypeConfig,
 ): Promise<Record<string, unknown>> {
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, timeout: ANTHROPIC_TIMEOUT_MS });
 
   const response = await client.messages.create({
     model: MODEL,

@@ -5,6 +5,10 @@ import type { Env } from "./types.ts";
 
 const API_BASE = "https://api.revenuecat.com/v2";
 
+// Tighter than claude.ts's ANTHROPIC_TIMEOUT_MS - this is a simple ledger
+// write, not a vision model call, so a hang here should be caught sooner.
+export const REVENUECAT_TIMEOUT_MS = 10_000;
+
 export interface TransactionResult {
   ok: boolean;
   status: number;
@@ -31,6 +35,7 @@ async function postAdjustment(
     body: JSON.stringify({
       adjustments: { [env.REVENUECAT_CURRENCY_CODE]: amount },
     }),
+    signal: AbortSignal.timeout(REVENUECAT_TIMEOUT_MS),
   });
 
   const body = await res.json().catch(() => null);

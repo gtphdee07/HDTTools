@@ -175,19 +175,101 @@ test("spendCredit and refundCredit are called with the same idempotency key", as
   assert.equal(spendKey, refundKey);
 });
 
-// postAdjustment/fetch rejecting (not just returning ok:false) isn't caught
-// anywhere around the spendCredit call site either - documents that this
-// currently propagates out of runScan as an unhandled rejection rather than
-// a clean billing_error response. Same known-gap shape as the matching
-// revenuecat.test.ts case, one layer up.
-test("spendCredit itself rejecting propagates out of runScan rather than being caught", async () => {
+// spendCredit rejecting (RevenueCat unreachable, or its own
+// AbortSignal.timeout firing on a hung request) is mapped to the same
+// billing_error response as a non-ok status, not left to propagate as an
+// unhandled rejection - this is what makes revenuecat.ts's timeout an
+// actual clean bounded error instead of just a faster crash. The fake dep
+// throwing immediately stands in for what a real 10s timeout eventually
+// does, without the test having to wait for one.
+test("a spendCredit rejection (e.g. a timeout) is mapped to a clean billing_error response, not a hang", async () => {
+  let extractCalls = 0;
   const deps = makeDeps({
     spendCredit: async () => {
       throw new Error("RevenueCat unreachable");
     },
+    extractFields: async () => {
+      extractCalls++;
+      return {};
+    },
   });
 
-  await assert.rejects(() => runScan(env, request, deps), /RevenueCat unreachable/);
+  const res = await runScan(env, request, deps);
+  assert.equal(res.status, 502);
+  assert.equal(((await res.json()) as { code: string }).code, "billing_error");
+  assert.equal(extractCalls, 0, "a failed charge must never trigger a paid Claude call");
+});
+
+// extractFields rejecting with a timeout-shaped error already falls through
+// the existing generic catch same as any other extraction failure (refund
+// + extraction_failed) - this pins that down explicitly for the timeout
+// case specifically, since claude.ts's ANTHROPIC_TIMEOUT_MS is what's
+// meant to eventually produce this exact shape of rejection.
+test("an extractFields timeout is refunded and mapped to extraction_failed like any other extraction failure", async () => {
+  let refundCalls = 0;
+  const deps = makeDeps({
+    extractFields: async () => {
+      throw new Error("Request timed out.");
+    },
+    refundCredit: async () => {
+      refundCalls++;
+      return { ok: true, status: 200, body: {} };
+    },
+  });
+
+  const res = await runScan(env, request, deps);
+  assert.equal(res.status, 502);
+  assert.equal(((await res.json()) as { code: string }).code, "extraction_failed");
+  assert.equal(refundCalls, 1);
+});
+
+test("a request with client_request_id uses it as the RevenueCat idempotency key instead of a random one", async () => {
+  let spendKey: string | undefined;
+  const deps = makeDeps({
+    spendCredit: async (_env, _customerId, idempotencyKey) => {
+      spendKey = idempotencyKey;
+      return { ok: true, status: 200, body: {} };
+    },
+  });
+
+  await runScan(env, { ...request, client_request_id: "stable-attempt-1" }, deps);
+  assert.equal(spendKey, "stable-attempt-1");
+});
+
+// This is the whole point of Gap B: two calls that represent retries of the
+// same logical attempt (same client_request_id) must spend exactly once.
+// RevenueCat is the one that actually enforces the "at most once" guarantee
+// given a repeated Idempotency-Key header - this test only proves scan.ts
+// hands it the *same* key both times, which is scan.ts's own responsibility.
+test("two runScan calls with the same client_request_id use the same idempotency key both times", async () => {
+  const spendKeys: string[] = [];
+  const deps = makeDeps({
+    spendCredit: async (_env, _customerId, idempotencyKey) => {
+      spendKeys.push(idempotencyKey);
+      return { ok: true, status: 200, body: {} };
+    },
+  });
+
+  const retryRequest = { ...request, client_request_id: "stable-attempt-2" };
+  await runScan(env, retryRequest, deps);
+  await runScan(env, retryRequest, deps);
+
+  assert.deepEqual(spendKeys, ["stable-attempt-2", "stable-attempt-2"]);
+});
+
+test("a request without client_request_id falls back to a fresh random key each call, unchanged from today", async () => {
+  const spendKeys: string[] = [];
+  const deps = makeDeps({
+    spendCredit: async (_env, _customerId, idempotencyKey) => {
+      spendKeys.push(idempotencyKey);
+      return { ok: true, status: 200, body: {} };
+    },
+  });
+
+  await runScan(env, request, deps);
+  await runScan(env, request, deps);
+
+  assert.notEqual(spendKeys[0], spendKeys[1]);
 });
 
 test("trailer_tag and scale_ticket scans use their own doc type's config and echo it back", async () => {

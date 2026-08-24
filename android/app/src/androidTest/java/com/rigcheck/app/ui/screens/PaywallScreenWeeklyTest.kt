@@ -148,4 +148,46 @@ class PaywallScreenWeeklyTest {
         println("[WeeklyTest] scan balance: $balanceBefore -> $balanceAfter")
         assertEquals(balanceBefore - 1, balanceAfter)
     }
+
+    // Hands-on verification for roadmap item #5, Gap B: proves the
+    // client_request_id -> RevenueCat Idempotency-Key wiring actually
+    // dedupes against the real RevenueCat API, not just against fake deps
+    // in scan.test.ts. Two full round trips to the real deployed Worker
+    // (two real ~$0.01 Claude calls - the accepted residual-cost tradeoff
+    // documented in NEXT_STEPS.md item #5, since the Worker stays
+    // stateless and can't cache the extraction result) with the SAME
+    // client-generated id must still only move the RevenueCat balance by 1.
+    @Test
+    fun realDuplicateScanWithSameClientRequestIdSpendsOnce() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().context
+        val imageBytes = context.assets.open("AddieTag.jpg").use { it.readBytes() }
+        val imageBase64 = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+        val sharedClientRequestId = "weekly-idempotency-check-${System.currentTimeMillis()}"
+
+        val balanceBefore = RevenueCatManager.getScanCreditBalance()
+
+        val first = ScanApiClient.scan(
+            RevenueCatManager.appUserId,
+            EntryModule.TRUCK,
+            imageBase64,
+            clientRequestId = sharedClientRequestId,
+        )
+        assertNotNull("Expected the first scan to succeed, got: $first", first as? ScanResult.Success)
+
+        val second = ScanApiClient.scan(
+            RevenueCatManager.appUserId,
+            EntryModule.TRUCK,
+            imageBase64,
+            clientRequestId = sharedClientRequestId,
+        )
+        assertNotNull("Expected the retried scan to succeed too, got: $second", second as? ScanResult.Success)
+
+        val balanceAfter = RevenueCatManager.getScanCreditBalance()
+        println("[WeeklyTest] duplicate-idempotency-key balance: $balanceBefore -> $balanceAfter")
+        assertEquals(
+            "Two scans sharing one client_request_id must spend exactly once against real RevenueCat",
+            balanceBefore - 1,
+            balanceAfter,
+        )
+    }
 }

@@ -57,12 +57,18 @@ object ScanApiClient {
         module: EntryModule,
         imageBase64: String,
         mediaType: String = "image/jpeg",
+        // Stable across retries of the same logical scan attempt - lets the
+        // Worker dedupe the RevenueCat charge if a retry follows a
+        // lost/timed-out response. Optional and omittable: absent falls
+        // back to the Worker's own random-key behavior.
+        clientRequestId: String? = null,
     ): ScanResult {
         val requestJson = buildJsonObject {
             put("app_user_id", appUserId)
             put("doc_type", module.toDocType())
             put("image_base64", imageBase64)
             put("media_type", mediaType)
+            clientRequestId?.let { put("client_request_id", it) }
         }
         val body = requestJson.toString().toRequestBody(JSON_MEDIA_TYPE)
         val request = Request.Builder().url(SCAN_ENDPOINT).post(body).build()

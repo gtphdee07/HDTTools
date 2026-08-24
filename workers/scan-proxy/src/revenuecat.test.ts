@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { refundCredit, spendCredit } from "./revenuecat.ts";
+import { REVENUECAT_TIMEOUT_MS, refundCredit, spendCredit } from "./revenuecat.ts";
 import type { Env } from "./types.ts";
 
 const env: Env = {
@@ -83,14 +83,14 @@ test("a non-JSON error body doesn't throw", async (t) => {
 });
 
 // Unlike a non-ok HTTP response (handled above), fetch() itself rejecting
-// (DNS failure, connection reset, etc.) isn't caught anywhere in
+// (DNS failure, connection reset, or REVENUECAT_TIMEOUT_MS's own
+// AbortSignal firing on a hung request) isn't caught anywhere in
 // postAdjustment - this test documents that it propagates straight out of
-// spendCredit/refundCredit as an unhandled rejection. scan.ts's own call
-// site has no try/catch around spendCredit either (only around
-// extractFields), so a real network failure here currently means the whole
-// Worker request fails ungracefully rather than returning a clean
-// billing_error response - a known gap, not a fix, pinned down so a future
-// change to either file is a deliberate choice, not an accident.
+// spendCredit/refundCredit as a rejection. scan.ts's own call site DOES
+// catch this one layer up now (see scan.test.ts's "a spendCredit rejection
+// (e.g. a timeout) is mapped to a clean billing_error response"), so this
+// rejection still reaches a real client as a clean billing_error - this
+// test just pins down that postAdjustment itself doesn't swallow it.
 test("a network failure (fetch rejecting) propagates out of spendCredit rather than being caught", async (t) => {
   t.mock.method(globalThis, "fetch", async () => {
     throw new Error("network error: getaddrinfo ENOTFOUND api.revenuecat.com");
@@ -118,4 +118,17 @@ test("the real response body is returned to the caller, not discarded", async (t
 
   const result = await spendCredit(env, "user-123", "idem-6");
   assert.deepEqual(result.body, realBody);
+});
+
+test("[sanity] the fetch call is wired to abort after REVENUECAT_TIMEOUT_MS, not left to hang forever", async (t) => {
+  let capturedSignal: AbortSignal | undefined;
+  t.mock.method(globalThis, "fetch", async (_url: string | URL, init?: RequestInit) => {
+    capturedSignal = init?.signal ?? undefined;
+    return new Response(JSON.stringify({}), { status: 200 });
+  });
+
+  await spendCredit(env, "user-123", "idem-7");
+
+  assert.ok(capturedSignal instanceof AbortSignal, "expected fetch to be called with an AbortSignal");
+  assert.equal(REVENUECAT_TIMEOUT_MS, 10_000, "10s, tighter than claude.ts's 20s - a simple ledger write");
 });

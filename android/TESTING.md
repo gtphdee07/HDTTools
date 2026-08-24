@@ -59,13 +59,17 @@ balance (this is also the *only* place in the whole test suite that can
 exercise a real purchase at all — RevenueCat's REST API has no "simulate
 a purchase" endpoint, only the SDK talking to real platform billing can
 do that, so any account-balance top-up via a real purchase has to happen
-here, not in any scan-proxy test), and a real scan against the deployed
+here, not in any scan-proxy test), a real scan against the deployed
 Worker (using a copy of `ExampleDocs/AddieTag.jpg` at
 `android/app/src/androidTest/assets/AddieTag.jpg`) decrementing it by
-exactly 1. **Real cost per full run**: one real ~$0.01 Claude call (the
-scan case); the purchase case is free — RevenueCat's Test Store dialog
-states outright it's a dev-only purchase, confirmed hands-on by
-triggering one and reading its own text.
+exactly 1, and (added 2026-08-23, roadmap item #5) two real scans sharing
+one `client_request_id` decrementing it by exactly 1 total, not 2 —
+proving the Worker's idempotency-key wiring actually dedupes against real
+RevenueCat, not just fake deps. **Real cost per full run**: two real
+~$0.01 Claude calls (the scan case and the duplicate-idempotency-key
+case); the purchase case is free — RevenueCat's Test Store dialog states
+outright it's a dev-only purchase, confirmed hands-on by triggering one
+and reading its own text.
 
 **Not the same test as `workers/scan-proxy`'s Release tier, despite
 sharing a gating trigger** — discussed and clarified 2026-08-21. Both
@@ -249,7 +253,7 @@ real `RigCheckNavHost` + `RigCheckViewModel`, offline via
 
 ### Weekly (instrumented, real RevenueCat) — `.\test-weekly.ps1`
 
-- `PaywallScreenWeeklyTest.kt` — three cases, run under the same
+- `PaywallScreenWeeklyTest.kt` — four cases, run under the same
   `CustomTestRunner` as the Daily tier but with the weekly marker file
   set (`weekly-test-user`) — see the tier description above:
   - `rendersRealOfferingsFromTestStore` — fetches the real package
@@ -281,6 +285,15 @@ real `RigCheckNavHost` + `RigCheckViewModel`, offline via
     `ScanApiClient.scan(...)` directly against the deployed Worker,
     asserts a `ScanResult.Success` with non-empty fields, then asserts
     the balance dropped by exactly 1.
+  - `realDuplicateScanWithSameClientRequestIdSpendsOnce` — calls
+    `ScanApiClient.scan(...)` twice with the same explicit
+    `clientRequestId`, asserts both succeed, then asserts the balance
+    dropped by exactly 1 total (not 2) — the hands-on proof for roadmap
+    item #5's Gap B, run once against the not-yet-redeployed Worker
+    first (genuinely failed, 2 deductions — confirmed the fix needed a
+    real `wrangler deploy`, not just a local code change) and again
+    after deploying (passed for real). Full narrative in
+    `ARCHIVE_MONETIZATION.md`.
   - Uses `createAndroidComposeRule<ComponentActivity>()`, not the daily
     tier's `createComposeRule()`, since `purchasePackage` needs a real
     `Activity` (`composeRule.activity`).

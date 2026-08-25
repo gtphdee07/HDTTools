@@ -1,0 +1,5 @@
+{
+  "pool": "fail",
+  "expected_none_fields": ["manufacturer", "gvwr_lb", "front_gawr_lb", "rear_gawr_lb"],
+  "_note": "The Blue Goose F-150 tag, 10 real phone-camera shots at varying angle/shadow/sun-glare (item #11, ARCHIVE_WEB_STREAMLIT.md). All 10 fail identically for one structural reason - these are un-cropped phone photos and ocr_common.py's preprocess_image() never crops, so pytesseract's --psm 6 can't isolate the tag text from surrounding clutter regardless of photo quality - not a per-field OCR quirk. F-150Spec.txt alongside these images is human-readable provenance, not a fixture input; only .jpg files here are treated as pool images."
+}

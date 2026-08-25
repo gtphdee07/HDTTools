@@ -23,7 +23,6 @@ and the golden truth here *is* the failure signature itself, not a
 value that would otherwise be duplicated.
 """
 
-import json
 import random
 import sys
 from pathlib import Path
@@ -35,7 +34,6 @@ from hdttools.ocr_common import ensure_tesseract_configured, ocr_text, open_imag
 from hdttools.truck_tag_ocr import _parse_fields as _parse_truck_tag
 
 _EXAMPLE_DOCS = Path(__file__).resolve().parent.parent / "ExampleDocs"
-_GOLDEN = json.loads((_EXAMPLE_DOCS / "golden_fields.json").read_text(encoding="utf-8"))
 
 _SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(_SCRIPTS_DIR))  # fail_pool.py is a standalone module, like pass_pool.py
@@ -46,7 +44,11 @@ _PARSERS = {
     "truck_tag": _parse_truck_tag,
 }
 
-_FAIL_POOL_DOC_TYPES = [dt for dt in _GOLDEN.get("fail_pool", {}) if dt != "_readme"]
+# Reads the merged view (golden_fields.json + anything auto-discovered
+# under ExampleDocs/scans/ by scripts/vehicle_discovery.py) so a
+# directory-only vehicle still gets parametrized here with no test-code
+# change - see that module's docstring for the drop-in-a-folder workflow.
+_FAIL_POOL_DOC_TYPES = fail_pool.registered_doc_types()
 
 
 @pytest.mark.parametrize("doc_type", _FAIL_POOL_DOC_TYPES)

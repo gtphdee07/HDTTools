@@ -424,3 +424,10 @@ but because it's the wrong shape for "the whole document fails
 identically for one structural reason," not a per-field quirk. The 10
 photos themselves stay at `ExampleDocs/scans/truck/f150/` for whenever
 either test gets built for real.
+
+✅ **Superseded 2026-08-25**: the fail-pool test got built for real
+(item #13, `FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md`) — these 10
+photos moved to `ExampleDocs/scans/truck/f150_blue_goose_uncropped/`
+with a `vehicle.json` sidecar, auto-discovered by
+`scripts/vehicle_discovery.py` rather than referenced from
+`golden_fields.json` directly.

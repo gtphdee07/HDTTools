@@ -178,6 +178,45 @@ Format generalization, not image-quality robustness, is what an external
 dependency version bump actually risks breaking — the "Chevy label"
 scenario is a format question, not an angle/lighting one.
 
+**✅ The growth mechanism itself is done, 2026-08-25** (directly
+requested: *"drop in some images, and some sort of file that provides
+the expected OCR data, and have the test cases automatically pick up
+the new images in their next run"*). New `scripts/vehicle_discovery.py`
+walks `ExampleDocs/scans/<truck|trailer|scale>/<vehicle_slug>/` for a
+`vehicle.json` sidecar (`{"pool": "pass", "fields": {...}}` or
+`{"pool": "fail", "expected_none_fields": [...]}` — `doc_type` is
+deliberately *not* a field in it, inferred instead from which bucket
+directory the vehicle sits under, one source of truth not two) plus
+every image file already sitting next to it — dropping in one more
+photo of an already-registered vehicle needs zero file edits at all,
+only a brand-new vehicle needs a new `vehicle.json` written.
+`scripts/pass_pool.py`/`fail_pool.py` merge discovered vehicles into
+the same structure the legacy `golden_fields.json` entries already use;
+both gained `registered_doc_types()` so the two regression tests
+parametrize from the merged view automatically. TDD'd in
+`tests/test_vehicle_discovery.py` (10 cases, including fail-loud
+`ValueError`s on a malformed sidecar or an image-less vehicle folder —
+matching this project's convention of failing loud, not skipping a
+malformed entry quietly).
+
+Proven two ways, not just unit-tested in isolation: the fail-pool's
+F-150 vehicle was actually migrated for real —
+`ExampleDocs/scans/truck/f150/` → `.../f150_blue_goose_uncropped/` with
+a real `vehicle.json`, its `golden_fields.json` entry deleted — and
+`tests/test_fail_pool_regression.py` still passes, now sourced entirely
+from the directory. The pass-pool half got a real `tmp_path` integration
+test instead (no spare unentangled real photo existed to migrate the
+same way — `AddieTag.jpg`/`GooseTag.jpg` both feed other tests): copies
+`CatScale-GooseOnly.jpg`'s real bytes into an isolated temp tree,
+proving `resolve_pass_pool_image` and real Tesseract both work against
+a directory-discovered vehicle end-to-end. Full suite clean (554
+passed, 3 xfailed).
+
+**What's still not done**: actually adding new manufacturer/format
+photos (a real Chevy label, an RV tag from a manufacturer other than
+Brinkley). The mechanism is ready for it — drop a folder in, no code
+changes — but no such real photos exist yet.
+
 ## Cross-platform scope — open question, not yet decided
 
 Claude vision itself isn't platform-specific — Python's `vision_client.py`
@@ -245,8 +284,9 @@ against.
    image) — passed clean every time; full suite (`uv run pytest -q`)
    also clean, 541 passed / 3 xfailed.
 4. ✅ **Done, 2026-08-25 — the fail-pool.** Reuses item #11's 10 F-150
-   photos (still on disk at `ExampleDocs/scans/truck/f150/`, never
-   re-added to `"photos"` — see that item's "document, don't build"
+   photos (still on disk, never re-added to `"photos"` — later migrated
+   to `ExampleDocs/scans/truck/f150_blue_goose_uncropped/`, see step 6's
+   directory-convention entry below — see item #11's "document, don't build"
    finding: all 10 fail identically for one structural reason, not a
    per-field quirk `"photos"`/`known_ocr_limitations` was designed
    for). New self-contained `fail_pool` section in `golden_fields.json`

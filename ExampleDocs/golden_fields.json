@@ -55,7 +55,7 @@
     }
   },
   "pass_pool": {
-    "_readme": "Groups already-defined 'photos' entries above by real vehicle, keyed by doc_type, so scripts/pass_pool.py can pick one image at random per component (truck/trailer/scale - see FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md item #13) and still resolve the exact golden truth for whichever image got picked. Every filename listed in an 'images' array must already have a 'photos' entry above with a matching doc_type - this section is a membership index, not a second copy of field data, so golden values can never drift between the two. A pass-pool image doesn't have to be perfect on every field, only already-understood: the resolver returns the image's full 'photos' entry, so a documented known_ocr_limitations field still xfails the same way tests/test_real_photo_ocr_accuracy.py already handles it. Today each vehicle has exactly one image (AddieTag.jpg, GooseTag.jpg) - the schema's 'images' list exists so a future vehicle with many photos of the same physical tag can share one golden-truth entry across all of them, without duplicating fields per photo.",
+    "_readme": "Groups already-defined 'photos' entries above by real vehicle, keyed by doc_type, so scripts/pass_pool.py can pick one image at random per component (truck/trailer/scale - see FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md item #13) and still resolve the exact golden truth for whichever image got picked. Every filename listed in an 'images' array must already have a 'photos' entry above with a matching doc_type - this section is a membership index, not a second copy of field data, so golden values can never drift between the two. A pass-pool image doesn't have to be perfect on every field, only already-understood: the resolver returns the image's full 'photos' entry, so a documented known_ocr_limitations field still xfails the same way tests/test_real_photo_ocr_accuracy.py already handles it. The two vehicles below (AddieTag.jpg, GooseTag.jpg) are legacy, JSON-referencing entries, kept here because those same two files are also read by tests/test_real_photo_ocr_accuracy.py's 'photos' section and tests/test_streamlit_app.py's 'rigs' walkthrough. **New vehicles should NOT be added here** - as of 2026-08-25, drop image files plus a vehicle.json (pool: \"pass\", fields: {...}) into ExampleDocs/scans/<truck|trailer|scale>/<vehicle_slug>/ instead; scripts/vehicle_discovery.py auto-discovers it and scripts/pass_pool.py merges it in with zero edits to this file or any test code. See scripts/vehicle_discovery.py's own docstring for the full schema, and ExampleDocs/scans/truck/f150_blue_goose_uncropped/vehicle.json (the fail-pool's real example below) for what a real one looks like.",
     "truck_tag": [
       {
         "vehicle": "f150_blue_goose",
@@ -70,25 +70,8 @@
     ]
   },
   "fail_pool": {
-    "_readme": "Known-illegible real images, each carrying an expected *failure signature* (which fields real Tesseract reliably returns None for) instead of a golden value to match - see FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md item #13. Self-contained, unlike 'pass_pool' above: these images were deliberately never added to 'photos' (see ARCHIVE_WEB_STREAMLIT.md's item #11 'document, don't build' finding - all 10 of these F-150 photos fail identically for one structural reason, un-cropped phone photos defeating --psm 6, not a per-field OCR quirk 'photos'/known_ocr_limitations was designed for), and the golden truth here *is* the failure signature itself, so there's no separate value to protect from duplication. Confirmed for real 2026-08-25 (not assumed): all 10 images below return None for manufacturer/gvwr_lb/front_gawr_lb/rear_gawr_lb every time, under the same real pipeline test_real_photo_ocr_accuracy.py uses. tests/test_fail_pool_regression.py resolves one image at random per doc_type and asserts both that this signature still holds under real Tesseract, and that it still funnels into compute_breakdown/verdict_for's real 'Not Enough Information' path - not a silent false pass.",
-    "truck_tag": [
-      {
-        "vehicle": "f150_blue_goose_uncropped",
-        "images": [
-          "scans/truck/f150/20260824_141527.jpg",
-          "scans/truck/f150/20260824_141530.jpg",
-          "scans/truck/f150/20260824_141533.jpg",
-          "scans/truck/f150/20260824_141537.jpg",
-          "scans/truck/f150/20260824_141545.jpg",
-          "scans/truck/f150/20260824_141557.jpg",
-          "scans/truck/f150/20260824_141600.jpg",
-          "scans/truck/f150/20260824_141606.jpg",
-          "scans/truck/f150/20260824_141608.jpg",
-          "scans/truck/f150/20260824_141611.jpg"
-        ],
-        "expected_none_fields": ["manufacturer", "gvwr_lb", "front_gawr_lb", "rear_gawr_lb"]
-      }
-    ]
+    "_readme": "Known-illegible real images, each carrying an expected *failure signature* (which fields real Tesseract reliably returns None for) instead of a golden value to match - see FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md item #13. Self-contained, unlike 'pass_pool' above: these images were deliberately never added to 'photos', and the golden truth here *is* the failure signature itself, so there's no separate value to protect from duplication. As of 2026-08-25 every real fail-pool vehicle lives entirely under ExampleDocs/scans/<truck|trailer|scale>/<vehicle_slug>/vehicle.json (scripts/vehicle_discovery.py auto-discovers it, merged in by scripts/fail_pool.py) rather than as a JSON entry here - this section stays as the schema's home/example and the place a doc_type with zero registered vehicles would still need a key, but new vehicles should be added via the directory convention, not by hand-editing this file. See ExampleDocs/scans/truck/f150_blue_goose_uncropped/vehicle.json for the real, currently-registered example (10 real photos of one F-150 tag, all failing identically for one structural reason - un-cropped phone photos defeating --psm 6, not a per-field OCR quirk).",
+    "truck_tag": []
   },
   "rigs": [
     {

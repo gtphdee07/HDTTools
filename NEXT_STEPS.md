@@ -177,7 +177,8 @@ reading anything else.
 11. ✅ **Real-photo OCR robustness investigation: Tesseract vs. Claude
     vision — closed 2026-08-24.** 10 real photos of the same physical
     Ford tow-vehicle tag, one clear shot plus 9 at varying angle/shadow/
-    sun-glare quality (`ExampleDocs/scans/truck/f150/`), run through both
+    sun-glare quality (now at `ExampleDocs/scans/truck/f150_blue_goose_uncropped/`,
+    renamed 2026-08-25 — see item #13), run through both
     backends this project maintains. Found two real, different-shaped
     gaps — Tesseract needs a crop it never gets, Claude vision doesn't
     need one but has zero real-photo test coverage today. Full narrative
@@ -238,8 +239,8 @@ reading anything else.
     a new mismatch or an unexpected improvement) — run for real (not
     assumed) several times to rule out flakiness in the random-pick
     path; passed clean every time. **Fail-pool done, 2026-08-25**:
-    reuses the 10 F-150 photos from item #11 (still on disk at
-    `ExampleDocs/scans/truck/f150/`, never re-added to `"photos"`) as a
+    reuses the 10 F-150 photos from item #11 (still on disk, never
+    re-added to `"photos"`) as a
     self-contained `fail_pool` section in `golden_fields.json` — unlike
     `pass_pool`, no reference into `"photos"` needed, since the golden
     truth here *is* the failure signature itself (`expected_none_fields:
@@ -264,9 +265,36 @@ reading anything else.
     tests/test_fail_pool_regression.py -v`), run for real to confirm it
     works, with a note to re-run it a few times on a real dependency
     bump since each run samples one random image per pool/doc_type.
-    All three core pieces of item #13's design are now done. **Still
-    not started**: manufacturer-diversity growth (both pools cover only
-    the Ford/Brinkley pairing today) and the Android
+    All three core pieces of item #13's design are now done.
+    **Directory-convention auto-discovery done, 2026-08-25**: per the
+    project owner's own request ("drop in some images, and some sort of
+    file that provides the expected OCR data, and have the test cases
+    automatically pick up the new images"), new `scripts/vehicle_discovery.py`
+    walks `ExampleDocs/scans/<truck|trailer|scale>/<vehicle_slug>/` for a
+    `vehicle.json` (`pool: "pass"/"fail"` + `fields`/`expected_none_fields`)
+    plus sibling image files (auto-globbed, `.jpg`/`.jpeg`/`.png` —
+    adding one more photo of an already-registered vehicle needs zero
+    file edits at all). TDD'd in `tests/test_vehicle_discovery.py` (10
+    cases: discovery, ignored non-image/unknown-bucket files, and
+    fail-loud `ValueError`s on a malformed sidecar or an image-less
+    vehicle folder). `pass_pool.py`/`fail_pool.py` merge discovered
+    vehicles into the same in-memory structure the legacy
+    `golden_fields.json` entries already use, and both gained a
+    `registered_doc_types()` helper so the two regression tests
+    parametrize from the merged view. **Real live proof, not just a
+    unit test**: the fail-pool's F-150 vehicle was actually migrated —
+    `ExampleDocs/scans/truck/f150/` → `.../f150_blue_goose_uncropped/`
+    with a real `vehicle.json`, its `golden_fields.json` JSON entry
+    deleted — and `tests/test_fail_pool_regression.py` still passes,
+    now sourced entirely from the directory. The pass-pool half (no
+    spare unentangled real photo to migrate the same way — `AddieTag.jpg`/
+    `GooseTag.jpg` both feed other tests) got a real integration test
+    instead: copies `CatScale-GooseOnly.jpg`'s real bytes into an
+    isolated `tmp_path` tree, proving `resolve_pass_pool_image` and real
+    Tesseract both work against a directory-discovered vehicle
+    end-to-end. Full suite clean (554 passed, 3 xfailed). **Still not
+    started**: actually adding new manufacturer/format photos (the
+    mechanism is ready; no new real photos exist yet) and the Android
     inherit-vs-duplicate decision.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally

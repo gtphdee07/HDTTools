@@ -32,6 +32,19 @@ def compute_breakdown(
     scale: dict,
     pin_weight_pct: float = DEFAULT_PIN_WEIGHT_PCT,
 ) -> list[dict]:
+    # `1 - pin_weight_pct` is a divisor below (axle-reading-estimate branch) -
+    # exactly 1.0 crashed with ZeroDivisionError. Real bug found 2026-08-24
+    # via the combinatorial sweep; reaches here unvalidated from a real
+    # caller too (POST /api/breakdown's BreakdownRequest.pin_weight_pct has
+    # no Pydantic range constraint). Deliberately narrow: only the exact
+    # zero-divisor case is guarded - a value *above* 1.0 (e.g. a caller
+    # sending "15" meaning 15% instead of the fraction 0.15) is left alone
+    # on purpose, since it already fails loud with an obviously-wrong
+    # negative result instead of crashing or silently looking plausible -
+    # see test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage.
+    if pin_weight_pct == 1.0:
+        pin_weight_pct = 0.99
+
     steer_raw = scale.get("steer_axle_lb")
     drive_raw = scale.get("drive_axle_lb")
     trailer_axle_raw = scale.get("trailer_axle_lb")
@@ -133,13 +146,21 @@ def compute_breakdown(
     # flag - checked from the specific source fields it depends on, not
     # inferred from whether actual/limit happen to be 0 (a real 0 lb
     # reading and a never-entered field are otherwise indistinguishable).
+    # A rated limit of exactly 0 means "not entered," not "really rated for
+    # zero" - no real vehicle has a 0 lb GAWR/GVWR - matching the same
+    # truthy-not-just-non-None reasoning already used for
+    # standalone_weight_lb/axle_count above. Real bug found 2026-08-24 via
+    # the combinatorial sweep: an `is None`-only check let an explicit 0
+    # rated limit through as "sufficient data," which then divided by that
+    # same 0 computing `pct` below, crashing with ZeroDivisionError instead
+    # of reporting "Not enough info."
     raw_items = [
         (
             "Front Axle (Steer)",
             steer,
             _lb(front_gawr_raw),
             None,
-            steer_raw is None or front_gawr_raw is None,
+            steer_raw is None or not front_gawr_raw,
             False,
         ),
         (
@@ -147,7 +168,7 @@ def compute_breakdown(
             drive,
             _lb(rear_gawr_raw),
             None,
-            drive_raw is None or rear_gawr_raw is None,
+            drive_raw is None or not rear_gawr_raw,
             False,
         ),
         (
@@ -155,7 +176,7 @@ def compute_breakdown(
             truck_total_actual if truck_total_actual is not None else 0.0,
             truck_gvwr,
             truck_total_note,
-            truck_total_actual is None or truck_gvwr_raw is None,
+            truck_total_actual is None or not truck_gvwr_raw,
             truck_total_estimated,
         ),
         (
@@ -163,7 +184,7 @@ def compute_breakdown(
             trailer_axle,
             gawr_per_axle * axle_count,
             trailer_axle_note,
-            trailer_axle_raw is None or gawr_per_axle_raw is None,
+            trailer_axle_raw is None or not gawr_per_axle_raw,
             False,
         ),
         (
@@ -171,7 +192,7 @@ def compute_breakdown(
             trailer_total_actual,
             trailer_gvwr,
             trailer_total_note,
-            trailer_gvwr_raw is None,
+            not trailer_gvwr_raw,
             trailer_total_estimated,
         ),
         (
@@ -179,7 +200,7 @@ def compute_breakdown(
             gross,
             truck_gvwr + trailer_gvwr,
             None,
-            gross_raw is None or truck_gvwr_raw is None or trailer_gvwr_raw is None,
+            gross_raw is None or not truck_gvwr_raw or not trailer_gvwr_raw,
             False,
         ),
     ]

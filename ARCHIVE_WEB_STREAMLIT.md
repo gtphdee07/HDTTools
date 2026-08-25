@@ -339,3 +339,88 @@ now works bare (no `--cov=PATH` needed - coverage.py picks up the
 configured `source` automatically). Real numbers: 79% total,
 `streamlit_app/app.py` 80%, `fields.py` 100%, `recent_rigs.py` 79% - see
 `tests/TESTING.md`'s new "Coverage" section.
+
+---
+
+## 🔍 Real-photo OCR robustness investigation: Tesseract vs. Claude vision - closed 2026-08-24
+
+Started from a real test-planning idea (roadmap item #11): the user had
+10 real photos of the same physical Ford tow-vehicle tag - one clear
+shot plus 9 more at varying angle/shadow/sun-glare quality
+(`ExampleDocs/scans/truck/f150/`, moved there from a flat
+`ExampleDocs/F-150Tags/` as the new convention for future multi-photo
+scan sets; ground truth `GVWR: 7100 LB`, `GAWR: 3525 LB` front,
+`REAR GAWR: 3800 LB`, confirmed against the real photographed tag's own
+`KG (LB)` printing, not just the hand-transcribed `F-150Spec.txt`). The
+plan was a straightforward "quality gradient" test: run all 10 through
+the existing Tesseract-based OCR path and see how far accuracy degrades.
+It didn't work out that way - the investigation found something more
+useful than the planned test.
+
+**✅ Real finding #1: Tesseract fails on all 10 raw photos, and it's not
+about quality.** Running the real, non-interactive pipeline
+(`ocr_common.open_image`/`preprocess_image`/`ocr_text` then
+`truck_tag_ocr._parse_fields`, the same sequence
+`test_real_photo_ocr_accuracy.py` uses) against all 10 photos returned
+`None` for every field, on every photo - including the best-framed,
+clearest-looking shot in the set. The cause: these are realistic,
+un-cropped phone photos (a wider dashboard/door-jamb shot with the tag
+as one region among tire-info stickers, the hitch, reflections),
+and `preprocess_image()` never crops - it only grayscales, autocontrasts,
+and upscales the *whole* frame. `pytesseract`'s `--psm 6` (assume one
+uniform text block) can't isolate the tag's own lines from that
+surrounding clutter, regardless of how sharp or well-lit the photo is.
+Confirmed with a manual crop test: cropping just the tag region out of
+one photo immediately produced a real, correct match
+(`rear_gawr_lb: 3800.0`) from previously all-`None` output. This is a
+real, previously-undiscovered product gap, not a per-photo quirk like
+`GooseTag.jpg`'s digit-drop above - it's documented as a known
+limitation in `NEXT_STEPS.md` rather than chased with per-photo crop
+tuning this session (manual crop+rotation work across 10 differently-
+framed/rotated photos was judged not worth it right now).
+
+**✅ Real finding #2: Claude vision handles the same raw photos with no
+preprocessing at all - 9/10 perfect.** The user asked to test the same
+10 photos through "the Anthropic API flow" before deciding next steps.
+This project already has a direct Python path for this
+(`src/hdttools/vision_client.py::extract_via_claude` +
+`truck_tag.py`'s system prompt/schema - the same extraction shape
+`workers/scan-proxy/src/claude.ts`/`docTypes.ts` port to TypeScript for
+the mobile app's real scan endpoint) - called directly against all 10
+real photos, `claude-sonnet-5`, no crop, no preprocessing. Real result:
+**9 of 10 photos extracted all three fields perfectly**, including the
+most extreme shot in the set (the tag rotated ~90°, occupying maybe 10%
+of a mostly-out-of-focus frame) - something Tesseract couldn't do at
+any framing. The one failure (`20260824_141545.jpg`) is fully explained
+by looking at the photo: it's framed so the top portion of the tag
+(manufacturer/date/GVWR/REAR GAWR lines) is literally outside the frame,
+only the lower half (tire specs, VIN, barcode) is visible - the data
+genuinely isn't in the picture, not a robustness failure. Real cost:
+10 billed Claude vision calls, ~$0.30-0.50 total (not repeated - this
+was a one-time investigation, not an added recurring test).
+
+**✅ Real finding #3: the Claude-vision path has zero real-photo test
+coverage today, unlike the Tesseract path.** Checked both
+`tests/test_vision_client.py` and `tests/test_readers_integration.py` -
+both fully mock `extract_via_claude`/`vision_client`, no real image, no
+real API call, anywhere in the suite. `test_real_photo_ocr_accuracy.py`
+only exercises Tesseract. Given finding #2 shows the vision path is
+genuinely robust and this photo set would make a strong first real
+regression test for it, this is flagged in `NEXT_STEPS.md`'s "Tests
+still outstanding" rather than built this session - a real-money-per-run
+test needs an External-tier equivalent for Python first (this project
+doesn't have one today; `scan-proxy`'s `test-release.ps1`/
+`test-weekly.ps1` are the existing cross-platform pattern to follow).
+
+**Decided: document, don't build new test code this round.** Both
+findings are real and worth capturing, but neither is finished/actionable
+enough yet to turn into permanent test code today - the Tesseract fix
+needs a real design decision (auto-crop preprocessing vs. in-app user
+guidance), and the Claude-vision test needs the External-tier-equivalent
+question settled first. `golden_fields.json`'s per-field `xfail` pattern
+was tried and reverted (added all 10 photos, ran the real test, saw 40
+uniform failures, then removed them) - not because it's a bad pattern,
+but because it's the wrong shape for "the whole document fails
+identically for one structural reason," not a per-field quirk. The 10
+photos themselves stay at `ExampleDocs/scans/truck/f150/` for whenever
+either test gets built for real.

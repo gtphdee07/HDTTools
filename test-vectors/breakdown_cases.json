@@ -191,6 +191,46 @@
           {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 26500, "pct": 0, "estimated": false}
         ]
       }
+    },
+    {
+      "name": "zero_rated_limit_is_insufficient_not_a_crash",
+      "requires": [],
+      "_note": "Regression case for a real bug, found 2026-08-24 via a combinatorial sweep and fixed in both Python (compute_breakdown) and Kotlin (Breakdown.kt): a rated limit field (here front_gawr_lb) of exactly 0 used to pass an `is None`-only insufficient check, then get divided into computing pct - Python crashed outright with ZeroDivisionError, Kotlin's own `limit > 0` guard on that division stopped it from crashing but would have silently reported a false WARNING (\"over limit\") from the bogus zero instead of INSUFFICIENT. Fixed by treating 0 the same as absent for this field, matching standalone_weight_lb's existing truthy-not-just-null convention.",
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 0, "rear_gawr_lb": 9500},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+      "scale": {"steer_axle_lb": 5620, "drive_axle_lb": 9040, "trailer_axle_lb": 11380, "gross_weight_lb": 26040},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "fail",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 5620, "limit_lb": 0, "pct": 0, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 14225, "limit_lb": 12500, "pct": 100, "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "pin_weight_pct_of_one_does_not_crash",
+      "requires": ["adjustable_pin_weight_pct"],
+      "_note": "Regression case for a real bug, found 2026-08-24 via a combinatorial sweep and fixed in both Python (compute_breakdown) and Kotlin (Breakdown.kt): the axle-reading-estimate branch divides by `1 - pin_weight_pct` - exactly 1.0 (100% of the trailer's weight claimed as tongue weight, physically nonsensical) crashed with ZeroDivisionError in Python; a Kotlin Double doesn't crash on this (silently yields Infinity instead), but it's the same real bug. Fixed by narrowly snapping only the exact 1.0 value to 0.99 - a value *above* 1.0 (e.g. a caller sending a whole-number percentage like 15 instead of the fraction 0.15) is deliberately left alone, since it already fails loud with an obviously-wrong negative result instead of crashing or silently looking plausible.",
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+      "scale": {"steer_axle_lb": 5620, "drive_axle_lb": 9040, "trailer_axle_lb": 11380, "gross_weight_lb": 26040},
+      "pin_weight_pct": 1.0,
+      "expected": {
+        "verdict_status": "fail",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 1138000, "limit_lb": 12500, "pct": 100, "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+        ]
+      }
     }
   ]
 }

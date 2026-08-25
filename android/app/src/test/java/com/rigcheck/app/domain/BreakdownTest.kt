@@ -89,6 +89,21 @@ class BreakdownTest {
         assertTrue(row.note!!.startsWith("Estimated total weight"))
     }
 
+    @Test
+    fun `zero rated limit is treated as not provided, not a false over-limit warning`() {
+        // A real GAWR of exactly 0 lb doesn't exist - an explicit 0 means
+        // "not entered." Regression test: found 2026-08-24 in the Python
+        // original (breakdown.py) via a combinatorial sweep - a null-only
+        // check let a literal 0 through as "sufficient data," then crashed
+        // dividing by that same 0. This port didn't crash (the `limit > 0`
+        // guard on the division already here), but would have silently
+        // reported a false WARNING ("over limit") from the bogus zero
+        // instead of INSUFFICIENT - fixed for parity with breakdown.py.
+        val truck = TRUCK.copy(frontGawrLb = 0.0)
+        val items = computeBreakdown(truck, TRAILER, SCALE)
+        assertEquals(Tone.INSUFFICIENT, item(items, "Front Axle (Steer)").tone)
+    }
+
     // Android-only enhancement (not in tests/test_breakdown.py): dynamic,
     // number-specific explanations on the two rows that sum other rows,
     // matching the 2026-08-17 mockup instead of the Python/web originals'
@@ -164,6 +179,19 @@ class BreakdownTest {
         val row = item(items, "Trailer Total (GVWR)")
         assertEquals("13,388 lb", formatLb(row.actual))
         assertTrue(row.note!!.contains("85% of actual trailer weight"))
+    }
+
+    @Test
+    fun `pin weight pct of exactly one does not produce Infinity`() {
+        // Regression test: found 2026-08-24 in the Python original
+        // (breakdown.py) via a combinatorial sweep - `1 - pinWeightPct` is a
+        // divisor there; exactly 1.0 crashed with ZeroDivisionError. A
+        // Kotlin Double doesn't crash on this (silently yields Infinity
+        // instead), but that's the same real bug, just a different failure
+        // shape - fixed here for parity.
+        val items = computeBreakdown(TRUCK, TRAILER, SCALE, pinWeightPct = 1.0)
+        val row = item(items, "Trailer Total (GVWR)")
+        assertTrue(row.actual.isFinite())
     }
 
     // Predictive standalone-only truck-side estimate (Round 2, implemented

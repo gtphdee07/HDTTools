@@ -83,6 +83,20 @@ def test_custom_pin_weight_pct_changes_the_trailer_axle_reading_estimate():
     assert "85% of actual trailer weight" in total_item["note"]
 
 
+def test_pin_weight_pct_of_exactly_one_does_not_crash():
+    # Regression test: found 2026-08-24 via a combinatorial sweep. The
+    # axle-reading-estimate branch divides by `1 - pin_weight_pct` - exactly
+    # 1.0 (100% of the trailer's weight claimed as tongue weight, physically
+    # nonsensical) crashed with ZeroDivisionError. Reaches here unvalidated
+    # from a real caller too (POST /api/breakdown's pin_weight_pct has no
+    # Pydantic range constraint). Deliberately narrow fix - only this exact
+    # value is guarded; a value *above* 1.0 is untouched on purpose, see
+    # test_api.py::test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage.
+    items = compute_breakdown(_TRUCK, _TRAILER, _SCALE, pin_weight_pct=1.0)
+    total_item = _item(items, "Trailer Total (GVWR)")
+    assert total_item["tone"] in {"success", "warning"}
+
+
 def test_trailer_total_estimates_from_gvwr_when_no_scale_reading_at_all():
     # No scale ticket at all (the pre-purchase/predictive case) - nothing
     # to divide, so fall back to the trailer's rated GVWR instead of the
@@ -223,6 +237,22 @@ def test_standalone_weight_of_zero_is_treated_as_not_provided():
     # the exact-tongue-weight branch (which would wrongly use the full
     # steer+drive reading as "tongue weight").
     assert total_item["actualLabel"] == "14,225 lb"
+
+
+def test_zero_rated_limit_is_treated_as_not_provided_not_crashed_on():
+    # A real GAWR/GVWR of exactly 0 lb doesn't exist - an explicit 0 means
+    # "not entered," the same as standalone_weight_lb's truthy check above.
+    # Regression test: found 2026-08-24 via a combinatorial sweep - the
+    # insufficient check on these fields was `is None` only, so a literal 0
+    # sailed through as "sufficient data," then divided by that same 0
+    # computing pct, crashing with ZeroDivisionError instead of reporting
+    # "Not enough info." Also fixed in the Kotlin port (Breakdown.kt), which
+    # didn't crash (an existing `limit > 0` guard on the division) but would
+    # have silently reported a false "over limit" WARNING from the bogus
+    # zero instead of INSUFFICIENT.
+    truck = {**_TRUCK, "front_gawr_lb": 0}
+    items = compute_breakdown(truck, _TRAILER, _SCALE)
+    assert _item(items, "Front Axle (Steer)")["tone"] == "insufficient"
 
 
 def test_verdict_status_is_never_derived_from_headline_text():

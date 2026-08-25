@@ -18,6 +18,11 @@ const val DEFAULT_PIN_WEIGHT_PCT = 0.20
 
 private fun lb(value: Double?): Double = value ?: 0.0
 
+// A rated limit/GVWR field counts as "provided" only if it's both present
+// and non-zero - matching axleCountProvided/haveStandalone's existing
+// truthy-not-just-null convention below (no real vehicle has a 0 lb rating).
+private fun Double?.isProvided(): Boolean = this != null && this != 0.0
+
 // insufficient: this row's own "do we actually have enough data to check
 // this" flag, checked from the specific source fields it depends on - not
 // inferred from whether actual/limit happen to be 0, which a real 0 lb
@@ -62,6 +67,15 @@ fun computeBreakdown(
     scale: ScaleTicket,
     pinWeightPct: Double = DEFAULT_PIN_WEIGHT_PCT,
 ): List<BreakdownItem> {
+    // `1 - pinWeightPct` is a divisor below (axle-reading-estimate branch) -
+    // exactly 1.0 doesn't crash on a Kotlin Double (silently yields
+    // Infinity instead), but that's the same real bug found 2026-08-24 in
+    // the Python original via a combinatorial sweep (there it crashed
+    // outright with ZeroDivisionError) - fixed here for parity. Values
+    // *above* 1.0 are deliberately left alone, same as the Python fix -
+    // see breakdown.py's matching comment for why.
+    val pinWeightPctSafe = if (pinWeightPct == 1.0) 0.99 else pinWeightPct
+
     val steer = lb(scale.steerAxleLb)
     val drive = lb(scale.driveAxleLb)
     val trailerAxle = lb(scale.trailerAxleLb)
@@ -106,9 +120,9 @@ fun computeBreakdown(
         trailerTotalNote = "Includes an estimated ${formatWholeNumber(tongueWeight)} lb tongue weight " +
             "(steer + drive minus your truck's stand-alone weight)."
     } else if (scale.trailerAxleLb != null) {
-        trailerTotalActual = trailerAxle / (1 - pinWeightPct)
+        trailerTotalActual = trailerAxle / (1 - pinWeightPctSafe)
         trailerTotalNote = "Estimated total weight — assumes the axle reading is " +
-            "${formatWholeNumber((1 - pinWeightPct) * 100)}% of actual trailer weight; " +
+            "${formatWholeNumber((1 - pinWeightPctSafe) * 100)}% of actual trailer weight; " +
             "enter your truck's stand-alone weight for an exact figure."
         trailerTotalEstimated = true
     } else {
@@ -136,11 +150,11 @@ fun computeBreakdown(
         truckTotalActual = steer + drive
         truckTotalNote = towVehicleTotalNote(steer, drive, truckGvwr)
     } else if (haveStandalone) {
-        val truckTongueWeightEstimate = trailerTotalActual * pinWeightPct
+        val truckTongueWeightEstimate = trailerTotalActual * pinWeightPctSafe
         truckTotalActual = standaloneWeight + truckTongueWeightEstimate
         truckTotalNote = "Estimated total weight — includes an estimated " +
             "${formatWholeNumber(truckTongueWeightEstimate)} lb tongue weight " +
-            "(${formatWholeNumber(pinWeightPct * 100)}% of the trailer's estimated total); " +
+            "(${formatWholeNumber(pinWeightPctSafe * 100)}% of the trailer's estimated total); " +
             "enter a real hitched scale reading for an exact figure."
         truckTotalEstimated = true
     } else {
@@ -148,18 +162,28 @@ fun computeBreakdown(
         truckTotalNote = null
     }
 
-    val towVehicleInsufficient = truckTotalActual == null || truck.gvwrLb == null
-    val trailerTotalInsufficient = trailer.gvwrLb == null
-    val combinedInsufficient = scale.grossWeightLb == null || truck.gvwrLb == null || trailer.gvwrLb == null
+    // A rated limit of exactly 0 means "not entered," not "really rated for
+    // zero" - no real vehicle has a 0 lb GAWR/GVWR - same truthy-not-just-
+    // null reasoning as axleCountProvided/haveStandalone above. Real bug
+    // found 2026-08-24 in the Python original via a combinatorial sweep: a
+    // null-only check let an explicit 0 rated limit through as "sufficient
+    // data." Python's own division by that 0 crashed outright; here the
+    // `row.limit > 0` guard below stopped it from crashing, but it would
+    // still have silently produced a false WARNING ("over limit") tone from
+    // bogus zero data instead of INSUFFICIENT - fixed for parity.
+    val towVehicleInsufficient = truckTotalActual == null || !truck.gvwrLb.isProvided()
+    val trailerTotalInsufficient = !trailer.gvwrLb.isProvided()
+    val combinedInsufficient =
+        scale.grossWeightLb == null || !truck.gvwrLb.isProvided() || !trailer.gvwrLb.isProvided()
 
     val rows = listOf(
         Row(
             "Front Axle (Steer)", steer, frontGawr, null,
-            scale.steerAxleLb == null || truck.frontGawrLb == null,
+            scale.steerAxleLb == null || !truck.frontGawrLb.isProvided(),
         ),
         Row(
             "Rear Axle (Drive)", drive, rearGawr, null,
-            scale.driveAxleLb == null || truck.rearGawrLb == null,
+            scale.driveAxleLb == null || !truck.rearGawrLb.isProvided(),
         ),
         Row(
             "Tow Vehicle Total (GVWR)",
@@ -171,7 +195,7 @@ fun computeBreakdown(
         ),
         Row(
             "Trailer Axle(s)", trailerAxle, gawrPerAxle * axleCount, axleCountNote,
-            scale.trailerAxleLb == null || trailer.gawrPerAxleLb == null,
+            scale.trailerAxleLb == null || !trailer.gawrPerAxleLb.isProvided(),
         ),
         Row(
             "Trailer Total (GVWR)", trailerTotalActual, trailerGvwr, trailerTotalNote,

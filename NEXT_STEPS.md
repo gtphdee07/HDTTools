@@ -29,6 +29,9 @@ this one.
   findings and closures.
 - `ARCHIVE_EARLY_HISTORY.md` — the earliest (pre-Android) breakdown-logic
   fixes.
+- `ARCHIVE_BREAKDOWN_SWEEP.md` — the structured combinatorial sweep added
+  for `compute_breakdown`/`verdict_for` and the two real crash bugs it
+  found (roadmap item #12).
 
 **Lookup convention**: entries in every archive lead with a bold tag —
 `✅ **Real bug`, `**Decided`, `**Design correction`, `**Fix implemented`,
@@ -171,6 +174,35 @@ reading anything else.
       (`./gradlew updateDaemonJvm --jvm-version=21`, git-committed,
       portable); full story in `REPORT_KOTLIN_DETEKT_TOOLCHAIN.md`.
 
+11. ✅ **Real-photo OCR robustness investigation: Tesseract vs. Claude
+    vision — closed 2026-08-24.** 10 real photos of the same physical
+    Ford tow-vehicle tag, one clear shot plus 9 at varying angle/shadow/
+    sun-glare quality (`ExampleDocs/scans/truck/f150/`), run through both
+    backends this project maintains. Found two real, different-shaped
+    gaps — Tesseract needs a crop it never gets, Claude vision doesn't
+    need one but has zero real-photo test coverage today. Full narrative
+    in `ARCHIVE_WEB_STREAMLIT.md`; no test code added this session (see
+    "Tests still outstanding" below for what's deferred).
+
+12. ✅ **Structured combinatorial sweep for `compute_breakdown`/
+    `verdict_for` — closed 2026-08-24.** New
+    `tests/test_breakdown_combinatorial_sweep.py`: `itertools.product`
+    over the known present/absent/zero/boundary value classes already
+    implied by the code (378 combinations), asserting invariants (never
+    crashes, tone/status always a valid enum member, `estimated` never
+    leaks on an insufficient row, `pct` stays in `[0, 100]`) rather than
+    exact values, which the existing hand-written/golden-vector tests
+    already cover. Found **two real bugs**, both fixed on Python and
+    Kotlin with regression tests on both plus two new shared golden-vector
+    cases (`zero_rated_limit_is_insufficient_not_a_crash`,
+    `pin_weight_pct_of_one_does_not_crash` in
+    `test-vectors/breakdown_cases.json`): an explicit `0` rated limit
+    crashed Python with `ZeroDivisionError` (Kotlin: silently produced a
+    false "over limit" warning instead); `pin_weight_pct` of exactly
+    `1.0` crashed Python the same way (Kotlin: silently produced
+    `Infinity`) - both reachable from a real, unvalidated caller
+    (`POST /api/breakdown`). Full narrative in `ARCHIVE_BREAKDOWN_SWEEP.md`.
+
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see
 `ARCHIVE_MONETIZATION.md`); Web hosting/deployment (deferred by your own
@@ -186,10 +218,22 @@ behind this. Most items that used to live in this section are now either
 done (moved to the roadmap above as ✅ entries) or captured as roadmap
 items #4-#9 above — check there first.
 
-Nothing currently outstanding beyond what's already tracked in the
-roadmap above (the truck/trailer real-photo OCR gap that used to be
-listed here was closed by item #6's `test_real_photo_ocr_accuracy.py`,
-2026-08-24).
+- **A real Claude-vision regression test** using the F-150 photo set
+  (`ExampleDocs/scans/truck/f150/`, 10 real photos + one ground truth) —
+  unlocks once this project decides where a real-money-per-run test
+  belongs (an External-tier equivalent for Python, which doesn't have
+  one today; scan-proxy's `test-release.ps1`/`test-weekly.ps1` are the
+  existing pattern). See item #11 and `ARCHIVE_WEB_STREAMLIT.md` for why
+  this is worth doing — 9/10 real photos extracted perfectly via
+  `vision_client.py`/`truck_tag.py`, and that path currently has *zero*
+  real-photo test coverage (`test_vision_client.py`/
+  `test_readers_integration.py` both fully mock `extract_via_claude`).
+- **Tesseract's no-auto-crop limitation** (item #11) — needs either an
+  auto-crop/tag-isolation preprocessing step in `ocr_common.py`, or
+  documented in-app guidance telling users to photograph just the tag
+  closely, before Tesseract-path OCR can handle a realistic, un-cropped
+  phone photo. Not started; no test exists for this yet either, since
+  there's no fix to regress-test against.
 
 Full historical detail for everything that used to be tracked here
 (sanity/daily tier builds, real bugs found while testing, per-platform
@@ -268,6 +312,14 @@ On a machine that hasn't run this before:
     review form at all, so this doesn't block anything — only 4 fields per
     document actually surface in the UI: manufacturer + the 3 weight
     figures).
+  - **The Tesseract path needs a tight, isolated crop of just the tag —
+    confirmed 2026-08-24 (item #11)**: a realistic, un-cropped phone
+    photo (the tag as one region within a wider dashboard/door-jamb
+    shot) fails to extract *any* of the three weight fields, regardless
+    of lighting/angle quality — `preprocess_image()` never crops, and
+    `--psm 6` can't isolate the tag's text from surrounding visual
+    clutter. The Claude-vision path (`vision_client.py`) does not share
+    this limitation — see `ARCHIVE_WEB_STREAMLIT.md`.
 - **No mobile layout, no drag-and-drop upload** on the web app (click-to-
   browse file input only) — matches the original design handoff's stated
   scope. (The native Android app is the mobile answer instead.)

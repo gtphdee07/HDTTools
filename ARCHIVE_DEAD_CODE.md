@@ -109,22 +109,31 @@ already correctly recognized `main.tsx` and the Worker's `index.ts` as
 real entry points without any manual config. Both `npm run
 check:dead-code` commands exit clean (0 findings) as of this writing.
 
-## 🔶 Android: `detekt` deferred - a real plugin/JDK incompatibility, 2026-08-24
+## ✅ Android: `detekt` stood up, 3 real fixes, zero genuine dead code found, 2026-08-24
 
-Attempted `detekt` 1.23.8 (latest stable) as a Gradle plugin, scoped
-narrow (private-visibility rules only). Hit a real, reproducible crash —
-detekt's bundled Kotlin compiler doesn't recognize this machine's JDK 25
-— that a `jdkHome`-toolchain workaround didn't actually fix (a real gap
-in detekt's Gradle plugin API, not a config mistake). All detekt-related
-changes were fully reverted (`git status` confirmed clean) rather than
-left half-working. Python (`vulture`) and Web/`scan-proxy` (`knip`) above
-are unaffected and fully done.
+Added `detekt` 1.23.8 as a Gradle plugin, scoped narrow to
+`UnusedPrivateMember`/`UnusedImports` (`buildUponDefaultConfig = false`
++ a minimal `android/app/detekt.yml`, confirmed empirically to exclude
+detekt's ~40 other default-active `style` rules). First attempt hit a
+real, reproducible crash — detekt's analysis runs in-process inside the
+Gradle daemon's own JVM, which didn't recognize this machine's JDK 25 —
+that neither a `jdkHome`-toolchain workaround nor a project-level
+`jvmToolchain()` pin actually fixed (both confirmed, in a scratch repo,
+not to redirect the daemon's own JVM). The real fix:
+`./gradlew updateDaemonJvm --jvm-version=21`, which regenerated the
+project's already-existing, git-committed
+`android/gradle/gradle-daemon-jvm.properties` — fully portable, no
+manual per-machine setup. Real findings against all 45 Kotlin files: 3
+genuine unused imports (`ScanOrManualChooser.kt`, `DisclaimerScreen.kt`,
+`TruckTagEntryScreen.kt`), each spot-checked before removal. Full
+regression sweep passed clean (Minor 31/31, Major 39/39,
+`./gradlew detekt` clean). Python (`vulture`) and Web/`scan-proxy`
+(`knip`) above are unaffected.
 
 This turned into its own substantial investigation (real error traces,
-Maven Central version checks, a `dev.detekt` alpha finding, and a full
-options/tradeoffs discussion covering downgrading Android Studio vs.
-pinning a Gradle toolchain vs. adopting alpha software) — written up as
-its own standalone report rather than inline here, since it's a side
-effort with its own proposed test plan, not part of this sweep's own
-scope: **`REPORT_KOTLIN_DETEKT_TOOLCHAIN.md`** (repo root). Current
-status tracked in `NEXT_STEPS.md` item #10.
+Maven Central version checks, a `dev.detekt` alpha finding not
+ultimately needed, and a full options/tradeoffs discussion) — written up
+as its own standalone report rather than inline here:
+**`REPORT_KOTLIN_DETEKT_TOOLCHAIN.md`** (repo root), including a dated
+"✅ Resolved" section with the real fix. Current status tracked in
+`NEXT_STEPS.md` item #10.

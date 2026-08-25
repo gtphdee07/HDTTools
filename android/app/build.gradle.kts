@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.detekt)
 }
 
 android {
@@ -53,6 +54,16 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+// Dead-code sweep (roadmap item #10) - scoped narrow to the
+// private-visibility rules the sweep actually needs, not a general lint
+// adoption. Requires the Gradle daemon's own JVM to be JDK <=22 (see
+// DEV_ENVIRONMENT.md's detekt gotcha) - detekt's analysis runs in-process
+// in that JVM, so nothing set here can redirect it.
+detekt {
+    buildUponDefaultConfig = false
+    config.setFrom(files("$projectDir/detekt.yml"))
 }
 
 // An idle/sleeping emulator screen makes instrumented Compose tests fail

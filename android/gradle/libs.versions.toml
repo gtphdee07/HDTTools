@@ -17,6 +17,7 @@ okhttp = "5.5.0"
 mockk = "1.14.3"
 kotlinxCoroutinesTest = "1.10.2"
 uiautomator = "2.3.0"
+detekt = "1.23.8"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -49,4 +50,5 @@ androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomato
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 

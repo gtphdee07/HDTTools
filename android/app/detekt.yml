@@ -1,0 +1,10 @@
+# Scoped narrow to roadmap item #10's dead-code sweep - only the two
+# private-visibility/dead-code rules, not a general lint adoption.
+# buildUponDefaultConfig = false in build.gradle.kts means nothing else
+# in detekt's default ruleset runs (verified empirically in the
+# scratch-repo experiment - see REPORT_KOTLIN_DETEKT_TOOLCHAIN.md).
+style:
+  UnusedPrivateMember:
+    active: true
+  UnusedImports:
+    active: true

@@ -243,3 +243,70 @@ project, to be picked up in a future session:
    this file should get a dated "✅ Resolved" section added (per this
    project's own pruning convention: append, don't silently delete the
    original investigation), not be rewritten from scratch.
+
+## ✅ Resolved, 2026-08-24
+
+The test plan above ran in a scratch Android module at
+`G:\ClaudeScratch\detekt-toolchain\` (targeted, cheapest-first: try the
+most likely fix and stop on success, rather than a full matrix sweep).
+The proposed solution's *direction* (pin the build to a specific JDK)
+was right, but its proposed *mechanism* — `kotlin { jvmToolchain(21) }`
+— turned out to be wrong, and the real, simpler fix was found instead.
+
+**What the scratch trials actually showed**: `kotlin { jvmToolchain(21) }`
+does **not** fix the crash — confirmed by adding it, then removing it
+again, with identical pass/fail either way. This makes sense in
+hindsight and matches the earlier `jdkHome`-on-the-Detekt-task finding
+above: `detekt`'s analysis runs **in-process inside the Gradle daemon's
+own JVM**, not a separately forked process. Nothing that only configures
+a project/task-level toolchain can redirect that — only pinning the JVM
+that runs Gradle itself works. Confirmed with a real positive control:
+detekt correctly flagged an intentionally-unused private function
+(`[UnusedPrivateMember]`) once the daemon's own JVM was JDK 21, using
+`detekt` 1.23.8 — the existing latest-stable version, no alpha software
+needed.
+
+**The real fix**: this project's Android build already used Gradle's
+"Daemon JVM criteria" feature — a git-committed
+`android/gradle/gradle-daemon-jvm.properties` file (present since the
+project's very first Android commit, `149d7a0`), which pins exactly
+which JVM the daemon runs under and auto-provisions it via the same
+foojay resolver already proven working in this investigation. It was
+simply pinned to JDK 25 (whatever was ambient when the file was first
+generated). Re-running:
+
+```
+./gradlew updateDaemonJvm --jvm-version=21
+```
+
+regenerated that file pinned to JDK 21 instead, with real per-platform
+foojay download URLs baked in. This is fully portable — no manual
+per-machine setup, unlike an earlier intermediate step in this
+investigation that used `org.gradle.java.home` in a machine-specific,
+uncommitted `gradle.properties` (superseded once this mechanism was
+found; not part of the final fix). No project-level `jvmToolchain()`,
+no task-level `jdkHome`/`jvmTarget` override — none of that was needed
+once the daemon's own JVM was correctly pinned via the committed file.
+
+**Applied to the real repo**: `detekt` 1.23.8 added to `android/app`,
+scoped narrow to the two rules the dead-code sweep actually needs
+(`UnusedPrivateMember`, `UnusedImports`) via `buildUponDefaultConfig =
+false` plus a minimal `android/app/detekt.yml` — confirmed empirically
+in the scratch project that this combination fires *only* those two
+rule types, not the ~40 other rules active by default in detekt's
+`style` ruleset alone (an early scratch trial with
+`buildUponDefaultConfig = true` had also flagged `FunctionOnlyReturningConstant`,
+real evidence of exactly the scope creep this sweep was meant to avoid).
+
+Ran for real against all 45 Kotlin files in `android/app`: 3 genuine
+unused imports found (`ScanOrManualChooser.kt`, `DisclaimerScreen.kt`,
+`TruckTagEntryScreen.kt`), each spot-checked via `grep` before removal
+to confirm no other reference existed in its file, then removed.
+`./gradlew detekt` now runs clean. Full regression sweep passed for
+real: `./gradlew test` (Minor, 31/31), `./gradlew connectedDebugAndroidTest`
+(Major, 39/39 on the `medium_phone` emulator), `dashboard.svg`
+regenerated correctly.
+
+Roadmap item #10's Android leg is closed. See `DEV_ENVIRONMENT.md`'s
+detekt gotcha for the mechanism summary kept alongside the other
+machine/build notes.

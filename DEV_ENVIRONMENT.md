@@ -18,6 +18,13 @@ via `Get-Command`/`where`.
 - Android Studio: `G:\Android\AndroidStudio` — its bundled JDK is
   `G:\Android\AndroidStudio\jbr`, already set as the machine's
   `JAVA_HOME` env var, so `gradlew` just works with no extra setup.
+- The Gradle *daemon's own* JVM is separately pinned to JDK 21 via
+  `android/gradle/gradle-daemon-jvm.properties` (git-committed, real
+  per-platform foojay download URLs baked in by
+  `./gradlew updateDaemonJvm --jvm-version=21`) — auto-provisions on any
+  machine, no manual setup needed. See the detekt gotcha below for why
+  this exists; it's separate from the `JAVA_HOME` env var above, which
+  only affects the wrapper's own bootstrap launcher.
 - `adb`: `G:\Android\Sdk\platform-tools\adb.exe`
 - `emulator`: `G:\Android\Sdk\emulator\emulator.exe`
 - The one configured AVD: **`medium_phone`**
@@ -127,3 +134,15 @@ npm run deploy             # wrangler deploy
   task already handles this automatically for
   `connectedDebugAndroidTest`, but if you're driving `adb`/the emulator
   directly for something else, wake it first.
+- **Why `android/gradle/gradle-daemon-jvm.properties` is pinned to JDK
+  21, not left on this machine's ambient JDK 25**: `detekt` 1.23.8's
+  analysis runs in-process inside the Gradle daemon's own JVM, and that
+  JVM doesn't recognize JDK 25 (`IllegalArgumentException: 25.0.2`, real
+  trace in `REPORT_KOTLIN_DETEKT_TOOLCHAIN.md`). Neither a project-level
+  Kotlin toolchain pin (`jvmToolchain()`) nor the Detekt task's own
+  `jdkHome` property fixes this — both were tried and confirmed not to
+  work, since neither actually redirects the daemon's own JVM; only
+  Gradle's own "Daemon JVM criteria" file does. This is portable and
+  needs no per-machine setup — `./gradlew` reads the committed
+  `gradle-daemon-jvm.properties` and auto-downloads a matching JDK 21 via
+  foojay on first use, same as it did on this machine.

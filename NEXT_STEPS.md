@@ -165,13 +165,11 @@ reading anything else.
       4 real findings total, all the same "genuinely used but
       unnecessarily `export`ed" shape, fixed by tightening visibility
       (no deletions needed). Zero genuine dead code found.
-    - 🔶 Android: **blocked, deferred** — `detekt` crashes on this
-      machine's JDK 25, a real Gradle-plugin/JDK incompatibility, not a
-      config mistake. Full investigation, options considered, and the
-      proposed fix (a Gradle toolchain pin, needs a scratch-repo
-      experiment first) written up in
-      `REPORT_KOTLIN_DETEKT_TOOLCHAIN.md` — a side effort, not yet
-      executed.
+    - ✅ Android: `detekt` 1.23.8, scoped to `UnusedPrivateMember`/
+      `UnusedImports` — 3 real findings (unused imports), fixed. Needed
+      a real fix for a Gradle daemon/JDK25 incompatibility first
+      (`./gradlew updateDaemonJvm --jvm-version=21`, git-committed,
+      portable); full story in `REPORT_KOTLIN_DETEKT_TOOLCHAIN.md`.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see

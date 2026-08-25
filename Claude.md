@@ -18,6 +18,13 @@ This project uses `uv` for Python and dependency management. Do not use standard
     interaction/module/interface test categories, and the Minor/Major
     regression-scoping rules for deciding which suites a change needs to
     run.
+  - **Test-Driven Development is required for all new code and bug
+    fixes**: write a failing test before the implementation (or the fix),
+    watch it fail for real, then write the minimum code to pass it. See
+    `TDD_METHODOLOGY.md` for the full workflow, with real per-product-line
+    commands/conventions (Python, Web, Android, `scan-proxy`) — `TESTING.md`
+    still governs how the resulting tests get categorized (Minor/Major/
+    External) and run, a related but separate concern.
 
 ## Asking Questions
 Any time a question is being posed to the user — clarifying an ambiguous
@@ -106,7 +113,8 @@ not "how did we get here." Keep it current every session:
   verification detail — lives in the topic archive that matches the
   work, never inline in `NEXT_STEPS.md`. Current archives:
   `ARCHIVE_ANDROID.md`, `ARCHIVE_TESTING.md`, `ARCHIVE_MONETIZATION.md`,
-  `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_EARLY_HISTORY.md`.
+  `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_EARLY_HISTORY.md`,
+  `ARCHIVE_DEAD_CODE.md`, `ARCHIVE_BREAKDOWN_SWEEP.md`.
 - Target detail level: a real account of what was tried, what broke,
   and why the fix works — not a full transcript, but enough to
   reconstruct the reasoning later without re-deriving it. This is

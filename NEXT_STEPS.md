@@ -204,8 +204,9 @@ reading anything else.
     (`POST /api/breakdown`). Full narrative in `ARCHIVE_BREAKDOWN_SWEEP.md`.
 
 13. 🔶 **Constrained-random real-image regression testing for OCR/vision
-    extraction — designed 2026-08-25, pass-pool schema/resolver built.**
-    Full design in
+    extraction — designed 2026-08-25, core design (pass-pool, fail-pool,
+    interface-contract suite) all built and passing for real.** Full
+    design in
     `FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md`: a "pass-pool" (real
     images randomly selected at test time, resolved against per-vehicle
     golden truth — a failure means a real extraction-API regression), a
@@ -255,9 +256,18 @@ reading anything else.
     "Tesseract's no-auto-crop limitation" test gap this file used to
     track as "no test exists for this yet." Re-run 5x to confirm
     stability across different random picks from the 10-image pool;
-    full suite clean (543 passed, 3 xfailed). **Still not started**:
-    the interface-contract suite and manufacturer-diversity growth
-    (both pools cover only the Ford/Brinkley pairing today).
+    full suite clean (543 passed, 3 xfailed). **Interface-contract
+    suite done, 2026-08-25** — per the FUTURE doc's own scoping
+    decision, this needed no new code: `DEV_ENVIRONMENT.md` now
+    documents the combined command
+    (`uv run pytest -q tests/test_pass_pool_regression.py
+    tests/test_fail_pool_regression.py -v`), run for real to confirm it
+    works, with a note to re-run it a few times on a real dependency
+    bump since each run samples one random image per pool/doc_type.
+    All three core pieces of item #13's design are now done. **Still
+    not started**: manufacturer-diversity growth (both pools cover only
+    the Ford/Brinkley pairing today) and the Android
+    inherit-vs-duplicate decision.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see

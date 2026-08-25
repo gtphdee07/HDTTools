@@ -93,6 +93,20 @@ why): `~/.streamlit/credentials.toml` (`email = ""`) and
 `~/.streamlit/config.toml` (`gatherUsageStats = false`,
 `server.headless = true`).
 
+**OCR extraction interface-contract check** (item #13,
+`FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md`) — run whenever Tesseract,
+Claude, or an OCR-adjacent library version changes. Manually triggered,
+no automation, by design:
+
+```bash
+uv run pytest -q tests/test_pass_pool_regression.py tests/test_fail_pool_regression.py -v
+```
+
+Each run samples one random real image per doc_type per pool — re-run
+this a few times on a real dependency bump for broader coverage (the
+fail-pool's `truck_tag` vehicle alone has 10 images to cycle through
+today).
+
 ## Web (`web/`)
 
 - Node: `C:\Program Files\nodejs\node.exe` (v24.19.0 as of 2026-08-24)

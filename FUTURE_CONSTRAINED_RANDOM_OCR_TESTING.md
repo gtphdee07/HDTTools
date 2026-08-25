@@ -268,9 +268,23 @@ against.
    the multi-image-per-vehicle case the pass-pool's schema supports but
    doesn't yet have real data for); full suite clean, 543 passed / 3
    xfailed.
-5. **Not yet started, in dependency order**:
-   - The interface-contract suite (depends on both pools existing —
-     both now do).
+5. ✅ **Done, 2026-08-25 — the interface-contract suite.** Per this
+   doc's own scoping decision above (a documented command, not new
+   automation or new test code), `DEV_ENVIRONMENT.md`'s "Python /
+   backend / Streamlit" section now documents the combined command:
+   ```bash
+   uv run pytest -q tests/test_pass_pool_regression.py tests/test_fail_pool_regression.py -v
+   ```
+   Run for real to confirm it works (4 passed, both pools together in
+   one invocation), with a note to re-run it a few times on a real
+   dependency bump for broader coverage, since each run samples one
+   random image per pool/doc_type. Confirmed with the project owner
+   directly that this minimal, documentation-only scope was correct
+   rather than building a new exhaustive-sweep script — consistent with
+   this doc's own "manual trigger only, no automation" scoping decision
+   above. All three core pieces of this design (pass-pool, fail-pool,
+   interface-contract suite) are now done.
+6. **Not yet started**:
    - Manufacturer-diversity growth of both pools (both cover only the
      Ford/Brinkley pairing today).
    - The Android inherit-vs-duplicate decision (still open, see above).

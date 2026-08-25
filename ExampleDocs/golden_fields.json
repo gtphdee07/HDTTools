@@ -54,6 +54,21 @@
       }
     }
   },
+  "pass_pool": {
+    "_readme": "Groups already-defined 'photos' entries above by real vehicle, keyed by doc_type, so scripts/pass_pool.py can pick one image at random per component (truck/trailer/scale - see FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md item #13) and still resolve the exact golden truth for whichever image got picked. Every filename listed in an 'images' array must already have a 'photos' entry above with a matching doc_type - this section is a membership index, not a second copy of field data, so golden values can never drift between the two. A pass-pool image doesn't have to be perfect on every field, only already-understood: the resolver returns the image's full 'photos' entry, so a documented known_ocr_limitations field still xfails the same way tests/test_real_photo_ocr_accuracy.py already handles it. Today each vehicle has exactly one image (AddieTag.jpg, GooseTag.jpg) - the schema's 'images' list exists so a future vehicle with many photos of the same physical tag can share one golden-truth entry across all of them, without duplicating fields per photo.",
+    "truck_tag": [
+      {
+        "vehicle": "f150_blue_goose",
+        "images": ["AddieTag.jpg"]
+      }
+    ],
+    "trailer_tag": [
+      {
+        "vehicle": "brinkley_goose",
+        "images": ["GooseTag.jpg"]
+      }
+    ]
+  },
   "rigs": [
     {
       "name": "addie_and_goose",

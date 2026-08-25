@@ -204,7 +204,8 @@ reading anything else.
     (`POST /api/breakdown`). Full narrative in `ARCHIVE_BREAKDOWN_SWEEP.md`.
 
 13. 🔶 **Constrained-random real-image regression testing for OCR/vision
-    extraction — designed 2026-08-25, not started.** Full design in
+    extraction — designed 2026-08-25, pass-pool schema/resolver built.**
+    Full design in
     `FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md`: a "pass-pool" (real
     images randomly selected at test time, resolved against per-vehicle
     golden truth — a failure means a real extraction-API regression), a
@@ -217,10 +218,22 @@ reading anything else.
     dated-snapshot pin — verified via Anthropic's real `/v1/models` list
     that the current model generation has no dated variant at all (only
     superseded generations do), so there was nothing to fix there.
-    **Agreed starting point**: design the pass-pool fixture schema +
-    minimal random-selection mechanism, Python only, using
-    `AddieTag.jpg`/`GooseTag.jpg` (already real, already
-    confirmed-passing, no new photos needed) — not yet started.
+    **Pass-pool schema + resolver done, 2026-08-25**: `golden_fields.json`
+    gained a `pass_pool` section grouping existing `"photos"` entries by
+    real vehicle per doc_type (`truck_tag` → `f150_blue_goose` →
+    `AddieTag.jpg`; `trailer_tag` → `brinkley_goose` → `GooseTag.jpg`) —
+    a membership index only, no duplicated field data, so golden values
+    can't drift between the two sections. `scripts/pass_pool.py`'s
+    `resolve_pass_pool_image(doc_type, rng=...)` picks one registered
+    image at random and returns its full `"photos"` entry (fields + any
+    `known_ocr_limitations`, carried through rather than stripped —
+    `GooseTag.jpg`'s digit-drop limitation still resolves with it).
+    TDD'd in `tests/test_pass_pool.py` (written first, watched fail with
+    `ModuleNotFoundError`, then made to pass). **Still not started**:
+    steps 2-4 — an actual pass-pool regression test consuming this
+    resolver against real Tesseract, the fail-pool, the
+    interface-contract suite, and manufacturer-diversity growth (both
+    pools have exactly one image per vehicle today).
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see

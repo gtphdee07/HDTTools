@@ -193,25 +193,50 @@ downscaling path (`PhotoEncoding.kt`) is independently suspected to
 matter. Not resolved; revisit once Python's version exists to compare
 against.
 
-## Agreed starting point — not yet started
+## Agreed starting point
 
-1. **Design the pass-pool fixture schema.** Per-vehicle golden values +
-   a marked "confirmed-passing" image pool, structured so a randomly
-   resolved image can be mapped back to its golden values at test time.
-   Python only. Zero new photos needed — `ExampleDocs/AddieTag.jpg`
-   (truck) and `ExampleDocs/GooseTag.jpg` (trailer) are already real,
-   already confirmed-passing under Tesseract today (per
-   `tests/test_real_photo_ocr_accuracy.py`), and can prove the schema
-   design before any new fixture-collection work happens.
-2. **Build a minimal random-selection test mechanism** reading that
-   schema — a real, working, small first version, not the full pool
-   (which only has one image per vehicle today anyway).
-3. Then, in dependency order: the fail-pool (parallel structure, once
-   the pass-pool's shape is proven), the interface-contract suite
-   (depends on both pools existing), manufacturer-diversity growth of
-   both pools, and the Android inherit-vs-duplicate decision.
-
-This was interrupted before entering Plan Mode for step 1 (a session
-compaction intervened) — pick up a future session by starting there,
-directly, rather than re-deriving the purpose/architecture discussion
-above from scratch.
+1. ✅ **Done, 2026-08-25 — pass-pool fixture schema.**
+   `ExampleDocs/golden_fields.json` gained a `pass_pool` section: doc_type
+   → list of `{vehicle, images}` groups, where every filename must already
+   have a `"photos"` entry with a matching doc_type. Deliberately a
+   *membership index*, not a second copy of field data — the resolver
+   looks the filename back up in `"photos"` at resolve time, so golden
+   values live in exactly one place. Today: `truck_tag` → `f150_blue_goose`
+   → `["AddieTag.jpg"]`; `trailer_tag` → `brinkley_goose` →
+   `["GooseTag.jpg"]`. `scale_ticket` deliberately not populated yet — a
+   scale ticket is a weighing *event* tied to one specific truck+trailer
+   pairing (see `golden_fields.json`'s own `"rigs"` docstring), not a
+   persistent physical tag the way a truck/trailer tag is, so "group by
+   vehicle" doesn't map cleanly yet; left for when the fail-pool/
+   interface-contract work actually needs a scale entry.
+   One real design decision resolved along the way: `GooseTag.jpg` has a
+   known digit-drop limitation on one field (`gawr_per_axle_lb`), so it
+   isn't a *perfect* real-OCR match — included anyway, since the
+   resolver returns the image's full `"photos"` entry (fields *and* any
+   `known_ocr_limitations`), letting a future pass-pool test xfail that
+   one field the same way `tests/test_real_photo_ocr_accuracy.py`
+   already does, rather than requiring pool membership to mean
+   zero-limitation.
+2. ✅ **Done, 2026-08-25 — minimal random-selection mechanism.**
+   `scripts/pass_pool.py`'s `resolve_pass_pool_image(doc_type,
+   rng=None)` — a standalone module (like `scripts/coverage_lib.py`),
+   not part of the `hdttools` app package, since this is test
+   infrastructure, not application code. Takes an optional seeded
+   `random.Random` for deterministic tests; an unseeded call is what a
+   real pass-pool regression test would use to get "different answers
+   back... versus the same ones, all the time." TDD'd in
+   `tests/test_pass_pool.py` — written first, watched fail for real
+   (`ModuleNotFoundError: No module named 'pass_pool'`), then made to
+   pass. Full suite (`uv run pytest -q`) confirmed clean afterward:
+   539 passed, 3 xfailed.
+3. **Not yet started, in dependency order**:
+   - An actual pass-pool *regression test* consuming this resolver
+     against real Tesseract (the resolver exists; nothing calls it
+     against real OCR yet — `tests/test_pass_pool.py` only proves the
+     schema/resolver mechanics with mocked-free but OCR-free assertions).
+   - The fail-pool (parallel structure, once a first pass-pool
+     regression test proves the shape end-to-end).
+   - The interface-contract suite (depends on both pools existing).
+   - Manufacturer-diversity growth of both pools (both have exactly one
+     image per vehicle today).
+   - The Android inherit-vs-duplicate decision (still open, see above).

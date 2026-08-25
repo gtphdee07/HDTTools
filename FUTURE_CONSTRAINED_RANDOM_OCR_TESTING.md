@@ -229,13 +229,24 @@ against.
    (`ModuleNotFoundError: No module named 'pass_pool'`), then made to
    pass. Full suite (`uv run pytest -q`) confirmed clean afterward:
    539 passed, 3 xfailed.
-3. **Not yet started, in dependency order**:
-   - An actual pass-pool *regression test* consuming this resolver
-     against real Tesseract (the resolver exists; nothing calls it
-     against real OCR yet — `tests/test_pass_pool.py` only proves the
-     schema/resolver mechanics with mocked-free but OCR-free assertions).
-   - The fail-pool (parallel structure, once a first pass-pool
-     regression test proves the shape end-to-end).
+3. ✅ **Done, 2026-08-25 — the first real pass-pool regression test.**
+   `tests/test_pass_pool_regression.py`, parametrized over `doc_type`
+   (read dynamically from `golden_fields.json`'s `pass_pool` keys, so a
+   new doc_type needs no new test code). Per doc_type: resolves one
+   image with an **unseeded** `random.Random()` (real randomness, not
+   the seeded determinism `test_pass_pool.py` uses to keep its own
+   assertions stable), runs it through the real Tesseract pipeline, and
+   asserts `mismatched fields == documented known_ocr_limitations` —
+   one invariant that flags both directions of drift: a new mismatch is
+   a real regression, a previously-limited field suddenly matching is a
+   real improvement worth updating `golden_fields.json` for. Run
+   several times for real to rule out flakiness in the random-pick path
+   (today trivially stable, since each doc_type has exactly one pool
+   image) — passed clean every time; full suite (`uv run pytest -q`)
+   also clean, 541 passed / 3 xfailed.
+4. **Not yet started, in dependency order**:
+   - The fail-pool (parallel structure, now that a first pass-pool
+     regression test has proven the shape end-to-end).
    - The interface-contract suite (depends on both pools existing).
    - Manufacturer-diversity growth of both pools (both have exactly one
      image per vehicle today).

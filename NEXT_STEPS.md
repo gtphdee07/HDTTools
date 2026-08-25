@@ -229,11 +229,16 @@ reading anything else.
     `known_ocr_limitations`, carried through rather than stripped —
     `GooseTag.jpg`'s digit-drop limitation still resolves with it).
     TDD'd in `tests/test_pass_pool.py` (written first, watched fail with
-    `ModuleNotFoundError`, then made to pass). **Still not started**:
-    steps 2-4 — an actual pass-pool regression test consuming this
-    resolver against real Tesseract, the fail-pool, the
-    interface-contract suite, and manufacturer-diversity growth (both
-    pools have exactly one image per vehicle today).
+    `ModuleNotFoundError`, then made to pass). **First real regression
+    test done, 2026-08-25**: `tests/test_pass_pool_regression.py` calls
+    the resolver with an *unseeded* `Random()`, runs real Tesseract, and
+    asserts the mismatched-field set equals the documented
+    `known_ocr_limitations` set (catching drift in either direction —
+    a new mismatch or an unexpected improvement) — run for real (not
+    assumed) several times to rule out flakiness in the random-pick
+    path; passed clean every time. **Still not started**: the
+    fail-pool, the interface-contract suite, and manufacturer-diversity
+    growth (both pools have exactly one image per vehicle today).
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see

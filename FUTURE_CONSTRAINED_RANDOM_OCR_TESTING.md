@@ -244,10 +244,33 @@ against.
    (today trivially stable, since each doc_type has exactly one pool
    image) — passed clean every time; full suite (`uv run pytest -q`)
    also clean, 541 passed / 3 xfailed.
-4. **Not yet started, in dependency order**:
-   - The fail-pool (parallel structure, now that a first pass-pool
-     regression test has proven the shape end-to-end).
-   - The interface-contract suite (depends on both pools existing).
-   - Manufacturer-diversity growth of both pools (both have exactly one
-     image per vehicle today).
+4. ✅ **Done, 2026-08-25 — the fail-pool.** Reuses item #11's 10 F-150
+   photos (still on disk at `ExampleDocs/scans/truck/f150/`, never
+   re-added to `"photos"` — see that item's "document, don't build"
+   finding: all 10 fail identically for one structural reason, not a
+   per-field quirk `"photos"`/`known_ocr_limitations` was designed
+   for). New self-contained `fail_pool` section in `golden_fields.json`
+   (no reference into `"photos"` needed, unlike `pass_pool` — the
+   golden truth here *is* the failure signature: `expected_none_fields:
+   ["manufacturer", "gvwr_lb", "front_gawr_lb", "rear_gawr_lb"]`,
+   confirmed for real against all 10 photos, not assumed).
+   `scripts/fail_pool.py`'s `resolve_fail_pool_image` mirrors
+   `pass_pool.py`'s shape exactly. `tests/test_fail_pool_regression.py`
+   TDD'd (watched fail with `ModuleNotFoundError` before the module
+   existed), and proves two things: the `None` signature still holds
+   under real Tesseract, and it still funnels into
+   `compute_breakdown`/`verdict_for`'s real `"insufficient"`/"Not
+   Enough Information" path — generalizing
+   `test_blank_rig_reports_not_enough_information_not_a_false_pass`'s
+   hand-written `{}` case to a real garbled-OCR photo, per this doc's
+   own fail-pool design above. Re-run 5x to confirm stability across
+   different random picks from the 10-image pool (a real exercise of
+   the multi-image-per-vehicle case the pass-pool's schema supports but
+   doesn't yet have real data for); full suite clean, 543 passed / 3
+   xfailed.
+5. **Not yet started, in dependency order**:
+   - The interface-contract suite (depends on both pools existing —
+     both now do).
+   - Manufacturer-diversity growth of both pools (both cover only the
+     Ford/Brinkley pairing today).
    - The Android inherit-vs-duplicate decision (still open, see above).

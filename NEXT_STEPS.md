@@ -236,9 +236,28 @@ reading anything else.
     `known_ocr_limitations` set (catching drift in either direction —
     a new mismatch or an unexpected improvement) — run for real (not
     assumed) several times to rule out flakiness in the random-pick
-    path; passed clean every time. **Still not started**: the
-    fail-pool, the interface-contract suite, and manufacturer-diversity
-    growth (both pools have exactly one image per vehicle today).
+    path; passed clean every time. **Fail-pool done, 2026-08-25**:
+    reuses the 10 F-150 photos from item #11 (still on disk at
+    `ExampleDocs/scans/truck/f150/`, never re-added to `"photos"`) as a
+    self-contained `fail_pool` section in `golden_fields.json` — unlike
+    `pass_pool`, no reference into `"photos"` needed, since the golden
+    truth here *is* the failure signature itself (`expected_none_fields:
+    ["manufacturer", "gvwr_lb", "front_gawr_lb", "rear_gawr_lb"]`,
+    confirmed for real against all 10 photos, not assumed).
+    `scripts/fail_pool.py`'s `resolve_fail_pool_image` mirrors
+    `pass_pool.py`'s shape. `tests/test_fail_pool_regression.py`
+    (TDD'd — watched fail with `ModuleNotFoundError` before the module
+    existed) proves both that the `None` signature still holds under
+    real Tesseract, and that it funnels into `compute_breakdown`'s real
+    `"insufficient"`/"Not Enough Information" path — generalizing
+    `test_blank_rig_reports_not_enough_information_not_a_false_pass`'s
+    hand-written `{}` case to a real garbled-OCR photo, closing the
+    "Tesseract's no-auto-crop limitation" test gap this file used to
+    track as "no test exists for this yet." Re-run 5x to confirm
+    stability across different random picks from the 10-image pool;
+    full suite clean (543 passed, 3 xfailed). **Still not started**:
+    the interface-contract suite and manufacturer-diversity growth
+    (both pools cover only the Ford/Brinkley pairing today).
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see
@@ -267,10 +286,15 @@ items #4-#9 above — check there first.
   auto-crop/tag-isolation preprocessing step in `ocr_common.py`, or
   documented in-app guidance telling users to photograph just the tag
   closely, before Tesseract-path OCR can handle a realistic, un-cropped
-  phone photo. Not started; no test exists for this yet either, since
-  there's no fix to regress-test against. Still a real, separate gap —
-  item #13's design doesn't fix this, it tests around it (the pass-pool
-  only uses images already known to work).
+  phone photo. The fix itself is still not started — still a real,
+  separate gap. ✅ **Test now exists, 2026-08-25**: item #13's fail-pool
+  (`tests/test_fail_pool_regression.py`) tests *around* this limitation
+  rather than fixing it — it reuses the same 10 F-150 photos to prove
+  the app degrades gracefully to "Not Enough Information" instead of
+  silently accepting garbage, which is what a regression test can prove
+  without a fix in hand. It would need updating (not removing) once an
+  actual auto-crop/guidance fix ships, since some of these 10 photos
+  would then be expected to start succeeding.
 
 Full historical detail for everything that used to be tracked here
 (sanity/daily tier builds, real bugs found while testing, per-platform

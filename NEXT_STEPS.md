@@ -203,6 +203,25 @@ reading anything else.
     `Infinity`) - both reachable from a real, unvalidated caller
     (`POST /api/breakdown`). Full narrative in `ARCHIVE_BREAKDOWN_SWEEP.md`.
 
+13. 🔶 **Constrained-random real-image regression testing for OCR/vision
+    extraction — designed 2026-08-25, not started.** Full design in
+    `FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md`: a "pass-pool" (real
+    images randomly selected at test time, resolved against per-vehicle
+    golden truth — a failure means a real extraction-API regression), a
+    "fail-pool" (known-illegible images with an expected failure
+    signature, testing the graceful-degradation path), and an
+    interface-contract suite spanning both, manually run whenever
+    Tesseract/Claude/a library changes (no automated trigger — the user
+    is the event, by explicit choice). Real correction along the way:
+    `vision_client.py`'s `claude-sonnet-5` does **not** need a
+    dated-snapshot pin — verified via Anthropic's real `/v1/models` list
+    that the current model generation has no dated variant at all (only
+    superseded generations do), so there was nothing to fix there.
+    **Agreed starting point**: design the pass-pool fixture schema +
+    minimal random-selection mechanism, Python only, using
+    `AddieTag.jpg`/`GooseTag.jpg` (already real, already
+    confirmed-passing, no new photos needed) — not yet started.
+
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see
 `ARCHIVE_MONETIZATION.md`); Web hosting/deployment (deferred by your own
@@ -218,22 +237,22 @@ behind this. Most items that used to live in this section are now either
 done (moved to the roadmap above as ✅ entries) or captured as roadmap
 items #4-#9 above — check there first.
 
-- **A real Claude-vision regression test** using the F-150 photo set
-  (`ExampleDocs/scans/truck/f150/`, 10 real photos + one ground truth) —
-  unlocks once this project decides where a real-money-per-run test
-  belongs (an External-tier equivalent for Python, which doesn't have
-  one today; scan-proxy's `test-release.ps1`/`test-weekly.ps1` are the
-  existing pattern). See item #11 and `ARCHIVE_WEB_STREAMLIT.md` for why
-  this is worth doing — 9/10 real photos extracted perfectly via
-  `vision_client.py`/`truck_tag.py`, and that path currently has *zero*
-  real-photo test coverage (`test_vision_client.py`/
-  `test_readers_integration.py` both fully mock `extract_via_claude`).
+- ✅ **Superseded 2026-08-25** by item #13's fuller design: the real
+  Claude-vision regression test idea below is now the "pass-pool" piece
+  of `FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md`, with a concrete agreed
+  starting point — see that file rather than treating this bullet as the
+  current plan.
+  - ~~A real Claude-vision regression test using the F-150 photo set —
+    unlocks once this project decides where a real-money-per-run test
+    belongs (an External-tier equivalent for Python).~~
 - **Tesseract's no-auto-crop limitation** (item #11) — needs either an
   auto-crop/tag-isolation preprocessing step in `ocr_common.py`, or
   documented in-app guidance telling users to photograph just the tag
   closely, before Tesseract-path OCR can handle a realistic, un-cropped
   phone photo. Not started; no test exists for this yet either, since
-  there's no fix to regress-test against.
+  there's no fix to regress-test against. Still a real, separate gap —
+  item #13's design doesn't fix this, it tests around it (the pass-pool
+  only uses images already known to work).
 
 Full historical detail for everything that used to be tracked here
 (sanity/daily tier builds, real bugs found while testing, per-platform

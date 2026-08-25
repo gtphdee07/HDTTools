@@ -11,6 +11,20 @@ This project uses `uv` for Python and dependency management. Do not use standard
 - Always use the local project virtual environment (`.venv`).
 - When writing scripts, execute them using `uv run` so dependencies are auto-resolved.
 
+## Human-Written Content
+
+Some files contain content the user has written by hand, marked with
+`<!-- HUMAN-WRITTEN ... -->` / `<!-- END HUMAN-WRITTEN -->` HTML comments.
+Never edit, remove, reformat, retranslate, or move text between these
+markers, for any reason — including a file regeneration, a formatting
+cleanup, or an otherwise-unrelated edit that happens to touch the same
+file. Treat it as immutable, human-owned content; if a change genuinely
+requires touching content around it, edit only outside the markers and
+leave the marked block byte-for-byte untouched. `README.md`'s opening
+block (a personal note from the project owner) is the first use of this
+convention — apply the same rule to any other file that adopts the same
+markers in the future, without needing a new instruction here each time.
+
 ## Coding Preferences
  - The preference is for application code to be constructed using Python libraries, versus Claude skills. It is fine to use skills in Chat to create proofs of concepts, or to create test benches against the Python code, but the application should not require an ANTHROPIC_API_KEY to execute.
   - All coding modules should also have an automated test for each function.

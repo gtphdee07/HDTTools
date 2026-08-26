@@ -120,7 +120,54 @@ not "how did we get here." Keep it current every session:
   conversation, since that doesn't survive a machine switch.
 - If the file is approaching ~300 lines, sweep it: confirm every ✅ item
   is actually collapsed, and consider whether a topic needs its own new
-  archive split (as happened 2026-08-23).
+  archive split (as happened 2026-08-23). See "Sweeping fully-closed
+  items out entirely" below for the safe procedure — a collapsed item
+  is not automatically safe to delete outright; other files may still
+  cite it by number.
+
+### Sweeping fully-closed items out entirely
+Collapsing an item (above) is always safe. Deleting a collapsed item's
+line from the roadmap entirely is a separate, riskier step — other
+files may reference it by number (`item #N`, `roadmap item #N`), and
+deleting it out from under them leaves those references dangling. Do
+not delete a numbered item without this check, in order:
+
+1. Confirm the item is already collapsed and its full narrative
+   genuinely lives in an `ARCHIVE_*.md` file — never delete an item
+   whose only record of what happened would disappear with it.
+2. `Grep` every `.md` file in the repo (not just `NEXT_STEPS.md`) for
+   the item's citation form (`item #N`, `roadmap item #N`).
+3. Sort every hit into two buckets:
+   - **Frozen files** (`ARCHIVE_*.md`, `ClaudePlans/*.md`) — leave
+     untouched. A stale forward-reference in a frozen historical record
+     is expected and fine; these files capture what was true when
+     written, not what's true now.
+   - **Living files** (any actively-maintained doc — `TESTING.md`
+     variants and similar) — fix these, don't just note them:
+     - A "see `NEXT_STEPS.md` item #N" pointer: redirect it to name the
+       actual `ARCHIVE_*.md` file directly. `NEXT_STEPS.md`'s own line
+       was never the source of truth, only a pointer to one, so this
+       loses nothing.
+     - A bare attribution like "(roadmap item #N)": redirect the same
+       way, or drop the item-number citation outright if an archive
+       reference already appears nearby in the same passage — don't
+       stack two pointers at the same target.
+4. Re-run the repo-wide grep from step 2 and confirm zero remaining
+   living-doc citations before deleting the item's `NEXT_STEPS.md` line.
+5. Leave a numbering gap afterward — don't renumber the remaining items
+   just to stay sequential (there's already precedent for non-sequential
+   numbering, e.g. "4a"). Renumbering risks silently breaking a citation
+   step 2 didn't catch.
+6. If an item is still cited by number from a living doc and chasing
+   down every citation isn't worth it right now, collapse its
+   `NEXT_STEPS.md` content further instead of deleting it outright —
+   keeping the number stable costs nothing, and most of the length
+   savings come from shrinking text, not removing entries.
+7. `NEXT_STEPS.md`'s own "History archives" section carries a standing
+   disclaimer that a roadmap item number cited elsewhere but missing
+   from the current list was closed and archived — grep the archives
+   for it. Keep that disclaimer present; it's the safety net for
+   whatever a given sweep's grep still misses.
 
 ### Archive discipline (`ARCHIVE_*.md`)
 - Full narrative — bug writeups, gotchas, design decisions, real

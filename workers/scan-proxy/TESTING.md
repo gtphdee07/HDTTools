@@ -7,7 +7,7 @@ back up doesn't require reading every test file cold. It's a reference
 for current state — see `ARCHIVE_TESTING.md` (repo root) for the
 narrative history (when each category was built, what bugs were found
 along the way, why specific design choices were made). **Retired
-2026-08-24 (roadmap item #9)**: this file used to describe its own
+2026-08-24**: this file used to describe its own
 Sanity/Daily/Weekly/Release tiers as a second axis alongside Minor/
 Major — see the root `TESTING.md`'s "Event-based tiers, not
 time-cadence tiers" section for why that's now one axis, not two.
@@ -22,7 +22,8 @@ time-cadence tiers" section for why that's now one axis, not two.
 | **External (direct-provider-boundary)** | 🟡 built, needs your local secrets to run | event-driven — before pushing a major update to the Play Store, not a fixed cadence; also diff-driven, same trigger as above | real, against RevenueCat/Anthropic directly | `.\test-release.ps1` (`-SkipKeys` to allow skipping) |
 
 (Command names — `test:sanity`, `test-release.ps1` — are unrenamed this
-pass; see `NEXT_STEPS.md` item #9 for the deferred mechanical rename.
+pass; see `ARCHIVE_TESTING.md` for the full narrative on the deferred
+mechanical rename.
 `test-weekly.ps1` is new 2026-08-24, roadmap item #7 — a thin wrapper
 around the previously-bare `npm run test:weekly`, added so this suite's
 real result can be recorded for the README dashboard; see the root
@@ -100,8 +101,8 @@ All tiers are run manually — there is no CI in this repo.
 
 ## Coverage
 
-Real coverage for the Major suite, wired up 2026-08-24 (roadmap item #9)
-via Node's own built-in `--experimental-test-coverage` flag — no
+Real coverage for the Major suite, wired up 2026-08-24 (see
+`ARCHIVE_TESTING.md`) via Node's own built-in `--experimental-test-coverage` flag — no
 third-party dependency needed:
 
 ```bash
@@ -128,7 +129,7 @@ to `test-results/junit-major.xml`/`test-results/junit-minor.xml`
 
 ## Dead code
 
-`knip` is a dev dependency (roadmap item #10, added 2026-08-24):
+`knip` is a dev dependency (added 2026-08-24, see `ARCHIVE_DEAD_CODE.md`):
 
 ```bash
 npm run check:dead-code

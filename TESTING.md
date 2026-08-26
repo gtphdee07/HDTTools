@@ -221,7 +221,7 @@ uncovered by either approach as of this writing.
 
 ## Event-based tiers, not time-cadence tiers
 
-Retired 2026-08-24 (roadmap item #9): `android/TESTING.md` used to
+Retired 2026-08-24 (full narrative in `ARCHIVE_TESTING.md`): `android/TESTING.md` used to
 describe its own Unit/Daily/Weekly tiers and `workers/scan-proxy/TESTING.md`
 its own Sanity/Daily/Weekly/Release tiers, coexisting alongside Minor/
 Major as a second, independent axis (a test's network-dependency

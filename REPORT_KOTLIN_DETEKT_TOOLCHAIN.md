@@ -1,8 +1,7 @@
 # Report: detekt vs. JDK 25 — a real Gradle-plugin/JDK incompatibility
 
-Written 2026-08-24, during roadmap item #10's dead-code sweep (see
-`NEXT_STEPS.md` item #10 for current status, `ARCHIVE_DEAD_CODE.md` for
-the sweep's other, unaffected platforms). This is a standalone report,
+Written 2026-08-24, during the dead-code sweep (closed — see
+`ARCHIVE_DEAD_CODE.md` for the sweep's other, unaffected platforms). This is a standalone report,
 not part of the main `ARCHIVE_*.md` chain, because it turned into a
 side investigation with its own proposed fix and its own not-yet-executed
 test plan — a reader doesn't need any other file's context to follow this

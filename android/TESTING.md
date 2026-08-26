@@ -20,8 +20,9 @@ names changed.
 | **Major (instrumented, offline)** | ✅ built | a Major change (public-interface/new-library) touching UI/navigation | none (no `Purchases.configure()`) | `./gradlew connectedDebugAndroidTest` |
 | **External (instrumented, real RevenueCat)** | ✅ built | event-driven: before pushing a major update to the Play Store, not a calendar cadence; also diff-driven whenever a Major change touches boundary-calling code (`RevenueCatManager.kt`) | real, bounded, dedicated test customer (`weekly-test-user`) | `.\test-weekly.ps1` |
 
-(Command names — `test-weekly.ps1` etc. — are unrenamed this pass;
-see `NEXT_STEPS.md` item #9 for the deferred mechanical rename.)
+(Command names — `test-weekly.ps1` etc. — are unrenamed this pass; see
+`ARCHIVE_TESTING.md` for the full narrative on the deferred mechanical
+rename.)
 
 The Major-suite instrumented category runs with `CustomTestRunner`
 (`android/app/src/androidTest/java/com/rigcheck/app/CustomTestRunner.kt`),
@@ -67,8 +68,9 @@ do that, so any account-balance top-up via a real purchase has to happen
 here, not in any scan-proxy test), a real scan against the deployed
 Worker (using a copy of `ExampleDocs/AddieTag.jpg` at
 `android/app/src/androidTest/assets/AddieTag.jpg`) decrementing it by
-exactly 1, and (added 2026-08-23, roadmap item #5) two real scans sharing
-one `client_request_id` decrementing it by exactly 1 total, not 2 —
+exactly 1, and (added 2026-08-23, see `ARCHIVE_MONETIZATION.md`) two
+real scans sharing one `client_request_id` decrementing it by exactly
+1 total, not 2 —
 proving the Worker's idempotency-key wiring actually dedupes against real
 RevenueCat, not just fake deps. **Real cost per full run**: two real
 ~$0.01 Claude calls (the scan case and the duplicate-idempotency-key
@@ -323,8 +325,8 @@ infrastructure the External suite below depends on:
   - `realDuplicateScanWithSameClientRequestIdSpendsOnce` — calls
     `ScanApiClient.scan(...)` twice with the same explicit
     `clientRequestId`, asserts both succeed, then asserts the balance
-    dropped by exactly 1 total (not 2) — the hands-on proof for roadmap
-    item #5's Gap B, run once against the not-yet-redeployed Worker
+    dropped by exactly 1 total (not 2) — the hands-on proof for Gap B,
+    run once against the not-yet-redeployed Worker
     first (genuinely failed, 2 deductions — confirmed the fix needed a
     real `wrangler deploy`, not just a local code change) and again
     after deploying (passed for real). Full narrative in

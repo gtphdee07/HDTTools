@@ -13,7 +13,7 @@ included, since `tsconfig.app.json`'s `include` is just `["src"]`.
 ## Event-based tiers
 
 Per the root `TESTING.md`'s Minor/Major/External model (retired
-2026-08-24, roadmap item #9): this suite has never tagged a fast subset,
+2026-08-24 — full narrative in `ARCHIVE_TESTING.md`): this suite has never tagged a fast subset,
 so today a full `npm test` run covers both **Minor** and **Major**
 undifferentiated — documented honestly here rather than inventing a
 split that doesn't exist. Scoping which specific test files a given
@@ -26,7 +26,7 @@ directly, so that category is N/A for this platform, not a gap.
 
 ## Coverage
 
-Real coverage, wired up 2026-08-24 (roadmap item #9) via
+Real coverage, wired up 2026-08-24 (see `ARCHIVE_TESTING.md`) via
 `@vitest/coverage-v8`:
 
 ```bash
@@ -51,7 +51,7 @@ item #7, new 2026-08-24): `npm run test:report` runs the same suite as
 
 ## Dead code
 
-`knip` is a dev dependency (roadmap item #10, added 2026-08-24):
+`knip` is a dev dependency (added 2026-08-24, see `ARCHIVE_DEAD_CODE.md`):
 
 ```bash
 npm run check:dead-code

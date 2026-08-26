@@ -1,8 +1,15 @@
 # Future: constrained-random real-image regression testing for OCR/vision extraction
 
-Written 2026-08-25. Parked-topic doc, same shape as
-`FUTURE_API_SCHEMA_VALIDATION.md` — a design worked out in full, not yet
-built. See `NEXT_STEPS.md` item #13 for current status.
+Written 2026-08-25, originally a parked-topic doc in the same shape as
+`FUTURE_API_SCHEMA_VALIDATION.md` (a design worked out in full, not yet
+built) — **updated same day**: most of this design is now built and
+verified for real (pass-pool, fail-pool, interface-contract suite,
+directory-convention auto-discovery, and Android's own duplicate
+pass-pool/fail-pool — see the "Agreed starting point" list below for
+exactly what's done vs. still open). Kept as a design-reference doc
+rather than folded entirely into `NEXT_STEPS.md`, since the reasoning
+behind each decision here is worth more than a one-line summary. See
+`NEXT_STEPS.md` item #13 for the current terse status line.
 
 ## How this started
 
@@ -36,7 +43,7 @@ anyone would hand-write." This is an Interaction/integration-level
 question, not a Function-level one, in this repo's own `TESTING.md`
 taxonomy.
 
-## Three architecture pieces (all designed, none built)
+## Three architecture pieces (all designed, all built — see "Agreed starting point" below)
 
 ### 1. Pass-pool — random selection with resolvable golden truth
 
@@ -349,7 +356,17 @@ theoretical one.
    this doc's own "manual trigger only, no automation" scoping decision
    above. All three core pieces of this design (pass-pool, fail-pool,
    interface-contract suite) are now done.
-6. **Not yet started**:
-   - Manufacturer-diversity growth of both pools (both cover only the
-     Ford/Brinkley pairing today).
-   - The Android inherit-vs-duplicate decision (still open, see above).
+6. ✅ **Done, 2026-08-25 — directory-convention auto-discovery**
+   (`scripts/vehicle_discovery.py`) **and the Android inherit-vs-duplicate
+   decision** (Android duplicates, builds its own pass-pool/fail-pool —
+   see "Cross-platform scope" and "Manufacturer/format diversity
+   priority" above for full detail on both, including the real
+   Haiku-4.5-vs-Sonnet-5 bug this decision immediately caught).
+7. **Still open**:
+   - Actually adding new manufacturer/format photos to the Python pools
+     — the growth mechanism itself is done (step 6 above), but no real
+     Chevy/other-manufacturer photos exist yet to drop into it.
+   - Growing Android's own pass-pool/fail-pool past its two initial
+     fixtures — the other 9 F-150 photos item #11 found Claude reads
+     correctly under `claude-sonnet-5` are ready-made, zero-new-photography
+     pass-pool material, not yet added.

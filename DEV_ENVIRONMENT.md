@@ -27,7 +27,15 @@ via `Get-Command`/`where`.
   only affects the wrapper's own bootstrap launcher.
 - `adb`: `G:\Android\Sdk\platform-tools\adb.exe`
 - `emulator`: `G:\Android\Sdk\emulator\emulator.exe`
-- The one configured AVD: **`medium_phone`**
+- The one configured AVD: **`medium_phone`**, stored at
+  `G:\Android\EmulatorHome\avd\medium_phone.avd` (env var
+  `ANDROID_AVD_HOME=G:\Android\EmulatorHome\avd`) — moved off the C:
+  drive for the same space-constraint reason `Claude.md`'s "System Tool
+  Installs" rule flags. A stale, unused `medium_phone.avd` folder is
+  still sitting at the old default location
+  (`C:\Users\Angela\.android\avd\`) — harmless leftover, not the one
+  actually in use; safe to delete next time that's convenient, not
+  urgent.
 
 ```powershell
 # List AVDs (confirms the SDK path and the AVD name above are still real)

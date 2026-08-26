@@ -292,10 +292,77 @@ reading anything else.
     instead: copies `CatScale-GooseOnly.jpg`'s real bytes into an
     isolated `tmp_path` tree, proving `resolve_pass_pool_image` and real
     Tesseract both work against a directory-discovered vehicle
-    end-to-end. Full suite clean (554 passed, 3 xfailed). **Still not
-    started**: actually adding new manufacturer/format photos (the
-    mechanism is ready; no new real photos exist yet) and the Android
-    inherit-vs-duplicate decision.
+    end-to-end. Full suite clean (554 passed, 3 xfailed). **Android
+    decision made and built, 2026-08-25: duplicate, not inherit** —
+    Android builds its own real Claude-vision pass-pool/fail-pool rather
+    than trusting Python's (Tesseract-only) pools to stand in for it,
+    specifically to exercise `PhotoEncoding.kt`'s real resize/compress
+    path (1600px long edge, JPEG quality 85), which the one existing
+    real-vision test (`realScanDecrementsBalance`) deliberately bypasses
+    and never golden-value-checks. New `ScanFixturePool` (TDD'd,
+    `android/app/src/androidTest/java/com/rigcheck/app/testsupport/`)
+    mirrors `scripts/vehicle_discovery.py`'s directory convention against
+    `androidTest/assets/scans/...`. Two new `PaywallScreenWeeklyTest.kt`
+    cases (`scanPassPoolRandomPickMatchesGoldenFields`,
+    `scanFailPoolRandomPickReturnsNullForMissingFields`) run the real
+    pipeline end-to-end and passed for real via `.\test-weekly.ps1`
+    (6/6 tests). **This immediately caught a real, previously-unknown bug
+    — see item #15.** Full narrative in `android/TESTING.md`/
+    `ARCHIVE_MONETIZATION.md`. **Still not started**: actually adding new
+    manufacturer/format photos on the Python side (the mechanism is
+    ready; no new real photos exist yet), and growing Android's own
+    pools past the two initial fixtures (the other 9 F-150 photos item
+    #11 found Claude reads correctly under `claude-sonnet-5` are
+    ready-made, zero-new-photography pass-pool material for Android, not
+    yet added).
+
+15. ✅ **Real bug: the deployed Worker was pinned to an unreliable model
+    for label extraction — found 2026-08-25, fixed same day.** Found by
+    item #13's new Android pass-pool test, not assumed:
+    `workers/scan-proxy/src/claude.ts` used `claude-haiku-4-5-20251001`
+    (chosen for cost, ~$0.01/scan vs ~$0.03 on Sonnet 5) — real calls
+    against it returned confident, non-deterministic, **wrong** GVWR/GAWR
+    numbers for `AddieTag.jpg`, the easiest, previously-"known good"
+    fixture in the whole repo (two calls, two different wrong answers).
+    Ruled out a stale deploy first (redeployed, same wrong results,
+    matching this repo's own documented stale-Worker precedent from
+    2026-08-23 — this wasn't that). A direct call to `claude-sonnet-5`
+    with the identical prompt/schema/image got every field exactly
+    right, confirming the model itself was the cause — Python's
+    `vision_client.py` (the basis for item #11's "Claude vision is
+    robust" finding) had always used `claude-sonnet-5`; nobody had
+    validated whether the cheaper model deployed to the actual Worker
+    performed anywhere near as well. Fixed by switching `claude.ts` to
+    `claude-sonnet-5`; scan-proxy's 3 hardcoded-model test assertions
+    updated to match (57/57 pass); redeployed; re-verified for real
+    against both the pass-pool and fail-pool fixtures (now correct).
+    No production impact — confirmed with the project owner that the app
+    isn't deployed/has no real users yet, still in testing/development.
+    Full evidence (the wrong responses, the redeploy ruling out staleness,
+    the Sonnet-5 confirmation call) in `ARCHIVE_MONETIZATION.md`.
+
+16. ⬜ **Build-time OCR-backend choice for Streamlit/web (Tesseract vs.
+    Claude vision) — recorded 2026-08-25, not started.** Real gap in
+    institutional memory, surfaced while designing item #13's Android
+    work: `src/hdttools/truck_tag.py`/`trailer_tag.py`/`scale_ticket.py`
+    already contain a complete, working Claude-vision implementation
+    (via `vision_client.extract_via_claude`) — but nothing in the actual
+    shipped app (Streamlit + the FastAPI backend, both of which import
+    `truck_tag_ocr.py`/`trailer_tag_ocr.py`/`scale_ticket_ocr.py`
+    directly) ever calls it. The original intent, per the project owner
+    directly, was for Streamlit and the web/API backend to each support
+    **either** backend as a **build-time** decision (not a runtime
+    toggle) — that path was dropped somewhere during development and
+    was never recorded anywhere before now (confirmed: zero hits
+    grepping every `.md` file in the repo for this). Does not apply to
+    Android — no local OCR engine is available there, so Android stays
+    Claude-only regardless of what this item decides. Scope of "done":
+    a single build/env-level flag both `src/hdttools/api/main.py` and
+    `streamlit_app/app.py` read to choose Tesseract-style parsing vs.
+    Claude-vision-style parsing per doc_type, plus Minor/Major test
+    coverage for both branches per `TESTING.md`'s existing model, built
+    per `TDD_METHODOLOGY.md`'s TDD requirement. Not designed further
+    than this yet — pick up fresh in a future session.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see

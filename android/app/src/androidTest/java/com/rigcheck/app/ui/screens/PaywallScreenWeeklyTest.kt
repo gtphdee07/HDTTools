@@ -1,5 +1,7 @@
 package com.rigcheck.app.ui.screens
 
+import android.app.Instrumentation
+import android.net.Uri
 import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
@@ -14,17 +16,38 @@ import androidx.test.uiautomator.Until
 import com.rigcheck.app.data.RevenueCatManager
 import com.rigcheck.app.data.ScanApiClient
 import com.rigcheck.app.data.ScanResult
+import com.rigcheck.app.data.encodePhotoForScan
+import com.rigcheck.app.testsupport.AssetFixtureFileSource
+import com.rigcheck.app.testsupport.ScanFixturePool
 import com.rigcheck.app.ui.navigation.EntryModule
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+
+// Reads a fixture image bundled under androidTest assets/scans/... and
+// runs it through the REAL encodePhotoForScan() resize/compress path
+// (PhotoEncoding.kt) - unlike realScanDecrementsBalance below, which
+// deliberately bypasses it. encodePhotoForScan needs a ContentResolver +
+// Uri, so the asset bytes are copied to a real cache file first and
+// opened via a plain file:// Uri (no FileProvider needed for same-process
+// ContentResolver access).
+private fun encodeFixtureImageForScan(instrumentation: Instrumentation, imagePath: String): String {
+    val targetContext = instrumentation.targetContext
+    val bytes = instrumentation.context.assets.open(imagePath).use { it.readBytes() }
+    val tempFile = File(targetContext.cacheDir, "scan_pool_fixture.jpg")
+    tempFile.writeBytes(bytes)
+    return encodePhotoForScan(targetContext.contentResolver, Uri.fromFile(tempFile))
+}
 
 // Weekly-equivalent tier - runs against real RevenueCat Test Store
 // offerings and a real deployed Worker call. test-weekly.ps1 touches a
@@ -189,5 +212,64 @@ class PaywallScreenWeeklyTest {
             balanceBefore - 1,
             balanceAfter,
         )
+    }
+
+    // Item #13's Android pass-pool/fail-pool (NEXT_STEPS.md,
+    // FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md): unlike
+    // realScanDecrementsBalance above (fixed photo, base64-encoded
+    // directly, only checks "fields non-empty"), these two resolve a
+    // random real photo via ScanFixturePool, run it through the real
+    // encodePhotoForScan() resize/compress path, and check real
+    // extracted values against documented golden data - specifically to
+    // catch a regression in Android's own image pipeline
+    // (PhotoEncoding.kt) or the deployed Worker/model that a
+    // non-empty-fields check can't see. Found a real one immediately:
+    // the Worker was pinned to claude-haiku-4-5-20251001, which returned
+    // confident, non-deterministic, WRONG weight values for both
+    // fixtures below - fixed 2026-08-25 by switching to claude-sonnet-5
+    // (see claude.ts). Real cost: two more ~$0.01-0.03 Claude calls per
+    // full run of this class.
+    @Test
+    fun scanPassPoolRandomPickMatchesGoldenFields() = runBlocking {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val source = AssetFixtureFileSource(instrumentation.context.assets)
+        val (imagePath, vehicle) = ScanFixturePool.resolveRandom(source, "pass", "truck_tag")
+
+        val imageBase64 = encodeFixtureImageForScan(instrumentation, imagePath)
+        val result = ScanApiClient.scan(RevenueCatManager.appUserId, EntryModule.TRUCK, imageBase64)
+
+        val success = result as? ScanResult.Success
+        assertNotNull("Expected a successful scan for pass-pool image $imagePath, got: $result", success)
+
+        val fields = requireNotNull(vehicle.fields) { "pass-pool vehicle for $imagePath has no 'fields' to check" }
+        for ((field, expected) in fields) {
+            val actual = success!!.fields[field]?.jsonPrimitive?.doubleOrNull
+            assertEquals("field '$field' for $imagePath", expected.jsonPrimitive.doubleOrNull, actual)
+        }
+    }
+
+    @Test
+    fun scanFailPoolRandomPickReturnsNullForMissingFields() = runBlocking {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val source = AssetFixtureFileSource(instrumentation.context.assets)
+        val (imagePath, vehicle) = ScanFixturePool.resolveRandom(source, "fail", "truck_tag")
+
+        val imageBase64 = encodeFixtureImageForScan(instrumentation, imagePath)
+        val result = ScanApiClient.scan(RevenueCatManager.appUserId, EntryModule.TRUCK, imageBase64)
+
+        val success = result as? ScanResult.Success
+        assertNotNull("Expected a successful (but partial) scan for fail-pool image $imagePath, got: $result", success)
+
+        val expectedNoneFields = requireNotNull(vehicle.expectedNoneFields) {
+            "fail-pool vehicle for $imagePath has no 'expected_none_fields' to check"
+        }
+        for (field in expectedNoneFields) {
+            val actual = success!!.fields[field]
+            assertTrue(
+                "field '$field' for $imagePath used to reliably come back null but now returns $actual - " +
+                    "either a real extraction improvement (promote this photo to the pass-pool) or a real regression",
+                actual == null || actual is kotlinx.serialization.json.JsonNull,
+            )
+        }
     }
 }

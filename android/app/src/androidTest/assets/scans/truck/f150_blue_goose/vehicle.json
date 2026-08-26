@@ -1,0 +1,9 @@
+{
+  "pool": "pass",
+  "fields": {
+    "gvwr_lb": 14000.0,
+    "front_gawr_lb": 6000.0,
+    "rear_gawr_lb": 9900.0
+  },
+  "_note": "Same physical tag/photo as ExampleDocs/AddieTag.jpg (also bundled separately at android/app/src/androidTest/assets/AddieTag.jpg for realScanDecrementsBalance, which is left untouched). Values confirmed for real 2026-08-25 via a direct call to the deployed Worker (POST /v1/scan, doc_type truck_tag) after fixing workers/scan-proxy's model (claude-sonnet-5, not the unreliable claude-haiku-4-5-20251001 it was pinned to before). manufacturer deliberately excluded from 'fields' - Claude returns natural-language phrasing ('Ford Motor Co.') rather than the literal printed text Tesseract's pass-pool checks exactly, so it isn't a byte-exact contract the way the numeric fields are."
+}

@@ -217,20 +217,45 @@ photos (a real Chevy label, an RV tag from a manufacturer other than
 Brinkley). The mechanism is ready for it — drop a folder in, no code
 changes — but no such real photos exist yet.
 
-## Cross-platform scope — open question, not yet decided
+## Cross-platform scope — decided and built, 2026-08-25: duplicate, not inherit
 
-Claude vision itself isn't platform-specific — Python's `vision_client.py`
-and Android's scan feature (via `workers/scan-proxy`) both call the same
-kind of prompt/schema against the same model family. Android already has
-one real Claude-vision test today (`realScanDecrementsBalance`, sending a
-real base64-encoded `AddieTag.jpg` through the real deployed Worker).
-Building the pass-pool/fail-pool in Python first likely answers "does
-the model handle diverse real photos" for Android's scan feature too,
-without needing to duplicate real API spend on both platforms for the
-same underlying question — unless Android's own image-encoding/
-downscaling path (`PhotoEncoding.kt`) is independently suspected to
-matter. Not resolved; revisit once Python's version exists to compare
-against.
+The premise this question was originally weighed against turned out to
+be wrong: the pass-pool/fail-pool actually built in Python this session
+(`scripts/pass_pool.py`/`fail_pool.py`) tests **Tesseract**, not Claude
+vision — Python's production app (Streamlit + FastAPI) never calls
+Claude at all (see `NEXT_STEPS.md` item #16, the separately-recorded
+build-time-switch gap). So there was never a Python Claude-vision path
+for Android to "inherit" from in the first place; Android's real scan
+feature is the *only* live path in this repo that calls Claude vision on
+a real user's photo. Decided: Android builds its **own** real
+pass-pool/fail-pool, specifically to exercise `PhotoEncoding.kt`'s real
+resize/compress path (1600px long edge, JPEG quality 85) that the one
+existing real-vision test (`realScanDecrementsBalance`) deliberately
+bypasses and never golden-value-checks.
+
+**Built and verified for real**: new `ScanFixturePool`
+(`android/app/src/androidTest/java/com/rigcheck/app/testsupport/`,
+TDD'd against a fake `FixtureFileSource` in `ScanFixturePoolTest.kt`)
+mirrors `scripts/vehicle_discovery.py`'s exact directory convention
+against `androidTest/assets/scans/<bucket>/<vehicle_slug>/vehicle.json`.
+Two new cases in `PaywallScreenWeeklyTest.kt`
+(`scanPassPoolRandomPickMatchesGoldenFields`,
+`scanFailPoolRandomPickReturnsNullForMissingFields`) resolve a random
+photo per pool, run it through the real `encodePhotoForScan()` path, and
+check real extracted values — not just "fields non-empty." Passed for
+real via `.\test-weekly.ps1` (6/6 tests).
+
+**This decision paid for itself immediately**: building this test
+surfaced a real, previously-unknown bug on its very first real run — the
+deployed Worker was pinned to `claude-haiku-4-5-20251001` (a cheaper
+model choice never validated against this task), which returned
+confident, wrong GVWR/GAWR values even for `AddieTag.jpg`, the easiest
+fixture in the repo. Fixed by switching to `claude-sonnet-5` (full
+narrative: `NEXT_STEPS.md` item #15, `ARCHIVE_MONETIZATION.md`) — a bug
+that specifically lived in the real deployed configuration, which
+neither Python's direct-Claude path nor a mocked scan-proxy unit test
+could ever have caught. Concrete vindication of "duplicate," not a
+theoretical one.
 
 ## Agreed starting point
 

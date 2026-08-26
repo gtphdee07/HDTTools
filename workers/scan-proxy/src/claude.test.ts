@@ -16,7 +16,7 @@ function messageWithBlocks(content: unknown[]) {
     id: "msg_test",
     type: "message",
     role: "assistant",
-    model: "claude-haiku-4-5-20251001",
+    model: "claude-sonnet-5",
     content,
     stop_reason: "tool_use",
     stop_sequence: null,
@@ -48,7 +48,7 @@ test("[sanity] extracts fields from a matching tool_use block", async (t) => {
 
   assert.deepEqual(fields, { manufacturer: "Ford" });
   assert.equal(capturedUrl, "https://api.anthropic.com/v1/messages");
-  assert.equal(capturedBody?.model, "claude-haiku-4-5-20251001");
+  assert.equal(capturedBody?.model, "claude-sonnet-5");
   assert.deepEqual(capturedBody?.tool_choice, { type: "tool", name: config.toolName });
   assert.equal((capturedBody?.tools as Array<{ name: string }>)[0].name, config.toolName);
 

@@ -271,9 +271,24 @@ real `RigCheckNavHost` + `RigCheckViewModel`, offline via
   disclaimer does *not* reappear on this second checkout in the same
   session.
 
+**Test-support tests** (`testsupport/`) — real-network-free coverage for
+infrastructure the External suite below depends on:
+
+- `ScanFixturePoolTest.kt` — `ScanFixturePool`'s directory-convention
+  discovery (item #13's Android pass-pool/fail-pool, mirroring
+  `scripts/vehicle_discovery.py`'s design), tested against a fake
+  in-memory `FixtureFileSource` rather than a real `AssetManager`. Covers
+  discovering a pass-pool vehicle's `fields`, a fail-pool vehicle's
+  `expected_none_fields`, that pass-pool and fail-pool vehicles for the
+  *same* doc_type stay in separate pools (a real bug caught while writing
+  this — an earlier version mixed them under one map keyed only by
+  doc_type, so a random pick could land on either pool regardless of
+  which one the caller wanted), and fail-loud errors on a malformed
+  sidecar or an image-less vehicle folder.
+
 ### External (instrumented, real RevenueCat) — `.\test-weekly.ps1`
 
-- `PaywallScreenWeeklyTest.kt` — four cases, run under the same
+- `PaywallScreenWeeklyTest.kt` — six cases, run under the same
   `CustomTestRunner` as the Major suite but with the weekly marker file
   set (`weekly-test-user`) — see the category description above:
   - `rendersRealOfferingsFromTestStore` — fetches the real package
@@ -314,6 +329,29 @@ real `RigCheckNavHost` + `RigCheckViewModel`, offline via
     real `wrangler deploy`, not just a local code change) and again
     after deploying (passed for real). Full narrative in
     `ARCHIVE_MONETIZATION.md`.
+  - `scanPassPoolRandomPickMatchesGoldenFields` /
+    `scanFailPoolRandomPickReturnsNullForMissingFields` — item #13's
+    Android pass-pool/fail-pool
+    (`FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md`). Unlike
+    `realScanDecrementsBalance` above, these resolve a random real photo
+    per pool via `ScanFixturePool` (new test-support module,
+    `android/app/src/androidTest/java/com/rigcheck/app/testsupport/`,
+    directory-discovered from `androidTest/assets/scans/<bucket>/
+    <vehicle_slug>/vehicle.json` — same schema as
+    `scripts/vehicle_discovery.py` on the Python side), route it through
+    the *real* `encodePhotoForScan()` resize/compress path
+    (`PhotoEncoding.kt` — deliberately not bypassed, unlike
+    `realScanDecrementsBalance`), and check real extracted field values
+    against documented golden data rather than just "fields non-empty."
+    Found a real bug immediately: the deployed Worker was pinned to
+    `claude-haiku-4-5-20251001`, which returned confident,
+    non-deterministic, wrong GVWR/GAWR values for both fixtures — fixed
+    2026-08-25 by switching `claude.ts` to `claude-sonnet-5`, verified
+    for real against both fixtures after redeploying. Full narrative in
+    `ARCHIVE_MONETIZATION.md`. `ScanFixturePool` itself is TDD'd
+    separately in `ScanFixturePoolTest.kt` (Major suite, fake
+    `FixtureFileSource`, no real network) — see that file for the
+    discovery-logic test cases.
   - Uses `createAndroidComposeRule<ComponentActivity>()`, not the Major
     suite's `createComposeRule()`, since `purchasePackage` needs a real
     `Activity` (`composeRule.activity`).

@@ -400,3 +400,72 @@ before it builds/installs anything. Full detail, including a second,
 unrelated real infrastructure issue (an emulator launcher ANR) found
 while verifying the *other* fix from this same conversation (the
 screen-wake Gradle task), in `ARCHIVE_TESTING.md`.
+
+## 🐛 Real bug: the deployed Worker used the wrong Claude model for label extraction — found and fixed 2026-08-25
+
+Found by item #13's new Android pass-pool test
+(`PaywallScreenWeeklyTest.kt::scanPassPoolRandomPickMatchesGoldenFields`,
+`NEXT_STEPS.md` item #15), while building it — not a pre-existing test,
+a brand-new one that caught something real on its very first real run.
+
+**The setup**: while investigating item #13's Android fail-pool
+candidate (a real F-150 photo item #11 said Claude fails on because the
+top of the tag is outside the frame), a direct call to the deployed
+Worker returned confident, specific — but *wrong* — GVWR/GAWR numbers
+instead of the expected `null`s. Suspecting the same photo might just be
+genuinely ambiguous, `AddieTag.jpg` (the easiest, clearest, previously
+"known good" fixture in the entire repo — the baseline every other
+finding this session has trusted) was checked too, for the first time
+ever against the *actual deployed Worker* rather than Python's direct
+`vision_client.py` call:
+
+```
+Real response (via POST /v1/scan, doc_type truck_tag):
+  gvwr_lb: 6000       (real value: 14000)
+  front_gawr_lb: 2700 (real value: 6000)   -- a second call: 3000
+  rear_gawr_lb: 3300  (real value: 9900)   -- a second call: 3000
+  tire size, VIN: different (and wrong) on each call
+```
+
+Two calls, two different sets of wrong answers, on the single clearest
+photo available — not a hard-photo problem.
+
+**Ruled out first**: a stale deployed Worker (this repo's own documented
+precedent from 2026-08-23, "Follow-up, same day" above — a redeploy step
+was missing from a test script once before). Redeployed for real
+(`npm run typecheck && npm run deploy`), re-tested — same wrong,
+still-varying answers. Not staleness.
+
+**Real root cause, confirmed empirically**: `workers/scan-proxy/src/claude.ts`
+pinned `MODEL = "claude-haiku-4-5-20251001"` — chosen for cost
+(~$0.01/scan vs ~$0.03 on Sonnet 5, per its own now-outdated comment).
+Python's `vision_client.py` (`DEFAULT_MODEL = "claude-sonnet-5"`) —
+the actual basis for item #11's "Claude vision is robust, 9/10 photos
+succeed" finding — had *never* used Haiku. Nobody had ever validated
+the cheaper, actually-deployed model against this task. A direct call to
+`claude-sonnet-5` with the byte-identical prompt/schema/image:
+
+```json
+{"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9900, ...}
+```
+
+Exactly right, matching the physical tag. Confirmed root cause.
+
+**The fix**: `claude.ts`'s `MODEL` constant switched to `claude-sonnet-5`
+(comment updated with this finding); the 3 tests in `claude.test.ts`/
+`index.test.ts` that hardcoded the old model string as an expected value
+updated to match (57/57 scan-proxy tests pass). Redeployed; re-verified
+for real against both fixtures — `AddieTag.jpg` now returns the exact
+correct values, and the F-150 framing-gap photo now correctly returns
+`null` for the fields genuinely outside the frame (matching the system
+prompt's "leave a field null if it is not present" instruction, and
+matching item #11's original — Sonnet-5-based — expectation exactly).
+
+**No production impact**: confirmed directly with the project owner that
+the app isn't deployed and has no real users yet, still in testing/
+development — this was caught before it could ever reach one. Real,
+concrete vindication of the "duplicate, not inherit" decision for
+Android's testing (item #13): the bug lived specifically in the
+Worker's real, deployed configuration, which only a test that actually
+calls the real deployed Worker (not Python's direct-Claude path, and not
+a mocked scan-proxy unit test) could ever have caught.

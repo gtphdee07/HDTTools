@@ -2,10 +2,15 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { DocTypeConfig } from "./docTypes.ts";
 import type { MediaType } from "./types.ts";
 
-// Haiku 4.5 — structured field extraction from a printed label is squarely
-// its use case, and it's the cheapest tier (~$0.01/scan vs ~$0.03 on
-// Sonnet 5). See NEXT_STEPS.md's monetization thread for the cost baseline.
-const MODEL = "claude-haiku-4-5-20251001";
+// Sonnet 5, not the cheaper Haiku 4.5 this used to be pinned to (~$0.01/scan
+// vs ~$0.03) - confirmed for real 2026-08-25 that Haiku 4.5 is not reliable
+// enough for this task: it returned confident, non-deterministic, WRONG
+// GVWR/GAWR numbers for AddieTag.jpg (the easiest, previously-"known good"
+// fixture) on two separate real calls, even with a fresh redeploy ruling out
+// a stale-Worker artifact. A direct call to claude-sonnet-5 with the exact
+// same prompt/schema/image got every field exactly right. See NEXT_STEPS.md
+// item #13 / ARCHIVE_MONETIZATION.md for the full real-call evidence.
+const MODEL = "claude-sonnet-5";
 
 // Must be shorter than Android's own ScanApiClient 60s readTimeout, or a
 // timeout here would never actually fire before the app's own client had

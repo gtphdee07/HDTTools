@@ -1,0 +1,5 @@
+{
+  "pool": "fail",
+  "expected_none_fields": ["manufacturer", "gvwr_lb", "front_gawr_lb", "rear_gawr_lb"],
+  "_note": "Same physical tag as f150_blue_goose (the pass-pool vehicle above) but framed so the top portion - manufacturer/date/GVWR/REAR GAWR lines - is literally outside the photo; only the lower half (tire specs, VIN, barcode) is visible. Confirmed for real 2026-08-25 via a direct call to the deployed Worker after fixing its model to claude-sonnet-5: it correctly returns null for all four fields above rather than guessing, matching the system prompt's 'leave a field null if it is not present' instruction. Copy of ExampleDocs/scans/truck/f150_blue_goose_uncropped/20260824_141545.jpg (that vehicle's Tesseract-based fail-pool entry is unrelated and untouched - Tesseract fails on all 10 of that vehicle's photos for a completely different reason, a framing/no-crop preprocessing gap, not this specific one photo's genuine missing information)."
+}

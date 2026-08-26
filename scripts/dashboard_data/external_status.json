@@ -1,4 +1,10 @@
 {
+  "android": {
+    "weekly": {
+      "passed": true,
+      "timestamp": "2026-08-26T02:21:20Z"
+    }
+  },
   "scan_proxy": {
     "weekly": {
       "passed": true,

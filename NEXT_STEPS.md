@@ -303,7 +303,55 @@ reading anything else.
     Claude-vision-style parsing per doc_type, plus Minor/Major test
     coverage for both branches per `TESTING.md`'s existing model, built
     per `TDD_METHODOLOGY.md`'s TDD requirement. Not designed further
-    than this yet — pick up fresh in a future session.
+    than this yet — pick up fresh in a future session. **Real evidence
+    now exists bearing on this decision** — see item #17's Claude-vision
+    ceiling check (100% correct on every real photo tested, vs. real,
+    unresolved local-OCR limits).
+
+17. 🔶 **BoundOCR: free/local OCR alternative to Claude vision —
+    investigated 2026-08-26/27, real result: doesn't beat Claude vision
+    on tested label styles yet.** New isolated experiment
+    (`src/experiments/BoundOCR/`, TDD-built, no production code touched
+    or imported from beyond `hdttools.ocr_common`/`truck_tag_ocr`) testing
+    whether free/local cropping + OCR can replace the paid Claude-vision
+    pipeline for truck data-plate extraction — the direct follow-up
+    investigation to the Tesseract un-cropped-tag gap below. Two problems
+    tested separately: **localization** (finding the label in the photo)
+    and **recognition** (OCR quality once cropped).
+    - **Localization**: barcode-anchoring (`pyzbar`) ruled out (0/10 real
+      photos decoded, confirmed not a library bug). Contour/quad
+      detection (Canny → `findContours` → `approxPolyDP`), even after
+      adding real perspective correction, hit **three distinct, real
+      failure modes** across two vehicles and three photos: two different
+      wrong-region false positives (a frame artifact; a truck's
+      trailer-hitch hardware picked instead of the label) and an outright
+      no-candidate miss on a clean, well-lit, deliberately retaken photo.
+    - **Recognition**: hand-crop diagnostics (removing localization as a
+      variable) found Tesseract produces near-total garbage on the Ford
+      label's dense print + diagonal security-pattern background
+      regardless of PSM mode, preprocessing, or deskew angle. EasyOCR
+      (PyTorch-based) is dramatically better on the identical crop but
+      still needs a decent crop already, is much slower (~50s model load
+      + ~6s/image on CPU), and crashes on raw full-resolution photos.
+      PaddleOCR is blocked entirely (no Python 3.14 wheels; a claimed
+      workaround from an external source was verified and found not to
+      actually work). On a plainer-labeled second vehicle (GM truck),
+      Tesseract alone got 8/10 fields right hand-cropped — confirming
+      label design/material, not the pipeline, drives most of the
+      difficulty.
+    - **Ceiling check**: real Claude-vision API calls scored 100% correct
+      on every scored field, across the best photo, the worst (rotated
+      90°), and a freshly retaken "good" photo — zero cropping or
+      preprocessing pipeline needed in any case.
+    - **Still open, not yet decided**: fix `locate_label`'s reliability
+      (now backed by 3 documented real failure cases); wire EasyOCR in as
+      a real second BoundOCR pipeline option; or prioritize the manual
+      drag-box crop UI given automated localization's now-repeated real
+      flakiness. No `xfail` was added to hide any of these real results —
+      `uv run pytest src/experiments/BoundOCR/tests -q` honestly reports
+      14 passed, 11 failed. Full narrative, every real number, and the
+      complete decision trail (including the dead ends) in
+      `ClaudePlans/2026-08-26-boundocr-report-session-summary.md`.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see
@@ -334,6 +382,15 @@ captured as roadmap items #7-#8 above — check there first.
   without a fix in hand. It would need updating (not removing) once an
   actual auto-crop/guidance fix ships, since some of these 10 photos
   would then be expected to start succeeding.
+  **Investigated for real, 2026-08-26/27 (item #17, BoundOCR)**:
+  automated auto-crop (contour/quad detection) was built and tested, and
+  failed three separate, real ways across two vehicles; hand-crop
+  diagnostics also showed OCR *recognition* quality — not just
+  cropping — is a real, unresolved bottleneck for this label style
+  (Tesseract near-total garbage regardless of crop quality; EasyOCR
+  better but still blocked by small glyph misreads). The fix is still
+  not shipped — see item #17 for full results and remaining options
+  (fix `locate_label`, wire in EasyOCR, or a manual crop-box UI).
 
 Full historical detail for everything that used to be tracked here
 (sanity/daily tier builds, real bugs found while testing, per-platform

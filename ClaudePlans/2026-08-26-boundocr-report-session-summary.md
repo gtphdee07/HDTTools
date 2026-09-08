@@ -1,4 +1,4 @@
-# BoundOCR Report — Session Summary (2026-08-26, updated 2026-08-27)
+# BoundOCR Report — Session Summary (2026-08-26, updated 2026-08-27, closed 2026-08-29)
 
 Keywords for grep: BoundOCR, contour_quad, locate_label, pyzbar, barcode,
 EasyOCR, PaddleOCR, PaddlePaddle, PaddleX, Tesseract, pytesseract, Claude
@@ -10,7 +10,49 @@ parse_gm_spec_file, parse_gm_fields, cv2, opencv-contrib-python,
 opencv-python-headless, streamlit extra, Python 3.14, onnxruntime,
 transformers, hand-crop, deskew, PSM, security pattern, brushed metal,
 hitch hardware, false positive, degenerate quad, confidence gate,
-f150_good_pic, curly brace, glyph confusion, no-candidate contour.
+f150_good_pic, curly brace, glyph confusion, no-candidate contour,
+closed, decision, Claude-vision-only.
+
+---
+
+## Decision & Closure (2026-08-29)
+
+**Decision: stick with the existing Claude-vision pipeline
+(`hdttools.truck_tag`/`vision_client.extract_via_claude`) for truck
+data-plate OCR going forward. BoundOCR is closed — no further local-OCR
+investigation is planned for now.**
+
+Rationale, in one paragraph: across two vehicles and three separately
+photographed attempts (including a deliberately careful retake aimed at
+ruling out photo quality as the excuse), free/local OCR never beat
+Claude vision and never fully closed the gap to it. Automated
+localization (`locate_label`) failed three distinct ways (two
+wrong-region false positives, one no-candidate miss) and local OCR
+recognition (Tesseract, EasyOCR) was blocked by small, specific,
+non-obviously-fixable glyph confusions even on hand-verified crops.
+Claude vision scored 100% correct on every field, on every photo tested,
+with zero cropping/preprocessing work. The cost/complexity of continuing
+to chase local-OCR accuracy was judged not worth it against an
+already-working paid path.
+
+**What this means for the main codebase**: no production code changes
+are needed or were made — `src/experiments/BoundOCR/` was always
+isolated from `hdttools/` and nothing there was ever wired into the
+shipped app. The experiment's code, tests, and this report are left in
+place as-is (not deleted) as a record of what was tried, in case local
+OCR is ever worth revisiting (e.g. if API costs become a real driver, or
+a label style shows up that's a much better match for local engines than
+the two tested here). Roadmap item #16 (a build-time Tesseract-vs-Claude
+toggle for Streamlit/web) is **not** resolved by this decision one way or
+the other — that item was about giving the *shipped app* a choice of
+backend architecture, a separate question from whether local OCR is
+currently good enough to be one of those choices for truck tags; it's
+left open for a future session to pick up on its own terms.
+
+**Status going forward**: treat BoundOCR as closed/historical. Don't
+re-derive the localization/recognition findings below from scratch in a
+future session — this report is the source of truth for what was tried
+and why it didn't pan out.
 
 ---
 

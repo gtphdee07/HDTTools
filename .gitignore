@@ -25,3 +25,6 @@ android/design/
 
 # Local account-setup/credential-testing scripts, not part of the application
 src/AccountSetup/
+
+# VSCode workspace file (machine-local, not shared project config)
+*.code-workspace

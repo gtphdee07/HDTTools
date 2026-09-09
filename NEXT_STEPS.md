@@ -103,12 +103,21 @@ reading anything else.
      `android/TESTING.md`'s Coverage section for the full per-class
      breakdown; short version: Major already covers most of this
      (`ui.screens` 84%, `ui.components` 89%, `ui.navigation` 81%), with
-     exactly three real, still-open gaps — **`PaywallScreenKt` (45%)**,
+     three real gaps found — **`PaywallScreenKt` (45%)**,
      **`ReferenceImageCardKt` (57%, one gesture-handling lambda at 0%,
      no dedicated test file)**, and **`RigCheckNavHostKt` (80%, but the
      single largest raw missed-instruction count in the whole analysis,
      and real navigation logic this project has already had one real bug
-     in)** — none closed yet, tracked as future work. **Real regression
+     in)**. **All three closed the same day** — see `android/TESTING.md`'s
+     cross-reference subsection for the full before/after and what was
+     added: `RigCheckNavHostKt` 80%→90%, `ReferenceImageCardKt` 57%→100%
+     (its gesture lambda 0%→94%), `PaywallScreenKt` 45%→51% (the rest of
+     that class's gap needs real RevenueCat and is intentionally left to
+     the External suite, not missed). App-wide Major coverage moved
+     71.00%→73.50% as a result (`uv run scripts/coverage_gate.py`, real
+     PASS). Two real test-writing surprises found and fixed while doing
+     this (not production bugs) — full detail in `android/TESTING.md`.
+     **Real regression
      found and fixed, 2026-09-09**: a fresh
      `--refresh` run measured 64.28% — a real `FAIL` against this 71%
      baseline. Root cause, confirmed via the actual per-package JaCoCo

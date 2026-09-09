@@ -150,38 +150,68 @@ Real numbers, gathered 2026-09-09, closing the "not yet done" note that
 used to sit in `NEXT_STEPS.md` item #8. Minor's 0% for all three
 packages is exactly as expected (no unit test targets Compose UI
 directly: `ui.screens` 0/7,095, `ui.components` 0/2,172, `ui.navigation`
-0/1,226 instructions covered) — but Major already closes almost all of
-that gap:
+0/1,226 instructions covered) — but Major already closed almost all of
+that gap, and this same day's follow-up work closed the three remaining
+per-class gaps for real (measured before/after, not estimated):
 
-- **`com.rigcheck.app.ui.screens` — 84%** (1,079/7,095 missed across 18
-  classes; all but one are 83%+). Real gap: **`PaywallScreenKt` at 45%**
-  (469/859 missed) — only `PaywallScreenTest.kt`'s 3 cases (null-balance
-  placeholder, offline error, restore-link presence) exercise it
-  directly in this suite. `PaywallScreenWeeklyTest.kt` (real Test Store
-  purchase flow, see this file's own tier docs) is excluded from Major
-  entirely via `build.gradle.kts`'s
-  `testInstrumentationRunnerArguments["notClass"]` and belongs to the
-  separate External suite instead — so part of this 45% is deliberately
-  tested elsewhere, not simply missing, though that isn't visible from
-  the number alone.
-- **`com.rigcheck.app.ui.components` — 89%** (238/2,172 missed across 7
-  classes; 5 are 94%+, several with no dedicated test file at all,
-  covered only incidentally through the screens that render them — e.g.
-  `LabeledFieldsKt` via every entry-screen test, `ScanOrManualChooserKt`
-  via `ChooserScreenTest`). Real gap: **`ReferenceImageCardKt` at 57%**
-  (148/352 missed), plus its pointer-input gesture lambda
-  (`ReferenceImageCardKt$ReferenceImageCard$2$1`) at a flat **0%**
-  (39/39 missed) — no dedicated test file exists for this component.
-- **`com.rigcheck.app.ui.navigation` — 81%** (223/1,226 missed across 11
-  classes, mostly trivial route/sealed-class boilerplate at 100%). Real
-  gap: **`RigCheckNavHostKt` at 80%** (223/1,140 missed) — the single
-  largest raw missed-instruction count found in this whole analysis.
-  Only `RigCheckNavHostTest.kt`'s 2 cases exist (the full happy-path
-  route, and the 2026-08-18 `onSelectRecentRig` regression test) — real
-  navigation logic this project has already had one real bug in.
+- **`com.rigcheck.app.ui.navigation` — 81% → 91%** (223/1,226 → 108/1,226
+  missed). `RigCheckNavHostKt`: **80% → 90%** (223/1,140 → 108/1,140
+  missed) — `RigCheckNavHostTest.kt` grew from 2 cases to 4: tapping
+  "Scan Photo" with 0 credits (`onNeedCredits`) and tapping the credit
+  chip (`onOpenPaywall`) each separately drive `RigCheckRoute.Paywall`
+  for the first time, with the system back button confirmed (on a real
+  device) to return cleanly to the Chooser screen it came from.
+  **One real flake observed, not reproduced since**: on the first full
+  4-test run, `creditChipTapOpensPaywallDirectlyAndBackReturnsToChooser`
+  failed a `pressBack()` assertion once; the same 4 tests then passed
+  cleanly on 3 immediate reruns with no code change. Left as-is —
+  documented here rather than chased further, since it didn't reproduce.
+- **`com.rigcheck.app.ui.components` — 89% → 97%** (238/2,172 → 53/2,172
+  missed). `ReferenceImageCardKt`: **57% → 100%** (148/352 → 0/352
+  missed); its pointer-input gesture lambda
+  (`ReferenceImageCardKt$ReferenceImageCard$2$1`), previously a flat
+  **0%**, is now **94%** (39/39 → 2/39 missed) — a new
+  `ReferenceImageCardTest.kt` (this component's first dedicated test
+  file) drives `onDragStart`/`onDrag`/`onDragEnd`/`onDragCancel` for
+  real via `performTouchInput`, asserting on the composed node count (1
+  child idle, 2 while the zoom overlay is shown) since the component has
+  no callback outputs to hook. **Real test-writing surprise, confirmed
+  by running it**: a bare long-press hold (`down()` +
+  `advanceEventTime(700)`, no movement) never fires `onDragStart` —
+  `detectDragGesturesAfterLongPress` needs a move *after* the hold
+  before it starts the drag. Fixed the test (added a `moveTo()` after
+  the hold), not the production code. The 2 remaining missed
+  instructions in the gesture lambda weren't tracked down to a specific
+  branch — a small, plausible edge (e.g. a pointer released or cancelled
+  before the long-press timeout elapses) that these tests don't attempt.
+- **`com.rigcheck.app.ui.screens` — 84% → 85%** (1,079/7,095 → 1,025/7,095
+  missed). `PaywallScreenKt`: **45% → 51%** (469/859 → 417/859 missed) —
+  `PaywallScreenTest.kt` grew from 3 cases to 7, all still using the same
+  fakes/mocks style (no real RevenueCat): a `creditBalance = null` case
+  (the `?: 0` elvis operator's null branch was never actually exercised
+  by the existing 7/1/0 cases), and three cases actually tapping
+  "Restore purchase" — success, failure, and a busy-then-reenabled
+  interaction test that holds the fake `onRestore` callback open to
+  observe the button's disabled state mid-flight. **Real test-writing
+  surprise, confirmed by running it**: invoking the held-open callback
+  directly from the test thread threw a real
+  `NullPointerException: Can't toast on a thread that has not called
+  Looper.prepare()` (`PaywallScreen`'s success branch calls
+  `Toast.makeText`) — fixed by wrapping the invocation in
+  `composeRule.runOnUiThread { }`, not a production bug. **The rest of
+  this 51% was investigated and left open on purpose, not missed**: the
+  offer-list rendering, the loading spinner, and the purchase-button
+  states all require `PaywallScreen`'s own internal
+  `RevenueCatManager.getOfferings()` call to actually return package
+  data — there's no injection point to fake it from a test, so these
+  paths genuinely need real RevenueCat and stay the External tier's job
+  (`PaywallScreenWeeklyTest.kt`, untouched by this work), not something
+  a fake/mock could reach here.
 
-None of these three are closed yet — tracked as future work, not this
-analysis's job to fix.
+App-wide Major-suite instruction coverage: **71.00% → 73.50%**
+(`uv run scripts/coverage_gate.py`, real, PASS against the 71.00%
+baseline). Full suite counts after this work: Minor 38/38, Major 57/57 —
+both green, nothing else regressed.
 
 Both suites' existing plain commands (`./gradlew test`, `./gradlew
 connectedDebugAndroidTest`, no coverage tasks) are unaffected — this is
@@ -295,10 +325,25 @@ network involved:
 - `CreditBalanceChipTest` — null shows the "…" not-yet-loaded
   placeholder; 0/1/5 use correct singular/plural wording; `onClick`
   fires when provided.
-- `PaywallScreenTest` — the credit-balance header text (singular/plural),
-  the offline "Couldn't load offers" error state (see the `Purchases`
-  note above), and the Restore Purchase link's presence. Real Test Store
-  offerings/pricing is the External suite.
+- `ReferenceImageCardTest` (added 2026-09-09, this component's first
+  dedicated test file) — idle state shows only the base image (1 child);
+  a long-press-and-hold followed by a move shows the zoom overlay (2
+  children), a further move updates it, and release removes it; an
+  interrupted gesture (`cancel()`) also removes it. Drives
+  `detectDragGesturesAfterLongPress`'s `onDragStart`/`onDrag`/
+  `onDragEnd`/`onDragCancel` for real via `performTouchInput`, since the
+  component has no callback outputs to assert on directly.
+- `PaywallScreenTest` — the credit-balance header text (singular/plural,
+  including a `null` balance's `?: 0` fallback, added 2026-09-09), the
+  offline "Couldn't load offers" error state (see the `Purchases` note
+  above), the Restore Purchase link's presence, and (added 2026-09-09)
+  actually tapping it: a success case, a failure case, and a
+  busy-then-reenabled interaction test that holds the fake `onRestore`
+  callback open to observe the button disable/re-enable. Real Test Store
+  offerings/pricing, the loading spinner, and the purchase-button states
+  all need `PaywallScreen`'s own internal `RevenueCatManager` call to
+  return real package data (no injection point to fake it here) — that
+  stays the External suite's job.
 
 **Navigation-flow tests** (`ui/navigation/RigCheckNavHostTest.kt`) — the
 real `RigCheckNavHost` + `RigCheckViewModel`, offline via
@@ -316,6 +361,11 @@ real `RigCheckNavHost` + `RigCheckViewModel`, offline via
   Chooser (not the entry form directly) — and separately confirms the
   disclaimer does *not* reappear on this second checkout in the same
   session.
+- **Added 2026-09-09**: two tests reaching `RigCheckRoute.Paywall` for
+  the first time — tapping "Scan Photo" with 0 credits (`onNeedCredits`)
+  and tapping the credit chip directly (`onOpenPaywall`), each a
+  separate call site in `RigCheckNavHost.kt`. Both confirm the system
+  back button returns to the Chooser screen it came from.
 
 **Test-support tests** (`testsupport/`) — real-network-free coverage for
 infrastructure the External suite below depends on:

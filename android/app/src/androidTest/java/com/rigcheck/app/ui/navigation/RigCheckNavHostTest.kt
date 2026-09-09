@@ -95,4 +95,53 @@ class RigCheckNavHostTest {
         // Disclaimer already acknowledged this session - straight to Results.
         composeRule.onNodeWithText("Results").assertIsDisplayed()
     }
+
+    // Offline (CustomTestRunner), so creditBalance is always the "not yet
+    // loaded" null placeholder - ChooserScreen's (creditBalance ?: 0) > 0
+    // check is therefore always false, so tapping "Scan Photo" always fires
+    // onNeedCredits() rather than opening the take-photo/gallery dialog.
+    // This is a real, previously-untested route into RigCheckRoute.Paywall
+    // (the single composable<RigCheckRoute.Paywall> block was never reached
+    // by either existing test) - and confirms the system back button pops
+    // back to the Chooser it came from rather than crashing/getting stuck.
+    @Test
+    fun scanPhotoWithoutCreditsRoutesToPaywallAndBackReturnsToChooser() {
+        composeRule.setContent { RigCheckNavHost() }
+
+        composeRule.onNodeWithText("Rig nickname (e.g. Big Blue)").performTextInput("Zoomer")
+        composeRule.onNodeWithText("Create").performClick()
+        composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
+
+        composeRule.onNodeWithText("Scan Photo").performClick()
+
+        composeRule.onNodeWithText("Get More Scans").assertIsDisplayed()
+
+        pressBack()
+
+        composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
+        composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
+    }
+
+    // Second, separate entry point into the same Paywall route:
+    // CreditBalanceChip's onClick wires to onOpenPaywall directly (tapping
+    // the chip itself, not the 0-credit Scan Photo gate above) - a distinct
+    // call site/lambda in RigCheckNavHost.kt from onNeedCredits above, so
+    // exercising only one of the two doesn't cover the other.
+    @Test
+    fun creditChipTapOpensPaywallDirectlyAndBackReturnsToChooser() {
+        composeRule.setContent { RigCheckNavHost() }
+
+        composeRule.onNodeWithText("Rig nickname (e.g. Big Blue)").performTextInput("Chip Test")
+        composeRule.onNodeWithText("Create").performClick()
+        composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
+
+        // "…" is CreditBalanceChip's not-yet-loaded placeholder text.
+        composeRule.onNodeWithText("…").performClick()
+
+        composeRule.onNodeWithText("Get More Scans").assertIsDisplayed()
+
+        pressBack()
+
+        composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
+    }
 }

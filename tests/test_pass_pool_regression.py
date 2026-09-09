@@ -49,6 +49,7 @@ import vehicle_discovery  # noqa: E402
 _PARSERS = {
     "truck_tag": _parse_truck_tag,
     "trailer_tag": _parse_trailer_tag,
+    "scale_ticket": _parse_scale_ticket,
 }
 
 # Reads the merged view (golden_fields.json + anything auto-discovered

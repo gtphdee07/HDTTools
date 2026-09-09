@@ -259,13 +259,26 @@ reading anything else.
     pipeline end-to-end and passed for real via `.\test-weekly.ps1`
     (6/6 tests). **This immediately caught a real, previously-unknown bug
     — see item #15.** Full narrative in `android/TESTING.md`/
-    `ARCHIVE_MONETIZATION.md`. **Still not started**: actually adding new
-    manufacturer/format photos on the Python side (the mechanism is
-    ready; no new real photos exist yet), and growing Android's own
-    pools past the two initial fixtures (the other 9 F-150 photos item
-    #11 found Claude reads correctly under `claude-sonnet-5` are
-    ready-made, zero-new-photography pass-pool material for Android, not
-    yet added).
+    `ARCHIVE_MONETIZATION.md`. **Python's `scale_ticket` pass-pool grown
+    for real, 2026-09-09**: a new real CAT Scale ticket (Willis TX,
+    different weighing event than the two legacy scale tickets) filed at
+    `ExampleDocs/scans/scale/brinkley_goose_willis_tx/` — the first real
+    `scale_ticket` vehicle registered via the directory-convention
+    mechanism (previously exercised only by a synthetic `tmp_path` test).
+    Real Tesseract run first to establish honest golden truth before
+    writing `vehicle.json`: 5 of 6 tracked fields extract exactly right,
+    `location_name` hits the same real two-column-layout jumbling
+    limitation already documented for `CatScale-GooseOnly.jpg`, recorded
+    via `known_ocr_limitations` rather than guessed. Required registering
+    `scale_ticket` in `tests/test_pass_pool_regression.py`'s parser
+    dispatch (previously unmapped, since no real `scale_ticket` pass-pool
+    vehicle existed yet) and updating one now-stale negative-case test in
+    `tests/test_pass_pool.py` that had used `scale_ticket` specifically
+    *because* it had no pool yet. Full suite clean (555 passed, 3
+    xfailed), pass-pool regression re-run 5x clean. **Still genuinely
+    not started**: new-manufacturer/format *truck_tag*/*trailer_tag*
+    photos on the Python side still need new real photos that don't
+    exist yet.
 
 15. ✅ **Real bug: the deployed Worker was pinned to an unreliable model
     for label extraction — found 2026-08-25, fixed same day.** Found by

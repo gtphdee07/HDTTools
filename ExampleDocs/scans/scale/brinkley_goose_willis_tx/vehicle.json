@@ -1,0 +1,15 @@
+{
+  "pool": "pass",
+  "fields": {
+    "location_name": "LOVES COUNTRY STORE I 45 EXIT 95 WILLIS TX",
+    "scale_number": "2071",
+    "steer_axle_lb": 5600.0,
+    "drive_axle_lb": 8920.0,
+    "trailer_axle_lb": 18840.0,
+    "gross_weight_lb": 33360.0
+  },
+  "known_ocr_limitations": {
+    "location_name": "Real Tesseract on this scan (confirmed 2026-09-09, not assumed) swallows unrelated column-2 boilerplate between 'Location:' and the parser's boundary keyword, returning 'LOVES COUNTRY STORE TRAILER AXLE 18840 LB 145 EXIT 95 PUBLIC WEIGHER WILLIS' instead of just the true location text - the same two-column-layout jumbling limitation already documented for CatScale-GooseOnly.jpg in golden_fields.json. src/hdttools/scale_ticket_ocr.py's own module docstring already scopes location_name as best-effort."
+  },
+  "_note": "A real CAT Scale full-rig ticket (Tractor GOOSE / Trailer ADDIE, Wandering Trails Inc, RV Brinkley G4170), Loves Country Store I-45 Exit 95, Willis TX, dated 8-16-26. Same real rig as the legacy ExampleDocs/CatScale-Ticket.jpg and CatScale-GooseOnly.jpg entries in golden_fields.json, but a distinct real weighing event (different date/location/weights than either), so it needed its own vehicle entry rather than joining theirs - a scale-ticket's golden truth is per-weighing-event, not a fixed physical plate like a truck/trailer tag. All fields except location_name confirmed exact via real Tesseract, 2026-09-09."
+}

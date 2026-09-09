@@ -45,8 +45,12 @@ def test_resolve_pass_pool_image_returns_a_registered_trailer_photo():
 
 
 def test_resolve_pass_pool_image_raises_for_a_doc_type_with_no_pool_yet():
-    with pytest.raises(ValueError, match="scale_ticket"):
-        pass_pool.resolve_pass_pool_image("scale_ticket", rng=random.Random(0))
+    # scale_ticket used to be the real example here (no pass-pool vehicle
+    # existed for it) - now that ExampleDocs/scans/scale/ has a real one
+    # (item #13, 2026-09-09), all three real doc_types have a pass-pool,
+    # so this needs a genuinely fake doc_type to exercise the same path.
+    with pytest.raises(ValueError, match="boat_registration"):
+        pass_pool.resolve_pass_pool_image("boat_registration", rng=random.Random(0))
 
 
 def test_resolve_pass_pool_image_is_reproducible_for_a_given_seed():

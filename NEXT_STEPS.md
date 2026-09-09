@@ -322,6 +322,34 @@ reading anything else.
     every real number, and the closure decision in
     `ClaudePlans/2026-08-26-boundocr-report-session-summary.md`.
 
+18. 🔶 **Android: guided-scan camera overlay (framing guide before
+    capture) — spiked 2026-08-27, paused 2026-08-29 (no test phone
+    available).** Research + feasibility spike (not production code —
+    isolated under `android/app/src/main/java/com/rigcheck/app/ui/
+    experiments/cameraoverlay/`, unreachable from `MainActivity`/
+    `RigCheckNavHost`/`ChooserScreen`, launched only via `adb shell am
+    start`) for a CameraX-based live preview with a bounding-box overlay
+    guiding users to frame the compliance tag correctly before capture —
+    a "fix framing before capture" complement to items #11/#17's
+    "fix cropping after capture" findings. Real result: permission flow,
+    portrait preview/overlay alignment, and JPEG capture all confirmed
+    working; found and fixed a real CameraX/Compose preview-rotation
+    timing bug and a real EXIF-orientation bug (`encodePhotoForScan`
+    doesn't consult EXIF, so an unrotated production pipeline would have
+    saved sideways photos) via `normalizeExifOrientation()`. **One real
+    risk left open, not fixed**: landscape capture appeared genuinely
+    rotated at the pixel level on the emulator's virtual camera — might
+    be an emulator-only artifact, might be a real bug, cannot be told
+    apart without a physical device. **Recommendation: conditional go**
+    (add as an additional "Guided Scan" option, not a `ChooserScreen`
+    replacement) once that risk is confirmed on real hardware. **Paused,
+    not abandoned** — the isolated spike code, the CameraX/EXIF
+    dependencies, and the full findings stay in the repo as-is; resume by
+    testing landscape capture on a real device the moment one is
+    available. Full plan and results in
+    `ClaudePlans/2026-08-27-android-camera-overlay-spike.md` and
+    `ClaudePlans/2026-08-27-android-camera-overlay-spike-results.md`.
+
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see
 `ARCHIVE_MONETIZATION.md`); Web hosting/deployment (deferred by your own
@@ -337,6 +365,19 @@ behind this. Most items that used to live in this section are now either
 done (moved to the roadmap above as ✅ entries, several since fully
 archived and swept out per the "History archives" note above) or
 captured as roadmap items #7-#8 above — check there first.
+
+- **Android guided-scan camera overlay** (item #18) — a Minor
+  (unit/Robolectric-style) test for the overlay's guide-rectangle sizing
+  math, and a Major (instrumented) test covering permission-denied,
+  capture, and an EXIF-orientation regression assertion (guarding against
+  finding #2 in the results report recurring). **Unlocked by**: (1) a
+  physical Android test device becoming available, to confirm whether
+  the open landscape-rotation risk (finding #3) is real or emulator-only
+  — write the tests only once that's known, since the answer may change
+  what "correct" behavior even means for landscape; (2) the feature
+  actually being promoted from spike to production, which per the
+  results report's recommendation shouldn't happen until (1) is resolved
+  anyway.
 
 - **Tesseract's no-auto-crop limitation** (item #11) — needs either an
   auto-crop/tag-isolation preprocessing step in `ocr_common.py`, or

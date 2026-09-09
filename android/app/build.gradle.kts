@@ -127,6 +127,13 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.revenuecat.purchases)
     implementation(libs.okhttp)
+    // Camera-overlay spike (ClaudePlans/2026-08-27-android-camera-overlay-spike.md)
+    // - isolated proof-of-concept only, not wired into production navigation.
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.exifinterface)
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)

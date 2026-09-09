@@ -3,6 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Camera-overlay spike only (ClaudePlans/2026-08-27-android-camera-overlay-spike.md);
+         production capture still uses the system camera intent and needs no permission. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
     <application
         android:name=".RigCheckApplication"
@@ -36,6 +40,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Isolated research spike (ClaudePlans/2026-08-27-android-camera-overlay-spike.md) -
+             not part of production navigation; RigCheckNavHost/ChooserScreen are untouched.
+             Launch directly for manual verification, e.g.:
+             adb shell am start -n com.rigcheck.app/.ui.experiments.cameraoverlay.CameraOverlaySpikeActivity -->
+        <activity
+            android:name=".ui.experiments.cameraoverlay.CameraOverlaySpikeActivity"
+            android:exported="true"
+            android:label="Camera Overlay Spike"
+            android:theme="@style/Theme.RigCheck" />
     </application>
 
 </manifest>

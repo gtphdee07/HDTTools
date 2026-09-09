@@ -19,8 +19,19 @@ from __future__ import annotations
 import re
 
 
-def parse_android_report(html: str) -> float:
-    """Instruction coverage from the JaCoCo HTML report's Total row."""
+def parse_android_report(html: str, exclude_packages: tuple[str, ...] = ()) -> float:
+    """Instruction coverage from the JaCoCo HTML report's Total row, minus
+    any package named in exclude_packages.
+
+    Exclusion exists for isolated research spikes that live inside the
+    app module's main/ source set but are never reachable from production
+    (e.g. ui.experiments.cameraoverlay, item #18) - same spirit as
+    src/experiments/BoundOCR/ being kept outside Python's coverage.py
+    `source` config so an intentionally-unwired experiment doesn't drag
+    down the real, shippable-code number (item #8, found 2026-09-09: the
+    camera-overlay spike alone dropped Android's measured coverage from
+    71% to 64.28%).
+    """
     match = re.search(
         r'<tfoot><tr><td>Total</td><td class="bar">([\d,]+) of ([\d,]+)</td>',
         html,
@@ -31,7 +42,38 @@ def parse_android_report(html: str) -> float:
     total = int(match.group(2).replace(",", ""))
     if total == 0:
         raise ValueError("JaCoCo report's Total row reports zero instructions")
+
+    for package in exclude_packages:
+        pkg_missed, pkg_total = _android_package_instruction_counts(html, package)
+        missed -= pkg_missed
+        total -= pkg_total
+
+    if total == 0:
+        raise ValueError("Excluding all requested packages leaves zero instructions")
     return (total - missed) / total * 100
+
+
+def _android_package_instruction_counts(html: str, package: str) -> tuple[int, int]:
+    """Missed and total instructions for one package row in the top-level
+    JaCoCo index.html. Matched by CSS class (redbar.gif = missed,
+    greenbar.gif = covered) rather than image position, since a
+    0%- or 100%-covered package's row only has one of the two <img> tags."""
+    row_match = re.search(
+        r'<a href="[^"]*index\.html" class="el_package">'
+        + re.escape(package)
+        + r'</a></td><td class="bar"[^>]*>(.*?)</td>',
+        html,
+        re.DOTALL,
+    )
+    if not row_match:
+        raise ValueError(f"Package {package!r} not found in the JaCoCo HTML report")
+    segment = row_match.group(1)
+
+    missed_match = re.search(r'redbar\.gif"[^>]*title="([\d,]+)"', segment)
+    covered_match = re.search(r'greenbar\.gif"[^>]*title="([\d,]+)"', segment)
+    missed = int(missed_match.group(1).replace(",", "")) if missed_match else 0
+    covered = int(covered_match.group(1).replace(",", "")) if covered_match else 0
+    return missed, missed + covered
 
 
 def parse_python_report(data: dict) -> float:

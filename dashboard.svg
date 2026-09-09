@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="620" height="234" font-family="Segoe UI, Arial, sans-serif" font-size="13">
 <rect x="0" y="0" width="620" height="234" fill="#0d1117"/>
-<text x="8" y="15" fill="#8b949e" font-size="11">Graphic generated: 2026-08-25</text>
+<text x="8" y="15" fill="#8b949e" font-size="11">Graphic generated: 2026-09-09</text>
 <text x="8" y="46" fill="#c9d1d9" font-weight="bold">Platform</text>
 <text x="138" y="46" fill="#c9d1d9" font-weight="bold">Minor</text>
 <text x="218" y="46" fill="#c9d1d9" font-weight="bold">Major</text>
@@ -8,18 +8,19 @@
 <text x="468" y="46" fill="#c9d1d9" font-weight="bold">Coverage</text>
 <text x="8" y="85" fill="#c9d1d9">Android</text>
 <circle cx="145" cy="80" r="7" fill="#2563eb"/>
-<text x="159" y="85" fill="#c9d1d9">31/31</text>
+<text x="159" y="85" fill="#c9d1d9">38/38</text>
 <circle cx="225" cy="80" r="7" fill="#2563eb"/>
-<text x="239" y="85" fill="#c9d1d9">39/39</text>
-<text x="298" y="85" fill="#8b949e">n/a</text>
-<text x="468" y="85" fill="#dc2626">71.1%</text>
+<text x="239" y="85" fill="#c9d1d9">48/48</text>
+<circle cx="305" cy="80" r="7" fill="#2563eb"/>
+<text x="319" y="85" fill="#c9d1d9">1/1 (0d)</text>
+<text x="468" y="85" fill="#dc2626">71.0%</text>
 <text x="8" y="129" fill="#c9d1d9">Python</text>
 <circle cx="145" cy="124" r="7" fill="#16a34a"/>
 <text x="159" y="129" fill="#c9d1d9">124/127</text>
 <circle cx="225" cy="124" r="7" fill="#16a34a"/>
 <text x="239" y="129" fill="#c9d1d9">124/127</text>
 <text x="298" y="129" fill="#8b949e">n/a</text>
-<text x="468" y="129" fill="#dc2626">79.4%</text>
+<text x="468" y="129" fill="#ca8a04">84.9%</text>
 <text x="8" y="173" fill="#c9d1d9">Web</text>
 <circle cx="145" cy="168" r="7" fill="#2563eb"/>
 <text x="159" y="173" fill="#c9d1d9">71/71</text>
@@ -33,6 +34,6 @@
 <circle cx="225" cy="212" r="7" fill="#2563eb"/>
 <text x="239" y="217" fill="#c9d1d9">57/57</text>
 <circle cx="305" cy="212" r="7" fill="#2563eb"/>
-<text x="319" y="217" fill="#c9d1d9">1/1 (0d)</text>
+<text x="319" y="217" fill="#c9d1d9">1/1 (15d)</text>
 <text x="468" y="217" fill="#2563eb">100.0%</text>
 </svg>

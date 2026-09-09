@@ -102,18 +102,51 @@ reading anything else.
      Compose UI directly); real remaining headroom is whichever of those
      packages isn't already well covered by the Major suite's 30
      instrumented tests once both numbers are compared side by side, not
-     yet done.
+     yet done. **Real regression found and fixed, 2026-09-09**: a fresh
+     `--refresh` run measured 64.28% — a real `FAIL` against this 71%
+     baseline. Root cause, confirmed via the actual per-package JaCoCo
+     numbers, not assumed: item #18's camera-overlay spike
+     (`ui.experiments.cameraoverlay`, 1,790 instructions, only 8%
+     covered) lives inside `app/src/main/`, so JaCoCo counts its
+     deliberately-isolated, unreachable-from-production code against the
+     whole app — the same class of distortion Python's own
+     `src/experiments/BoundOCR/` avoids by sitting outside
+     `coverage.py`'s `source`. Fixed by extending
+     `scripts/coverage_lib.py`'s `parse_android_report` with an
+     `exclude_packages` parameter (TDD'd, `tests/test_coverage_lib.py`)
+     and wiring `coverage_gate.py`'s new `ANDROID_EXCLUDED_PACKAGES`
+     constant through it — add a new entry there, not a baseline change,
+     the moment another such spike lands. Re-measured with the fix: real
+     coverage is **71.04%**, a real `PASS` — the app's actual shippable
+     code never regressed at all. `dashboard.svg` regenerated to match.
    - **Python/Streamlit's initial real baseline (2026-08-24)** — see
      `tests/TESTING.md`'s Coverage section. 79% total (`src/hdttools` +
      `streamlit_app`); `streamlit_app/app.py` 80%, `fields.py` 100%,
      `recent_rigs.py` 79%. ✅ **`parse_label.py`'s 0% coverage — confirmed
      dead code and removed, 2026-08-24**: a stray
      prototype file, never imported anywhere, already git-excluded before
-     removal — see `ARCHIVE_DEAD_CODE.md`. Biggest remaining visible gap:
-     `review_form.py` 31% (tkinter UI, same class of gap as Android's
-     uncovered Compose screens — not easily unit-testable, likely needs
-     the same kind of interaction-level test `test_streamlit_app.py`
-     already uses for Streamlit's own UI).
+     removal — see `ARCHIVE_DEAD_CODE.md`. **`review_form.py` closed
+     from 31% to 48%, 2026-09-09**: rather than driving a real Tkinter
+     window (no headless harness exists for it, unlike Streamlit's own
+     `AppTest`), extracted the two genuinely pure pieces of logic that
+     were entangled with live widgets — `_leaf_fields` (walks a
+     dataclass, including nested ones like `TireSpec`, to the same leaf
+     paths `add_fields` used to build widgets from) and
+     `_rebuild_from_values` (reconstructs a dataclass from a flat
+     `{path: raw_string}` dict, mirroring what `rebuild()` used to do
+     directly against live `tk.StringVar`s). TDD'd
+     (`tests/test_review_form_rebuild.py`, 7 cases including a real
+     round-trip test), then verified for real against the actual
+     production `TruckTagData`/`TireSpec` dataclasses (23 real leaf
+     fields, nested tire specs included) — not just synthetic test
+     dataclasses. What's left uncovered is genuinely thin GUI glue
+     (`tk.Tk()` setup, the widget-creation loop, button wiring,
+     `mainloop()`) — the same class of gap this project already accepts
+     for other real-window/shell-out code. **Re-measured 2026-09-09
+     (both real improvements together): 84.91%** (up from the
+     2026-08-24 baseline of 79%, and from 84.01% before this specific
+     fix — see item #13 for the `scale_ticket` portion of the earlier
+     jump).
 
 11. ✅ **Real-photo OCR robustness investigation: Tesseract vs. Claude
     vision — closed 2026-08-24.** 10 real photos of the same physical

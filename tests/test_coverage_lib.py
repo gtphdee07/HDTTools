@@ -29,6 +29,52 @@ def test_parse_android_report_raises_when_total_row_is_missing():
         coverage_lib.parse_android_report("<html>no coverage table here</html>")
 
 
+# Real per-package row snippet shape (top-level JaCoCo index.html, item #8
+# 2026-09-09): a package below the exclusion threshold - e.g. an isolated
+# research spike like ui.experiments.cameraoverlay, never reachable from
+# production, same spirit as BoundOCR being kept outside Python's
+# coverage.py `source` - shouldn't drag down the app-wide real number.
+_REPORT_WITH_TWO_PACKAGES = (
+    '<table><tbody>'
+    '<tr><td id="a0"><a href="com.rigcheck.app.ui.experiments.cameraoverlay/index.html" '
+    'class="el_package">com.rigcheck.app.ui.experiments.cameraoverlay</a></td>'
+    '<td class="bar" id="b0">'
+    '<img src="jacoco-resources/redbar.gif" width="27" height="10" title="1,636" alt="1,636"/>'
+    '<img src="jacoco-resources/greenbar.gif" width="2" height="10" title="154" alt="154"/>'
+    '</td><td class="ctr2" id="c0">8%</td></tr>'
+    '<tr><td id="a1"><a href="com.rigcheck.app.ui.screens/index.html" '
+    'class="el_package">com.rigcheck.app.ui.screens</a></td>'
+    '<td class="bar" id="b1">'
+    '<img src="jacoco-resources/redbar.gif" width="18" height="10" title="1,079" alt="1,079"/>'
+    '<img src="jacoco-resources/greenbar.gif" width="101" height="10" title="6,016" alt="6,016"/>'
+    '</td><td class="ctr2" id="c1">84%</td></tr>'
+    '</tbody></table>'
+    '<tfoot><tr><td>Total</td><td class="bar">2,715 of 8,885</td><td class="ctr2">69%</td></tr></tfoot>'
+)
+
+
+def test_parse_android_report_excludes_a_named_package_from_the_total():
+    # Excluding cameraoverlay's 1,636 missed/1,790 total should leave
+    # exactly screens' own 1,079 missed/7,095 total.
+    percent = coverage_lib.parse_android_report(
+        _REPORT_WITH_TWO_PACKAGES,
+        exclude_packages=("com.rigcheck.app.ui.experiments.cameraoverlay",),
+    )
+    assert percent == pytest.approx((7095 - 1079) / 7095 * 100)
+
+
+def test_parse_android_report_with_no_exclusions_matches_the_unmodified_total():
+    percent = coverage_lib.parse_android_report(_REPORT_WITH_TWO_PACKAGES)
+    assert percent == pytest.approx((8885 - 2715) / 8885 * 100)
+
+
+def test_parse_android_report_raises_for_an_exclude_package_not_in_the_report():
+    with pytest.raises(ValueError, match="not_a_real_package"):
+        coverage_lib.parse_android_report(
+            _REPORT_WITH_TWO_PACKAGES, exclude_packages=("not_a_real_package",)
+        )
+
+
 def test_parse_python_report_reads_percent_covered():
     data = {"totals": {"percent_covered": 79.4392523364486, "num_statements": 963}}
     assert coverage_lib.parse_python_report(data) == pytest.approx(79.4392523364486)

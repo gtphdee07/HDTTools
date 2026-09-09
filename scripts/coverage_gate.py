@@ -65,6 +65,15 @@ ANDROID_BASELINE = 71.0
 PYTHON_BASELINE = 79.0
 SCAN_PROXY_BASELINE = 100.0
 
+# Isolated research spikes that live inside app/src/main/ but are never
+# reachable from production - excluded from Android's coverage number the
+# same way src/experiments/BoundOCR/ is excluded from Python's (kept
+# outside coverage.py's `source`). Add a new entry here, not a change to
+# the baseline, the moment a new such spike lands - see
+# coverage_lib.parse_android_report's own docstring for the full reasoning
+# (item #8, found 2026-09-09).
+ANDROID_EXCLUDED_PACKAGES = ("com.rigcheck.app.ui.experiments.cameraoverlay",)
+
 _IS_WINDOWS = os.name == "nt"
 
 
@@ -120,7 +129,9 @@ def get_android_result(refresh: bool) -> PlatformResult:
         return PlatformResult(
             "Android", None, ANDROID_BASELINE, True, f"No report at {ANDROID_REPORT}"
         )
-    percent = parse_android_report(ANDROID_REPORT.read_text(encoding="utf-8"))
+    percent = parse_android_report(
+        ANDROID_REPORT.read_text(encoding="utf-8"), exclude_packages=ANDROID_EXCLUDED_PACKAGES
+    )
     return PlatformResult("Android", percent, ANDROID_BASELINE, True)
 
 

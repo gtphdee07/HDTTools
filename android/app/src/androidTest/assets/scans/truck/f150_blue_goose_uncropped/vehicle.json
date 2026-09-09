@@ -1,0 +1,9 @@
+{
+  "pool": "pass",
+  "fields": {
+    "gvwr_lb": 7100.0,
+    "front_gawr_lb": 3525.0,
+    "rear_gawr_lb": 3800.0
+  },
+  "_note": "9 of the 10 real F-150 phone photos from ExampleDocs/scans/truck/f150_blue_goose_uncropped/ (item #11, ARCHIVE_WEB_STREAMLIT.md) - a DIFFERENT physical truck than android/.../scans/truck/f150_blue_goose/AddieTag.jpg despite the shared slug prefix (that one is GVWR 14000/6000/9900; this one is F-150Spec.txt's 7100/3525/3800 - confirmed distinct before adding this file, not assumed from the similar name). Values already confirmed for real via direct claude-sonnet-5 API calls against these exact photos, no crop/preprocessing: 9 of 10 extracted every field perfectly (ARCHIVE_WEB_STREAMLIT.md finding #2). The 10th photo (20260824_141545.jpg) is excluded here - it's already Android's fail-pool fixture at scans/truck/f150_blue_goose_framing_gap/, since its top half (manufacturer/GVWR/rear GAWR) is genuinely outside the frame. This fixture is new real verification through Android's OWN pipeline (PhotoEncoding.kt's resize/compress), not a re-assertion of the Python-side result. manufacturer deliberately excluded from 'fields', same rationale as f150_blue_goose/vehicle.json: Claude returns natural-language phrasing, not exact printed text."
+}

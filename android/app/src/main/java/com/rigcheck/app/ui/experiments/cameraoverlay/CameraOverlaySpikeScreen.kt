@@ -64,6 +64,37 @@ private const val GUIDE_FRACTION = 0.85f
 private val guideCornerRadius = 14.dp
 private val guideStrokeWidth = 4.dp
 
+// A guide box in plain canvas coordinates - kept as a bare data class
+// (not Compose's Offset/Size) so computeGuideRect stays a pure function
+// with zero Android/Compose framework dependency, testable as a plain
+// Minor/JVM unit test (GuideRectMathTest) with no Robolectric or
+// emulator needed.
+internal data class GuideRect(val left: Float, val top: Float, val width: Float, val height: Float)
+
+// Fits the largest aspectRatio-shaped box that stays within `fraction` of
+// canvasWidth/canvasHeight in both dimensions, centered. Extracted out of
+// CameraPreviewWithOverlay's Canvas draw block so the sizing math itself
+// (not the drawing) has a real automated test.
+internal fun computeGuideRect(
+    canvasWidth: Float,
+    canvasHeight: Float,
+    aspectRatio: Float,
+    fraction: Float,
+): GuideRect {
+    val maxWidth = canvasWidth * fraction
+    val maxHeight = canvasHeight * fraction
+    val widthIfBoundByWidth = maxWidth
+    val heightIfBoundByWidth = maxWidth / aspectRatio
+    val (guideWidth, guideHeight) = if (heightIfBoundByWidth <= maxHeight) {
+        widthIfBoundByWidth to heightIfBoundByWidth
+    } else {
+        (maxHeight * aspectRatio) to maxHeight
+    }
+    val left = (canvasWidth - guideWidth) / 2f
+    val top = (canvasHeight - guideHeight) / 2f
+    return GuideRect(left, top, guideWidth, guideHeight)
+}
+
 @Composable
 fun CameraOverlaySpikeScreen() {
     val context = LocalContext.current
@@ -154,21 +185,11 @@ private fun CameraPreviewWithOverlay() {
         AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val maxWidth = size.width * GUIDE_FRACTION
-            val maxHeight = size.height * GUIDE_FRACTION
-            val widthIfBoundByWidth = maxWidth
-            val heightIfBoundByWidth = maxWidth / GUIDE_ASPECT_RATIO
-            val (guideWidth, guideHeight) = if (heightIfBoundByWidth <= maxHeight) {
-                widthIfBoundByWidth to heightIfBoundByWidth
-            } else {
-                (maxHeight * GUIDE_ASPECT_RATIO) to maxHeight
-            }
-            val left = (size.width - guideWidth) / 2f
-            val top = (size.height - guideHeight) / 2f
+            val guide = computeGuideRect(size.width, size.height, GUIDE_ASPECT_RATIO, GUIDE_FRACTION)
             drawRoundRect(
                 color = SunsetOrange,
-                topLeft = Offset(left, top),
-                size = Size(guideWidth, guideHeight),
+                topLeft = Offset(guide.left, guide.top),
+                size = Size(guide.width, guide.height),
                 cornerRadius = CornerRadius(guideCornerRadius.toPx(), guideCornerRadius.toPx()),
                 style = Stroke(width = guideStrokeWidth.toPx()),
             )
@@ -314,8 +335,9 @@ private fun capturePhoto(
 // Baking the rotation into the pixels immediately after capture (as the
 // stock camera app effectively already does before handing off to
 // ChooserScreen) makes this spike's output byte-for-byte compatible with
-// the existing pipeline without touching any production file.
-private fun normalizeExifOrientation(context: Context, uri: Uri) {
+// the existing pipeline without touching any production file. internal
+// (not private) so CameraOverlaySpikeExifTest can call it directly.
+internal fun normalizeExifOrientation(context: Context, uri: Uri) {
     val orientation = context.contentResolver.openInputStream(uri)?.use { input ->
         ExifInterface(input).getAttributeInt(
             ExifInterface.TAG_ORIENTATION,

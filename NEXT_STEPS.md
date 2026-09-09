@@ -234,7 +234,17 @@ reading anything else.
     isolated `tmp_path` tree, proving `resolve_pass_pool_image` and real
     Tesseract both work against a directory-discovered vehicle
     end-to-end. Full suite clean (554 passed, 3 xfailed). **Android
-    decision made and built, 2026-08-25: duplicate, not inherit** —
+    pass-pool grown, 2026-09-08**: the other 9 F-150 photos
+    (`f150_blue_goose_uncropped/`, item #11 confirmed all 9 extract
+    perfectly via real `claude-sonnet-5` calls) are now duplicated into
+    Android's own pass-pool as a second registered vehicle — zero Kotlin
+    changes needed (`resolveRandom` already picks randomly across all
+    registered vehicles), verified via two real `.\test-weekly.ps1` runs
+    with different random picks, both clean (a real, distinct bug found
+    while checking this is tracked separately as item #19). Python's side
+    of this item (new-manufacturer photos) is still genuinely blocked on
+    new real photos existing.
+    **Android decision made and built, 2026-08-25: duplicate, not inherit** —
     Android builds its own real Claude-vision pass-pool/fail-pool rather
     than trusting Python's (Tesseract-only) pools to stand in for it,
     specifically to exercise `PhotoEncoding.kt`'s real resize/compress
@@ -346,9 +356,70 @@ reading anything else.
     not abandoned** — the isolated spike code, the CameraX/EXIF
     dependencies, and the full findings stay in the repo as-is; resume by
     testing landscape capture on a real device the moment one is
-    available. Full plan and results in
+    available. **Two hardware-independent hardening tests added,
+    2026-09-08** (no phone needed, don't require the open landscape
+    question to be resolved first): a Minor/JVM test
+    (`GuideRectMathTest`, 5 cases) for the overlay's guide-rectangle
+    sizing math, extracted from the Canvas draw block into a pure
+    `computeGuideRect` function specifically to make this testable
+    without Robolectric; and a Major/instrumented test
+    (`CameraOverlaySpikeExifTest`, 2 cases) proving `normalizeExifOrientation()`
+    really bakes a 90° EXIF rotation into pixels and leaves an
+    already-normal image untouched — a synthesized JPEG with a known EXIF
+    tag, no live camera or physical device involved. Both caught real,
+    honest mistakes in the tests' own assumptions before passing (a wrong
+    height-bound test scenario; `ORIENTATION_UNDEFINED` vs. `_NORMAL`
+    after `Bitmap.compress()` strips EXIF) — see the test files' comments
+    for detail. Full existing Minor (7 files) and Major (48 tests) suites
+    still pass clean. **Still open, still needs a phone**: the
+    permission-denied/full-capture-flow instrumented tests, and the
+    landscape-rotation risk itself. Full plan and results in
     `ClaudePlans/2026-08-27-android-camera-overlay-spike.md` and
     `ClaudePlans/2026-08-27-android-camera-overlay-spike-results.md`.
+
+19. ✅ **Real bug: `android/test-weekly.ps1`'s pass/fail detection was
+    blind to real test failures — found and fixed 2026-09-08.**
+    Found while verifying item #13's Android pass-pool growth:
+    `realPurchaseIncrementsBalance` failed for real on two consecutive
+    `.\test-weekly.ps1` runs (visible in the script's own printed JUnit
+    text — "FAILURES!!! Tests run: 6, Failures: 1"), yet
+    `scripts/dashboard_data/external_status.json` still recorded
+    `"passed": true`, and the script itself did not exit non-zero.
+    **Root cause, confirmed empirically, not assumed**: `adb shell am
+    instrument`'s own process exit code does not reflect an internal
+    JUnit failure — a deliberately-failing scratch test
+    (`assertTrue(false)`), run the exact same way, printed
+    "FAILURES!!! Tests run: 1, Failures: 1" but still returned
+    `$LASTEXITCODE = 0`. `test-weekly.ps1` (line 95) captures this
+    unreliable `$LASTEXITCODE` as `$testExitCode`, then both exits with
+    it (line 105) and passes it straight to
+    `scripts/record_external_result.py` (line 103) — so both the
+    script's own exit status and the dashboard's recorded status are
+    currently meaningless as pass/fail signals; only reading the raw
+    printed test-runner text (as this session did, not by trusting the
+    exit code) reveals a real failure. Separately confirmed the specific
+    `realPurchaseIncrementsBalance` failure itself did not reproduce when
+    re-run in isolation on a freshly-booted emulator - looks like real
+    UI-timing flakiness under a loaded/long-running emulator, not a
+    deterministic regression, but that's a distinct question from the
+    exit-code bug and wasn't investigated further. **Fixed and verified,
+    2026-09-08**: `test-weekly.ps1` now captures `am instrument`'s printed
+    output (via `Tee-Object`, so it still prints live exactly as before)
+    and checks the real summary text for `"OK (N tests)"` vs.
+    `"FAILURES!!!"`, falling back to the harness's own exit code only for
+    an infra-level failure (e.g. `INSTRUMENTATION_FAILED` — separately
+    confirmed that *does* exit non-zero on its own). Validated against
+    both a deliberately-failing scratch test (correctly detected as
+    failed despite exit code 0) and a real passing run (correctly
+    detected as passed) before editing the real script; then ran the
+    real, fixed script end-to-end — 6/6 real tests passed this time
+    (confirming the original `realPurchaseIncrementsBalance` failure
+    really was transient emulator-load flakiness, not a regression), exit
+    code 0, and `scripts/dashboard_data/external_status.json` recorded
+    the accurate result. **Confirmed no second instance**: scan-proxy's
+    `test-weekly.ps1`/`test-release.ps1` run `npm run test:weekly`/
+    `test:release` (vitest), whose exit codes are reliable — this bug was
+    specific to `am instrument`'s exit-code semantics.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see
@@ -366,18 +437,19 @@ done (moved to the roadmap above as ✅ entries, several since fully
 archived and swept out per the "History archives" note above) or
 captured as roadmap items #7-#8 above — check there first.
 
-- **Android guided-scan camera overlay** (item #18) — a Minor
-  (unit/Robolectric-style) test for the overlay's guide-rectangle sizing
-  math, and a Major (instrumented) test covering permission-denied,
-  capture, and an EXIF-orientation regression assertion (guarding against
-  finding #2 in the results report recurring). **Unlocked by**: (1) a
-  physical Android test device becoming available, to confirm whether
-  the open landscape-rotation risk (finding #3) is real or emulator-only
-  — write the tests only once that's known, since the answer may change
-  what "correct" behavior even means for landscape; (2) the feature
-  actually being promoted from spike to production, which per the
-  results report's recommendation shouldn't happen until (1) is resolved
-  anyway.
+- **Android guided-scan camera overlay** (item #18) — ✅ **the
+  guide-rectangle sizing math (Minor/JVM, `GuideRectMathTest`) and the
+  EXIF-orientation regression (Major/instrumented,
+  `CameraOverlaySpikeExifTest`) were written 2026-09-08** — turned out
+  neither actually needed a physical device or the landscape question
+  resolved first, since both are independent of the camera-capture UI
+  flow itself (a synthesized JPEG with a known EXIF tag stands in for a
+  real capture). **Still genuinely blocked**: a permission-denied/
+  full-capture-flow instrumented test (exercises the real Compose screen
+  + camera binding, more entangled with the promotion-to-production
+  decision) and confirming the open landscape-rotation risk (finding
+  #3) — both still need a physical Android test device, per the same
+  reasoning as before.
 
 - **Tesseract's no-auto-crop limitation** (item #11) — needs either an
   auto-crop/tag-isolation preprocessing step in `ocr_common.py`, or

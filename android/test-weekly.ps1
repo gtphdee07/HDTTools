@@ -89,10 +89,24 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $markerPath = '/data/local/tmp/rigcheck_weekly_mode'
 & $adb shell touch $markerPath
 try {
+    # Real bug, found and fixed 2026-09-08 (NEXT_STEPS.md item #19):
+    # `adb shell am instrument`'s own exit code does NOT reflect an
+    # internal JUnit failure - confirmed empirically with a deliberately-
+    # failing scratch test that printed "FAILURES!!!" but still exited 0.
+    # $LASTEXITCODE only catches a harness-level failure (e.g. a missing/
+    # uninstalled test package - INSTRUMENTATION_FAILED, confirmed
+    # separately to exit non-zero). The real pass/fail signal is in the
+    # printed summary text itself ("OK (N tests)" vs "FAILURES!!!"), so
+    # this is captured via Tee-Object (still prints live to the console,
+    # exactly as before) and checked directly instead of trusting
+    # $LASTEXITCODE alone.
     & $adb shell am instrument -w `
         -e class com.rigcheck.app.ui.screens.PaywallScreenWeeklyTest `
-        com.rigcheck.app.test/com.rigcheck.app.CustomTestRunner
-    $testExitCode = $LASTEXITCODE
+        com.rigcheck.app.test/com.rigcheck.app.CustomTestRunner | Tee-Object -Variable instrumentOutput
+    $harnessExitCode = $LASTEXITCODE
+    $outputText = $instrumentOutput -join "`n"
+    $testsFailed = ($outputText -notmatch 'OK \(\d+ tests?\)') -or ($outputText -match 'FAILURES!!!')
+    $testExitCode = if ($harnessExitCode -ne 0) { $harnessExitCode } elseif ($testsFailed) { 1 } else { 0 }
 } finally {
     & $adb shell rm -f $markerPath
 }

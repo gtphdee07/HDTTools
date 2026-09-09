@@ -58,6 +58,23 @@ ANDROID_REPORT = (
     / "connected"
     / "index.html"
 )
+# jacocoMergedCoverageReport's own output (android/app/build.gradle.kts) -
+# Major's coverage.ec merged with External's (PaywallScreenWeeklyTest, via
+# test-weekly.ps1's pulled coverage-external.ec). Informational only, see
+# get_android_merged_result below and
+# ClaudePlans/2026-09-09-merge-external-tier-coverage-paywallscreen.md.
+ANDROID_MERGED_REPORT = (
+    REPO_ROOT
+    / "android"
+    / "app"
+    / "build"
+    / "reports"
+    / "coverage"
+    / "androidTest"
+    / "debug"
+    / "merged"
+    / "index.html"
+)
 PYTHON_REPORT = REPO_ROOT / "coverage.json"
 WEB_REPORT = REPO_ROOT / "web" / "coverage" / "coverage-summary.json"
 
@@ -135,6 +152,54 @@ def get_android_result(refresh: bool) -> PlatformResult:
     return PlatformResult("Android", percent, ANDROID_BASELINE, True)
 
 
+def get_android_merged_result(refresh: bool) -> PlatformResult:
+    """Major+External merged Android coverage - a second, informational
+    number alongside get_android_result's Major-only (gated) one. Never
+    fails the release gate (PlatformResult(gated=False), baseline=None) -
+    it exists purely to show PaywallScreenKt's real combined coverage,
+    since its remaining Major-only gap is exactly the RevenueCat-dependent
+    code paths the External tier (test-weekly.ps1) already exercises for
+    real. See ClaudePlans/2026-09-09-merge-external-tier-coverage-
+    paywallscreen.md for the full mechanism. Requires Major's own
+    coverage.ec to already exist (from a prior connectedDebugAndroidTest
+    run) - jacocoMergedCoverageReport merges whatever coverage.ec files it
+    finds, so a missing External .ec (test-weekly.ps1 never run, or its
+    pull failed) silently falls back to a Major-only merge rather than
+    erroring, matching that task's own fileTree-based discovery.
+    """
+    if refresh or not ANDROID_MERGED_REPORT.exists():
+        proc = _run(
+            [
+                "gradlew.bat" if _IS_WINDOWS else "./gradlew",
+                "jacocoMergedCoverageReport",
+            ],
+            cwd=REPO_ROOT / "android",
+        )
+        if proc.returncode != 0:
+            return PlatformResult(
+                "Android (Major+External)",
+                None,
+                None,
+                False,
+                "jacocoMergedCoverageReport failed - is Major's own "
+                "coverage.ec present (run connectedDebugAndroidTest first)? "
+                "See android/TESTING.md.\n" + proc.stdout[-2000:],
+            )
+    if not ANDROID_MERGED_REPORT.exists():
+        return PlatformResult(
+            "Android (Major+External)",
+            None,
+            None,
+            False,
+            f"No report at {ANDROID_MERGED_REPORT}",
+        )
+    percent = parse_android_report(
+        ANDROID_MERGED_REPORT.read_text(encoding="utf-8"),
+        exclude_packages=ANDROID_EXCLUDED_PACKAGES,
+    )
+    return PlatformResult("Android (Major+External)", percent, None, False)
+
+
 def get_python_result(refresh: bool) -> PlatformResult:
     if refresh or not PYTHON_REPORT.exists():
         proc = _run(
@@ -202,6 +267,7 @@ def main(argv: list[str] | None = None) -> int:
 
     results = [
         get_android_result(args.refresh),
+        get_android_merged_result(args.refresh),
         get_python_result(args.refresh),
         get_web_result(args.refresh),
         get_scan_proxy_result(args.refresh),

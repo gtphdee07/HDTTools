@@ -40,20 +40,34 @@ fresh session doesn't need to re-derive the mechanism below.
    `.ec` file off the device after the run. Confirm the on-device path
    is actually pullable (app-private storage may need `run-as` or a
    world-readable path — verify this for real, don't assume).
-3. **Merge the two `.ec` files** — JaCoCo's own merge capability (either
-   `jacococli.jar` directly, or a small custom Gradle `JacocoReport`
-   task with both files as `executionData`) combines them into one
-   coverage session before generating the report. This is a real merge
-   (any instruction either suite touched counts as covered), not an
-   average.
+3. **Merge the two `.ec` files.** Confirmed 2026-09-09:
+   `android/app/build.gradle.kts` applies no `jacoco` plugin today —
+   only AGP's built-in `testCoverage { enableUnitTestCoverage;
+   enableAndroidTestCoverage }` block, whose own report task
+   (`createDebugAndroidTestCoverageReport`) is AGP-internal and not a
+   hook point for a second `.ec` input. So: apply `id("jacoco")` fresh
+   in `build.gradle.kts` and add one new custom task of type
+   `JacocoReport` (a name like `jacocoMergedCoverageReport`) whose
+   `executionData` is both `.ec` files (Major's existing one +
+   External's newly-pulled one) and whose `classDirectories`/
+   `sourceDirectories` match what AGP's own report task uses. This
+   produces its own `index.html` at a new output path, structurally
+   identical to AGP's — a real merge (any instruction either suite
+   touched counts as covered), not an average.
 4. **Report it as a second, separately-labeled number** — "Major" vs.
    "Major+External" — rather than replacing the existing baseline/gate.
-   `coverage_gate.py`'s release-gate check should keep checking
-   Major-only (the free, no-real-money tier); the merged number is
-   informational, showing what real full coverage (including the paid
-   tier) actually is. Needs a new function in `scripts/coverage_lib.py`
-   (or an extension of `parse_android_report`) and a new call site in
-   `coverage_gate.py`/`generate_dashboard.py`.
+   No new parsing code needed: `scripts/coverage_lib.py`'s
+   `parse_android_report` already parses any JaCoCo HTML report by
+   its Total row, so point it at the new merged report's `index.html`
+   unchanged. In `coverage_gate.py`, add a sibling
+   `get_android_merged_result()` next to `get_android_result()`
+   (`android/app/build.gradle.kts:109`) that runs the new Gradle task
+   and returns a second `PlatformResult("Android (Major+External)",
+   percent, baseline=None, gated=False)` — `PlatformResult.gated`
+   (`coverage_gate.py:80-93`) already exists specifically for a
+   report-only number that never fails the release gate, so this is
+   reusing existing plumbing, not adding a new field. Add the matching
+   call site/row in `generate_dashboard.py`.
 5. **Update the stale `TESTING.md` assumption**: its "External-suite
    coverage... marginal contribution is small" paragraph should be
    corrected once this is built (or even before, if this is deferred

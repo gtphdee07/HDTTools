@@ -220,17 +220,41 @@ adding the flags. If any covered test fails, AGP correctly skips
 generating that report rather than producing a partial one — the right
 failure mode if this is ever seen, not a tooling bug.
 
-**External-suite coverage is a deliberately deferred, documented
-nice-to-have — not built.** Its marginal contribution is small
-(Major/Minor already exercise most of the same non-network code paths
-its own screens touch), and getting a `.ec` file out of a bare `adb
-shell am instrument` invocation into AGP's report task isn't guaranteed
-to plug in cleanly without its own separate investigation. Fallback
-shape for whenever this is picked up: add `-e coverage true -e
-coverageFile <device-path>` to `test-weekly.ps1`'s `adb shell am
-instrument` line, `adb pull` the resulting `.ec` file, then either the
-JaCoCo CLI directly or a small custom `JacocoReport` Gradle task pointed
-at the pulled file.
+**External-suite coverage is now built and real, 2026-09-09** — the
+"marginal contribution is small" assumption above turned out wrong for
+`PaywallScreenKt` specifically, and real numbers now contradict it (see
+`ClaudePlans/2026-09-09-merge-external-tier-coverage-paywallscreen.md`
+for the full mechanism). `test-weekly.ps1`'s `adb shell am instrument`
+call now passes `-e coverage true -e coverageFile
+/data/data/com.rigcheck.app/coverage-external.ec` (app-private storage —
+`/sdcard` and the app's own external-files dir were tried first and
+confirmed hands-on to silently fail to write under this app's scoped-
+storage config) and pulls the result via `run-as` + `adb exec-out`
+piped through `cmd /c ... >`, not PowerShell's own redirection —
+confirmed hands-on that PowerShell's native `>`/`Set-Content` corrupts
+binary stdout (a spurious UTF-8 BOM, non-UTF8 bytes replaced with
+U+FFFD), while `cmd.exe`'s redirection round-trips it byte-for-byte.
+`android/app/build.gradle.kts` applies the plain Gradle `jacoco` plugin
+fresh (AGP's own `testCoverage` block only wires its internal,
+non-extensible `JacocoReportTask`) and defines
+`jacocoMergedCoverageReport`, a real `JacocoReport` task that merges
+Major's `coverage.ec` with External's pulled one against the same
+non-instrumented compiled-classes/source dirs AGP's own report reads
+from. **Verified structurally for free first**: merging Major's own
+`.ec` with a byte-identical copy of itself round-tripped to the exact
+same percentage as Major alone (66.4773% app-wide, unfiltered) before
+the real External run was ever spent. **Real merged result,
+`PaywallScreenKt`: 51% → 86%** (417/859 → 116/859 missed instructions —
+same 859-instruction total as the Major-only report, confirming the two
+reports' class/source inputs genuinely match) — confirming the
+RevenueCat-dependent paths (offer-list rendering, the loading spinner,
+purchase-button states) really were the rest of this class's gap.
+**App-wide Major+External merged: 73.50% → 78.38%** (excluding the
+camera-overlay spike, same exclusion as the Major-only number above;
+70.83% unfiltered). This second number is informational only —
+`scripts/coverage_gate.py`'s `get_android_merged_result()` returns it as
+a `PlatformResult(gated=False, baseline=None)`, and the release gate
+still checks Major-only against the 71.00% baseline below.
 
 **These Major-suite numbers (71% app-wide) are the enforced baseline
 `scripts/coverage_gate.py` checks Android against at release time** —

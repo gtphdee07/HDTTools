@@ -87,6 +87,16 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $markerPath = '/data/local/tmp/rigcheck_weekly_mode'
+# App-private storage (needs `run-as`, not a plain `adb pull`) rather than
+# /sdcard or the app's own external-files dir - both of the latter were
+# tried first and confirmed hands-on 2026-09-09 to silently fail under
+# this app's scoped-storage config (am instrument prints "Generated code
+# coverage data to <path>" - and even a contradictory "Error: Failed to
+# generate Emma/JaCoCo coverage." - either way, no file actually lands
+# there). /data/data/<pkg>/ is the instrumentation process's own sandbox,
+# so it can always write there with no extra permission.
+$coverageDevicePath = "/data/data/com.rigcheck.app/coverage-external.ec"
+$coverageLocalPath = "app\build\outputs\code_coverage\debugAndroidTest\external\coverage-external.ec"
 & $adb shell touch $markerPath
 try {
     # Real bug, found and fixed 2026-09-08 (NEXT_STEPS.md item #19):
@@ -101,13 +111,47 @@ try {
     # exactly as before) and checked directly instead of trusting
     # $LASTEXITCODE alone.
     & $adb shell am instrument -w `
+        -e coverage true -e coverageFile $coverageDevicePath `
         -e class com.rigcheck.app.ui.screens.PaywallScreenWeeklyTest `
         com.rigcheck.app.test/com.rigcheck.app.CustomTestRunner | Tee-Object -Variable instrumentOutput
     $harnessExitCode = $LASTEXITCODE
     $outputText = $instrumentOutput -join "`n"
     $testsFailed = ($outputText -notmatch 'OK \(\d+ tests?\)') -or ($outputText -match 'FAILURES!!!')
     $testExitCode = if ($harnessExitCode -ne 0) { $harnessExitCode } elseif ($testsFailed) { 1 } else { 0 }
+
+    # Pull the coverage file the run just wrote, for
+    # jacocoMergedCoverageReport (ClaudePlans/2026-09-09-merge-external-
+    # tier-coverage-paywallscreen.md) to merge with Major's own coverage.ec
+    # later. Only if the harness actually ran (a harness-level failure -
+    # e.g. INSTRUMENTATION_FAILED - means no file was ever written) and
+    # only best-effort (a genuine JUnit test failure inside the run
+    # shouldn't also fail this whole script over a coverage file it may or
+    # may not have finished writing).
+    if ($harnessExitCode -eq 0) {
+        New-Item -ItemType Directory -Force -Path (Split-Path $coverageLocalPath) | Out-Null
+        # Plain `adb pull` fails with "Permission denied" against
+        # /data/data/<pkg>/ (confirmed hands-on 2026-09-09) - it isn't
+        # world-readable, so this goes through `run-as` instead, which
+        # runs as the app's own UID. `adb exec-out` (not a piped `adb
+        # shell`) avoids stdout newline translation corrupting the binary
+        # .ec content - and even `exec-out`'s own output has to be
+        # redirected through `cmd /c ... >`, not PowerShell's native `>`/
+        # `Set-Content`: confirmed hands-on 2026-09-09 that PowerShell's
+        # redirection silently corrupts binary stdout (a spurious UTF-8
+        # BOM prepended, non-UTF8 bytes replaced with U+FFFD - a 7,708-byte
+        # real .ec file came back as 8,588 bytes and failed to parse),
+        # while cmd.exe's redirection is a raw byte-for-byte OS-level pipe
+        # and round-tripped the same file's exact byte count and JaCoCo
+        # header correctly.
+        cmd /c "`"$adb`" exec-out run-as com.rigcheck.app cat $coverageDevicePath > `"$coverageLocalPath`""
+        if ((Test-Path $coverageLocalPath) -and (Get-Item $coverageLocalPath).Length -gt 0) {
+            Write-Output "Pulled External-tier coverage data to $coverageLocalPath"
+        } else {
+            Write-Warning "Could not pull $coverageDevicePath - jacocoMergedCoverageReport will fall back to Major-only coverage."
+        }
+    }
 } finally {
+    & $adb shell run-as com.rigcheck.app rm -f $coverageDevicePath
     & $adb shell rm -f $markerPath
 }
 

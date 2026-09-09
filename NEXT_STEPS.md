@@ -135,6 +135,22 @@ reading anything else.
      the moment another such spike lands. Re-measured with the fix: real
      coverage is **71.04%**, a real `PASS` — the app's actual shippable
      code never regressed at all. `dashboard.svg` regenerated to match.
+     **External-tier coverage merged in for real, 2026-09-09** — see
+     `ClaudePlans/2026-09-09-merge-external-tier-coverage-
+     paywallscreen.md` for the mechanism and `android/TESTING.md`'s
+     Coverage section for the full detail. Structurally verified for free
+     first (Major's `.ec` self-merged with a byte-identical copy,
+     round-tripped to the exact same 66.4773% unfiltered app-wide number)
+     before spending the real, costly `test-weekly.ps1` run. Real result:
+     **`PaywallScreenKt` Major-only 51% → Major+External merged 86%**
+     (417/859 → 116/859 missed instructions) — confirms the class's
+     remaining gap really was the RevenueCat-dependent paths the External
+     tier already exercises. **App-wide Major+External merged: 73.50% →
+     78.38%** (excluding the camera-overlay spike, same exclusion as the
+     Major-only baseline; 70.83% unfiltered). Informational only —
+     `coverage_gate.py`'s new `get_android_merged_result()` reports it as
+     `gated=False`; the release gate still checks Major-only against the
+     71.00% baseline.
    - **Python/Streamlit's initial real baseline (2026-08-24)** — see
      `tests/TESTING.md`'s Coverage section. 79% total (`src/hdttools` +
      `streamlit_app`); `streamlit_app/app.py` 80%, `fields.py` 100%,

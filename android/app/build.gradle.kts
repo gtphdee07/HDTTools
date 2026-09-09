@@ -1,10 +1,30 @@
 import java.util.Properties
+import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.detekt)
+    // Applied fresh for jacocoMergedCoverageReport below - AGP's own
+    // testCoverage block (in the android {} section) only wires its own
+    // internal createDebugAndroidTestCoverageReport task
+    // (com.android.build.gradle.internal.coverage.JacocoReportTask,
+    // confirmed via `./gradlew :app:help --task
+    // createDebugAndroidTestCoverageReport`, 2026-09-09), which is not a
+    // hook point for a second execution-data input. The plain Gradle
+    // `jacoco` plugin's own JacocoReport task type is.
+    id("jacoco")
+}
+
+// Matches the JaCoCo version already resolved for this Gradle version
+// (confirmed present in GradleUserHome's module cache, 2026-09-09) -
+// pinned explicitly so the merged report task and AGP's own
+// AGP-bundled JaCoCo agent (which wrote both .ec files) never drift to
+// different toolVersions, which JaCoCo's execution-data format is not
+// guaranteed to merge cleanly across.
+jacoco {
+    toolVersion = "0.8.14"
 }
 
 android {
@@ -108,6 +128,58 @@ tasks.register<Exec>("wakeEmulatorForInstrumentedTests") {
 
 afterEvaluate {
     tasks.findByName("connectedDebugAndroidTest")?.dependsOn("wakeEmulatorForInstrumentedTests")
+}
+
+// Merges Major's (connectedDebugAndroidTest) coverage.ec with External's
+// (PaywallScreenWeeklyTest, run via ../test-weekly.ps1 and pulled
+// separately - see that script) into one combined, informational report -
+// roadmap item #8's follow-up
+// (ClaudePlans/2026-09-09-merge-external-tier-coverage-paywallscreen.md).
+// Never gates the release; scripts/coverage_gate.py's
+// get_android_merged_result() reads this task's own report and returns it
+// as a PlatformResult(gated=False).
+//
+// classDirectories/sourceDirectories below were picked by direct
+// inspection, not assumption (2026-09-09): this app module is pure Kotlin
+// (no app/src/main/*.java, no app/build/intermediates/javac output), and
+// comparing class bytes confirmed
+// app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes
+// holds the plain (non-instrumented) compiled classes JacocoReport expects
+// as its classDirectories input, while
+// app/build/intermediates/classes/debug/jacocoDebug/dirs holds a *jacoco-
+// instrumented* copy (contains the literal string "jacoco" in its
+// bytecode; the plain compileDebugKotlin one doesn't) - that instrumented
+// copy is what actually gets dexed and run on-device, not something
+// JacocoReport should be pointed at for report generation.
+val externalCoverageEc: String =
+    (project.findProperty("externalCoverageEc") as String?)
+        ?: "build/outputs/code_coverage/debugAndroidTest/external/coverage-external.ec"
+
+tasks.register<JacocoReport>("jacocoMergedCoverageReport") {
+    group = "verification"
+    description = "Merges Major's + External's coverage.ec files into one " +
+        "combined, report-only JaCoCo report."
+
+    // fileTree (not a hardcoded "medium_phone(AVD) - 16" path) so this
+    // doesn't silently go stale if this machine's AVD is ever renamed or
+    // recreated under a different device-folder name.
+    val majorEc = fileTree("build/outputs/code_coverage/debugAndroidTest/connected") {
+        include("**/coverage.ec")
+    }
+    val externalEc = files(externalCoverageEc).filter { it.exists() }
+
+    executionData.setFrom(majorEc, externalEc)
+    classDirectories.setFrom(
+        files("build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"),
+    )
+    sourceDirectories.setFrom(files("src/main/java"))
+
+    reports {
+        html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/coverage/androidTest/debug/merged"))
+        xml.required.set(false)
+        csv.required.set(false)
+    }
 }
 
 dependencies {

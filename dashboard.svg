@@ -10,10 +10,10 @@
 <circle cx="145" cy="80" r="7" fill="#2563eb"/>
 <text x="159" y="85" fill="#c9d1d9">38/38</text>
 <circle cx="225" cy="80" r="7" fill="#2563eb"/>
-<text x="239" y="85" fill="#c9d1d9">48/48</text>
+<text x="239" y="85" fill="#c9d1d9">57/57</text>
 <circle cx="305" cy="80" r="7" fill="#2563eb"/>
 <text x="319" y="85" fill="#c9d1d9">1/1 (0d)</text>
-<text x="468" y="85" fill="#dc2626">71.0%</text>
+<text x="468" y="85" fill="#dc2626">73.5%</text>
 <text x="8" y="129" fill="#c9d1d9">Python</text>
 <circle cx="145" cy="124" r="7" fill="#16a34a"/>
 <text x="159" y="129" fill="#c9d1d9">124/127</text>

@@ -164,10 +164,24 @@ def load_external_status() -> dict:
     return json.loads(EXTERNAL_STATUS_FILE.read_text(encoding="utf-8"))
 
 
-def build_rows(refresh: bool) -> list[dashboard_lib.PlatformRow]:
+def build_rows(
+    refresh: bool,
+) -> tuple[list[dashboard_lib.PlatformRow], coverage_gate.PlatformResult]:
+    """Returns the dashboard.svg grid rows plus, separately, the Android
+    Major+External merged coverage result - informational only, so it's
+    kept out of PlatformRow's single `coverage` slot (which stays the
+    gated Major-only number the release gate actually checks) rather than
+    grafted onto the grid; main() prints it as its own line instead.
+    """
     status = load_external_status()
 
     android_result = coverage_gate.get_android_result(refresh)
+    # Major+External merged - informational only, not a dashboard.svg grid
+    # column of its own (PlatformRow's single `coverage` slot stays the
+    # gated Major-only number, matching the release gate); printed
+    # separately by main() below. See
+    # ClaudePlans/2026-09-09-merge-external-tier-coverage-paywallscreen.md.
+    android_merged_result = coverage_gate.get_android_merged_result(refresh)
     python_result = coverage_gate.get_python_result(refresh)
     web_result = coverage_gate.get_web_result(refresh)
     scan_proxy_result = coverage_gate.get_scan_proxy_result(refresh)
@@ -226,7 +240,7 @@ def build_rows(refresh: bool) -> list[dashboard_lib.PlatformRow]:
             coverage_gated=scan_proxy_result.gated,
         ),
     ]
-    return rows
+    return rows, android_merged_result
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -238,7 +252,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    rows = build_rows(args.refresh)
+    rows, android_merged_result = build_rows(args.refresh)
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     svg = dashboard_lib.render_dashboard_svg(rows, generated)
     DASHBOARD_SVG.write_text(svg, encoding="utf-8")
@@ -246,6 +260,17 @@ def main(argv: list[str] | None = None) -> int:
     for row in rows:
         print(f"  {row.name}: minor={row.minor} major={row.major} "
               f"external={row.external} coverage={row.coverage}")
+    # Informational only - not a dashboard.svg column (see build_rows) and
+    # never gates the release; printed here so it's visible next to the
+    # Android row without changing that row's own (gated) coverage number.
+    merged_percent = (
+        f"{android_merged_result.percent:.2f}%"
+        if android_merged_result.percent is not None
+        else "n/a"
+    )
+    print(f"  Android (Major+External, informational): {merged_percent}")
+    if android_merged_result.note:
+        print(f"    {android_merged_result.note}")
     return 0
 
 

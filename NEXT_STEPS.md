@@ -96,13 +96,20 @@ reading anything else.
      only covers business logic, not UI); `RevenueCatManager.kt`
      specifically at 38%; the `compute_breakdown`/`verdict_for` port
      (`com.rigcheck.app.domain`) at 99%. Major suite: 71% instruction
-     coverage app-wide; `ResultsScreen.kt` at 100%. Biggest visible gap:
-     `com.rigcheck.app.ui.screens`/`.ui.components`/`.ui.navigation` all
-     show 0% under the Minor suite alone (expected — no unit test targets
-     Compose UI directly); real remaining headroom is whichever of those
-     packages isn't already well covered by the Major suite's 30
-     instrumented tests once both numbers are compared side by side, not
-     yet done. **Real regression found and fixed, 2026-09-09**: a fresh
+     coverage app-wide; `ResultsScreen.kt` at 100%. `com.rigcheck.app.ui.screens`/
+     `.ui.components`/`.ui.navigation` all show 0% under the Minor suite
+     alone (expected — no unit test targets Compose UI directly).
+     **Minor-vs-Major cross-reference done for real, 2026-09-09** — see
+     `android/TESTING.md`'s Coverage section for the full per-class
+     breakdown; short version: Major already covers most of this
+     (`ui.screens` 84%, `ui.components` 89%, `ui.navigation` 81%), with
+     exactly three real, still-open gaps — **`PaywallScreenKt` (45%)**,
+     **`ReferenceImageCardKt` (57%, one gesture-handling lambda at 0%,
+     no dedicated test file)**, and **`RigCheckNavHostKt` (80%, but the
+     single largest raw missed-instruction count in the whole analysis,
+     and real navigation logic this project has already had one real bug
+     in)** — none closed yet, tracked as future work. **Real regression
+     found and fixed, 2026-09-09**: a fresh
      `--refresh` run measured 64.28% — a real `FAIL` against this 71%
      baseline. Root cause, confirmed via the actual per-package JaCoCo
      numbers, not assumed: item #18's camera-overlay spike

@@ -137,7 +137,51 @@ logic, not UI), `RevenueCatManager.kt` specifically at 38% (44 of 71
 instructions missed), `com.rigcheck.app.domain` (the
 `compute_breakdown`/`verdict_for` port) at 99%. Major suite — 71% overall
 instruction coverage app-wide (much higher than Minor, as expected — it
-exercises real Compose UI), `ResultsScreen.kt` at 100%.
+exercises real Compose UI), `ResultsScreen.kt` at 100%. **This 71%
+figure already excludes `com.rigcheck.app.ui.experiments.cameraoverlay`**
+(the item #18 camera-overlay spike, isolated and unreachable from
+production) — see `scripts/coverage_gate.py`'s `ANDROID_EXCLUDED_PACKAGES`
+for the full mechanism/rationale; without the exclusion the raw number
+reads 64.28%, a real distortion from spike code, not a real regression.
+
+### Minor-vs-Major cross-reference for `ui.screens`/`.ui.components`/`.ui.navigation`
+
+Real numbers, gathered 2026-09-09, closing the "not yet done" note that
+used to sit in `NEXT_STEPS.md` item #8. Minor's 0% for all three
+packages is exactly as expected (no unit test targets Compose UI
+directly: `ui.screens` 0/7,095, `ui.components` 0/2,172, `ui.navigation`
+0/1,226 instructions covered) — but Major already closes almost all of
+that gap:
+
+- **`com.rigcheck.app.ui.screens` — 84%** (1,079/7,095 missed across 18
+  classes; all but one are 83%+). Real gap: **`PaywallScreenKt` at 45%**
+  (469/859 missed) — only `PaywallScreenTest.kt`'s 3 cases (null-balance
+  placeholder, offline error, restore-link presence) exercise it
+  directly in this suite. `PaywallScreenWeeklyTest.kt` (real Test Store
+  purchase flow, see this file's own tier docs) is excluded from Major
+  entirely via `build.gradle.kts`'s
+  `testInstrumentationRunnerArguments["notClass"]` and belongs to the
+  separate External suite instead — so part of this 45% is deliberately
+  tested elsewhere, not simply missing, though that isn't visible from
+  the number alone.
+- **`com.rigcheck.app.ui.components` — 89%** (238/2,172 missed across 7
+  classes; 5 are 94%+, several with no dedicated test file at all,
+  covered only incidentally through the screens that render them — e.g.
+  `LabeledFieldsKt` via every entry-screen test, `ScanOrManualChooserKt`
+  via `ChooserScreenTest`). Real gap: **`ReferenceImageCardKt` at 57%**
+  (148/352 missed), plus its pointer-input gesture lambda
+  (`ReferenceImageCardKt$ReferenceImageCard$2$1`) at a flat **0%**
+  (39/39 missed) — no dedicated test file exists for this component.
+- **`com.rigcheck.app.ui.navigation` — 81%** (223/1,226 missed across 11
+  classes, mostly trivial route/sealed-class boilerplate at 100%). Real
+  gap: **`RigCheckNavHostKt` at 80%** (223/1,140 missed) — the single
+  largest raw missed-instruction count found in this whole analysis.
+  Only `RigCheckNavHostTest.kt`'s 2 cases exist (the full happy-path
+  route, and the 2026-08-18 `onSelectRecentRig` regression test) — real
+  navigation logic this project has already had one real bug in.
+
+None of these three are closed yet — tracked as future work, not this
+analysis's job to fix.
 
 Both suites' existing plain commands (`./gradlew test`, `./gradlew
 connectedDebugAndroidTest`, no coverage tasks) are unaffected — this is

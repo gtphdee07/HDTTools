@@ -362,11 +362,31 @@ theoretical one.
    see "Cross-platform scope" and "Manufacturer/format diversity
    priority" above for full detail on both, including the real
    Haiku-4.5-vs-Sonnet-5 bug this decision immediately caught).
-7. **Still open**:
-   - Actually adding new manufacturer/format photos to the Python pools
-     — the growth mechanism itself is done (step 6 above), but no real
-     Chevy/other-manufacturer photos exist yet to drop into it.
-   - Growing Android's own pass-pool/fail-pool past its two initial
-     fixtures — the other 9 F-150 photos item #11 found Claude reads
-     correctly under `claude-sonnet-5` are ready-made, zero-new-photography
-     pass-pool material, not yet added.
+7. ✅ **Done, 2026-09-08 — Android's pass-pool grown** with the other 9
+   F-150 photos item #11 found Claude reads correctly under
+   `claude-sonnet-5` (`f150_blue_goose_uncropped/`), duplicated in as a
+   second registered vehicle — zero Kotlin changes needed
+   (`resolveRandom` already picks randomly across all registered
+   vehicles). Verified via two real `.\test-weekly.ps1` runs with
+   different random picks, both clean (a real, distinct exit-code bug
+   found while checking this is tracked as `NEXT_STEPS.md` item #19, in
+   `ARCHIVE_ANDROID.md`).
+8. ✅ **Done, 2026-09-09 — Python's `scale_ticket` pool grown for real**:
+   a new real CAT Scale ticket (Willis TX, a different weighing event
+   than the two legacy scale tickets) filed at
+   `ExampleDocs/scans/scale/brinkley_goose_willis_tx/` — the first real
+   `scale_ticket` pass-pool vehicle registered via the directory-
+   convention mechanism (previously exercised only by a synthetic
+   `tmp_path` test). Real Tesseract run first to establish honest golden
+   truth before writing `vehicle.json`: 5 of 6 tracked fields extract
+   exactly right; `location_name` hits the same real two-column-layout
+   jumbling limitation already documented for `CatScale-GooseOnly.jpg`,
+   recorded via `known_ocr_limitations` rather than guessed. Full suite
+   clean (555 passed, 3 xfailed) at the time, pass-pool regression re-run
+   5x clean.
+9. **Still genuinely open**: new-manufacturer/format *truck_tag*/
+   *trailer_tag* photos on the Python side — the growth mechanism itself
+   is done (step 6 above), but no real Chevy/other-manufacturer photos
+   exist yet to drop into it. This is the only piece of this design still
+   blocked, and it's blocked on new real photos existing, not on any
+   further code/design work.

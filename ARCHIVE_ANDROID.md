@@ -661,3 +661,110 @@ this is a fully separate concern from Play Store distribution:
   nice-to-have — see `android/TESTING.md`'s Coverage section for the
   fallback shape whenever it's picked up. Both parts of roadmap item #4
   are now done.
+
+## 📷 Guided-scan camera overlay spike (roadmap item #18) — spiked 2026-08-27, paused 2026-08-29
+
+Research + feasibility spike (not production code — isolated under
+`android/app/src/main/java/com/rigcheck/app/ui/experiments/cameraoverlay/`,
+unreachable from `MainActivity`/`RigCheckNavHost`/`ChooserScreen`,
+launched only via `adb shell am start`) for a CameraX-based live preview
+with a bounding-box overlay guiding users to frame the compliance tag
+correctly before capture — a "fix framing before capture" complement to
+items #11/#17's "fix cropping after capture" findings.
+
+**Real result, 2026-08-27**: permission flow, portrait preview/overlay
+alignment, and JPEG capture all confirmed working; found and fixed a
+real CameraX/Compose preview-rotation timing bug and a real
+EXIF-orientation bug (`encodePhotoForScan` doesn't consult EXIF, so an
+unrotated production pipeline would have saved sideways photos) via
+`normalizeExifOrientation()`. **One real risk left open, not fixed**:
+landscape capture appeared genuinely rotated at the pixel level on the
+emulator's virtual camera — might be an emulator-only artifact, might be
+a real bug, cannot be told apart without a physical device.
+**Recommendation: conditional go** (add as an additional "Guided Scan"
+option, not a `ChooserScreen` replacement) once that risk is confirmed
+on real hardware. **Paused, not abandoned** — full plan and results in
+`ClaudePlans/2026-08-27-android-camera-overlay-spike.md` and
+`ClaudePlans/2026-08-27-android-camera-overlay-spike-results.md`.
+
+✅ **Two hardware-independent hardening tests added, 2026-09-08** (no
+phone needed, don't require the open landscape question to be resolved
+first): a Minor/JVM test (`GuideRectMathTest`, 5 cases) for the
+overlay's guide-rectangle sizing math, extracted from the Canvas draw
+block into a pure `computeGuideRect` function specifically to make this
+testable without Robolectric; and a Major/instrumented test
+(`CameraOverlaySpikeExifTest`, 2 cases) proving `normalizeExifOrientation()`
+really bakes a 90° EXIF rotation into pixels and leaves an already-normal
+image untouched — a synthesized JPEG with a known EXIF tag, no live
+camera or physical device involved. Both caught real, honest mistakes in
+the tests' own assumptions before passing: `GuideRectMathTest` assumed a
+tall narrow canvas would be height-bound for a wide (2.22:1) guide box,
+but it was still width-bound (fixed the test's scenario/math, not the
+production code); `CameraOverlaySpikeExifTest` assumed a normalized
+image's EXIF orientation reads back as `ORIENTATION_NORMAL` (1), but
+`Bitmap.compress()` strips EXIF entirely so the real result is
+`ORIENTATION_UNDEFINED` (0) — fixed the assertion to accept either
+non-rotating value. Full existing Minor (7 files) and Major (48 tests)
+suites still passed clean.
+
+✅ **Coverage-exclusion fix, 2026-09-09** (see also the "Android
+coverage" entries in `ARCHIVE_TESTING.md`/`tests/TESTING.md`'s Coverage
+section): this spike's own code was found to be silently dragging
+Android's whole-app coverage number down (71%→64.28%, since it lives in
+`app/src/main/` and JaCoCo counts its ~92%-uncovered instructions
+app-wide) — fixed via a real `exclude_packages` mechanism in
+`scripts/coverage_lib.py`/`coverage_gate.py`'s
+`ANDROID_EXCLUDED_PACKAGES`, mirroring how `src/experiments/BoundOCR/`
+is excluded from Python's own coverage `source`.
+
+**Still open, still needs a phone**: the permission-denied/full-capture-
+flow instrumented tests, and the landscape-rotation risk itself
+(finding above) — neither can be resolved without a physical Android
+test device.
+
+## 🐛 Real bug: `test-weekly.ps1`'s pass/fail detection was blind to real test failures — found and fixed 2026-09-08
+
+Found while verifying item #13's Android pass-pool growth:
+`realPurchaseIncrementsBalance` failed for real on two consecutive
+`.\test-weekly.ps1` runs (visible in the script's own printed JUnit
+text — "FAILURES!!! Tests run: 6, Failures: 1"), yet
+`scripts/dashboard_data/external_status.json` still recorded
+`"passed": true`, and the script itself did not exit non-zero.
+
+✅ **Root cause, confirmed empirically, not assumed**: `adb shell am
+instrument`'s own process exit code does not reflect an internal JUnit
+failure — a deliberately-failing scratch test (`assertTrue(false)`), run
+the exact same way, printed "FAILURES!!! Tests run: 1, Failures: 1" but
+still returned `$LASTEXITCODE = 0`. `test-weekly.ps1` (line 95, at the
+time) captured this unreliable `$LASTEXITCODE` as `$testExitCode`, then
+both exited with it and passed it straight to
+`scripts/record_external_result.py` — so both the script's own exit
+status and the dashboard's recorded status were meaningless as pass/fail
+signals; only reading the raw printed test-runner text (as this session
+did, not by trusting the exit code) revealed the real failure.
+Separately confirmed the specific `realPurchaseIncrementsBalance`
+failure itself did not reproduce when re-run in isolation on a
+freshly-booted emulator — looks like real UI-timing flakiness under a
+loaded/long-running emulator, not a deterministic regression, but that's
+a distinct question from the exit-code bug and wasn't investigated
+further.
+
+✅ **Fixed and verified, 2026-09-08**: `test-weekly.ps1` now captures
+`am instrument`'s printed output (via `Tee-Object`, so it still prints
+live exactly as before) and checks the real summary text for
+`"OK (N tests)"` vs. `"FAILURES!!!"`, falling back to the harness's own
+exit code only for an infra-level failure (e.g. `INSTRUMENTATION_FAILED`
+— separately confirmed that *does* exit non-zero on its own). Validated
+against both a deliberately-failing scratch test (correctly detected as
+failed despite exit code 0) and a real passing run (correctly detected
+as passed) before editing the real script; then ran the real, fixed
+script end-to-end — 6/6 real tests passed this time (confirming the
+original `realPurchaseIncrementsBalance` failure really was transient
+emulator-load flakiness, not a regression), exit code 0, and
+`scripts/dashboard_data/external_status.json` recorded the accurate
+result.
+
+✅ **Confirmed no second instance**: scan-proxy's
+`test-weekly.ps1`/`test-release.ps1` run `npm run test:weekly`/
+`test:release` (vitest), whose exit codes are reliable — this bug was
+specific to `am instrument`'s exit-code semantics.

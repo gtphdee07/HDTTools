@@ -30,7 +30,7 @@ this one.
   fixes.
 - `ARCHIVE_BREAKDOWN_SWEEP.md` — the structured combinatorial sweep added
   for `compute_breakdown`/`verdict_for` and the two real crash bugs it
-  found (roadmap item #12).
+  found.
 
 **Lookup convention**: entries in every archive lead with a bold tag —
 `✅ **Real bug`, `**Decided`, `**Design correction`, `**Fix implemented`,
@@ -119,16 +119,6 @@ reading anything else.
     in `ARCHIVE_WEB_STREAMLIT.md`; no test code added this session (see
     "Tests still outstanding" below for what's deferred).
 
-12. ✅ **Structured combinatorial sweep for `compute_breakdown`/
-    `verdict_for` — closed 2026-08-24.** `itertools.product` over the
-    known value classes (378 combinations), asserting invariants rather
-    than exact values. Found **two real bugs**, both fixed on Python and
-    Kotlin with regression tests on both: an explicit `0` rated limit and
-    a `pin_weight_pct` of exactly `1.0` each crashed Python
-    (`ZeroDivisionError`) and misbehaved silently in Kotlin — both
-    reachable from a real, unvalidated caller (`POST /api/breakdown`).
-    Full narrative in `ARCHIVE_BREAKDOWN_SWEEP.md`.
-
 13. 🔶 **Constrained-random real-image regression testing for OCR/vision
     extraction — designed 2026-08-25, core design fully built and
     verified for real.** Pass-pool, fail-pool, interface-contract suite,
@@ -136,7 +126,8 @@ reading anything else.
     all done and passing; Android built its own duplicate pass-pool/
     fail-pool (decision + rationale in `FUTURE_CONSTRAINED_RANDOM_OCR_TESTING.md`'s
     "Cross-platform scope" section) rather than inheriting Python's, which
-    immediately caught a real bug (item #15). Grown twice since with
+    immediately caught a real bug (`ARCHIVE_MONETIZATION.md`). Grown
+    twice since with
     ready-made real photos — Android's pass-pool (2026-09-08) and
     Python's `scale_ticket` pool (2026-09-09). Full design, every
     completed step, and the real numbers behind each are in
@@ -144,17 +135,6 @@ reading anything else.
     new-manufacturer/format *truck_tag*/*trailer_tag* photos on the
     Python side — blocked on new real photos existing, not on any
     further code/design work.
-
-15. ✅ **Real bug: the deployed Worker was pinned to an unreliable model
-    for label extraction — found 2026-08-25, fixed same day.** Found by
-    item #13's new Android pass-pool test: `workers/scan-proxy/src/claude.ts`
-    used `claude-haiku-4-5-20251001` (chosen for cost), which returned
-    confident, **wrong** GVWR/GAWR numbers even on the easiest fixture in
-    the repo — a direct `claude-sonnet-5` call with the identical prompt
-    got every field right, confirming the model itself was the cause.
-    Fixed by switching `claude.ts` to `claude-sonnet-5`; redeployed;
-    re-verified for real against both pools. No production impact — the
-    app has no real users yet. Full evidence in `ARCHIVE_MONETIZATION.md`.
 
 16. ✅ **Build-time OCR-backend choice for Streamlit/web (Tesseract vs.
     Claude vision) — done 2026-09-09.** `HDTTOOLS_OCR_BACKEND` env flag
@@ -172,24 +152,11 @@ reading anything else.
     `ANTHROPIC_API_KEY`-ambient-env gotcha found on this machine, in
     `ARCHIVE_WEB_STREAMLIT.md`.
 
-17. ✅ **BoundOCR: free/local OCR alternative to Claude vision —
-    investigated 2026-08-26/27, closed 2026-08-29. Decision: stick with
-    Claude vision for truck data-plate OCR; no local-OCR replacement is
-    currently good enough.** Across two vehicles and three photos
-    (including a deliberately careful retake), automated localization
-    failed three distinct ways and local OCR recognition (Tesseract,
-    EasyOCR) hit real, unresolved accuracy limits even on hand-verified
-    crops, while real Claude-vision calls scored 100% correct on every
-    photo tested. `src/experiments/BoundOCR/` stays in the repo as an
-    isolated, inert historical record (nothing there was ever wired into
-    `hdttools/`) in case it's worth revisiting later. Full narrative,
-    every real number, and the closure decision in
-    `ClaudePlans/2026-08-26-boundocr-report-session-summary.md`.
-
 18. 🔶 **Android: guided-scan camera overlay (framing guide before
     capture) — spiked 2026-08-27, paused 2026-08-29 (no test phone
-    available).** A "fix framing before capture" complement to items
-    #11/#17's "fix cropping after capture" findings — CameraX preview +
+    available).** A "fix framing before capture" complement to item #11's
+    and BoundOCR's (`ClaudePlans/2026-08-26-boundocr-report-session-summary.md`)
+    "fix cropping after capture" findings — CameraX preview +
     Compose bounding-box overlay, isolated under
     `.../ui/experiments/cameraoverlay/`, not wired into production nav.
     Permission flow, portrait alignment, and JPEG capture all confirmed
@@ -204,17 +171,6 @@ reading anything else.
     spike was silently dragging Android's whole-app coverage number
     down). Full narrative in `ARCHIVE_ANDROID.md`; original spike/results
     in `ClaudePlans/2026-08-27-android-camera-overlay-spike*.md`.
-
-19. ✅ **Real bug: `android/test-weekly.ps1`'s pass/fail detection was
-    blind to real test failures — found and fixed 2026-09-08.** `adb
-    shell am instrument`'s process exit code never reflected an internal
-    JUnit failure, so both the script's own exit status and the
-    dashboard's recorded result were meaningless as pass/fail signals —
-    confirmed empirically with a deliberately-failing scratch test, then
-    fixed by parsing the real printed summary text instead. Confirmed no
-    second instance (scan-proxy's own weekly/release scripts use
-    reliable `npm`/vitest exit codes). Full narrative in
-    `ARCHIVE_ANDROID.md`.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see
@@ -251,15 +207,16 @@ captured as roadmap items #7-#8 above — check there first.
   without a fix in hand. It would need updating (not removing) once an
   actual auto-crop/guidance fix ships, since some of these 10 photos
   would then be expected to start succeeding.
-  **Investigated for real, 2026-08-26/27 (item #17, BoundOCR)**:
-  automated auto-crop (contour/quad detection) was built and tested, and
-  failed three separate, real ways across two vehicles; hand-crop
-  diagnostics also showed OCR *recognition* quality — not just
-  cropping — is a real, unresolved bottleneck for this label style
-  (Tesseract near-total garbage regardless of crop quality; EasyOCR
-  better but still blocked by small glyph misreads). The fix is still
-  not shipped — see item #17 for full results and remaining options
-  (fix `locate_label`, wire in EasyOCR, or a manual crop-box UI).
+  **Investigated for real, 2026-08-26/27 (BoundOCR)**: automated
+  auto-crop (contour/quad detection) was built and tested, and failed
+  three separate, real ways across two vehicles; hand-crop diagnostics
+  also showed OCR *recognition* quality — not just cropping — is a real,
+  unresolved bottleneck for this label style (Tesseract near-total
+  garbage regardless of crop quality; EasyOCR better but still blocked
+  by small glyph misreads). The fix is still not shipped — see
+  `ClaudePlans/2026-08-26-boundocr-report-session-summary.md` for full
+  results and remaining options (fix `locate_label`, wire in EasyOCR, or
+  a manual crop-box UI).
 
 Full historical detail for everything that used to be tracked here
 (sanity/daily tier builds, real bugs found while testing, per-platform

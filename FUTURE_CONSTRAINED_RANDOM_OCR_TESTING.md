@@ -15,7 +15,7 @@ behind each decision here is worth more than a one-line summary. See
 
 Item #11's F-150 investigation (`ARCHIVE_WEB_STREAMLIT.md`) found two
 real, different-shaped OCR gaps using 10 real photos of one physical
-tag. Item #12's combinatorial sweep (`ARCHIVE_BREAKDOWN_SWEEP.md`) then
+tag. The combinatorial sweep (`ARCHIVE_BREAKDOWN_SWEEP.md`) then
 proved that a *structured, non-hand-written* test approach — generate
 many cases from a small set of representative dimensions, assert
 invariants rather than exact values — finds real bugs hand-written
@@ -258,7 +258,7 @@ deployed Worker was pinned to `claude-haiku-4-5-20251001` (a cheaper
 model choice never validated against this task), which returned
 confident, wrong GVWR/GAWR values even for `AddieTag.jpg`, the easiest
 fixture in the repo. Fixed by switching to `claude-sonnet-5` (full
-narrative: `NEXT_STEPS.md` item #15, `ARCHIVE_MONETIZATION.md`) — a bug
+narrative: `ARCHIVE_MONETIZATION.md`) — a bug
 that specifically lived in the real deployed configuration, which
 neither Python's direct-Claude path nor a mocked scan-proxy unit test
 could ever have caught. Concrete vindication of "duplicate," not a
@@ -369,8 +369,7 @@ theoretical one.
    (`resolveRandom` already picks randomly across all registered
    vehicles). Verified via two real `.\test-weekly.ps1` runs with
    different random picks, both clean (a real, distinct exit-code bug
-   found while checking this is tracked as `NEXT_STEPS.md` item #19, in
-   `ARCHIVE_ANDROID.md`).
+   found while checking this is tracked in `ARCHIVE_ANDROID.md`).
 8. ✅ **Done, 2026-09-09 — Python's `scale_ticket` pool grown for real**:
    a new real CAT Scale ticket (Willis TX, a different weighing event
    than the two legacy scale tickets) filed at

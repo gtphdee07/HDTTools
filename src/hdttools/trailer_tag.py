@@ -5,7 +5,12 @@ from __future__ import annotations
 from .database import save_trailer_tag
 from .models import TireSpec, TrailerTagData
 from .review_form import review_and_edit
-from .vision_client import extract_via_claude, prompt_vehicle_name, select_image_file
+from .vision_client import (
+    extract_via_claude,
+    image_bytes_and_media_type,
+    prompt_vehicle_name,
+    select_image_file,
+)
 
 _SYSTEM_PROMPT = (
     "You are reading a Vehicle Safety Compliance Certification label for a "
@@ -57,6 +62,23 @@ _SCHEMA = {
 }
 
 
+def extract_trailer_tag_fields(image_bytes: bytes, media_type: str) -> dict:
+    """Headless, pure Claude-vision extraction for a trailer compliance
+    label - see truck_tag.extract_truck_tag_fields's docstring for the
+    shape/rationale; this module's version unpacks a single `tire` field
+    rather than front/rear."""
+    fields = extract_via_claude(
+        image_bytes=image_bytes,
+        media_type=media_type,
+        system_prompt=_SYSTEM_PROMPT,
+        tool_name="record_trailer_tag",
+        tool_description="Record the fields extracted from a trailer compliance label.",
+        schema=_SCHEMA,
+    )
+    fields["tire"] = TireSpec(**fields.pop("tire"))
+    return fields
+
+
 def read_trailer_tag() -> TrailerTagData | None:
     """Prompt the user to pick a trailer compliance-label image and a
     vehicle name, let them review and repair the extracted fields, save
@@ -65,20 +87,12 @@ def read_trailer_tag() -> TrailerTagData | None:
     image_path = select_image_file("Select a trailer compliance label image")
     vehicle_name = prompt_vehicle_name()
 
-    fields = extract_via_claude(
-        image_path=image_path,
-        system_prompt=_SYSTEM_PROMPT,
-        tool_name="record_trailer_tag",
-        tool_description="Record the fields extracted from a trailer compliance label.",
-        schema=_SCHEMA,
-    )
-
-    tire = TireSpec(**fields.pop("tire"))
+    image_bytes, media_type = image_bytes_and_media_type(image_path)
+    fields = extract_trailer_tag_fields(image_bytes, media_type)
 
     record = TrailerTagData(
         vehicle_name=vehicle_name,
         source_image=str(image_path),
-        tire=tire,
         **fields,
     )
 

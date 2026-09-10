@@ -5,7 +5,12 @@ from __future__ import annotations
 from .database import save_truck_tag
 from .models import TireSpec, TruckTagData
 from .review_form import review_and_edit
-from .vision_client import extract_via_claude, prompt_vehicle_name, select_image_file
+from .vision_client import (
+    extract_via_claude,
+    image_bytes_and_media_type,
+    prompt_vehicle_name,
+    select_image_file,
+)
 
 _SYSTEM_PROMPT = (
     "You are reading a Ford-style Vehicle Safety Compliance Certification "
@@ -59,6 +64,28 @@ _SCHEMA = {
 }
 
 
+def extract_truck_tag_fields(image_bytes: bytes, media_type: str) -> dict:
+    """Headless, pure Claude-vision extraction for a truck compliance
+    label: no file picker, no vehicle-name prompt, no review form, no
+    database save - just image bytes in, a fields dict out, ready to
+    spread into TruckTagData (minus vehicle_name/source_image, which
+    only a caller with those has). Does the same front_tire/rear_tire
+    raw-dict -> TireSpec unpacking read_truck_tag() used to do inline,
+    so this is what both it and any other headless caller (the web API,
+    Streamlit) share."""
+    fields = extract_via_claude(
+        image_bytes=image_bytes,
+        media_type=media_type,
+        system_prompt=_SYSTEM_PROMPT,
+        tool_name="record_truck_tag",
+        tool_description="Record the fields extracted from a truck compliance label.",
+        schema=_SCHEMA,
+    )
+    fields["front_tire"] = TireSpec(**fields.pop("front_tire"))
+    fields["rear_tire"] = TireSpec(**fields.pop("rear_tire"))
+    return fields
+
+
 def read_truck_tag() -> TruckTagData | None:
     """Prompt the user to pick a truck compliance-label image and a vehicle
     name, let them review and repair the extracted fields, save the
@@ -67,22 +94,12 @@ def read_truck_tag() -> TruckTagData | None:
     image_path = select_image_file("Select a truck compliance label image")
     vehicle_name = prompt_vehicle_name()
 
-    fields = extract_via_claude(
-        image_path=image_path,
-        system_prompt=_SYSTEM_PROMPT,
-        tool_name="record_truck_tag",
-        tool_description="Record the fields extracted from a truck compliance label.",
-        schema=_SCHEMA,
-    )
-
-    front_tire = TireSpec(**fields.pop("front_tire"))
-    rear_tire = TireSpec(**fields.pop("rear_tire"))
+    image_bytes, media_type = image_bytes_and_media_type(image_path)
+    fields = extract_truck_tag_fields(image_bytes, media_type)
 
     record = TruckTagData(
         vehicle_name=vehicle_name,
         source_image=str(image_path),
-        front_tire=front_tire,
-        rear_tire=rear_tire,
         **fields,
     )
 

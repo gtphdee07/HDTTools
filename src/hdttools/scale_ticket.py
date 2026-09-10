@@ -5,7 +5,7 @@ from __future__ import annotations
 from .database import save_scale_ticket
 from .models import ScaleTicketData
 from .review_form import review_and_edit
-from .vision_client import extract_via_claude, select_image_file
+from .vision_client import extract_via_claude, image_bytes_and_media_type, select_image_file
 
 _SYSTEM_PROMPT = (
     "You are reading a truck weigh scale ticket (e.g. a CAT Scale ticket). "
@@ -56,19 +56,30 @@ _SCHEMA = {
 }
 
 
+def extract_scale_ticket_fields(image_bytes: bytes, media_type: str) -> dict:
+    """Headless, pure Claude-vision extraction for a weigh scale ticket -
+    see truck_tag.extract_truck_tag_fields's docstring for the shape/
+    rationale. No nested TireSpec to unpack here, so this is a thin
+    pass-through, kept for the same reason (a headless caller with image
+    bytes but no file/vehicle-name/review-form/database context)."""
+    return extract_via_claude(
+        image_bytes=image_bytes,
+        media_type=media_type,
+        system_prompt=_SYSTEM_PROMPT,
+        tool_name="record_scale_ticket",
+        tool_description="Record the fields extracted from a weigh scale ticket.",
+        schema=_SCHEMA,
+    )
+
+
 def read_scale_ticket() -> ScaleTicketData | None:
     """Prompt the user to pick a weigh-ticket image, let them review and
     repair the extracted fields, save the result, and return it. Returns
     None if the user cancels the review instead of saving."""
     image_path = select_image_file("Select a scale ticket image")
 
-    fields = extract_via_claude(
-        image_path=image_path,
-        system_prompt=_SYSTEM_PROMPT,
-        tool_name="record_scale_ticket",
-        tool_description="Record the fields extracted from a weigh scale ticket.",
-        schema=_SCHEMA,
-    )
+    image_bytes, media_type = image_bytes_and_media_type(image_path)
+    fields = extract_scale_ticket_fields(image_bytes, media_type)
 
     record = ScaleTicketData(source_image=str(image_path), **fields)
 

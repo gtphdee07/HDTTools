@@ -29,9 +29,9 @@ from recent_rigs import load_recent_rigs, save_recent_rig
 # correct regardless of where the process was launched from.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from hdttools import scale_ticket_ocr, trailer_tag_ocr, truck_tag_ocr  # noqa: E402
+from hdttools import scale_ticket, scale_ticket_ocr, trailer_tag, trailer_tag_ocr, truck_tag, truck_tag_ocr  # noqa: E402
 from hdttools.api.breakdown import DEFAULT_PIN_WEIGHT_PCT, compute_breakdown, verdict_for  # noqa: E402
-from hdttools.ocr_common import ensure_tesseract_configured, ocr_text, preprocess_image  # noqa: E402
+from hdttools.ocr_common import ensure_tesseract_configured, get_ocr_backend, ocr_text, preprocess_image  # noqa: E402
 
 st.set_page_config(page_title="RigCheck", page_icon="🚚")
 
@@ -79,6 +79,17 @@ _PARSERS = {
     "scale": scale_ticket_ocr._parse_fields,
 }
 
+# Claude-vision counterpart to _PARSERS above (roadmap item #16) - values
+# are (module, attribute-name) pairs, resolved via getattr() at call
+# time rather than bound function objects, so a test's
+# monkeypatch.setattr(truck_tag, "extract_truck_tag_fields", ...) still
+# takes effect (same reasoning as hdttools.api.main's matching dict).
+_CLAUDE_EXTRACTORS = {
+    "truck": (truck_tag, "extract_truck_tag_fields"),
+    "trailer": (trailer_tag, "extract_trailer_tag_fields"),
+    "scale": (scale_ticket, "extract_scale_ticket_fields"),
+}
+
 
 def _init_state() -> None:
     st.session_state.setdefault("step", 0)
@@ -122,13 +133,20 @@ def _reset_wizard() -> None:
 
 
 def _extract_fields(module_key: str, uploaded_file) -> tuple[dict, str]:
-    ensure_tesseract_configured()
-    image = Image.open(uploaded_file)
-    text = ocr_text(preprocess_image(image))
-    parsed = _PARSERS[module_key](text)
     keep = {name for name, _label, _type in FIELDS[module_key]}
+
+    if get_ocr_backend() == "tesseract":
+        ensure_tesseract_configured()
+        image = Image.open(uploaded_file)
+        text = ocr_text(preprocess_image(image))
+        parsed = _PARSERS[module_key](text)
+        fields = {k: v for k, v in parsed.items() if k in keep}
+        return fields, text
+
+    module, attr = _CLAUDE_EXTRACTORS[module_key]
+    parsed = getattr(module, attr)(uploaded_file.getvalue(), uploaded_file.type)
     fields = {k: v for k, v in parsed.items() if k in keep}
-    return fields, text
+    return fields, ""
 
 
 def _rig_step() -> None:
@@ -166,7 +184,11 @@ def _render_review(module_key: str) -> None:
     raw_text = st.session_state.get(f"{module_key}_raw_text", "")
     if st.session_state.get(f"{module_key}_skipped"):
         st.info("No photo provided — fill in what you know below, or leave fields blank.")
-    elif not raw_text.strip():
+    elif get_ocr_backend() == "tesseract" and not raw_text.strip():
+        # Claude-vision extraction has no raw OCR text at all (raw_text is
+        # always "" under that backend) - this warning is Tesseract-
+        # specific and would otherwise misfire on every successful
+        # Claude-vision extraction, not just a real Tesseract problem.
         st.warning(
             "Tesseract returned no text at all from this photo — that points to an "
             "OCR engine/environment problem (e.g. missing language data) rather than "

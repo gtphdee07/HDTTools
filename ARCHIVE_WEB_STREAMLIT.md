@@ -431,3 +431,149 @@ photos moved to `ExampleDocs/scans/truck/f150_blue_goose_uncropped/`
 with a `vehicle.json` sidecar, auto-discovered by
 `scripts/vehicle_discovery.py` rather than referenced from
 `golden_fields.json` directly.
+
+---
+
+## 🔀 Build-time OCR-backend choice for Streamlit/web (item #16) — done 2026-09-09
+
+Built the flag item #16 recorded 2026-08-25: `HDTTOOLS_OCR_BACKEND`
+(`ocr_common.get_ocr_backend()`, default `"tesseract"`, `"claude"` the
+only other valid value, `ValueError` on anything else — fail loud, no
+silent fallback), read by both `src/hdttools/api/main.py` and
+`streamlit_app/app.py` to choose Tesseract-style vs Claude-vision-style
+extraction per doc_type. TDD throughout (`TDD_METHODOLOGY.md`): every
+new function's test written first, watched fail for real, then
+implemented; full `uv run pytest -q` re-run after each step.
+
+**Real refactor: `vision_client.extract_via_claude` now takes bytes, not
+a path.** Before this, it took `image_path: Path` and read bytes off
+disk itself — dead weight for both real callers (`main.py`'s
+`UploadFile`, Streamlit's `UploadedFile`), which already have the image
+as in-memory bytes. Changed the signature to
+`(image_bytes: bytes, media_type: str, ...)`; the three existing
+interactive callers (`truck_tag.py`/`trailer_tag.py`/`scale_ticket.py`)
+now compute both at their own call site via a small new
+`vision_client.image_bytes_and_media_type()` helper (one
+`mimetypes.guess_type` line, not three copies). `tests/test_vision_client.py`
+was rewritten to the new signature first, watched fail
+(`TypeError: got an unexpected keyword argument 'image_bytes'`), then
+the implementation changed — real Red confirmed, not assumed.
+
+**New headless, pure extractor functions** — `truck_tag.extract_truck_tag_fields`,
+`trailer_tag.extract_trailer_tag_fields`, `scale_ticket.extract_scale_ticket_fields`
+(each `(image_bytes, media_type) -> dict`) — wrap `extract_via_claude`
+with that module's own `_SYSTEM_PROMPT`/`_SCHEMA` and do the same
+`TireSpec(**fields.pop(...))` unpacking `read_truck_tag()`/
+`read_trailer_tag()` used to do inline; both `read_*` functions were
+refactored to call the new function, removing the duplication.
+`tests/test_readers_integration.py` gained Function-tier tests for all
+three (mocking `extract_via_claude` the same way `test_vision_client.py`
+does); `tests/test_ocr_output_key_contracts.py` gained the same
+schema-direction contract check these functions now share with
+`_parse_fields()` (fake Claude responses shaped from each module's own
+`_SCHEMA` via a small `_fake_claude_fields()` helper, so the check
+tracks future schema edits automatically).
+
+**`main.py`**: the three near-duplicate route bodies collapsed into one
+`_extract_fields(doc_type, file)` dispatch, keyed by two
+`(module, attribute-name)` dicts (`_TESSERACT_PARSERS`/
+`_CLAUDE_EXTRACTORS`) resolved via `getattr()` at call time rather than
+bound function objects — deliberately, so `tests/test_api.py`'s existing
+`monkeypatch.setattr(main.truck_tag_ocr, "_parse_fields", ...)` pattern
+(and the new matching Claude-side one) still takes effect, the same way
+the original routes' direct attribute access did. Tesseract branch is
+byte-for-byte the old behavior; Claude branch validates content-type the
+same way, reads raw bytes, calls the matching extractor, and normalizes
+any exception to `HTTPException(502, ...)` — distinct from the existing
+400 "not a valid image" case, since a 502 here means the upstream Claude
+call itself failed, not a bad upload. 6 new `test_api.py` cases (3
+per-route dispatch, rejected-upload, 502-normalization, invalid-env-value).
+
+**`app.py`**: `_extract_fields` branches the same way, with a matching
+`_CLAUDE_EXTRACTORS` dict; the Claude branch calls
+`uploaded_file.getvalue()`/`.type` and returns `(fields, "")` for the
+raw-text slot (both branches already shared the same `FIELDS`-based
+`keep`-filtering, unaffected by the branch). **Real edge, exactly as
+anticipated in the plan**: the `elif not raw_text.strip(): st.warning("Tesseract
+returned no text...")` at `app.py`'s review-render step would otherwise
+fire on *every* successful Claude extraction, since `raw_text` is always
+`""` on that path — fixed by gating it on
+`get_ocr_backend() == "tesseract"` too. 4 new `test_streamlit_app.py`
+cases (one Claude-backend upload per module, plus a case proving the
+warning stays suppressed) — confirmed the "fix" was real by watching the
+new warning-suppression test fail first for the *right* reason (an
+`AttributeError`/`KeyError` from the dispatch not existing yet, not a
+warning actually firing), then pass for the right reason once both the
+dispatch and the gate were in.
+
+**New External-tier test (first for this Python platform)**:
+`tests/test_claude_vision_external.py`, `@pytest.mark.skipif`'d unless a
+real `ANTHROPIC_API_KEY` is set, one real Claude vision call per doc type
+against a random pass-pool image (`scripts/pass_pool.py`, item #13's
+existing infra — no new fixtures). Corrects `tests/TESTING.md`'s
+now-stale "No External suite exists here today... N/A" line from
+2026-08-21, true only until this file existed.
+
+✅ **Real environment gotcha, confirmed 2026-09-09**: this dev machine
+has `ANTHROPIC_API_KEY` set ambiently (ambient env var, not a
+per-session export) — the same class of surprise
+`TDD_METHODOLOGY.md`'s scan-proxy section already documents for that
+platform ("`ANTHROPIC_API_KEY` was found ambiently set in this dev
+machine's shell once, unintentionally"), now confirmed on the Python
+side too. Consequence: a routine `uv run pytest -q` on this machine does
+**not** skip the new External suite — it makes real, billed Claude API
+calls every single run. Every mocked-only test run this session
+explicitly unset the var first (`unset ANTHROPIC_API_KEY && uv run
+pytest -q`); the one deliberate real run (see below) was run separately,
+once, on purpose. Anyone continuing this work on this machine should
+check `$env:ANTHROPIC_API_KEY`/`echo $ANTHROPIC_API_KEY` before a casual
+full-suite run.
+
+✅ **Real finding from the one deliberate External-tier run, 2026-09-09
+— 2 of 3 doc types passed for real, 1 surfaced a genuine ground-truth
+question, not a code bug.** `trailer_tag` and `scale_ticket` passed
+outright: real Claude vision calls against
+`ExampleDocs/scans/trailer` (via `GooseTag.jpg`, resolved by the
+pass-pool) and the `brinkley_goose_willis_tx` scale vehicle matched
+their documented golden fields exactly. `truck_tag` (`AddieTag.jpg`)
+failed on exactly one field: `manufacturer`. Claude read
+`"FORD MOTOR CO."` (with a trailing period); `golden_fields.json`'s
+documented ground truth is `"FORD MOTOR CO"` (no period). Investigated,
+not assumed: (1) visually inspected `AddieTag.jpg` directly — the
+physical label plainly prints "MFD. BY FORD MOTOR CO." with a trailing
+period; (2) ran real Tesseract against the same photo and confirmed it
+*also* drops the period (`truck_tag_ocr._parse_fields` returns
+`"FORD MOTOR CO"` for real, matching the documented golden value
+exactly) — so the documented ground truth was set to match Tesseract's
+own real (slightly imprecise) output, not independently re-verified
+against the physical label's punctuation. This means Claude vision's
+answer here is *more* accurate than the current documented golden value,
+not a Claude regression — but `golden_fields.json`'s own `_readme`
+states its "fields" values are "provided directly by the project owner
+from the physical tags/tickets," not derived from any OCR/vision output
+including Claude's, so this session deliberately did **not** edit that
+file to "fix" the value based on its own visual read (that would mean
+the system under test partly defining its own ground truth). **Left
+open for the project owner**: whether to update
+`golden_fields.json`'s `AddieTag.jpg` → `manufacturer` to
+`"FORD MOTOR CO."` (matching the physical label) plus add a
+`known_ocr_limitations` entry documenting that Tesseract drops the
+trailing period, or leave it as-is. Either way, this is a real, working
+proof that `HDTTOOLS_OCR_BACKEND=claude` calls genuine Claude vision
+end-to-end successfully for all three doc types — the one mismatch is a
+fixture-precision question, not a broken extraction path.
+
+✅ **Resolved by the project owner, 2026-09-09: updated to
+`"FORD MOTOR CO."`.** `golden_fields.json`'s `AddieTag.jpg` →
+`manufacturer` now reads `"FORD MOTOR CO."` (matching the physical
+label), with a `known_ocr_limitations` entry documenting that real
+Tesseract drops the trailing period. Ripple effects confirmed for real,
+not assumed: `tests/test_real_photo_ocr_accuracy.py`'s manufacturer case
+for this photo moved from a plain pass to `xfail(strict=True)` (3→4
+total xfails app-wide, `584 passed, 3 skipped, 4 xfailed` full-suite);
+`tests/test_pass_pool_regression.py`'s `mismatched == known_ocr_limitations`
+set-equality check needed no code change (manufacturer now correctly
+appears on both sides); `tests/test_streamlit_app.py`'s full walkthrough
+already skips any field listed under `known_ocr_limitations`, so it
+needed no change either. Re-ran the real External-tier test once more
+after the fix: all 3 doc types now pass cleanly, including `truck_tag`.

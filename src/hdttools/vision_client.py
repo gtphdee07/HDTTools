@@ -14,6 +14,7 @@ from .file_picker import prompt_vehicle_name, select_image_file
 __all__ = [
     "DEFAULT_MODEL",
     "extract_via_claude",
+    "image_bytes_and_media_type",
     "prompt_vehicle_name",
     "select_image_file",
 ]
@@ -21,8 +22,18 @@ __all__ = [
 DEFAULT_MODEL = "claude-sonnet-5"
 
 
+def image_bytes_and_media_type(image_path: Path) -> tuple[bytes, str]:
+    """Reads an on-disk image and resolves its media type - the small
+    local helper each interactive caller (truck_tag.py/trailer_tag.py/
+    scale_ticket.py) uses at its own call site, so the
+    `mimetypes.guess_type` line isn't repeated three times."""
+    media_type = mimetypes.guess_type(image_path.name)[0] or "image/jpeg"
+    return image_path.read_bytes(), media_type
+
+
 def extract_via_claude(
-    image_path: Path,
+    image_bytes: bytes,
+    media_type: str,
     system_prompt: str,
     tool_name: str,
     tool_description: str,
@@ -30,8 +41,7 @@ def extract_via_claude(
     model: str = DEFAULT_MODEL,
 ) -> dict:
     """Send an image to Claude and return the tool-use input matching `schema`."""
-    media_type = mimetypes.guess_type(image_path.name)[0] or "image/jpeg"
-    image_data = base64.standard_b64encode(image_path.read_bytes()).decode("utf-8")
+    image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
 
     client = anthropic.Anthropic()
     tool = {

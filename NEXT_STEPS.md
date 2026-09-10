@@ -370,31 +370,21 @@ reading anything else.
     Full evidence (the wrong responses, the redeploy ruling out staleness,
     the Sonnet-5 confirmation call) in `ARCHIVE_MONETIZATION.md`.
 
-16. ⬜ **Build-time OCR-backend choice for Streamlit/web (Tesseract vs.
-    Claude vision) — recorded 2026-08-25, not started.** Real gap in
-    institutional memory, surfaced while designing item #13's Android
-    work: `src/hdttools/truck_tag.py`/`trailer_tag.py`/`scale_ticket.py`
-    already contain a complete, working Claude-vision implementation
-    (via `vision_client.extract_via_claude`) — but nothing in the actual
-    shipped app (Streamlit + the FastAPI backend, both of which import
-    `truck_tag_ocr.py`/`trailer_tag_ocr.py`/`scale_ticket_ocr.py`
-    directly) ever calls it. The original intent, per the project owner
-    directly, was for Streamlit and the web/API backend to each support
-    **either** backend as a **build-time** decision (not a runtime
-    toggle) — that path was dropped somewhere during development and
-    was never recorded anywhere before now (confirmed: zero hits
-    grepping every `.md` file in the repo for this). Does not apply to
-    Android — no local OCR engine is available there, so Android stays
-    Claude-only regardless of what this item decides. Scope of "done":
-    a single build/env-level flag both `src/hdttools/api/main.py` and
-    `streamlit_app/app.py` read to choose Tesseract-style parsing vs.
-    Claude-vision-style parsing per doc_type, plus Minor/Major test
-    coverage for both branches per `TESTING.md`'s existing model, built
-    per `TDD_METHODOLOGY.md`'s TDD requirement. Not designed further
-    than this yet — pick up fresh in a future session. **Real evidence
-    now exists bearing on this decision** — see item #17's Claude-vision
-    ceiling check (100% correct on every real photo tested, vs. real,
-    unresolved local-OCR limits).
+16. ✅ **Build-time OCR-backend choice for Streamlit/web (Tesseract vs.
+    Claude vision) — done 2026-09-09.** `HDTTOOLS_OCR_BACKEND` env flag
+    (default `"tesseract"`, `"claude"` the only other valid value, fail
+    loud otherwise), read by both `main.py` and `app.py`'s per-doc-type
+    dispatch; `vision_client.extract_via_claude` refactored to take
+    bytes instead of a path; new headless `extract_*_fields` functions
+    per doc type; new first-ever Python External-tier test
+    (`test_claude_vision_external.py`), all 3 doc types passing for real.
+    Along the way, surfaced and fixed a real `golden_fields.json` ground-
+    truth gap: `AddieTag.jpg`'s documented `manufacturer` value matched
+    Tesseract's own imprecision (a dropped trailing period) rather than
+    the physical label — corrected to `"FORD MOTOR CO."` with a
+    `known_ocr_limitations` entry. Full narrative, including the real
+    `ANTHROPIC_API_KEY`-ambient-env gotcha found on this machine, in
+    `ARCHIVE_WEB_STREAMLIT.md`.
 
 17. ✅ **BoundOCR: free/local OCR alternative to Claude vision —
     investigated 2026-08-26/27, closed 2026-08-29. Decision: stick with

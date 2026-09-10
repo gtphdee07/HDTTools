@@ -46,7 +46,7 @@ import sys
 from dataclasses import fields as dataclass_fields
 from pathlib import Path
 
-from hdttools import scale_ticket_ocr, trailer_tag_ocr, truck_tag_ocr
+from hdttools import scale_ticket, scale_ticket_ocr, trailer_tag, trailer_tag_ocr, truck_tag, truck_tag_ocr
 from hdttools.api.schemas import ScaleTicketOut, TireSpecOut, TrailerTagOut, TruckTagOut
 from hdttools.models import TireSpec
 
@@ -69,6 +69,23 @@ def _schema_field_names(model_cls) -> set[str]:
 
 def _streamlit_field_names(module_key: str) -> set[str]:
     return {name for name, _label, _type in FIELDS[module_key]}
+
+
+def _fake_claude_fields(schema: dict) -> dict:
+    """Builds a fake extract_via_claude return value structurally shaped
+    like `schema` (nested object properties -> nested dicts, booleans ->
+    False, everything else -> None) - the same "shape regardless of
+    match success" property _parse_fields("") relies on above, but for
+    the Claude-vision schemas instead of a Tesseract regex module."""
+    fields = {}
+    for name, prop in schema["properties"].items():
+        if prop.get("type") == "object":
+            fields[name] = _fake_claude_fields(prop)
+        elif prop.get("type") == "boolean":
+            fields[name] = False
+        else:
+            fields[name] = None
+    return fields
 
 
 def test_truck_tag_ocr_output_keys_are_all_declared_on_truck_tag_out():
@@ -110,3 +127,36 @@ def test_every_streamlit_scale_field_name_maps_to_a_real_ocr_key():
     expected = _streamlit_field_names("scale") - _MANUAL_ONLY_FIELDS["scale"]
     missing = expected - set(scale_ticket_ocr._parse_fields("").keys())
     assert not missing
+
+
+# Same schema-direction contract as above (every OCR key must be a
+# declared schema field), extended to the new headless Claude-vision
+# extractor functions (roadmap item #16) - extract_via_claude itself is
+# mocked (a real network call has no place in a Function-tier contract
+# test), shaped from each module's own _SCHEMA so this test tracks any
+# future schema edit automatically rather than hand-duplicating field
+# names a second time.
+
+
+def test_truck_tag_claude_extractor_output_keys_are_all_declared_on_truck_tag_out(monkeypatch):
+    fake_fields = _fake_claude_fields(truck_tag._SCHEMA)
+    monkeypatch.setattr(truck_tag, "extract_via_claude", lambda **kwargs: fake_fields)
+    fields = truck_tag.extract_truck_tag_fields(b"fake-bytes", "image/jpeg")
+    unknown = set(fields.keys()) - _schema_field_names(TruckTagOut)
+    assert not unknown
+
+
+def test_trailer_tag_claude_extractor_output_keys_are_all_declared_on_trailer_tag_out(monkeypatch):
+    fake_fields = _fake_claude_fields(trailer_tag._SCHEMA)
+    monkeypatch.setattr(trailer_tag, "extract_via_claude", lambda **kwargs: fake_fields)
+    fields = trailer_tag.extract_trailer_tag_fields(b"fake-bytes", "image/jpeg")
+    unknown = set(fields.keys()) - _schema_field_names(TrailerTagOut)
+    assert not unknown
+
+
+def test_scale_ticket_claude_extractor_output_keys_are_all_declared_on_scale_ticket_out(monkeypatch):
+    fake_fields = _fake_claude_fields(scale_ticket._SCHEMA)
+    monkeypatch.setattr(scale_ticket, "extract_via_claude", lambda **kwargs: fake_fields)
+    fields = scale_ticket.extract_scale_ticket_fields(b"fake-bytes", "image/jpeg")
+    unknown = set(fields.keys()) - _schema_field_names(ScaleTicketOut)
+    assert not unknown

@@ -31,10 +31,7 @@ class _FakeAnthropicClient:
         self.messages = _FakeMessages(response)
 
 
-def test_extract_via_claude_returns_tool_input(tmp_path, monkeypatch):
-    image_path = tmp_path / "ticket.jpg"
-    image_path.write_bytes(b"fake-image-bytes")
-
+def test_extract_via_claude_returns_tool_input(monkeypatch):
     fake_response = _FakeResponse(
         [_FakeToolUseBlock("record_scale_ticket", {"ticket_number": "123"})]
     )
@@ -42,7 +39,8 @@ def test_extract_via_claude_returns_tool_input(tmp_path, monkeypatch):
     monkeypatch.setattr(vision_client.anthropic, "Anthropic", lambda: fake_client)
 
     result = vision_client.extract_via_claude(
-        image_path=image_path,
+        image_bytes=b"fake-image-bytes",
+        media_type="image/jpeg",
         system_prompt="system",
         tool_name="record_scale_ticket",
         tool_description="desc",
@@ -54,18 +52,18 @@ def test_extract_via_claude_returns_tool_input(tmp_path, monkeypatch):
         "type": "tool",
         "name": "record_scale_ticket",
     }
+    image_block = fake_client.messages.last_kwargs["messages"][0]["content"][0]
+    assert image_block["source"]["media_type"] == "image/jpeg"
 
 
-def test_extract_via_claude_raises_without_tool_use_block(tmp_path, monkeypatch):
-    image_path = tmp_path / "ticket.jpg"
-    image_path.write_bytes(b"fake-image-bytes")
-
+def test_extract_via_claude_raises_without_tool_use_block(monkeypatch):
     fake_client = _FakeAnthropicClient(_FakeResponse([]))
     monkeypatch.setattr(vision_client.anthropic, "Anthropic", lambda: fake_client)
 
     with pytest.raises(RuntimeError):
         vision_client.extract_via_claude(
-            image_path=image_path,
+            image_bytes=b"fake-image-bytes",
+            media_type="image/jpeg",
             system_prompt="system",
             tool_name="record_scale_ticket",
             tool_description="desc",

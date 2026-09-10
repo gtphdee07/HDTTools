@@ -110,6 +110,84 @@ def test_extract_rejects_non_image_upload(client):
     assert response.status_code == 400
 
 
+# Claude-backend dispatch (roadmap item #16): HDTTOOLS_OCR_BACKEND=claude
+# routes the same three endpoints through the new headless extractor
+# functions instead of Tesseract - extractor mocked the same way the
+# Tesseract-branch tests above mock _parse_fields, so no real
+# ANTHROPIC_API_KEY/network call is involved here (that's
+# test_claude_vision_external.py's job).
+
+
+def test_extract_truck_tag_claude_backend_calls_the_matching_extractor(client, monkeypatch):
+    monkeypatch.setenv("HDTTOOLS_OCR_BACKEND", "claude")
+    calls = []
+
+    def fake_extractor(image_bytes, media_type):
+        calls.append((image_bytes, media_type))
+        return dict(_TRUCK_FIELDS)
+
+    monkeypatch.setattr(main.truck_tag, "extract_truck_tag_fields", fake_extractor)
+
+    response = client.post("/api/extract/truck-tag", files={"file": ("truck.jpg", b"real-bytes", "image/jpeg")})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["manufacturer"] == "Ford"
+    assert body["rear_tire"]["dual"] is True
+    assert calls == [(b"real-bytes", "image/jpeg")]
+
+
+def test_extract_trailer_tag_claude_backend_calls_the_matching_extractor(client, monkeypatch):
+    monkeypatch.setenv("HDTTOOLS_OCR_BACKEND", "claude")
+    monkeypatch.setattr(main.trailer_tag, "extract_trailer_tag_fields", lambda image_bytes, media_type: dict(_TRAILER_FIELDS))
+
+    response = client.post("/api/extract/trailer-tag", files={"file": ("trailer.jpg", b"fake", "image/jpeg")})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["gawr_per_axle_lb"] == 8000.0
+    assert body["tire"]["tire"] == "ST215/75R17.5"
+
+
+def test_extract_scale_ticket_claude_backend_calls_the_matching_extractor(client, monkeypatch):
+    monkeypatch.setenv("HDTTOOLS_OCR_BACKEND", "claude")
+    monkeypatch.setattr(main.scale_ticket, "extract_scale_ticket_fields", lambda image_bytes, media_type: dict(_SCALE_FIELDS))
+
+    response = client.post("/api/extract/scale-ticket", files={"file": ("ticket.jpg", b"fake", "image/jpeg")})
+
+    assert response.status_code == 200
+    assert response.json()["gross_weight_lb"] == 26040.0
+
+
+def test_extract_claude_backend_rejects_non_image_upload(client, monkeypatch):
+    monkeypatch.setenv("HDTTOOLS_OCR_BACKEND", "claude")
+
+    response = client.post(
+        "/api/extract/truck-tag", files={"file": ("notes.txt", b"hello", "text/plain")}
+    )
+    assert response.status_code == 400
+
+
+def test_extract_claude_backend_normalizes_extractor_failure_to_a_502(client, monkeypatch):
+    monkeypatch.setenv("HDTTOOLS_OCR_BACKEND", "claude")
+
+    def failing_extractor(image_bytes, media_type):
+        raise RuntimeError("Claude did not return the expected structured data.")
+
+    monkeypatch.setattr(main.truck_tag, "extract_truck_tag_fields", failing_extractor)
+
+    response = client.post("/api/extract/truck-tag", files={"file": ("truck.jpg", b"fake", "image/jpeg")})
+
+    assert response.status_code == 502
+
+
+def test_extract_claude_backend_invalid_env_value_raises(client, monkeypatch):
+    monkeypatch.setenv("HDTTOOLS_OCR_BACKEND", "bogus")
+
+    with pytest.raises(ValueError, match="bogus"):
+        client.post("/api/extract/truck-tag", files={"file": ("truck.jpg", b"fake", "image/jpeg")})
+
+
 def test_breakdown_endpoint_computes_verdict():
     with TestClient(main.app) as client:
         payload = {

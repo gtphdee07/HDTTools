@@ -4,10 +4,13 @@
     "AddieTag.jpg": {
       "doc_type": "truck_tag",
       "fields": {
-        "manufacturer": "FORD MOTOR CO",
+        "manufacturer": "FORD MOTOR CO.",
         "gvwr_lb": 14000.0,
         "front_gawr_lb": 6000.0,
         "rear_gawr_lb": 9900.0
+      },
+      "known_ocr_limitations": {
+        "manufacturer": "Real Tesseract on this scan drops the label's trailing period ('MFD. BY FORD MOTOR CO.'), returning 'FORD MOTOR CO' - confirmed 2026-09-09 while verifying item #16's real Claude-vision External test, which reads the period correctly ('FORD MOTOR CO.'). This value was originally documented without the period, matching Tesseract's own (slightly imprecise) output rather than the physical label - corrected here after visually re-inspecting AddieTag.jpg directly."
       }
     },
     "GooseTag.jpg": {

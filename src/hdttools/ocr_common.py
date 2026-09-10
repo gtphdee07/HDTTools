@@ -8,12 +8,15 @@ extraction helpers without duplicating them.
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 from pathlib import Path
 
 import pytesseract
 from PIL import Image, ImageOps
+
+_VALID_OCR_BACKENDS = {"tesseract", "claude"}
 
 _TESSERACT_CANDIDATES = [
     r"C:\Program Files\Tesseract-OCR\tesseract.exe",
@@ -22,6 +25,19 @@ _TESSERACT_CANDIDATES = [
     "/usr/local/bin/tesseract",
     "/usr/bin/tesseract",
 ]
+
+
+def get_ocr_backend() -> str:
+    """Reads the `HDTTOOLS_OCR_BACKEND` build/env-level flag, defaulting to
+    `"tesseract"` so no existing deployment starts requiring
+    `ANTHROPIC_API_KEY` without opting in. Raises `ValueError` on any
+    other value - fail loud, not a silent fallback."""
+    backend = os.getenv("HDTTOOLS_OCR_BACKEND", "tesseract")
+    if backend not in _VALID_OCR_BACKENDS:
+        raise ValueError(
+            f"HDTTOOLS_OCR_BACKEND must be one of {sorted(_VALID_OCR_BACKENDS)}, got {backend!r}"
+        )
+    return backend
 
 
 def ensure_tesseract_configured() -> None:

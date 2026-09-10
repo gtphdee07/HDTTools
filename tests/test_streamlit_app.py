@@ -18,6 +18,9 @@ from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from hdttools import scale_ticket, trailer_tag, truck_tag
+from hdttools.models import TireSpec
+
 _APP_PATH = Path(__file__).resolve().parent.parent / "streamlit_app" / "app.py"
 _EXAMPLE_DOCS = Path(__file__).resolve().parent.parent / "ExampleDocs"
 _GOLDEN = json.loads((_EXAMPLE_DOCS / "golden_fields.json").read_text(encoding="utf-8"))
@@ -214,3 +217,118 @@ def test_full_walkthrough_with_real_photos_reaches_a_real_verdict(rig):
         f"expected a {element_kind!r} element containing {expected_headline!r}, "
         f"got: {[element.value for element in elements]}"
     )
+
+
+# Claude-backend dispatch (roadmap item #16): HDTTOOLS_OCR_BACKEND=claude
+# routes _extract_fields through the matching new headless extractor
+# function instead of real Tesseract - extractor mocked (module-level,
+# same object app.py itself imported, so the patch takes effect there
+# too), no real ANTHROPIC_API_KEY/network call involved.
+
+
+def test_claude_backend_truck_upload_calls_the_matching_extractor(monkeypatch):
+    monkeypatch.setenv("HDTTOOLS_OCR_BACKEND", "claude")
+    monkeypatch.setattr(
+        truck_tag,
+        "extract_truck_tag_fields",
+        lambda image_bytes, media_type: {
+            "manufacturer": "Ford",
+            "gvwr_lb": 14000.0,
+            "front_gawr_lb": 6000.0,
+            "rear_gawr_lb": 9900.0,
+            "front_tire": TireSpec(tire="225/70R19.5"),
+            "rear_tire": TireSpec(tire="225/70R19.5", dual=True),
+        },
+    )
+
+    at = AppTest.from_file(str(_APP_PATH))
+    _start_test_rig(at)
+    at.file_uploader(key="upload_truck").set_value(("truck.jpg", b"fake-bytes", "image/jpeg")).run()
+
+    assert not at.exception
+    assert at.session_state["truck"]["manufacturer"] == "Ford"
+    assert at.session_state["truck"]["gvwr_lb"] == 14000.0
+    assert at.session_state["truck_raw_text"] == ""
+
+
+def test_claude_backend_trailer_upload_calls_the_matching_extractor(monkeypatch):
+    monkeypatch.setenv("HDTTOOLS_OCR_BACKEND", "claude")
+    monkeypatch.setattr(
+        trailer_tag,
+        "extract_trailer_tag_fields",
+        lambda image_bytes, media_type: {
+            "manufacturer": "Brinkley RV",
+            "gvwr_lb": 23500.0,
+            "gawr_per_axle_lb": 8000.0,
+            "uvw_lb": 20554.0,
+            "tire": TireSpec(tire="ST215/75R17.5"),
+        },
+    )
+
+    at = AppTest.from_file(str(_APP_PATH))
+    _start_test_rig(at)
+    at.button(key="skip_truck").click().run()
+    at.button(key="continue_truck").click().run()
+    at.file_uploader(key="upload_trailer").set_value(("trailer.jpg", b"fake-bytes", "image/jpeg")).run()
+
+    assert not at.exception
+    assert at.session_state["trailer"]["manufacturer"] == "Brinkley RV"
+    assert at.session_state["trailer"]["gawr_per_axle_lb"] == 8000.0
+    assert at.session_state["trailer_raw_text"] == ""
+
+
+def test_claude_backend_scale_upload_calls_the_matching_extractor(monkeypatch):
+    monkeypatch.setenv("HDTTOOLS_OCR_BACKEND", "claude")
+    monkeypatch.setattr(
+        scale_ticket,
+        "extract_scale_ticket_fields",
+        lambda image_bytes, media_type: {
+            "location_name": "Loves Country Store",
+            "steer_axle_lb": 5620.0,
+            "drive_axle_lb": 9040.0,
+            "trailer_axle_lb": 11380.0,
+            "gross_weight_lb": 26040.0,
+        },
+    )
+
+    at = AppTest.from_file(str(_APP_PATH))
+    _start_test_rig(at)
+    at.button(key="skip_truck").click().run()
+    at.button(key="continue_truck").click().run()
+    at.button(key="skip_trailer").click().run()
+    at.button(key="continue_trailer").click().run()
+    at.file_uploader(key="upload_scale").set_value(("ticket.jpg", b"fake-bytes", "image/jpeg")).run()
+
+    assert not at.exception
+    assert at.session_state["scale"]["gross_weight_lb"] == 26040.0
+    assert at.session_state["scale_raw_text"] == ""
+
+
+def test_claude_backend_never_shows_the_tesseract_raw_text_warning(monkeypatch):
+    # The real bug this guards against: raw_text is always "" under the
+    # Claude backend (there's no OCR text at all), so the pre-existing
+    # `elif not raw_text.strip():` branch would otherwise show "Tesseract
+    # returned no text at all..." on every single successful Claude
+    # extraction - a false claim, since nothing here even calls
+    # Tesseract. Confirmed against a genuinely successful extraction
+    # (real-looking, non-empty fields), not a degenerate all-null one.
+    monkeypatch.setenv("HDTTOOLS_OCR_BACKEND", "claude")
+    monkeypatch.setattr(
+        truck_tag,
+        "extract_truck_tag_fields",
+        lambda image_bytes, media_type: {
+            "manufacturer": "Ford",
+            "gvwr_lb": 14000.0,
+            "front_gawr_lb": 6000.0,
+            "rear_gawr_lb": 9900.0,
+            "front_tire": TireSpec(),
+            "rear_tire": TireSpec(),
+        },
+    )
+
+    at = AppTest.from_file(str(_APP_PATH))
+    _start_test_rig(at)
+    at.file_uploader(key="upload_truck").set_value(("truck.jpg", b"fake-bytes", "image/jpeg")).run()
+
+    assert not at.exception
+    assert not any("Tesseract returned no text" in w.value for w in at.warning)

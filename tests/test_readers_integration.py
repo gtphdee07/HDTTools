@@ -3,6 +3,7 @@ every I/O boundary (file picker, vision extraction, review form, database
 save) mocked, so we're testing orchestration and control flow only."""
 
 from hdttools import file_picker, review_form, scale_ticket, scale_ticket_ocr, trailer_tag, truck_tag
+from hdttools.models import TireSpec
 
 _SCALE_FIELDS = {
     "ticket_number": "123",
@@ -178,3 +179,43 @@ def test_read_trailer_tag_prompts_for_name_and_saves(tmp_path, monkeypatch):
     assert result.vehicle_name == "Addie"
     assert result.tire.tire == "ST215/75R17.5"
     assert saved == [result]
+
+
+# Function tests for the new headless, pure extractor functions (roadmap
+# item #16) - each wraps extract_via_claude (mocked the same way
+# test_vision_client.py mocks the Anthropic client) plus this module's
+# own TireSpec(**fields.pop(...)) unpacking, with no file picker/review
+# form/database I/O at all. These are what main.py/app.py's new
+# claude-backend branches call directly, since neither has a file on
+# disk or a vehicle name to prompt for.
+
+
+def test_extract_truck_tag_fields_returns_tire_specs_not_raw_dicts(monkeypatch):
+    monkeypatch.setattr(truck_tag, "extract_via_claude", lambda **kwargs: dict(_TRUCK_FIELDS))
+
+    fields = truck_tag.extract_truck_tag_fields(b"fake-bytes", "image/jpeg")
+
+    assert isinstance(fields["front_tire"], TireSpec)
+    assert fields["front_tire"].tire == "225/70R19.5"
+    assert isinstance(fields["rear_tire"], TireSpec)
+    assert fields["rear_tire"].dual is True
+    assert fields["manufacturer"] == "Ford"
+    assert "front_tire" not in fields or isinstance(fields["front_tire"], TireSpec)
+
+
+def test_extract_trailer_tag_fields_returns_a_tire_spec_not_a_raw_dict(monkeypatch):
+    monkeypatch.setattr(trailer_tag, "extract_via_claude", lambda **kwargs: dict(_TRAILER_FIELDS))
+
+    fields = trailer_tag.extract_trailer_tag_fields(b"fake-bytes", "image/jpeg")
+
+    assert isinstance(fields["tire"], TireSpec)
+    assert fields["tire"].tire == "ST215/75R17.5"
+    assert fields["manufacturer"] == "Brinkley RV"
+
+
+def test_extract_scale_ticket_fields_returns_the_raw_fields_dict(monkeypatch):
+    monkeypatch.setattr(scale_ticket, "extract_via_claude", lambda **kwargs: dict(_SCALE_FIELDS))
+
+    fields = scale_ticket.extract_scale_ticket_fields(b"fake-bytes", "image/jpeg")
+
+    assert fields == _SCALE_FIELDS

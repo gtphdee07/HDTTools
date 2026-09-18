@@ -6,9 +6,19 @@ the Claude API (e.g. local OCR) don't need to import anthropic at all.
 
 from __future__ import annotations
 
-import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog
+
+try:
+    import tkinter as tk
+    from tkinter import filedialog
+except ImportError:
+    # tkinter isn't always present (e.g. Streamlit Community Cloud's
+    # Python image lacks libtk8.6.so) - only select_image_file() actually
+    # needs it, and only the desktop CLI readers call that, so importing
+    # this module must still succeed for headless callers (the web API,
+    # Streamlit) that never reach this function.
+    tk = None
+    filedialog = None
 
 _IMAGE_FILETYPES = [
     ("Image files", "*.jpg *.jpeg *.png *.webp"),
@@ -18,6 +28,13 @@ _IMAGE_FILETYPES = [
 
 def select_image_file(title: str) -> Path:
     """Open a native file-picker dialog and return the chosen image path."""
+    if tk is None:
+        raise RuntimeError(
+            "tkinter is not available in this environment. select_image_file() "
+            "requires a desktop display and can't run in a headless/server "
+            "deployment (e.g. Streamlit Community Cloud) - use the headless "
+            "extract_*_fields functions instead."
+        )
     root = tk.Tk()
     root.withdraw()
     root.attributes("-topmost", True)

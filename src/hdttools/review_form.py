@@ -5,10 +5,20 @@ lets the user correct any of them, and returns the edited record."""
 from __future__ import annotations
 
 import dataclasses
-import tkinter as tk
 import typing
-from tkinter import ttk
 from typing import Any
+
+try:
+    import tkinter as tk
+    from tkinter import ttk
+except ImportError:
+    # tkinter isn't always present (e.g. Streamlit Community Cloud's
+    # Python image lacks libtk8.6.so) - only review_and_edit() actually
+    # needs it, and only the desktop CLI readers call that, so importing
+    # this module must still succeed for headless callers (the web API,
+    # Streamlit) that never reach this function.
+    tk = None
+    ttk = None
 
 
 def _leaf_fields(instance: Any, prefix: tuple[str, ...] = ()) -> list[tuple[tuple[str, ...], Any]]:
@@ -57,6 +67,12 @@ def _resolve_path(instance: Any, prefix: tuple[str, ...]) -> Any:
 def review_and_edit(record: Any) -> Any | None:
     """Show a form pre-filled with `record`'s fields. Returns the edited
     dataclass instance, or None if the user cancels."""
+    if tk is None:
+        raise RuntimeError(
+            "tkinter is not available in this environment. review_and_edit() "
+            "requires a desktop display and can't run in a headless/server "
+            "deployment (e.g. Streamlit Community Cloud)."
+        )
     cls = type(record)
     root = tk.Tk()
     root.title(f"Review {cls.__name__}")

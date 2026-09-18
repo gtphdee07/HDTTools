@@ -174,8 +174,9 @@ reading anything else.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see
-`ARCHIVE_MONETIZATION.md`); Web hosting/deployment (deferred by your own
-explicit choice, local dev only for now, not a gap either).
+`ARCHIVE_MONETIZATION.md`); React/FastAPI web-app hosting/deployment
+(deferred by your own explicit choice, local dev only for now, not a gap
+either — Streamlit is hosted, see below).
 
 ## 🧪 Tests still outstanding
 
@@ -306,12 +307,16 @@ On a machine that hasn't run this before:
 - **No mobile layout, no drag-and-drop upload** on the web app (click-to-
   browse file input only) — matches the original design handoff's stated
   scope. (The native Android app is the mobile answer instead.)
-- **Not hosted anywhere yet** — local dev only, by explicit choice (see
-  the roadmap's "Deliberately not on this list"). Since the backend is
-  stateless (no database), hosting it would be simple whenever this is
-  picked up — no managed Postgres/persistence question to answer, just
-  getting the process running somewhere with `apt-get install
-  tesseract-ocr` available.
+- **Streamlit is deployed to Streamlit Community Cloud** (confirmed
+  2026-09-18) — the React/FastAPI web app is still local dev only, by
+  explicit choice (see the roadmap's "Deliberately not on this list").
+  Since the FastAPI backend is stateless (no database), hosting it too
+  would be simple whenever this is picked up — no managed Postgres/
+  persistence question to answer, just getting the process running
+  somewhere with `apt-get install tesseract-ocr` available.
+  - **Real bug found and fixed 2026-09-18**: the Streamlit Cloud deploy
+    crashed at import time (`libtk8.6.so` missing — that image has no
+    tkinter system library). See `ARCHIVE_WEB_STREAMLIT.md` for the fix.
 
 ## Natural next steps, roughly in order
 
@@ -321,5 +326,6 @@ On a machine that hasn't run this before:
    expect to extend `truck_tag_ocr._parse_fields` /
    `trailer_tag_ocr._parse_fields` with more pattern variants as you feed
    it real photos of your actual rig.
-2. **Decide on hosting** when ready to move off `localhost` for the web
-   app — see the note above, or revisit if requirements have changed.
+2. **Decide on hosting for the React/FastAPI web app** when ready to move
+   it off `localhost` too — see the note above, or revisit if
+   requirements have changed.

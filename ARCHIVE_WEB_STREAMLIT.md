@@ -577,3 +577,67 @@ appears on both sides); `tests/test_streamlit_app.py`'s full walkthrough
 already skips any field listed under `known_ocr_limitations`, so it
 needed no change either. Re-ran the real External-tier test once more
 after the fix: all 3 doc types now pass cleanly, including `truck_tag`.
+
+---
+
+## 🐛 Real bug: Streamlit Community Cloud deploy crashed on tkinter import — found and fixed 2026-09-18
+
+**The bug**: deploying `streamlit_app/app.py` to Streamlit Community
+Cloud (the app's first real hosted deployment) crashed at import time:
+`ImportError: libtk8.6.so: cannot open shared object file` from
+`tkinter/__init__.py`, via `app.py` → `hdttools.scale_ticket` →
+`hdttools.review_form` → `import tkinter as tk`. Streamlit Cloud's
+Python 3.14 image doesn't ship tkinter's system library — a headless
+server image has no display to back a GUI toolkit.
+
+**Why this was surprising**: `app.py` never calls anything
+tkinter-based. It only ever calls the headless `extract_*_fields`
+functions (item #16) — `review_and_edit`/`select_image_file` exist
+solely for the desktop CLI's interactive `read_*_tag()` flow. But
+`scale_ticket.py`/`trailer_tag.py`/`truck_tag.py` each do a *module-level*
+`from .review_form import review_and_edit` and (via `vision_client.py`)
+`from .file_picker import select_image_file, prompt_vehicle_name` —
+so merely importing the module for its headless function pulls in
+tkinter transitively, unconditionally, whether or not the tkinter-based
+functions are ever called. `src/hdttools/__init__.py` already had a
+`try/except ImportError` guard around this for `import hdttools` at the
+package level (comment there: "tkinter isn't always present ... e.g.
+some Docker/Streamlit Cloud images"), anticipating exactly this class of
+problem — but that guard doesn't help `from hdttools import
+scale_ticket`, which imports the submodule directly and bypasses it.
+`src/hdttools/api/main.py` (FastAPI) has the identical latent bug, just
+never triggered because it hasn't been deployed to a tkinter-less host
+yet.
+
+**The fix**: pushed the same "tkinter is optional" pattern down into the
+two modules that actually do the importing — `file_picker.py` and
+`review_form.py` — instead of only guarding it one level up. Each now
+wraps its own `import tkinter`/`from tkinter import ...` in
+`try/except ImportError`, setting the names to `None` on failure, so the
+module itself always imports successfully. `select_image_file()` and
+`review_and_edit()` each check for `None` as their first statement and
+raise a clear `RuntimeError` ("tkinter is not available in this
+environment... use the headless extract_*_fields functions instead")
+rather than letting a bare `AttributeError`/`ImportError` surface deep
+inside tkinter's C extension. `tests/test_file_picker.py`'s existing
+`monkeypatch.setattr(file_picker.tk, "Tk", ...)`-style tests keep working
+unchanged, since `tk`/`filedialog`/`ttk` are real module attributes
+whenever tkinter genuinely is present.
+
+**Verification**: new `tests/test_optional_tkinter_import.py` — a real
+subprocess with `sys.modules["tkinter"] = None` (forces any `import
+tkinter` to raise `ImportError`, simulating the actual missing-library
+condition rather than monkeypatching this test process's own already-
+imported modules) — confirms `hdttools.scale_ticket`/`trailer_tag`/
+`truck_tag`/`file_picker`/`review_form` all import cleanly, and that
+calling `select_image_file`/`review_and_edit` under that condition
+raises the new clear `RuntimeError`. Watched it fail for real against
+the un-fixed code first (`ModuleNotFoundError: import of tkinter halted`,
+matching the real Streamlit Cloud traceback almost verbatim) before
+implementing the guard. Also manually reproduced the exact production
+scenario against the real `streamlit_app/app.py` file (not just the
+`hdttools` submodules) via the same `sys.modules["tkinter"] = None`
+trick — clean import — then launched the real app with `streamlit run`
+and confirmed it serves `HTTP 200` locally. Full `uv run pytest -q`
+suite: `585 passed, 3 skipped, 4 xfailed` (up from 584/3/4 — the one new
+test), unaffected otherwise.

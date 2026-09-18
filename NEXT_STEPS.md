@@ -172,6 +172,50 @@ reading anything else.
     down). Full narrative in `ARCHIVE_ANDROID.md`; original spike/results
     in `ClaudePlans/2026-08-27-android-camera-overlay-spike*.md`.
 
+20. ⬜ **Web accounts + paywall for a public Claude-vision tier — not
+    started, deferred until after the web beta ships (decided
+    2026-09-18).** Currently `HDTTOOLS_OCR_BACKEND=claude` has no
+    cost-gating anywhere if turned on publicly (confirmed while planning
+    the web beta — see `ClaudePlans/2026-09-18-web-beta-deployment.md`),
+    so offering it to real users needs real accounts + billing first.
+    **Sequencing decision**: build the free Tesseract-only web beta
+    first, get real usage, *then* build this — mirrors this project's
+    own precedent (Android shipped free manual entry through Phase 3,
+    added the paid Claude-vision feature only in Phase 4, see
+    `ARCHIVE_MONETIZATION.md`), and costs nothing to defer since the web
+    app persists zero user data today (nothing to migrate later).
+    **Rough scope, comparable to Android's whole Phase 4 monetization
+    build** — not a quick bolt-on:
+    - **Accounts/auth**: nothing exists in the web stack today. A hosted
+      provider (Clerk, Supabase Auth, Auth0) is days of work; hand-rolled
+      (sessions, password reset, email verification) is ~1-2 weeks and
+      adds real security surface.
+    - **A real database**: the web backend is 100% stateless today (no
+      DB anywhere — unlike the CLI tool's local SQLite). Needed for
+      users, credit balances/subscriptions, usage history.
+    - **Payments**: Stripe is the standard fit for web billing (vs.
+      RevenueCat, which is mobile-IAP-first — they do have a newer web
+      product, but Stripe is more mature here, at the cost of a second
+      billing dashboard alongside RevenueCat).
+    - **Server-side cost-gating**: deduct a credit/check quota before
+      every Claude-vision call. `workers/scan-proxy/`'s *pattern* (charge
+      before calling Claude) is the right mental model, but its code
+      isn't reusable as-is — tightly wired to RevenueCat customer IDs
+      and Android's purchase flow.
+    - **Services to register for**: Stripe; an auth provider, or Supabase
+      alone (bundles Postgres + Auth in one signup, covering two needs
+      at once); the Anthropic key already exists.
+    **Open questions to resolve before scoping this for real**:
+    credits-per-scan (matches how Android already thinks about it) vs. a
+    monthly subscription; one account system shared across Web and
+    Android vs. two independent ones (shared is a real jump in
+    complexity — cross-platform entitlement sync); the real per-scan
+    Claude cost and what price/credit-count recovers it with margin
+    (the same question already deferred for Android's own pricing);
+    whether a paid tier changes the "experimental, not certified"
+    liability framing the README currently leans on; whether free
+    Tesseract stays available forever as a lower tier.
+
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see
 `ARCHIVE_MONETIZATION.md`); React/FastAPI web-app hosting/deployment

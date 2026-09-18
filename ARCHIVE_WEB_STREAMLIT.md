@@ -641,3 +641,55 @@ trick — clean import — then launched the real app with `streamlit run`
 and confirmed it serves `HTTP 200` locally. Full `uv run pytest -q`
 suite: `585 passed, 3 skipped, 4 xfailed` (up from 584/3/4 — the one new
 test), unaffected otherwise.
+
+---
+
+## 🐛 Real bug #2: Streamlit Community Cloud deploy crashed on `anthropic` import — found and fixed 2026-09-18 (same day as the tkinter fix above)
+
+**The bug**: the very next redeploy after the tkinter fix crashed
+differently: `ModuleNotFoundError: No module named 'anthropic'`, via
+`app.py` → `hdttools.scale_ticket` → `hdttools.vision_client` →
+`import anthropic`. Root cause, confirmed from the deploy log's own
+`WARN`: Streamlit Community Cloud detected three possible dependency
+sources (`streamlit_app/requirements.txt`, `uv.lock`, `pyproject.toml`)
+and chose `streamlit_app/requirements.txt` — a separately maintained
+file that only ever listed `streamlit`, `pillow`, `pytesseract`, and had
+silently drifted out of sync with `pyproject.toml`'s real dependency
+list (which does include `anthropic`) ever since item #16 added the
+Claude-vision backend.
+
+**Same shape as bug #1 above**: a module-level `import` of a dependency
+the *deployed configuration* never actually exercises (this Streamlit
+deployment runs `HDTTOOLS_OCR_BACKEND` at its default, `"tesseract"` —
+`vision_client.extract_via_claude` is never called) still crashed the
+whole app at import time, because `vision_client.py` imported
+`anthropic` unconditionally rather than only when the Claude-vision path
+is actually used.
+
+**The fix, mirroring bug #1's pattern exactly**: `vision_client.py` now
+wraps `import anthropic` in `try/except ImportError`, setting it to
+`None` on failure; `extract_via_claude()` checks for `None` as its first
+statement and raises a clear `RuntimeError` ("install it, or leave
+HDTTOOLS_OCR_BACKEND unset/'tesseract' to avoid needing it") instead of
+crashing app-wide at import time. `tests/test_vision_client.py`'s
+existing `monkeypatch.setattr(vision_client.anthropic, "Anthropic", ...)`
+keeps working unchanged, since `anthropic` stays a real module attribute
+whenever it genuinely is installed. Also added `anthropic>=0.120.2` to
+`streamlit_app/requirements.txt` itself (matching `pyproject.toml`'s
+pin) — belt-and-suspenders, so if this specific deployment is ever
+switched to `HDTTOOLS_OCR_BACKEND=claude`, it will actually work rather
+than hit the new clear error instead of a crash.
+
+**Verification**: new `tests/test_optional_anthropic_import.py`, same
+real-subprocess-with-`sys.modules[...]=None` technique as bug #1's test
+— watched it fail for real first (`ModuleNotFoundError: import of
+anthropic halted`, matching the real traceback) before implementing the
+guard. Also re-ran the same manual check against the real
+`streamlit_app/app.py` file with `sys.modules["anthropic"] = None` —
+clean import. Full `uv run pytest -q` suite: `586 passed, 3 skipped, 4
+xfailed` (up from 585/3/4 — the one new test), unaffected otherwise.
+**Lesson for next time**: `streamlit_app/requirements.txt` is a second,
+manually-maintained dependency list that doesn't auto-track
+`pyproject.toml` — worth checking by hand after any future change to
+`pyproject.toml`'s base `dependencies`, since Streamlit Cloud prefers it
+over `uv.lock`/`pyproject.toml` whenever it's present.

@@ -7,7 +7,17 @@ import base64
 import mimetypes
 from pathlib import Path
 
-import anthropic
+try:
+    import anthropic
+except ImportError:
+    # anthropic isn't always installed in every deploy environment (e.g.
+    # Streamlit Community Cloud installs from streamlit_app/requirements.txt,
+    # a separately maintained list that doesn't always mirror
+    # pyproject.toml). Only extract_via_claude() (the opt-in
+    # HDTTOOLS_OCR_BACKEND=claude path) needs it - the default Tesseract
+    # backend never calls it - so importing this module must still
+    # succeed without it.
+    anthropic = None
 
 from .file_picker import prompt_vehicle_name, select_image_file
 
@@ -41,6 +51,12 @@ def extract_via_claude(
     model: str = DEFAULT_MODEL,
 ) -> dict:
     """Send an image to Claude and return the tool-use input matching `schema`."""
+    if anthropic is None:
+        raise RuntimeError(
+            "The 'anthropic' package is not installed in this environment. "
+            "extract_via_claude() requires it - install it, or leave "
+            "HDTTOOLS_OCR_BACKEND unset/'tesseract' to avoid needing it."
+        )
     image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
 
     client = anthropic.Anthropic()

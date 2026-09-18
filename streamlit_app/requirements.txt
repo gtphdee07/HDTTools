@@ -1,3 +1,4 @@
 streamlit>=1.61.1
 pillow>=12.3.0
 pytesseract>=0.3.13
+anthropic>=0.120.2

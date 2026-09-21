@@ -28,7 +28,8 @@ specifically, rather than to `compute_breakdown`'s pure math.
 ## The purpose question, answered first
 
 The wrong framing: "add more OCR accuracy testing with more images."
-That question is already answered by item #11 — Tesseract fails on raw
+That question is already answered by the 2026-08-24 Tesseract-vs-Claude
+investigation (`ARCHIVE_WEB_STREAMLIT.md`) — Tesseract fails on raw
 photos regardless of quality (a framing/no-crop gap, not an accuracy
 one); Claude vision is robust to angle/rotation but not to a photo that
 literally excludes the needed text. More images of the same F-150 tag,
@@ -68,11 +69,11 @@ picked, and assert real extraction matches.
   has no notion of "N interchangeable images sharing one truth,
   resolvable after a random pick." This is the actual first thing to
   design (see "Agreed starting point" below) — not a re-application of
-  the F-150 `photos` entries tried and reverted in item #11's own
-  investigation (that shape doesn't fit this need either; see that
-  item's narrative for why the per-field-xfail pattern didn't work for
-  a "whole document fails identically" case, a related but different
-  problem).
+  the F-150 `photos` entries tried and reverted in the 2026-08-24
+  Tesseract-vs-Claude investigation's own work (that shape doesn't fit
+  this need either; see `ARCHIVE_WEB_STREAMLIT.md`'s narrative for why
+  the per-field-xfail pattern didn't work for a "whole document fails
+  identically" case, a related but different problem).
 
 ### 2. Fail-pool — known-bad images testing the failure path itself
 
@@ -82,7 +83,8 @@ expected *failure signature* — which fields should come back empty/
 manual-entry path — rather than a golden value to match.
 
 - Generalizes the single already-deferred "failure-path test" idea from
-  item #11's original plan (confirm a real OCR failure funnels into the
+  the 2026-08-24 investigation's original plan (`ARCHIVE_WEB_STREAMLIT.md`;
+  confirm a real OCR failure funnels into the
   same blank-rig/insufficient path `tests/test_breakdown.py`'s
   `test_blank_rig_reports_not_enough_information_not_a_false_pass`
   already proves) into a repeatable, growable regression category,
@@ -230,8 +232,8 @@ The premise this question was originally weighed against turned out to
 be wrong: the pass-pool/fail-pool actually built in Python this session
 (`scripts/pass_pool.py`/`fail_pool.py`) tests **Tesseract**, not Claude
 vision — Python's production app (Streamlit + FastAPI) never calls
-Claude at all (see `NEXT_STEPS.md` item #16, the separately-recorded
-build-time-switch gap). So there was never a Python Claude-vision path
+Claude at all (see `ARCHIVE_WEB_STREAMLIT.md`'s item #16 entry, the
+separately-recorded build-time-switch gap). So there was never a Python Claude-vision path
 for Android to "inherit" from in the first place; Android's real scan
 feature is the *only* live path in this repo that calls Claude vision on
 a real user's photo. Decided: Android builds its **own** real
@@ -315,13 +317,15 @@ theoretical one.
    (today trivially stable, since each doc_type has exactly one pool
    image) — passed clean every time; full suite (`uv run pytest -q`)
    also clean, 541 passed / 3 xfailed.
-4. ✅ **Done, 2026-08-25 — the fail-pool.** Reuses item #11's 10 F-150
-   photos (still on disk, never re-added to `"photos"` — later migrated
-   to `ExampleDocs/scans/truck/f150_blue_goose_uncropped/`, see step 6's
-   directory-convention entry below — see item #11's "document, don't build"
-   finding: all 10 fail identically for one structural reason, not a
-   per-field quirk `"photos"`/`known_ocr_limitations` was designed
-   for). New self-contained `fail_pool` section in `golden_fields.json`
+4. ✅ **Done, 2026-08-25 — the fail-pool.** Reuses the 2026-08-24
+   investigation's 10 F-150 photos (still on disk, never re-added to
+   `"photos"` — later migrated to
+   `ExampleDocs/scans/truck/f150_blue_goose_uncropped/`, see step 6's
+   directory-convention entry below — see `ARCHIVE_WEB_STREAMLIT.md`'s
+   "document, don't build" finding: all 10 fail identically for one
+   structural reason, not a per-field quirk `"photos"`/
+   `known_ocr_limitations` was designed for). New self-contained
+   `fail_pool` section in `golden_fields.json`
    (no reference into `"photos"` needed, unlike `pass_pool` — the
    golden truth here *is* the failure signature: `expected_none_fields:
    ["manufacturer", "gvwr_lb", "front_gawr_lb", "rear_gawr_lb"]`,
@@ -363,7 +367,8 @@ theoretical one.
    priority" above for full detail on both, including the real
    Haiku-4.5-vs-Sonnet-5 bug this decision immediately caught).
 7. ✅ **Done, 2026-09-08 — Android's pass-pool grown** with the other 9
-   F-150 photos item #11 found Claude reads correctly under
+   F-150 photos the 2026-08-24 investigation (`ARCHIVE_WEB_STREAMLIT.md`)
+   found Claude reads correctly under
    `claude-sonnet-5` (`f150_blue_goose_uncropped/`), duplicated in as a
    second registered vehicle — zero Kotlin changes needed
    (`resolveRandom` already picks randomly across all registered

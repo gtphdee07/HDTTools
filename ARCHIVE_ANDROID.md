@@ -769,6 +769,32 @@ result.
 `test:release` (vitest), whose exit codes are reliable — this bug was
 specific to `am instrument`'s exit-code semantics.
 
+✅ **Done, "Wandering Trails Wagging Tails" color/font token port
+(roadmap item #21, Android half) — 2026-09-20.** Replaced the old
+sunset-orange/trail-green palette (`SunsetOrange`/`TrailGreen`/etc.)
+with the new teal/purple/orange design system tokens (Outfit/DM Sans/
+Sacramento type) in `ui/theme/Color.kt`/`Theme.kt`/`Type.kt`, sourced
+from item #20's design-system Artifact. Kept the existing
+semantic-token layer intact, so most call sites needed only an import
+rename, not a structural change — touched
+`BreakdownRow.kt`/`EstimatedFiguresNotice.kt`/`ReferenceImageCard.kt`/
+`ScanOrManualChooser.kt`/`CameraOverlaySpikeScreen.kt`/
+`ResultsScreen.kt`/`RigPickerScreen.kt`/`ScaleTicketEntryScreen.kt`.
+
+✅ **Real accessibility bug found and fixed while porting**: the new
+tokens' own contrast rules forbid white text on top of the brand's
+brighter orange/teal, but several of the files above hardcoded white
+text directly on the primary accent color (a pattern that happened to
+pass contrast under the old, darker sunset-orange/trail-green palette).
+Switched every such call site to the brand's own `OnOrange`/`OnTeal`
+(dark ink) tokens instead. `./gradlew compileDebugKotlin` passes clean.
+The matching Web-side port and its own instance of the same
+accessibility bug are a separate entry in `ARCHIVE_WEB_STREAMLIT.md`.
+**Not done in this pass** (left for item #23, immediately below):
+matching each screen's actual layout to the fuller visual treatment in
+the Artifact design canvases — this was a token-level color/font port
+only, not a re-skin of any screen's structure.
+
 ✅ **Done, screen-level UI re-skin (roadmap item #23, Android half) —
 2026-09-21.** Full plan: `ClaudePlans/2026-09-21-screen-reskin-refresh-
 screens.md`. Restyled the 7 "🔄 Refresh" Android screens to match the
@@ -821,6 +847,6 @@ newly-created rig now showing as a real saved card. Confirmed
 displayed screenshots are scaled ~1.2x below the real 1080x2400 device
 resolution) before switching to `adb shell uiautomator dump` +
 `adb pull` for exact widget `bounds="[x1,y1][x2,y2]"` values.
-`compileDebugKotlin`/`compileDebugAndroidTestKotlin` pass clean. Left
-**uncommitted** pending explicit commit approval; the Web half of the
+`compileDebugKotlin`/`compileDebugAndroidTestKotlin` pass clean.
+✅ **Committed and pushed, 2026-09-21** (`a8e50bd`); the Web half of the
 same item is a separate entry in `ARCHIVE_WEB_STREAMLIT.md`.

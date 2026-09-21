@@ -761,6 +761,29 @@ the real fix. Left the dev server running on `HDTTOOLS_OCR_BACKEND=claude`
 for the rest of this session so the user's own testing actually works,
 rather than leaving it on the known-broken default.
 
+✅ **Done, "Wandering Trails Wagging Tails" color/font token port
+(roadmap item #21, Web half) — 2026-09-20.** Replaced the old
+sunset-orange/trail-green palette with the new teal/purple/orange
+design system tokens (Outfit/DM Sans/Sacramento type) in
+`web/src/design-system/tokens.css`, sourced from item #20's design-
+system Artifact. Kept the existing semantic-token layer intact, so most
+components needed only the token values to change underneath them, not
+their own code — touched `Button.tsx`/`Badge.tsx`/`StepPills.tsx`/
+`ProcessingStep.tsx`/`ResultsStep.tsx` directly.
+
+✅ **Real accessibility bug found and fixed while porting** (same root
+cause as the Android half, see that file's matching entry): the new
+tokens' own contrast rules forbid white text on top of the brand's
+brighter orange/teal, but `Button.tsx`/`Badge.tsx` hardcoded white text
+directly on the primary accent color — a pattern that happened to pass
+contrast under the old, darker palette. Switched both to the brand's
+own `--color-on-orange`/`--color-on-teal` (dark ink) tokens instead.
+`npm run build` passes clean. **Not done in this pass** (left for item
+#23, immediately below): matching each screen's actual layout to the
+fuller visual treatment in the Artifact design canvases — this was a
+token-level color/font port only, not a re-skin of any screen's
+structure.
+
 ✅ **Done, screen-level UI re-skin (roadmap item #23, Web half) —
 2026-09-21.** Full plan: `ClaudePlans/2026-09-21-screen-reskin-refresh-
 screens.md`. Restyled the 7 "🔄 Refresh" Web screens to match the
@@ -829,6 +852,39 @@ hdttools.api.main:app --port 8000`), then drove the full wizard flow
 (Rig → Truck → Trailer → Scale → disclaimer → Results → back to
 Dashboard) with `puppeteer-core` pointed at the machine's existing
 Chrome install (no browser download needed), screenshotting every
-screen and comparing each against its `.dc.html` mockup. Left
-**uncommitted** pending explicit commit approval, same as the Android
+screen and comparing each against its `.dc.html` mockup.
+✅ **Committed and pushed, 2026-09-21** (`a8e50bd`), same as the Android
 half.
+
+**Decided: Streamlit stays on Tesseract forever — 2026-09-21.**
+Item #22 (dropping Tesseract for Claude-vision-only OCR) was first
+narrowed to "Web only, for now" — planned in
+`ClaudePlans/2026-09-21-drop-tesseract-web-api-only.md` — because
+Streamlit is live and public today with zero cost-gating anywhere in
+Python/Streamlit/Web, and dropping the free Tesseract fallback there
+would turn every scan into a real, unbounded-cost paid Anthropic API
+call. Asked directly whether that "for now" framing should become
+permanent instead: **yes, permanent, by design.** Streamlit was always
+meant to be a free, public-service calculator demo — not a lower tier
+of the Android/Web paid product, and not something intended to reach
+feature or accuracy parity with it. There is no plan to ever add
+accounts, credits, or Claude-vision scanning to Streamlit; the
+Tesseract-accuracy limitations documented throughout this file (the
+no-auto-crop gap, the digit-drop misreads, etc.) are accepted,
+permanent characteristics of that surface, not a queue of fixes waiting
+on item #20.
+
+**What this changes vs. the original item #22/#20 framing**: item #20's
+"shared accounts + paywall" system is Android+Web only — it was never
+going to need to account for Streamlit's session-only, no-login model,
+but the roadmap text previously implied Streamlit might eventually
+join it. That implication is now explicitly closed. `main.py`'s
+`HDTTOOLS_OCR_BACKEND` dispatch goes away once item #22 ships (Web-only,
+still not started); `app.py`'s identical-looking dispatch does not —
+it stays permanent, load-bearing infrastructure for Streamlit, not a
+holdover awaiting removal. No test changes result from this by itself
+(Streamlit keeping Tesseract is already today's status quo); the impact
+is entirely in `NEXT_STEPS.md`'s framing — the "✅ Superseded"/"✅ Update"
+annotations that read as "temporary until item #22 ships everywhere"
+were corrected to say explicitly: resolved for Web, permanent and
+accepted for Streamlit.

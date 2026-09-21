@@ -28,3 +28,12 @@ src/AccountSetup/
 
 # VSCode workspace file (machine-local, not shared project config)
 *.code-workspace
+
+# Security audit reports (may contain vulnerability detail; local reference only)
+AuditReports/
+
+# Locally-fetched Claude Code skill payloads - skills-lock.json pins the
+# exact source/version; these are reinstalled from it on demand, not
+# vendored (same treatment as .venv/ above).
+.agents/
+.claude/skills/

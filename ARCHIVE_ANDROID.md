@@ -768,3 +768,59 @@ result.
 `test-weekly.ps1`/`test-release.ps1` run `npm run test:weekly`/
 `test:release` (vitest), whose exit codes are reliable — this bug was
 specific to `am instrument`'s exit-code semantics.
+
+✅ **Done, screen-level UI re-skin (roadmap item #23, Android half) —
+2026-09-21.** Full plan: `ClaudePlans/2026-09-21-screen-reskin-refresh-
+screens.md`. Restyled the 7 "🔄 Refresh" Android screens to match the
+`RigCheck Android` design canvas
+(`https://claude.ai/artifact/Upyv1fvNLmuAM5JxdCX8Bt`), explicitly
+excluding Paywall/credit-chip and Sign Up/Log In/Account (tied to item
+#20's still-pending entitlement decision). Two scope decisions made
+while planning, both still binding for any future Android re-skin work:
+every screen keeps its existing interaction behavior unchanged (e.g.
+`RigPickerScreen`'s tap-a-card-to-navigate-immediately stays, **not**
+the mockup's select-then-Continue pattern — this was a visual/structural
+re-skin, not a UX redesign); the mockups' "Upgrade to Claude scanning"
+teaser banners are included as static/inert sections (no real Paywall
+link yet).
+
+Files changed: `RigPickerScreen.kt` (flat header + `CreditBalanceChip`,
+restyled recent-rig cards, copy updated to "Which rig?"); new shared
+`ui/components/StepProgressBar.kt` (3-segment "Step X of 3" bar, reused
+across `ChooserScreen.kt` and the 3 entry screens —
+`TruckTagEntryScreen.kt`/`TrailerTagEntryScreen.kt`/
+`ScaleTicketEntryScreen.kt`, each restructured to a sticky-bottom-button
+layout: outer `Column(fillMaxSize)` → inner scrollable
+`Column(weight(1f).verticalScroll(...))` for content → `Button` outside
+the scroll); `DisclaimerScreen.kt` (swapped the generic `DangerRed` icon
+for the brand's `TintOrange`/`OrangeDeep` pairing, matching the
+mockup's warm-caution styling rather than a harsh error color);
+`ResultsScreen.kt` (added a rig-nickname + date header row, a bordered
+verdict-tone pill badge, and a previously-missing sticky-bottom "Start
+another check" button — a real functional gap being closed, not just a
+cosmetic change — wired in `RigCheckNavHost.kt` to pop back to
+`RigPicker`). All test files updated to match, not deleted
+(`RigPickerScreenTest.kt`, `ResultsScreenTest.kt`, new tests for the
+credit-balance-chip tap and the start-another-check button).
+
+**Real gotcha hit while building `StepProgressBar.kt`/`ChooserScreen.kt`**:
+`import androidx.compose.foundation.layout.weight` causes a genuine
+compile error — `Cannot access 'val RowColumnParentData?.weight: Float':
+it is internal in file` — because `weight()` is a `RowScope`/`ColumnScope`
+**member** extension function, resolved via the implicit dispatch
+receiver inside a `Row{}`/`Column{}` lambda, and needs no import at all.
+Fixed by deleting the import line.
+
+**Verified for real, not just compiled**: booted the `medium_phone` AVD,
+installed the real APK, and walked the full flow via `adb` taps/
+screenshots — create rig → chooser → 3 entry screens → disclaimer →
+results → "Start another check" → back to Rig Picker with the
+newly-created rig now showing as a real saved card. Confirmed
+`StepProgressBar`'s segment-fill logic at all three step values (1/3,
+2/3, 3/3). Tap-coordinate scaling bit twice during this pass (chat-
+displayed screenshots are scaled ~1.2x below the real 1080x2400 device
+resolution) before switching to `adb shell uiautomator dump` +
+`adb pull` for exact widget `bounds="[x1,y1][x2,y2]"` values.
+`compileDebugKotlin`/`compileDebugAndroidTestKotlin` pass clean. Left
+**uncommitted** pending explicit commit approval; the Web half of the
+same item is a separate entry in `ARCHIVE_WEB_STREAMLIT.md`.

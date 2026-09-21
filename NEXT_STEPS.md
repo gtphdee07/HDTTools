@@ -64,7 +64,7 @@ dated narrative entry further down and leave this stale; the detailed
 deliberately just the ordered list so "what's next" never requires
 reading anything else.
 
-7. ⬜ **Lower priority — pick up when there's spare capacity, no
+**7.** ⬜ **Lower priority — pick up when there's spare capacity, no
    evidence of a real bug behind any of these**:
    - `web/`'s `Dashboard.tsx`'s own logic beyond the verdict badge — no
      dedicated Module test yet.
@@ -74,7 +74,7 @@ reading anything else.
    - ✅ **The README-embedded regression-status dashboard — closed
      2026-08-24** (`dashboard.svg`, `uv run scripts/generate_dashboard.py`).
      Full narrative in `ARCHIVE_TESTING.md`.
-8. ⬜ **Increase test coverage across the board** — now that real
+**8.** ⬜ **Increase test coverage across the board** — now that real
    coverage tooling exists for all four platforms (Android, Python/
    Streamlit, Web and scan-proxy — see `ARCHIVE_TESTING.md`/
    `ARCHIVE_WEB_STREAMLIT.md` for how each got built), use those real
@@ -108,7 +108,7 @@ reading anything else.
      extracting its Tkinter-entangled logic into pure, testable functions
      verified against real production dataclasses (`ARCHIVE_WEB_STREAMLIT.md`).
 
-11. ✅ **Real-photo OCR robustness investigation: Tesseract vs. Claude
+**11.** ✅ **Real-photo OCR robustness investigation: Tesseract vs. Claude
     vision — closed 2026-08-24.** 10 real photos of the same physical
     Ford tow-vehicle tag, one clear shot plus 9 at varying angle/shadow/
     sun-glare quality (now at `ExampleDocs/scans/truck/f150_blue_goose_uncropped/`,
@@ -119,7 +119,7 @@ reading anything else.
     in `ARCHIVE_WEB_STREAMLIT.md`; no test code added this session (see
     "Tests still outstanding" below for what's deferred).
 
-13. 🔶 **Constrained-random real-image regression testing for OCR/vision
+**13.** 🔶 **Constrained-random real-image regression testing for OCR/vision
     extraction — designed 2026-08-25, core design fully built and
     verified for real.** Pass-pool, fail-pool, interface-contract suite,
     and directory-convention auto-discovery (`scripts/vehicle_discovery.py`)
@@ -136,8 +136,11 @@ reading anything else.
     Python side — blocked on new real photos existing, not on any
     further code/design work.
 
-16. ✅ **Build-time OCR-backend choice for Streamlit/web (Tesseract vs.
-    Claude vision) — done 2026-09-09.** `HDTTOOLS_OCR_BACKEND` env flag
+**16.** ✅ **Build-time OCR-backend choice for Streamlit/web (Tesseract vs.
+    Claude vision) — done 2026-09-09.** **Update 2026-09-21**: superseded
+    by the decision to drop Tesseract entirely (Claude-vision-only going
+    forward, see item #20) — this flag's Tesseract branch becomes dead
+    code once item #22 removes it; not yet removed. `HDTTOOLS_OCR_BACKEND` env flag
     (default `"tesseract"`, `"claude"` the only other valid value, fail
     loud otherwise), read by both `main.py` and `app.py`'s per-doc-type
     dispatch; `vision_client.extract_via_claude` refactored to take
@@ -152,7 +155,7 @@ reading anything else.
     `ANTHROPIC_API_KEY`-ambient-env gotcha found on this machine, in
     `ARCHIVE_WEB_STREAMLIT.md`.
 
-18. 🔶 **Android: guided-scan camera overlay (framing guide before
+**18.** 🔶 **Android: guided-scan camera overlay (framing guide before
     capture) — spiked 2026-08-27, paused 2026-08-29 (no test phone
     available).** A "fix framing before capture" complement to item #11's
     and BoundOCR's (`ClaudePlans/2026-08-26-boundocr-report-session-summary.md`)
@@ -172,7 +175,7 @@ reading anything else.
     down). Full narrative in `ARCHIVE_ANDROID.md`; original spike/results
     in `ClaudePlans/2026-08-27-android-camera-overlay-spike*.md`.
 
-20. ⬜ **Shared accounts + paywall across Android and Web — sequencing
+**20.** ⬜ **Shared accounts + paywall across Android and Web — sequencing
     reversed 2026-09-20 (Android now ships first, not the web beta).**
     Original build-scope facts below are unchanged (`HDTTOOLS_OCR_BACKEND=claude`
     still has no cost-gating anywhere in this backend if turned on
@@ -204,11 +207,35 @@ reading anything else.
       canvases (RigCheck Web, RigCheck Android, a marketing Homepage)
       covering every existing + new screen. See item #21 below for the
       token-level port of that palette into both codebases.
+    **Decided** (2026-09-21, real project decision — not just an analysis
+    premise — confirmed directly with the user): **Tesseract is being
+    dropped; Claude-vision becomes the only OCR backend**, on Web and
+    Streamlit both (Android never had a Tesseract path). The free tier
+    becomes **manual-entry-only** (scan-tokens set to zero), not a free
+    Tesseract-scan tier. This resolves the "whether free Tesseract stays
+    available forever" open question below (**answer: no**). Rationale
+    and consequences are worked out in
+    `ClaudePlans/2026-09-21-research-web-hosting-and-entitlement-tradeoffs.md`'s
+    addendum: removes the edge-runtime hosting blocker, converges Web's
+    scan path with Android's `scan-proxy` shape, and **raises the stakes
+    on cost-gating correctness** since there's no free local-compute
+    fallback once Claude-vision is the only path. **Not yet implemented**
+    — see new roadmap item #22 below for the actual code removal.
     **Still the single biggest unresolved risk, not decided**:
     entitlement source-of-truth — does RevenueCat stay Android's (and
     the shared system's) system of record with Stripe added for Web and
     a reconciliation layer between them, or does one system become the
-    single source of truth for both?
+    single source of truth for both? **Two analysis documents exist as of
+    2026-09-21, not yet acted on** (uncommitted in `ClaudePlans/` —
+    check they're still there before assuming this section is current):
+    `ClaudePlans/2026-09-21-research-web-hosting-and-entitlement-tradeoffs.md`
+    (5 web-hosting options plus an addendum on dropping Tesseract for
+    Claude-vision-only OCR) and
+    `ClaudePlans/2026-09-21-entitlement-and-scan-gating-unification-impacts.md`
+    (concrete Android-vs-Web code impact of each entitlement option, plus
+    a second, related "should Web and Android share one scan-gating
+    backend" question). Both end with a recommendation but neither
+    decision has actually been made yet.
     **Rough scope, comparable to Android's whole Phase 4 monetization
     build** — not a quick bolt-on:
     - **Accounts/auth**: nothing exists in either stack today. A hosted
@@ -236,8 +263,9 @@ reading anything else.
     real per-scan Claude cost and what price/credit-count recovers it
     with margin (the same question already deferred for Android's own
     pricing); whether a paid tier changes the "experimental, not
-    certified" liability framing the README currently leans on; whether
-    free Tesseract stays available forever as a lower tier.
+    certified" liability framing the README currently leans on.
+    (Whether free Tesseract stays available forever as a lower tier is
+    **no longer open** — see the 2026-09-21 decision above.)
     **Estimates** (focused-work, not calendar time — full breakdown in
     `ClaudePlans/2026-09-20-screen-flow-specification.md`): Android live
     as an informal beta in ~1-2 days; the full shared-account system
@@ -246,7 +274,7 @@ reading anything else.
     an architecture-validation step at the start, judged acceptable
     since the beta group is small.
 
-21. ✅ **UI/UX color/font refresh ported into both codebases — done
+**21.** ✅ **UI/UX color/font refresh ported into both codebases — done
     2026-09-21.** The new "Wandering Trails Wagging Tails" teal/purple/
     orange palette + Outfit/DM Sans/Sacramento type (from item #20's
     design system Artifact) replaces the old sunset-orange/trail-green
@@ -257,10 +285,83 @@ reading anything else.
     white text on top of orange or teal, but the old Button/Badge/
     chooser-badge components hardcoded white-on-primary-accent —
     switched to the brand's `on-orange`/`on-teal` (ink) tokens instead.
-    **Not done yet**: matching each screen's layout to the fuller visual
-    treatment shown in the Artifact canvases — this was a token-level
-    port (colors/fonts/shadows/radius), not a re-skin of every
-    component's layout.
+    **Not done yet at the time**: matching each screen's layout to the
+    fuller visual treatment shown in the Artifact canvases — this was a
+    token-level port (colors/fonts/shadows/radius), not a re-skin of
+    every component's layout. **Done as item #23, below.**
+
+**22.** ⬜ **Drop Tesseract; make Claude-vision the sole OCR backend for
+    Python/Streamlit/Web — decided 2026-09-21 (see item #20), not
+    started.** Android is unaffected (never had a Tesseract path).
+    Real work once picked up:
+    - Remove (or hardcode-away) the `HDTTOOLS_OCR_BACKEND` flag item #16
+      added 2026-09-09 — Claude-vision becomes the only value, so the
+      env-flag branch itself becomes dead code once this ships.
+    - Free tier changes from "free Tesseract scan" to "manual entry
+      only" (scan-tokens = 0) — touches the web wizard's free-tier
+      messaging and Streamlit's default flow.
+    - Cost-gating for Claude-vision calls becomes load-bearing for *all*
+      scanning, not just Android's paid tier — there's no free
+      local-compute fallback left to degrade to. This is the
+      "raises the stakes" risk flagged in the hosting-research addendum;
+      resolving it likely rides on item #20's shared scan-gating
+      decision, not a separate mechanism.
+    - Once shipped, closes the "Tesseract's no-auto-crop limitation"
+      entry under "Tests still outstanding" below and the
+      Tesseract-specific bullets under "Known limitations" — both are
+      annotated as superseded-pending-this-item rather than removed yet,
+      since Tesseract is still the live default today.
+    - `Fresh-machine setup checklist` step 1's `tesseract` install
+      requirement goes away for Web/Streamlit once this ships (Android
+      never needed it).
+    No target date — blocked on picking up item #20's build, not on
+    anything external.
+    **Reproduced live, 2026-09-21**: a real truck-tag scan through the
+    actual Web wizard came back completely blank (all fields null) on a
+    real, uncropped phone photo — the exact Tesseract failure mode
+    documented above, not a re-skin regression. See
+    `ARCHIVE_WEB_STREAMLIT.md`'s matching entry for the full trace.
+
+**23.** ✅ **Screen-level UI re-skin to match the design canvases (item
+    #21's leftover work) — done 2026-09-21, both platforms.** All 14
+    "🔄 Refresh" screens (7 Android + 7 Web) restyled per
+    `ClaudePlans/2026-09-21-screen-reskin-refresh-screens.md`; excludes
+    Paywall/credit-chip and Sign Up/Log In/Account, both tied to item
+    #20. Full detail: `ARCHIVE_ANDROID.md` (Android half) and
+    `ARCHIVE_WEB_STREAMLIT.md` (Web half). Both halves verified for real
+    (Android: on-device walkthrough; Web: `puppeteer-core` against a real
+    Chrome + the live `uvicorn` backend), all tests updated and passing,
+    both builds clean. **Both halves left uncommitted pending explicit
+    commit approval.**
+
+**24.** ⬜ **Make the OCR processing/review handoff self-evident — a real
+    "scanning" animation, then an explicit "double-check this" gate —
+    requested 2026-09-21, not started.** Surfaced directly from the
+    "scan didn't work" bug reproduced above: today, a Tesseract call
+    that runs and legitimately finds nothing looks *identical* to
+    clicking "I don't have this image" — both land on a blank Review
+    form with no signal that OCR ran at all, so a real OCR failure reads
+    as "the button didn't do anything." Two asks, either useful alone
+    but intended together:
+    - **Web's `ProcessingStep.tsx`** (Android's `ChooserScreen`-adjacent
+      processing state may want the same treatment, needs a look) should
+      read as an obvious "scanning your photo" moment — a moving dot,
+      swishing color, or similar real motion — not just the current
+      static spinner ring, so a slow real OCR call doesn't look hung.
+    - After extraction, before landing on the plain editable Review
+      form, show an explicit confirm step/banner along the lines of
+      "Double-check what we read off your photo" — forcing an
+      acknowledgment (not just a silently-editable form) that the values
+      came from OCR and may need correction, especially important once a
+      field comes back blank or low-confidence.
+    Not scoped or planned yet — no file list, no decision on whether this
+    is a new wizard sub-step vs. a banner bolted onto the existing
+    Review screens, and no decision on whether it also needs real
+    per-field confidence data (which, per `ARCHIVE_WEB_STREAMLIT.md`'s
+    item #23 entry, doesn't exist anywhere in the Web pipeline today —
+    that gap would need addressing first if the confirm step is meant to
+    call out low-confidence fields specifically, not just show a generic
+    notice). Needs its own planning pass before implementation.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see
@@ -285,7 +386,12 @@ captured as roadmap items #7-#8 above — check there first.
   instrumented test and the landscape-rotation risk itself both still
   need a physical Android test device. Detail in `ARCHIVE_ANDROID.md`.
 
-- **Tesseract's no-auto-crop limitation** (item #11) — needs either an
+- **Tesseract's no-auto-crop limitation** (item #11) — ✅ **Superseded
+  2026-09-21**: Tesseract is being dropped for Claude-vision-only OCR
+  (decided, see item #20; actual removal tracked as new item #22, not
+  started). This limitation won't need fixing once item #22 ships —
+  left in place below since Tesseract is still today's live default.
+  Original gap, needs either an
   auto-crop/tag-isolation preprocessing step in `ocr_common.py`, or
   documented in-app guidance telling users to photograph just the tag
   closely, before Tesseract-path OCR can handle a realistic, un-cropped
@@ -325,6 +431,8 @@ no `ANTHROPIC_API_KEY`) for truck tags, trailer tags, and CAT scale
 tickets, plus stateless breakdown computation (`POST /api/breakdown`) —
 no persistence, no database. `uv run uvicorn hdttools.api.main:app
 --reload --port 8000` — runs on `localhost:8000` (`/docs` for Swagger UI).
+(This description is current as of today — roadmap item #22 will make
+this Claude-vision-only once picked up; not started yet.)
 
 **Streamlit** (`streamlit_app/`): same wizard flow, self-contained, no
 separate backend process — see `streamlit_app/README.md`.
@@ -374,7 +482,11 @@ On a machine that hasn't run this before:
   extraction — only the reviewed field values get saved. If you want to
   revisit a check's original photo later, this would need to change.
 - **OCR accuracy is real-world-imperfect**, same caveat as the pre-existing
-  `scale_ticket_ocr.py`. Confirmed two live examples during testing:
+  `scale_ticket_ocr.py`. ✅ **Update 2026-09-21**: the Tesseract-specific
+  bullets below are slated to become moot — Tesseract is being dropped
+  for Claude-vision-only OCR (decided, see roadmap item #20; removal
+  tracked as item #22, not started). Left in place since Tesseract is
+  still today's live default. Confirmed two live examples during testing:
   - Compliance labels sometimes drop a digit entirely (e.g. "8000" →
     "800" on the trailer tag's GAWR) — this is Tesseract misreading the
     photo itself, not a parsing bug, and there's no real regex fix for it.

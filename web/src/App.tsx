@@ -6,6 +6,7 @@ import type { CreateBreakdownResult } from './api';
 import { loadRecentRigs, saveRecentRig } from './recentRigs';
 import { DisclaimerModal } from './components/DisclaimerModal';
 import { Header } from './components/Header';
+import { Footer } from './components/Footer';
 import { StepPills } from './components/StepPills';
 import { Dashboard } from './screens/Dashboard';
 import { History } from './screens/History';
@@ -172,8 +173,10 @@ function App() {
       <Header screen={screen} onGoHome={goHome} onGoHistory={goHistory} onStartWizard={startWizard} />
 
       <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', padding: '36px 32px' }}>
-        {screen === 'home' && <Dashboard recentRigs={recentRigs} history={history} onStartWizard={startWizard} />}
-        {screen === 'history' && <History history={history} />}
+        {screen === 'home' && (
+          <Dashboard recentRigs={recentRigs} history={history} onStartWizard={startWizard} onGoHistory={goHistory} />
+        )}
+        {screen === 'history' && <History history={history} recentRigs={recentRigs} />}
 
         {isWizard && (
           <div>
@@ -237,6 +240,8 @@ function App() {
           </div>
         )}
       </div>
+
+      <Footer onGoHome={goHome} onGoHistory={goHistory} />
     </div>
   );
 }

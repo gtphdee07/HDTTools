@@ -9,6 +9,7 @@ import App from './App';
 describe('App', () => {
   it('renders the home screen', () => {
     render(<App />);
-    expect(screen.getByText('RigCheck')).toBeInTheDocument();
+    // "RigCheck" appears in both the header and footer branding.
+    expect(screen.getAllByText('RigCheck').length).toBeGreaterThanOrEqual(1);
   });
 });

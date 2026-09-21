@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
@@ -27,6 +28,7 @@ import com.rigcheck.app.data.createScanPhotoUri
 import com.rigcheck.app.ui.ScanUiState
 import com.rigcheck.app.ui.components.CreditBalanceChip
 import com.rigcheck.app.ui.components.ScanOrManualChooser
+import com.rigcheck.app.ui.components.StepProgressBar
 import com.rigcheck.app.ui.navigation.EntryModule
 
 private data class ChooserCopy(val title: String, val prompt: String)
@@ -81,12 +83,11 @@ fun ChooserScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
-            Text(copy.title, style = MaterialTheme.typography.headlineMedium)
-            CreditBalanceChip(
-                balance = creditBalance,
-                modifier = Modifier.padding(top = 12.dp),
-                onClick = onOpenPaywall,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(copy.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                CreditBalanceChip(balance = creditBalance, onClick = onOpenPaywall)
+            }
+            StepProgressBar(step = module.ordinal + 1, totalSteps = 3, modifier = Modifier.padding(top = 16.dp))
             Text(
                 copy.prompt,
                 style = MaterialTheme.typography.bodyLarge,

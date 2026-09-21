@@ -19,7 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.rigcheck.app.ui.theme.DangerRed
+import com.rigcheck.app.ui.theme.OrangeDeep
+import com.rigcheck.app.ui.theme.TintOrange
 
 // Exact wording finalized 2026-08-17 (ANDROID_DESIGN_BRIEF.md) - Android-
 // specific, deliberately not identical to web/Streamlit's disclaimer,
@@ -44,13 +45,13 @@ fun DisclaimerScreen(onAcknowledge: () -> Unit) {
             modifier = Modifier
                 .padding(top = 48.dp, bottom = 24.dp)
                 .size(72.dp)
-                .background(DangerRed.copy(alpha = 0.15f), CircleShape),
+                .background(TintOrange, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 Icons.Filled.Warning,
                 contentDescription = null,
-                tint = DangerRed,
+                tint = OrangeDeep,
                 modifier = Modifier.size(36.dp),
             )
         }

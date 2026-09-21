@@ -11,7 +11,8 @@ describe('History', () => {
   it('renders the title and each entry\'s nickname and date', () => {
     render(<History history={[entry('pass')]} />);
     expect(screen.getByText('Check History')).toBeInTheDocument();
-    expect(screen.getByText('Big Blue')).toBeInTheDocument();
+    // "Big Blue" appears twice: once as a filter pill, once as the row's nickname.
+    expect(screen.getAllByText('Big Blue').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('2026-08-21')).toBeInTheDocument();
   });
 
@@ -45,8 +46,8 @@ describe('History', () => {
 
   it('renders multiple entries independently', () => {
     render(<History history={[entry('pass', { id: '1', rigNickname: 'Big Blue' }), entry('fail', { id: '2', rigNickname: 'Red Rocket' })]} />);
-    expect(screen.getByText('Big Blue')).toBeInTheDocument();
-    expect(screen.getByText('Red Rocket')).toBeInTheDocument();
+    expect(screen.getAllByText('Big Blue').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Red Rocket').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Safe to Tow')).toBeInTheDocument();
     expect(screen.getByText('Over Limit')).toBeInTheDocument();
   });

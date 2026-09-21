@@ -47,26 +47,18 @@ export function ReviewStep({
   };
 
   return (
-    <div
-      style={{
-        background: 'var(--surface-card)',
-        borderRadius: 'var(--radius-lg)',
-        boxShadow: 'var(--shadow-md)',
-        padding: 32,
-        maxWidth: 560,
-      }}
-    >
-      <h2 style={{ fontSize: 'var(--text-h2)', margin: '0 0 6px' }}>Check the numbers</h2>
-      <p style={{ color: 'var(--fg-2)', fontSize: 14, margin: '0 0 20px' }}>
-        Here's what we read off your photo. Fix anything that looks off.
+    <div style={{ maxWidth: 620, margin: '0 auto' }}>
+      <h1 style={{ fontSize: 'var(--text-h1)', margin: '0 0 10px', color: 'var(--fg-1)' }}>Check the numbers</h1>
+      <p style={{ color: 'var(--fg-2)', fontSize: 'var(--text-body-lg)', margin: '0 0 24px' }}>
+        Here's what we read off your photo. Fix anything that looks off before we do the math.
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginBottom: 24 }}>
         {module.fields.map((f) => {
           const raw = data[f.name];
           const value = raw == null ? '' : String(raw);
           return (
-            <label key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-2)' }}>{f.label}</span>
+            <label key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-1)' }}>{f.label}</span>
               <input
                 type={f.type}
                 value={value}

@@ -693,3 +693,142 @@ manually-maintained dependency list that doesn't auto-track
 `pyproject.toml` — worth checking by hand after any future change to
 `pyproject.toml`'s base `dependencies`, since Streamlit Cloud prefers it
 over `uv.lock`/`pyproject.toml` whenever it's present.
+
+---
+
+## 🔀 Decided: Tesseract dropped, Claude-vision-only OCR going forward — 2026-09-21
+
+**Decided** (real project decision, confirmed directly with the user —
+not just a working assumption for analysis purposes): Tesseract is being
+retired as an OCR backend for Web/Streamlit. Claude-vision
+(`vision_client.extract_via_claude`, the path item #16 above added
+2026-09-09) becomes the only OCR backend once this ships. Android is
+unaffected — it never had a Tesseract path.
+
+**Why now**: surfaced while researching web hosting and the accounts/
+paywall entitlement question (`ClaudePlans/2026-09-21-research-web-
+hosting-and-entitlement-tradeoffs.md`'s addendum). Two of item #11's
+2026-08-24 findings above directly motivated it — Tesseract fails on all
+10 real-world raw photos in the test set while Claude vision handles the
+same 10 with no preprocessing — plus the practical benefit that dropping
+Tesseract removes the one hard blocker on edge-runtime hosting options
+(Tesseract needs a real OS process; Claude vision is a plain HTTPS call).
+
+**What this changes, once implemented** (not yet — tracked as
+`NEXT_STEPS.md` roadmap item #22, not started):
+- The free tier stops being "free Tesseract scan" and becomes
+  "manual-entry-only" (scan-tokens = 0). No free OCR path survives.
+- Item #16's `HDTTOOLS_OCR_BACKEND` flag and its Tesseract branch become
+  dead code and get removed rather than kept as a build-time choice.
+- Every scan on both platforms converges to the same shape Android's
+  `workers/scan-proxy` already implements: check a credit, call Claude,
+  deduct. Cost-gating correctness on that path becomes load-bearing for
+  *all* scanning, not just Android's paid tier — there's no free
+  local-compute fallback left to silently degrade to if gating has a
+  gap.
+- The known Tesseract-specific limitations documented earlier in this
+  file (no-auto-crop needing a tight isolated photo, the dropped-digit
+  misread class) become moot rather than needing an eventual fix.
+
+**Not decided by this**: the separate entitlement-source-of-truth and
+scan-gating-unification questions — see
+`ClaudePlans/2026-09-21-entitlement-and-scan-gating-unification-impacts.md`,
+still open, `NEXT_STEPS.md` item #20.
+
+✅ **Real bug reproduced live, 2026-09-21, same day as the re-skin
+verification pass** — the user tried a real truck-tag photo scan
+against the freshly re-skinned Web wizard and reported "the truck label
+scan didn't appear to work." Traced it end-to-end: the API call
+genuinely succeeded (`200 OK`, confirmed in the `uvicorn` access log)
+and the frontend's select-photo → Extract Data → Review flow all worked
+mechanically (confirmed via a `puppeteer-core` walkthrough with a clean
+reference photo, which populated the Review form correctly) — so this
+isn't a re-skin regression. The real cause is the Tesseract-blank-fields
+failure mode from finding #1 above, reproduced fresh against a real,
+uncropped phone photo already in the repo
+(`ExampleDocs/scans/truck/f150_blue_goose_uncropped/20260824_141527.jpg`):
+Tesseract (today's default backend — `HDTTOOLS_OCR_BACKEND` is unset in
+the dev environment) returned **every field null**, which the UI
+correctly renders as a blank Review form — indistinguishable from
+clicking "I don't have this image," so a user has no way to tell "OCR
+ran and found nothing" from "OCR didn't run." Restarting the same
+backend with `HDTTOOLS_OCR_BACKEND=claude` against the exact same photo
+returned a fully correct read (manufacturer, VIN, GVWR, both GAWRs, tire
+specs). This is not a new bug — it's a live, user-facing confirmation of
+the exact failure mode that already motivated the Tesseract-drop
+decision above; no code change made here, since item #22 already tracks
+the real fix. Left the dev server running on `HDTTOOLS_OCR_BACKEND=claude`
+for the rest of this session so the user's own testing actually works,
+rather than leaving it on the known-broken default.
+
+✅ **Done, screen-level UI re-skin (roadmap item #23, Web half) —
+2026-09-21.** Full plan: `ClaudePlans/2026-09-21-screen-reskin-refresh-
+screens.md`. Restyled the 7 "🔄 Refresh" Web screens to match the
+`RigCheck Web` design canvas
+(`https://claude.ai/artifact/XAShfYmhqyvjyJKQmjPcyQ`), same scope
+exclusions and the same two standing decisions as the Android half (see
+`ARCHIVE_ANDROID.md`'s matching entry): preserve every screen's existing
+interaction behavior (no UX redesign), and the mockups' "Upgrade to
+Claude scanning" teaser banners render as static/inert sections with a
+disabled button (no real Paywall target until item #20 ships).
+
+Files changed: new `components/Footer.tsx` (didn't exist before —
+wordmark, Dashboard/History nav, disclaimer + copyright line, wired into
+`App.tsx` below the routed screen content); `Header.tsx`'s nav reworked
+from plain text buttons to filled pills on the active item (same
+props/behavior, visual-only); `StepPills.tsx` rewritten from flat pills
+to numbered-circle-plus-connector-line, with a "Rig" step added at the
+front (the wizard's `step` prop already ran 0-4, so this needed no new
+plumbing — just the label array and render logic); `Dashboard.tsx` (new
+hero section — headline/subtext/CTA + a static 3-step icon graphic, "Your
+Rigs" 4-up card grid with a colored dot + "Start check" link, a static
+purple "Upgrade" teaser banner) and `History.tsx` (client-side filter
+pills — All rigs / per-rig / Within limits / Over limit — plus a
+table-style row grid) both gained a `onGoHistory`/`recentRigs` prop
+respectively to support the new "View history" link and the truck+trailer
+join column; `RigStep.tsx` (bordered radio-card-styled rows, kept as
+plain clickable divs — **not** actual radio inputs — since the existing
+behavior is click-to-navigate-immediately, not the mockup's
+select-then-Continue); `UploadStep.tsx` (dashed dropzone with icon +
+"Choose photo" button, a "What we read" sidebar card built from the
+module's own `fields` list rather than new fabricated copy); `ProcessingStep.tsx`
+(circular SVG progress ring + 3-item checklist); `ReviewStep.tsx`
+(heading/spacing pass only — the mockup's split photo-preview panel and
+per-field low-confidence borders were **not** built, since neither a
+persisted photo nor per-field confidence data exists anywhere in the
+Web pipeline to back them; fabricating either would have been fake UI,
+not a restyle); `ResultsStep.tsx` (two-column layout: existing verdict
+band + breakdown list on the left, a static "Scan the label again with
+Claude" teaser card on the right, both scope-boundary-approved as
+static/inert).
+
+**Real scope adjustment made while building, not asked about first**:
+the plan assumed `Dashboard.tsx`'s "Recent checks" cards could reuse
+`ResultsStep.tsx`'s per-axle progress-bar rendering, but `HistoryEntry`
+(`types.ts`) only ever stored `id`/`date`/`rigNickname`/`verdict` — no
+per-axle breakdown survives past the moment a check completes. Extending
+`HistoryEntry` to carry the full breakdown would have been a real data-
+shape change, which the plan's own Definition of Done ruled out. Built
+the cards with only what's real (verdict badge + a `recentRigs`-joined
+truck/trailer subtitle) instead of fabricating axle bars against data
+that doesn't exist.
+
+**Test-file updates** (structure changed, not deleted, per
+`TESTING.md`): `App.smoke.test.tsx` and `Dashboard.test.tsx`'s/
+`History.test.tsx`'s nickname assertions switched to `getAllByText`
+where the Footer/filter-pills now duplicate text that used to be
+unique; `Dashboard.test.tsx` calls gained the new `onGoHistory` prop.
+`npx tsc -b`, `npx vitest run` (71/71 passing), and `npm run build`
+(Vite production build) all pass clean.
+
+**Verified for real in a browser**, not just via tests: booted both
+`vite` (port 5173 — the FastAPI backend's CORS allow-list is hardcoded
+to that origin, so a non-default port silently produces "Failed to
+fetch") and the real `uvicorn` backend (`uv run uvicorn
+hdttools.api.main:app --port 8000`), then drove the full wizard flow
+(Rig → Truck → Trailer → Scale → disclaimer → Results → back to
+Dashboard) with `puppeteer-core` pointed at the machine's existing
+Chrome install (no browser download needed), screenshotting every
+screen and comparing each against its `.dc.html` mockup. Left
+**uncommitted** pending explicit commit approval, same as the Android
+half.

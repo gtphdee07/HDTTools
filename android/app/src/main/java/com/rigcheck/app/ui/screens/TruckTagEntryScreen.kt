@@ -41,6 +41,7 @@ import com.rigcheck.app.ui.ScanUiState
 import com.rigcheck.app.ui.components.LabeledNumberField
 import com.rigcheck.app.ui.components.LabeledTextField
 import com.rigcheck.app.ui.components.ReferenceImageCard
+import com.rigcheck.app.ui.components.StepProgressBar
 import kotlin.math.roundToInt
 
 @Composable
@@ -71,14 +72,15 @@ fun TruckTagEntryScreen(
         if (uri != null) onScanStandaloneTicket(uri)
     }
 
+    Column(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .weight(1f)
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
     ) {
         Text("Truck Tag", style = MaterialTheme.typography.headlineMedium)
-        Text("Step 1 of 3", style = MaterialTheme.typography.bodySmall)
+        StepProgressBar(step = 1, totalSteps = 3, modifier = Modifier.padding(top = 8.dp))
 
         Text(
             "Find these values on your truck's compliance label (usually inside the driver door jamb).",
@@ -199,10 +201,11 @@ fun TruckTagEntryScreen(
                 }
             }
         }
+    }
 
         Button(
             onClick = onContinue,
-            modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
         ) { Text("Next: Trailer Tag") }
     }
 

@@ -20,6 +20,7 @@ import com.rigcheck.app.ui.components.LabeledIntField
 import com.rigcheck.app.ui.components.LabeledNumberField
 import com.rigcheck.app.ui.components.LabeledTextField
 import com.rigcheck.app.ui.components.ReferenceImageCard
+import com.rigcheck.app.ui.components.StepProgressBar
 
 @Composable
 fun TrailerTagEntryScreen(
@@ -27,14 +28,15 @@ fun TrailerTagEntryScreen(
     onTrailerChange: (TrailerTag) -> Unit,
     onContinue: () -> Unit,
 ) {
+    Column(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .weight(1f)
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
     ) {
         Text("Trailer Tag", style = MaterialTheme.typography.headlineMedium)
-        Text("Step 2 of 3", style = MaterialTheme.typography.bodySmall)
+        StepProgressBar(step = 2, totalSteps = 3, modifier = Modifier.padding(top = 8.dp))
 
         Text(
             "Find these values on your trailer's compliance label (usually near the front, curb side).",
@@ -94,10 +96,11 @@ fun TrailerTagEntryScreen(
                 onValueChange = { onTrailerChange(trailer.copy(uvwLb = it)) },
             )
         }
+    }
 
         Button(
             onClick = onContinue,
-            modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
         ) { Text("Next: Scale Ticket") }
     }
 }

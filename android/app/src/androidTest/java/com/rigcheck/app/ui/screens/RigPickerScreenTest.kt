@@ -33,8 +33,10 @@ class RigPickerScreenTest {
         composeRule.setContent {
             RigPickerScreen(
                 recentRigs = listOf(recentRig),
+                creditBalance = 3,
                 onSelectRecentRig = { selected = it },
                 onStartNewRig = {},
+                onOpenPaywall = {},
             )
         }
 
@@ -47,7 +49,13 @@ class RigPickerScreenTest {
     @Test
     fun createButtonDisabledUntilNicknameIsEntered() {
         composeRule.setContent {
-            RigPickerScreen(recentRigs = emptyList(), onSelectRecentRig = {}, onStartNewRig = {})
+            RigPickerScreen(
+                recentRigs = emptyList(),
+                creditBalance = 3,
+                onSelectRecentRig = {},
+                onStartNewRig = {},
+                onOpenPaywall = {},
+            )
         }
 
         composeRule.onNodeWithText("Create").assertIsNotEnabled()
@@ -57,13 +65,37 @@ class RigPickerScreenTest {
     fun typingNicknameThenCreateInvokesOnStartNewRig() {
         var startedWith: String? = null
         composeRule.setContent {
-            RigPickerScreen(recentRigs = emptyList(), onSelectRecentRig = {}, onStartNewRig = { startedWith = it })
+            RigPickerScreen(
+                recentRigs = emptyList(),
+                creditBalance = 3,
+                onSelectRecentRig = {},
+                onStartNewRig = { startedWith = it },
+                onOpenPaywall = {},
+            )
         }
 
-        composeRule.onNodeWithText("Rig nickname (e.g. Big Blue)").performTextInput("Big Blue")
+        composeRule.onNodeWithText("Rig nickname").performTextInput("Big Blue")
         composeRule.onNodeWithText("Create").performClick()
 
         assert(startedWith == "Big Blue") { "onStartNewRig should have fired with the typed nickname" }
+    }
+
+    @Test
+    fun creditBalanceChipTapInvokesOnOpenPaywall() {
+        var opened = false
+        composeRule.setContent {
+            RigPickerScreen(
+                recentRigs = emptyList(),
+                creditBalance = 3,
+                onSelectRecentRig = {},
+                onStartNewRig = {},
+                onOpenPaywall = { opened = true },
+            )
+        }
+
+        composeRule.onNodeWithText("3 scans").performClick()
+
+        assert(opened) { "onOpenPaywall should have fired when the credit chip was tapped" }
     }
 
     private fun assertEqualsRig(expected: RecentRig, actual: RecentRig?) {

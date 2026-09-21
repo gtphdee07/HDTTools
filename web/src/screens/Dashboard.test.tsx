@@ -13,19 +13,19 @@ function entry(verdict: Verdict): HistoryEntry {
 // failure. Both files now share verdictBadge.ts.
 describe('Dashboard Recent Checks labeling', () => {
   it('labels a partial verdict "Partially Checked", not "Over Limit"', () => {
-    render(<Dashboard recentRigs={[]} history={[entry('partial')]} onStartWizard={vi.fn()} />);
+    render(<Dashboard recentRigs={[]} history={[entry('partial')]} onStartWizard={vi.fn()} onGoHistory={vi.fn()} />);
     expect(screen.getByText('Partially Checked')).toBeInTheDocument();
     expect(screen.queryByText('Over Limit')).not.toBeInTheDocument();
   });
 
   it('labels an insufficient verdict "Not Enough Info", not "Over Limit"', () => {
-    render(<Dashboard recentRigs={[]} history={[entry('insufficient')]} onStartWizard={vi.fn()} />);
+    render(<Dashboard recentRigs={[]} history={[entry('insufficient')]} onStartWizard={vi.fn()} onGoHistory={vi.fn()} />);
     expect(screen.getByText('Not Enough Info')).toBeInTheDocument();
     expect(screen.queryByText('Over Limit')).not.toBeInTheDocument();
   });
 
   it('still labels a real failure "Over Limit"', () => {
-    render(<Dashboard recentRigs={[]} history={[entry('fail')]} onStartWizard={vi.fn()} />);
+    render(<Dashboard recentRigs={[]} history={[entry('fail')]} onStartWizard={vi.fn()} onGoHistory={vi.fn()} />);
     expect(screen.getByText('Over Limit')).toBeInTheDocument();
   });
 });

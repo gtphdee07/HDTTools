@@ -43,6 +43,7 @@ fun RigCheckNavHost(
         composable<RigCheckRoute.RigPicker> {
             RigPickerScreen(
                 recentRigs = recentRigs,
+                creditBalance = viewModel.creditBalance,
                 onSelectRecentRig = { rig ->
                     viewModel.selectRecentRig(rig)
                     navController.navigate(RigCheckRoute.Chooser(EntryModule.SCALE))
@@ -51,6 +52,7 @@ fun RigCheckNavHost(
                     viewModel.startNewRig(nickname)
                     navController.navigate(RigCheckRoute.Chooser(EntryModule.TRUCK))
                 },
+                onOpenPaywall = { navController.navigate(RigCheckRoute.Paywall) },
             )
         }
 
@@ -135,7 +137,16 @@ fun RigCheckNavHost(
 
         composable<RigCheckRoute.Results> {
             LaunchedEffect(Unit) { viewModel.saveCurrentRig() }
-            ResultsScreen(breakdown = viewModel.breakdown, verdict = viewModel.verdict)
+            ResultsScreen(
+                rigNickname = viewModel.rigNickname,
+                breakdown = viewModel.breakdown,
+                verdict = viewModel.verdict,
+                onStartAnother = {
+                    navController.navigate(RigCheckRoute.RigPicker) {
+                        popUpTo(RigCheckRoute.RigPicker) { inclusive = true }
+                    }
+                },
+            )
         }
     }
 }

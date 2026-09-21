@@ -3,6 +3,7 @@ package com.rigcheck.app.ui.screens
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.domain.BreakdownItem
 import com.rigcheck.app.domain.Tone
@@ -26,7 +27,14 @@ class ResultsScreenTest {
     @Test
     fun allPassingRendersSafeToTowVerdict() {
         val breakdown = listOf(item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85))
-        composeRule.setContent { ResultsScreen(breakdown = breakdown, verdict = verdictFor(breakdown)) }
+        composeRule.setContent {
+            ResultsScreen(
+                rigNickname = "Goose + Addie",
+                breakdown = breakdown,
+                verdict = verdictFor(breakdown),
+                onStartAnother = {},
+            )
+        }
 
         composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
         composeRule.onNodeWithText("Tow Vehicle Total (GVWR)").assertIsDisplayed()
@@ -39,7 +47,14 @@ class ResultsScreenTest {
             item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85),
             item("Combined Rig Weight", Tone.WARNING, 108),
         )
-        composeRule.setContent { ResultsScreen(breakdown = breakdown, verdict = verdictFor(breakdown)) }
+        composeRule.setContent {
+            ResultsScreen(
+                rigNickname = "Goose + Addie",
+                breakdown = breakdown,
+                verdict = verdictFor(breakdown),
+                onStartAnother = {},
+            )
+        }
 
         composeRule.onNodeWithText("Not Safe to Tow").assertIsDisplayed()
         composeRule.onNodeWithText("Combined Rig Weight").assertIsDisplayed()
@@ -49,7 +64,14 @@ class ResultsScreenTest {
     @Test
     fun allInsufficientRendersNotEnoughInformationVerdict() {
         val breakdown = listOf(item("Front Axle (Steer)", Tone.INSUFFICIENT, 0))
-        composeRule.setContent { ResultsScreen(breakdown = breakdown, verdict = verdictFor(breakdown)) }
+        composeRule.setContent {
+            ResultsScreen(
+                rigNickname = "Goose + Addie",
+                breakdown = breakdown,
+                verdict = verdictFor(breakdown),
+                onStartAnother = {},
+            )
+        }
 
         composeRule.onNodeWithText("Not Enough Information").assertIsDisplayed()
         composeRule.onNodeWithText("Front Axle (Steer)").assertIsDisplayed()
@@ -61,7 +83,14 @@ class ResultsScreenTest {
             item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85),
             item("Trailer Total (GVWR)", Tone.INSUFFICIENT, 0),
         )
-        composeRule.setContent { ResultsScreen(breakdown = breakdown, verdict = verdictFor(breakdown)) }
+        composeRule.setContent {
+            ResultsScreen(
+                rigNickname = "Goose + Addie",
+                breakdown = breakdown,
+                verdict = verdictFor(breakdown),
+                onStartAnother = {},
+            )
+        }
 
         composeRule.onNodeWithText("Partially Checked").assertIsDisplayed()
     }
@@ -71,7 +100,14 @@ class ResultsScreenTest {
         val breakdown = listOf(
             item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85, estimated = true),
         )
-        composeRule.setContent { ResultsScreen(breakdown = breakdown, verdict = verdictFor(breakdown)) }
+        composeRule.setContent {
+            ResultsScreen(
+                rigNickname = "Goose + Addie",
+                breakdown = breakdown,
+                verdict = verdictFor(breakdown),
+                onStartAnother = {},
+            )
+        }
 
         composeRule.onNodeWithText("⚠️ Estimated Figures — Confirm Before You Buy").assertIsDisplayed()
     }
@@ -79,8 +115,48 @@ class ResultsScreenTest {
     @Test
     fun estimatedFiguresNoticeHiddenWhenNoRowIsEstimated() {
         val breakdown = listOf(item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85))
-        composeRule.setContent { ResultsScreen(breakdown = breakdown, verdict = verdictFor(breakdown)) }
+        composeRule.setContent {
+            ResultsScreen(
+                rigNickname = "Goose + Addie",
+                breakdown = breakdown,
+                verdict = verdictFor(breakdown),
+                onStartAnother = {},
+            )
+        }
 
         composeRule.onNodeWithText("⚠️ Estimated Figures — Confirm Before You Buy").assertDoesNotExist()
+    }
+
+    @Test
+    fun rigNicknameIsDisplayed() {
+        val breakdown = listOf(item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85))
+        composeRule.setContent {
+            ResultsScreen(
+                rigNickname = "Goose + Addie",
+                breakdown = breakdown,
+                verdict = verdictFor(breakdown),
+                onStartAnother = {},
+            )
+        }
+
+        composeRule.onNodeWithText("Goose + Addie").assertIsDisplayed()
+    }
+
+    @Test
+    fun startAnotherCheckButtonInvokesOnStartAnother() {
+        val breakdown = listOf(item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85))
+        var started = false
+        composeRule.setContent {
+            ResultsScreen(
+                rigNickname = "Goose + Addie",
+                breakdown = breakdown,
+                verdict = verdictFor(breakdown),
+                onStartAnother = { started = true },
+            )
+        }
+
+        composeRule.onNodeWithText("Start another check").performClick()
+
+        assert(started) { "onStartAnother should have fired when the button was tapped" }
     }
 }

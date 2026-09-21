@@ -24,6 +24,7 @@ import com.rigcheck.app.R
 import com.rigcheck.app.domain.model.ScaleTicket
 import com.rigcheck.app.ui.components.LabeledNumberField
 import com.rigcheck.app.ui.components.LabeledTextField
+import com.rigcheck.app.ui.components.StepProgressBar
 import com.rigcheck.app.ui.theme.Orange
 
 // Static numbered-callout pattern (not tap-and-hold zoom - this screen's
@@ -40,14 +41,15 @@ fun ScaleTicketEntryScreen(
     onScaleChange: (ScaleTicket) -> Unit,
     onContinue: () -> Unit,
 ) {
+    Column(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .weight(1f)
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
     ) {
         Text("Scale Ticket", style = MaterialTheme.typography.headlineMedium)
-        Text("Step 3 of 3", style = MaterialTheme.typography.bodySmall)
+        StepProgressBar(step = 3, totalSteps = 3, modifier = Modifier.padding(top = 8.dp))
 
         Text(
             "Find these values on your CAT Scale printout.",
@@ -99,10 +101,11 @@ fun ScaleTicketEntryScreen(
                 onValueChange = { onScaleChange(scale.copy(grossWeightLb = it)) },
             )
         }
+    }
 
         Button(
             onClick = onContinue,
-            modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
         ) { Text("Check Weights") }
     }
 }

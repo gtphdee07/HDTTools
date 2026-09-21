@@ -22,7 +22,7 @@ export function ProcessingStep({ title }: ProcessingStepProps) {
           width: 44,
           height: 44,
           borderRadius: '50%',
-          border: '4px solid var(--color-cream-dark)',
+          border: '4px solid var(--color-surface-sunken)',
           borderTopColor: 'var(--accent-primary)',
           animation: 'spin 0.9s linear infinite',
         }}

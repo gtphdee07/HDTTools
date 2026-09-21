@@ -1,64 +1,73 @@
-@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=Quicksand:wght@400;500;600;700&family=Karla:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sacramento&family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap');
 
 :root {
-  /* Colors */
-  --color-sunset-orange: #f0942f;
-  --color-sunset-orange-light: #ffb050;
-  --color-sunset-orange-dark: #c9701a;
-  --color-trail-green: #4d7a3a;
-  --color-trail-green-light: #6f9a56;
-  --color-trail-green-dark: #33552b;
-  --color-dusk-mauve: #8d7fa0;
-  --color-dusk-mauve-light: #a99cc0;
-  --color-dusk-mauve-dark: #5f5578;
-  --color-sunset-rose: #c17f8f;
-  --color-sunset-rose-light: #daa5b0;
-  --color-sunset-rose-dark: #8f5866;
-  --color-charcoal: #2a2a28;
-  --color-charcoal-soft: #4a4844;
-  --color-cream: #f6efe4;
-  --color-cream-dark: #ece1cf;
-  --color-mist: #d9d2d6;
-  --color-white: #ffffff;
+  /* Colors - "Wandering Trails, Wagging Tails" brand palette */
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f4f8f9;
+  --color-tint-teal: #e3f7f5;
+  --color-tint-purple: #f1ecff;
+  --color-tint-orange: #fff0e1;
 
-  --fg-1: var(--color-charcoal);
-  --fg-2: var(--color-charcoal-soft);
-  --fg-inverse: var(--color-cream);
-  --bg-page: var(--color-cream);
-  --bg-surface: var(--color-white);
-  --bg-surface-sunken: var(--color-cream-dark);
-  --surface-card: var(--color-white);
-  --border-subtle: color-mix(in oklch, var(--color-charcoal) 14%, transparent);
-  --border-strong: var(--color-charcoal);
-  --accent-primary: var(--color-sunset-orange);
-  --accent-primary-hover: var(--color-sunset-orange-dark);
-  --accent-primary-active: var(--color-sunset-orange-dark);
-  --accent-secondary: var(--color-trail-green);
-  --accent-secondary-hover: var(--color-trail-green-dark);
-  --accent-tertiary: var(--color-dusk-mauve);
-  --accent-quaternary: var(--color-sunset-rose);
-  --state-success: var(--color-trail-green);
-  --state-warning: var(--color-sunset-orange);
-  --state-info: var(--color-dusk-mauve);
+  --color-ink: #16131f;
+  --color-ink-muted: #55506a;
+  --color-border: #d5dee3;
+  --color-border-strong: #738490;
+
+  --color-teal: #12b5ae;
+  --color-teal-deep: #087379;
+  --color-purple: #7b3fe4;
+  --color-purple-deep: #5b25b8;
+  --color-orange: #ff7a1a;
+  --color-orange-deep: #b84a00;
+
+  --color-sunshine: #ffb627;
+  --color-sky: #2f9bef;
+  --color-pine: #3f6b35;
+  --color-slate: #576775;
+  --color-blush: #e9a3a0;
+
+  --color-on-teal: var(--color-ink);
+  --color-on-purple: var(--color-surface);
+  --color-on-orange: var(--color-ink);
+  --color-focus-ring: var(--color-purple-deep);
+
+  --fg-1: var(--color-ink);
+  --fg-2: var(--color-ink-muted);
+  --fg-inverse: var(--color-surface);
+  --bg-page: var(--color-surface);
+  --bg-surface: var(--color-surface);
+  --bg-surface-sunken: var(--color-surface-sunken);
+  --surface-card: var(--color-surface);
+  --border-subtle: var(--color-border);
+  --border-strong: var(--color-border-strong);
+  --accent-primary: var(--color-orange);
+  --accent-primary-hover: var(--color-orange-deep);
+  --accent-primary-active: var(--color-orange-deep);
+  --accent-secondary: var(--color-teal);
+  --accent-secondary-hover: var(--color-teal-deep);
+  --accent-tertiary: var(--color-purple);
+  --accent-quaternary: var(--color-blush);
+  --state-success: var(--color-pine);
+  --state-warning: var(--color-orange);
+  --state-info: var(--color-purple);
   --state-danger: #b5473a;
-  --shadow-color: 220 10% 20%;
 
   /* Typography */
-  --font-script: 'Alex Brush', cursive;
-  --font-display: 'Quicksand', sans-serif;
-  --font-body: 'Karla', sans-serif;
-  --text-display-1: clamp(2.6rem, 4vw + 1rem, 4.5rem);
-  --text-display-2: clamp(2rem, 3vw + 1rem, 3.2rem);
-  --text-h1: clamp(1.7rem, 1.5vw + 1rem, 2.4rem);
-  --text-h2: 1.6rem;
-  --text-h3: 1.25rem;
-  --text-body-lg: 1.15rem;
+  --font-script: 'Sacramento', cursive;
+  --font-display: 'Outfit', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --text-display-1: clamp(2.4rem, 3.5vw + 1rem, 3.5rem);
+  --text-display-2: clamp(1.9rem, 2.5vw + 1rem, 2.5rem);
+  --text-h1: clamp(1.5rem, 1vw + 1rem, 1.75rem);
+  --text-h2: 1.25rem;
+  --text-h3: 1.125rem;
+  --text-body-lg: 1.125rem;
   --text-body: 1rem;
   --text-small: 0.875rem;
   --text-caption: 0.75rem;
   --leading-tight: 1.1;
   --leading-snug: 1.3;
-  --leading-normal: 1.55;
+  --leading-normal: 1.5;
   --leading-loose: 1.7;
   --weight-regular: 400;
   --weight-medium: 500;
@@ -77,11 +86,11 @@
   --space-10: 128px;
   --radius-sm: 8px;
   --radius-md: 14px;
-  --radius-lg: 22px;
+  --radius-lg: 24px;
   --radius-pill: 999px;
-  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.08), 0 1px 1px hsl(var(--shadow-color) / 0.06);
-  --shadow-md: 0 6px 16px hsl(var(--shadow-color) / 0.12), 0 2px 4px hsl(var(--shadow-color) / 0.08);
-  --shadow-lg: 0 16px 40px hsl(var(--shadow-color) / 0.18), 0 4px 10px hsl(var(--shadow-color) / 0.1);
+  --shadow-sm: 0 1px 3px rgba(22, 19, 31, 0.10);
+  --shadow-md: 0 8px 24px rgba(22, 19, 31, 0.12);
+  --shadow-lg: 0 16px 40px rgba(22, 19, 31, 0.18), 0 4px 10px rgba(22, 19, 31, 0.12);
   --container-max: 1200px;
 }
 
@@ -105,12 +114,12 @@ h1, h2, h3 {
 }
 
 a {
-  color: var(--accent-secondary-hover, var(--color-trail-green-dark));
+  color: var(--accent-secondary-hover, var(--color-teal-deep));
   text-decoration: none;
 }
 
 a:hover {
-  color: var(--color-sunset-orange-dark);
+  color: var(--color-orange-deep);
   text-decoration: underline;
 }
 

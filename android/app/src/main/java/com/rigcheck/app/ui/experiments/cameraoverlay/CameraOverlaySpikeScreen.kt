@@ -50,7 +50,7 @@ import androidx.core.content.ContextCompat
 import androidx.exifinterface.media.ExifInterface
 import com.rigcheck.app.data.createScanPhotoUri
 import com.rigcheck.app.data.encodePhotoForScan
-import com.rigcheck.app.ui.theme.SunsetOrange
+import com.rigcheck.app.ui.theme.Orange
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
 
@@ -187,7 +187,7 @@ private fun CameraPreviewWithOverlay() {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val guide = computeGuideRect(size.width, size.height, GUIDE_ASPECT_RATIO, GUIDE_FRACTION)
             drawRoundRect(
-                color = SunsetOrange,
+                color = Orange,
                 topLeft = Offset(guide.left, guide.top),
                 size = Size(guide.width, guide.height),
                 cornerRadius = CornerRadius(guideCornerRadius.toPx(), guideCornerRadius.toPx()),
@@ -221,7 +221,7 @@ private fun CameraPreviewWithOverlay() {
                         }
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = SunsetOrange),
+                colors = ButtonDefaults.buttonColors(containerColor = Orange),
             ) {
                 Text("Capture")
             }
@@ -230,7 +230,7 @@ private fun CameraPreviewWithOverlay() {
                     onClick = {
                         statusText = runPipelineCheck(context, lastCapturedUri!!)
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = SunsetOrange),
+                    colors = ButtonDefaults.buttonColors(containerColor = Orange),
                 ) {
                     Text("Verify via encodePhotoForScan")
                 }

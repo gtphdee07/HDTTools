@@ -24,8 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.rigcheck.app.ui.theme.SunsetOrange
-import com.rigcheck.app.ui.theme.TrailGreen
+import com.rigcheck.app.ui.theme.OnOrange
+import com.rigcheck.app.ui.theme.Orange
+import com.rigcheck.app.ui.theme.Pine
 
 @Composable
 fun ScanOrManualChooser(
@@ -39,7 +40,10 @@ fun ScanOrManualChooser(
             title = "Scan Photo",
             description = "Photograph the label — Claude reads the fields for you.",
             badgeText = "1 credit",
-            badgeColor = SunsetOrange,
+            badgeColor = Orange,
+            // Orange fails contrast with white text/icons at this weight - the
+            // brand tokens require ink (near-black) on top of it instead.
+            badgeContentColor = OnOrange,
             enabled = true,
             onClick = onScanPhoto,
         )
@@ -48,7 +52,7 @@ fun ScanOrManualChooser(
             title = "Enter Manually",
             description = "Type the values in yourself — free, no photo, works offline.",
             badgeText = "Free",
-            badgeColor = TrailGreen,
+            badgeColor = Pine,
             enabled = true,
             onClick = onChooseManual,
         )
@@ -62,13 +66,14 @@ private fun ChooserOptionCard(
     description: String,
     badgeText: String,
     badgeColor: Color,
+    badgeContentColor: Color = Color.White,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
     Surface(
         shape = RoundedCornerShape(14.dp),
         border = if (enabled) {
-            androidx.compose.foundation.BorderStroke(1.dp, SunsetOrange)
+            androidx.compose.foundation.BorderStroke(1.dp, Orange)
         } else {
             androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         },
@@ -102,7 +107,7 @@ private fun ChooserOptionCard(
                 Text(
                     badgeText,
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color.White,
+                    color = badgeContentColor,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 )
             }

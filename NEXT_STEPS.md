@@ -172,31 +172,57 @@ reading anything else.
     down). Full narrative in `ARCHIVE_ANDROID.md`; original spike/results
     in `ClaudePlans/2026-08-27-android-camera-overlay-spike*.md`.
 
-20. ⬜ **Web accounts + paywall for a public Claude-vision tier — not
-    started, deferred until after the web beta ships (decided
-    2026-09-18).** Currently `HDTTOOLS_OCR_BACKEND=claude` has no
-    cost-gating anywhere if turned on publicly (confirmed while planning
-    the web beta — see `ClaudePlans/2026-09-18-web-beta-deployment.md`),
-    so offering it to real users needs real accounts + billing first.
-    **Sequencing decision**: build the free Tesseract-only web beta
-    first, get real usage, *then* build this — mirrors this project's
-    own precedent (Android shipped free manual entry through Phase 3,
-    added the paid Claude-vision feature only in Phase 4, see
-    `ARCHIVE_MONETIZATION.md`), and costs nothing to defer since the web
-    app persists zero user data today (nothing to migrate later).
+20. ⬜ **Shared accounts + paywall across Android and Web — sequencing
+    reversed 2026-09-20 (Android now ships first, not the web beta).**
+    Original build-scope facts below are unchanged (`HDTTOOLS_OCR_BACKEND=claude`
+    still has no cost-gating anywhere in this backend if turned on
+    publicly — confirmed while planning the web beta, see
+    `ClaudePlans/2026-09-18-web-beta-deployment.md`), but the *sequencing*
+    and *account-sharing* decisions below supersede that plan's framing.
+    **What changed 2026-09-20**: instead of the free Tesseract-only web
+    beta shipping first and accounts/paywall following later as a
+    web-only feature, Android now ships first as an informal/sideload
+    beta (explicitly *not* a Play Store production release — see
+    `ARCHIVE_ANDROID.md`), and everything below gets built as ONE shared
+    system used by both platforms from the start. Real fix needed
+    regardless of sequencing: Android's RevenueCat Test Store config and
+    hardcoded `smoke-test-user` identity must swap to production
+    (~1-2 days, already flagged in `ARCHIVE_ANDROID.md`).
+    **Decided** (2026-09-20, via direct discussion + `AskUserQuestion`,
+    captured in `ClaudePlans/2026-09-20-screen-flow-specification.md`):
+    - One shared account system across Web and Android (not two
+      independent ones) — the harder path, chosen deliberately.
+    - Sign Up/Log In support email+password plus "Continue with
+      Google"/"Continue with Apple."
+    - No account-linking/migration screen yet — deferred until early
+      Android beta testers (who exist under anonymous RevenueCat IDs
+      today) actually need reconciling into the shared system.
+    - Full screen inventory + designer-ready mockups exist:
+      `DESIGN_BRIEF.md` (repo, canonical) plus 4 published Artifacts — a
+      design system ("Wandering Trails Wagging Tails": teal/purple/orange
+      palette, Outfit/DM Sans/Sacramento type) and three interactive
+      canvases (RigCheck Web, RigCheck Android, a marketing Homepage)
+      covering every existing + new screen. See item #21 below for the
+      token-level port of that palette into both codebases.
+    **Still the single biggest unresolved risk, not decided**:
+    entitlement source-of-truth — does RevenueCat stay Android's (and
+    the shared system's) system of record with Stripe added for Web and
+    a reconciliation layer between them, or does one system become the
+    single source of truth for both?
     **Rough scope, comparable to Android's whole Phase 4 monetization
     build** — not a quick bolt-on:
-    - **Accounts/auth**: nothing exists in the web stack today. A hosted
+    - **Accounts/auth**: nothing exists in either stack today. A hosted
       provider (Clerk, Supabase Auth, Auth0) is days of work; hand-rolled
       (sessions, password reset, email verification) is ~1-2 weeks and
-      adds real security surface.
+      adds real security surface. Add ~1-2 weeks on top to make it work
+      identically across both platforms.
     - **A real database**: the web backend is 100% stateless today (no
       DB anywhere — unlike the CLI tool's local SQLite). Needed for
-      users, credit balances/subscriptions, usage history.
-    - **Payments**: Stripe is the standard fit for web billing (vs.
-      RevenueCat, which is mobile-IAP-first — they do have a newer web
-      product, but Stripe is more mature here, at the cost of a second
-      billing dashboard alongside RevenueCat).
+      users, credit balances/subscriptions, usage history, on both
+      platforms once shared.
+    - **Payments**: Stripe for Web (RevenueCat is mobile-IAP-first),
+      RevenueCat stays for Android — hence the entitlement
+      source-of-truth question above.
     - **Server-side cost-gating**: deduct a credit/check quota before
       every Claude-vision call. `workers/scan-proxy/`'s *pattern* (charge
       before calling Claude) is the right mental model, but its code
@@ -205,16 +231,36 @@ reading anything else.
     - **Services to register for**: Stripe; an auth provider, or Supabase
       alone (bundles Postgres + Auth in one signup, covering two needs
       at once); the Anthropic key already exists.
-    **Open questions to resolve before scoping this for real**:
-    credits-per-scan (matches how Android already thinks about it) vs. a
-    monthly subscription; one account system shared across Web and
-    Android vs. two independent ones (shared is a real jump in
-    complexity — cross-platform entitlement sync); the real per-scan
-    Claude cost and what price/credit-count recovers it with margin
-    (the same question already deferred for Android's own pricing);
-    whether a paid tier changes the "experimental, not certified"
-    liability framing the README currently leans on; whether free
-    Tesseract stays available forever as a lower tier.
+    **Other open questions, unchanged**: credits-per-scan (matches how
+    Android already thinks about it) vs. a monthly subscription; the
+    real per-scan Claude cost and what price/credit-count recovers it
+    with margin (the same question already deferred for Android's own
+    pricing); whether a paid tier changes the "experimental, not
+    certified" liability framing the README currently leans on; whether
+    free Tesseract stays available forever as a lower tier.
+    **Estimates** (focused-work, not calendar time — full breakdown in
+    `ClaudePlans/2026-09-20-screen-flow-specification.md`): Android live
+    as an informal beta in ~1-2 days; the full shared-account system
+    still costs ~5-6 weeks total either way — going Android-first just
+    moves a migration step for early beta testers to the end instead of
+    an architecture-validation step at the start, judged acceptable
+    since the beta group is small.
+
+21. ✅ **UI/UX color/font refresh ported into both codebases — done
+    2026-09-21.** The new "Wandering Trails Wagging Tails" teal/purple/
+    orange palette + Outfit/DM Sans/Sacramento type (from item #20's
+    design system Artifact) replaces the old sunset-orange/trail-green
+    palette in `web/src/design-system/tokens.css` and
+    `android/.../ui/theme/{Color,Theme,Type}.kt`; `npm run build` and
+    `./gradlew compileDebugKotlin` both pass clean. Caught and fixed one
+    real accessibility bug while porting: the brand's own tokens forbid
+    white text on top of orange or teal, but the old Button/Badge/
+    chooser-badge components hardcoded white-on-primary-accent —
+    switched to the brand's `on-orange`/`on-teal` (ink) tokens instead.
+    **Not done yet**: matching each screen's layout to the fuller visual
+    treatment shown in the Artifact canvases — this was a token-level
+    port (colors/fonts/shadows/radius), not a re-skin of every
+    component's layout.
 
 **Deliberately not on this list**: pricing/pack sizes (intentionally
 deferred until real cost/fee data is in hand, not a gap — see

@@ -33,13 +33,13 @@ import com.rigcheck.app.domain.BreakdownItem
 import com.rigcheck.app.domain.Tone
 import com.rigcheck.app.ui.format.formatLb
 import com.rigcheck.app.ui.theme.DangerRed
-import com.rigcheck.app.ui.theme.DuskMauve
-import com.rigcheck.app.ui.theme.TrailGreen
+import com.rigcheck.app.ui.theme.Pine
+import com.rigcheck.app.ui.theme.Purple
 
 private fun toneColorFor(tone: Tone) = when (tone) {
-    Tone.SUCCESS -> TrailGreen
+    Tone.SUCCESS -> Pine
     Tone.WARNING -> DangerRed
-    Tone.INSUFFICIENT -> DuskMauve
+    Tone.INSUFFICIENT -> Purple
 }
 
 @Composable

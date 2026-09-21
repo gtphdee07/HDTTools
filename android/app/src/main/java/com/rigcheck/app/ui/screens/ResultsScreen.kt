@@ -28,15 +28,15 @@ import com.rigcheck.app.domain.VerdictInfo
 import com.rigcheck.app.ui.components.BreakdownRow
 import com.rigcheck.app.ui.components.EstimatedFiguresNotice
 import com.rigcheck.app.ui.theme.DangerRed
-import com.rigcheck.app.ui.theme.DuskMauve
-import com.rigcheck.app.ui.theme.TrailGreen
+import com.rigcheck.app.ui.theme.Pine
+import com.rigcheck.app.ui.theme.Purple
 
 @Composable
 fun ResultsScreen(breakdown: List<BreakdownItem>, verdict: VerdictInfo) {
     val toneColor = when (verdict.tone) {
-        Tone.SUCCESS -> TrailGreen
+        Tone.SUCCESS -> Pine
         Tone.WARNING -> DangerRed
-        Tone.INSUFFICIENT -> DuskMauve
+        Tone.INSUFFICIENT -> Purple
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {

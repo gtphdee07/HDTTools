@@ -24,7 +24,7 @@ import com.rigcheck.app.R
 import com.rigcheck.app.domain.model.ScaleTicket
 import com.rigcheck.app.ui.components.LabeledNumberField
 import com.rigcheck.app.ui.components.LabeledTextField
-import com.rigcheck.app.ui.theme.SunsetOrange
+import com.rigcheck.app.ui.theme.Orange
 
 // Static numbered-callout pattern (not tap-and-hold zoom - this screen's
 // reference image has no interactive hover pattern in the mockup, just a
@@ -67,7 +67,7 @@ fun ScaleTicketEntryScreen(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             LEGEND.forEach { entry ->
-                Text(entry, style = MaterialTheme.typography.bodySmall, color = SunsetOrange)
+                Text(entry, style = MaterialTheme.typography.bodySmall, color = Orange)
             }
         }
 

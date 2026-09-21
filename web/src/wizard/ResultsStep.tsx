@@ -82,7 +82,7 @@ export function ResultsStep({ verdict, breakdownItems, onRestart, onGoHome }: Re
               style={{
                 height: 10,
                 borderRadius: 'var(--radius-pill)',
-                background: 'var(--color-cream-dark)',
+                background: 'var(--color-surface-sunken)',
                 overflow: 'hidden',
                 marginBottom: 8,
               }}

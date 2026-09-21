@@ -22,7 +22,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.rigcheck.app.ui.theme.SunsetOrange
+import com.rigcheck.app.ui.theme.Orange
 
 // Tap-and-hold zoom, replacing the mockup's hover-to-zoom pattern (no
 // direct mobile equivalent - see ANDROID_DESIGN_BRIEF.md). Press and drag
@@ -77,7 +77,7 @@ fun ReferenceImageCard(
                         scaleY = ZOOM_FACTOR
                         transformOrigin = TransformOrigin(fracX, fracY)
                     }
-                    .border(3.dp, SunsetOrange, cardShape),
+                    .border(3.dp, Orange, cardShape),
             )
         }
     }

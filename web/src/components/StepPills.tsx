@@ -22,7 +22,7 @@ export function StepPills({ step }: StepPillsProps) {
               fontFamily: 'var(--font-display)',
               fontWeight: 600,
               fontSize: 13,
-              background: active ? 'var(--accent-primary)' : 'var(--color-cream-dark)',
+              background: active ? 'var(--accent-primary)' : 'var(--color-surface-sunken)',
               color: active ? '#fff' : 'var(--fg-2)',
             }}
           >

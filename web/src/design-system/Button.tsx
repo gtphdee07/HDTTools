@@ -17,7 +17,7 @@ const sizeStyles: Record<Size, React.CSSProperties> = {
 const variantStyles: Record<Variant, React.CSSProperties> = {
   primary: {
     background: 'var(--accent-primary)',
-    color: '#fff',
+    color: 'var(--color-on-orange)',
     border: '1.5px solid transparent',
   },
   secondary: {

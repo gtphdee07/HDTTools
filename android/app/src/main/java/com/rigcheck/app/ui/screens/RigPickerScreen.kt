@@ -33,9 +33,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.domain.model.RecentRig
 import com.rigcheck.app.ui.theme.AvatarPalette
-import com.rigcheck.app.ui.theme.DuskMauve
-import com.rigcheck.app.ui.theme.SunsetOrange
-import com.rigcheck.app.ui.theme.SunsetRose
+import com.rigcheck.app.ui.theme.Blush
+import com.rigcheck.app.ui.theme.Orange
+import com.rigcheck.app.ui.theme.Purple
 import java.time.Instant
 
 @Composable
@@ -52,9 +52,9 @@ fun RigPickerScreen(
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
-                        0f to SunsetRose,
-                        0.55f to DuskMauve,
-                        1f to SunsetOrange,
+                        0f to Blush,
+                        0.55f to Purple,
+                        1f to Orange,
                     ),
                 )
                 .padding(20.dp),

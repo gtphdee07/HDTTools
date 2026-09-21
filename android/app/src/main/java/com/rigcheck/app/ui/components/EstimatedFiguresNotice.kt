@@ -10,7 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.rigcheck.app.ui.theme.SunsetOrange
+import com.rigcheck.app.ui.theme.Orange
 
 // Persistent (not dismissible) caution shown alongside any breakdown row
 // derived from pin-weight-percentage math rather than a real scale
@@ -23,7 +23,7 @@ fun EstimatedFiguresNotice() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(SunsetOrange.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+            .background(Orange.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
             .padding(16.dp),
     ) {
         Text(

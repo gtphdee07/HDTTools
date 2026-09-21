@@ -8,12 +8,12 @@ interface BadgeProps {
 }
 
 const toneStyles: Record<Tone, React.CSSProperties> = {
-  success: { background: 'color-mix(in oklch, var(--color-trail-green) 18%, white)', color: 'var(--color-trail-green-dark)' },
-  warning: { background: 'color-mix(in oklch, var(--color-sunset-orange) 20%, white)', color: 'var(--color-sunset-orange-dark)' },
-  neutral: { background: 'var(--color-cream-dark)', color: 'var(--fg-2)' },
+  success: { background: 'color-mix(in oklch, var(--color-pine) 18%, white)', color: 'var(--color-pine)' },
+  warning: { background: 'color-mix(in oklch, var(--color-orange) 20%, white)', color: 'var(--color-orange-deep)' },
+  neutral: { background: 'var(--color-surface-sunken)', color: 'var(--fg-2)' },
   // Matches the backend's --state-info color used for "insufficient" rows'
   // barColor - a row we can't check yet, not a pass or a fail.
-  insufficient: { background: 'color-mix(in oklch, var(--color-dusk-mauve) 18%, white)', color: 'var(--color-dusk-mauve-dark)' },
+  insufficient: { background: 'color-mix(in oklch, var(--color-purple) 18%, white)', color: 'var(--color-purple-deep)' },
 };
 
 export function Badge({ tone, children }: BadgeProps) {

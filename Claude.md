@@ -2,6 +2,20 @@
 
 This project uses `uv` for Python and dependency management. Do not use standard `pip` or global `python` commands.
 
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in this repo's GitHub Issues (via the `gh` CLI); the legacy `NEXT_STEPS.md`/`ClaudePlans/`/`ARCHIVE_*.md` system is being retired in favor of it. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five canonical roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), unchanged. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context: a root `CONTEXT-MAP.md` points at per-surface `CONTEXT.md` files (`android/`, `web/`, `src/hdttools/`, `streamlit_app/`, `workers/scan-proxy/`). See `docs/agents/domain.md`.
+
 ## Environment Management Commands
 - Add a package: `uv add <package_name>`
 - Remove a package: `uv remove <package_name>`
@@ -25,58 +39,38 @@ block (a personal note from the project owner) is the first use of this
 convention — apply the same rule to any other file that adopts the same
 markers in the future, without needing a new instruction here each time.
 
-## Coding Preferences
- - The preference is for application code to be constructed using Python libraries, versus Claude skills. It is fine to use skills in Chat to create proofs of concepts, or to create test benches against the Python code, but the application should not require an ANTHROPIC_API_KEY to execute.
-  - All coding modules should also have an automated test for each function.
-    See `TESTING.md` for the full methodology this implies: function/
-    interaction/module/interface test categories, and the Minor/Major
-    regression-scoping rules for deciding which suites a change needs to
-    run.
-  - **Test-Driven Development is required for all new code and bug
-    fixes**: write a failing test before the implementation (or the fix),
-    watch it fail for real, then write the minimum code to pass it. See
-    `TDD_METHODOLOGY.md` for the full workflow, with real per-product-line
-    commands/conventions (Python, Web, Android, `scan-proxy`) — `TESTING.md`
-    still governs how the resulting tests get categorized (Minor/Major/
-    External) and run, a related but separate concern.
+## Verify before touching anything outside this repo, or before a multi-target delete
+
+Before running a command that (a) deletes more than one file, or (b) writes or deletes anything at all outside this project directory, do a check-then-execute pass instead of running it straight:
+
+- **Single literal, fully-named target, inside this project directory** — no extra step needed, run it directly.
+- **Anything where a variable, glob, wildcard, `~`, or other home/environment-relative path resolves the target** — first run a non-destructive command that shows exactly what will be touched (e.g. `printf '%s\n' "$VAR"` for a variable, `printf '%s\n' pattern*` or `ls -d` for a glob, `echo ~/path` or `Resolve-Path ~/path` for a tilde). Read the output back and confirm it matches expectations — a blank result usually means a variable was unset. Only then run the real command, reusing the exact string/pattern just verified. `~` and `$HOME`/`Path.home()` count as expansion here: they resolve at runtime just like a variable, and this user has been bitten by exactly that ambiguity before (bash `$HOME` vs. Windows' real user profile).
+- **Anything outside this project directory** — not exempt from the check just because it's a single named literal target. A path outside the repo has a much higher blast radius (it can hit real, non-recoverable data), so it gets the same check-then-execute treatment regardless of whether the path resolved cleanly. This applies to destructive **writes**, not just deletes.
+
+Git operations (branch delete, worktree remove, etc.) are exempt — recoverable via reflog/remotes.
+
+This rule needs to be restated explicitly by name when briefing a sub-agent for work likely to touch the filesystem outside its assigned worktree — inheriting it silently isn't reliable.
 
 ## Asking Questions
 Any time a question is being posed to the user — clarifying an ambiguous
 request, choosing between implementation approaches, or confirming
-whether to take an action (including a simple "should I commit and push
-this?") — ask it through the `AskUserQuestion` tool, not as plain text
+whether to take an action (including a simple "should I push this to the
+remote?") — ask it through the `AskUserQuestion` tool, not as plain text
 embedded in a response. A plain-text question is easy to miss, especially
 at the end of a longer response; the tool's pop-up can't be missed the
 same way.
  - This applies to simple yes/no confirmations too, not just multi-way
-   design decisions — frame them as two options (e.g. "Yes, commit and
-   push" / "Not yet"). The tool's built-in free-text "Other" option
-   covers anything that doesn't fit a predefined choice.
+   design decisions — frame them as two options (e.g. "Yes, push" /
+   "Not yet"). The tool's built-in free-text "Other" option covers
+   anything that doesn't fit a predefined choice.
  - Exception: rhetorical or purely explanatory questions that aren't
    actually requesting a decision before proceeding (e.g. "wondering why
    X happened? Here's what I found...") don't need this — only questions
    where a real response is being waited on.
-
-## Planning Procedure
-Whenever the user asks for a plan — directly, or via language like
-"what's the plan for X, including goals, steps, how results will be
-measured, and the definition of done" — every plan (built via Claude
-Code's Plan Mode) follows this shape:
-- **Context**: why this work is happening, what prompted it.
-- **Goal**: what "success" is aiming at, in one or two sentences.
-- **Steps**: the concrete sequence of changes/actions.
-- **Definition of Done**: the specific, checkable conditions that mean
-  this is actually finished — not just "code written," but verified.
-- **Verification**: exactly how to confirm each part works for real.
-
-Once the user approves a plan (`ExitPlanMode` returns approved), before
-any other implementation action: save the full approved plan content to
-`ClaudePlans/YYYY-MM-DD-<short-title>.md` in the project root (create
-the directory if it doesn't exist). Derive `<short-title>` from the
-plan's own heading — short, hyphen-separated, no spaces or punctuation
-that needs escaping on any filesystem. This is a deliberate, standing
-step of the planning procedure itself — do it every time a plan is
-approved, not only when separately asked to save one.
+ - Committing is exempt from this rule: commit freely as work is
+   completed, without asking first. Pushing to the remote is not exempt
+   — always confirm before every push, even if an earlier push in the
+   same session was already approved.
 
 ## System Tool Installs
 
@@ -94,115 +88,3 @@ This does **not** apply to routine project-level package-manager installs
 project's own folder, not the C: drive, so they're unaffected by the
 space constraint and don't need separate permission beyond the normal
 tool-use confirmation.
-
-## NEXT_STEPS.md Maintenance
-`NEXT_STEPS.md` is the durable, cross-machine project record — it
-travels via git, unlike any machine-local memory/config. It is a
-**status/roadmap file, not a history log** — it answers "what's next,"
-not "how did we get here." Keep it current every session:
-
-### Core file discipline
-- The roadmap section holds active/open items (⬜/🔶) at real length,
-  but a completed item (✅) collapses to a single terse line (a couple
-  of lines only if there's a real ongoing implication, e.g. an accepted
-  tradeoff worth restating) pointing at the matching `ARCHIVE_*.md` for
-  detail. Move the full narrative to the archive the same session the
-  item completes — don't leave a multi-paragraph writeup sitting under
-  a ✅ marker "for now."
-- Maintain the "🧪 Tests still outstanding" section as a living
-  checklist: for each known-but-unwritten test, record what it would
-  cover and the specific condition that unlocks writing it (an install,
-  an account, a scaffolded project, etc.). Remove an entry the moment
-  its test actually gets written — don't let it go stale.
-- When a session surfaces a new test gap (a new component, a new
-  integration point, a mocked response never checked against the real
-  thing), add it here before the session ends — don't leave it only in
-  conversation, since that doesn't survive a machine switch.
-- If the file is approaching ~300 lines, sweep it: confirm every ✅ item
-  is actually collapsed, and consider whether a topic needs its own new
-  archive split (as happened 2026-08-23). See "Sweeping fully-closed
-  items out entirely" below for the safe procedure — a collapsed item
-  is not automatically safe to delete outright; other files may still
-  cite it by number.
-
-### Sweeping fully-closed items out entirely
-Collapsing an item (above) is always safe. Deleting a collapsed item's
-line from the roadmap entirely is a separate, riskier step — other
-files may reference it by number (`item #N`, `roadmap item #N`), and
-deleting it out from under them leaves those references dangling. Do
-not delete a numbered item without this check, in order:
-
-1. Confirm the item is already collapsed and its full narrative
-   genuinely lives in an `ARCHIVE_*.md` file — never delete an item
-   whose only record of what happened would disappear with it.
-2. `Grep` every `.md` file in the repo (not just `NEXT_STEPS.md`) for
-   the item's citation form (`item #N`, `roadmap item #N`).
-3. Sort every hit into two buckets:
-   - **Frozen files** (`ARCHIVE_*.md`, `ClaudePlans/*.md`) — leave
-     untouched. A stale forward-reference in a frozen historical record
-     is expected and fine; these files capture what was true when
-     written, not what's true now.
-   - **Living files** (any actively-maintained doc — `TESTING.md`
-     variants and similar) — fix these, don't just note them:
-     - A "see `NEXT_STEPS.md` item #N" pointer: redirect it to name the
-       actual `ARCHIVE_*.md` file directly. `NEXT_STEPS.md`'s own line
-       was never the source of truth, only a pointer to one, so this
-       loses nothing.
-     - A bare attribution like "(roadmap item #N)": redirect the same
-       way, or drop the item-number citation outright if an archive
-       reference already appears nearby in the same passage — don't
-       stack two pointers at the same target.
-4. Re-run the repo-wide grep from step 2 and confirm zero remaining
-   living-doc citations before deleting the item's `NEXT_STEPS.md` line.
-5. Leave a numbering gap afterward — don't renumber the remaining items
-   just to stay sequential (there's already precedent for non-sequential
-   numbering, e.g. "4a"). Renumbering risks silently breaking a citation
-   step 2 didn't catch.
-6. If an item is still cited by number from a living doc and chasing
-   down every citation isn't worth it right now, collapse its
-   `NEXT_STEPS.md` content further instead of deleting it outright —
-   keeping the number stable costs nothing, and most of the length
-   savings come from shrinking text, not removing entries.
-7. `NEXT_STEPS.md`'s own "History archives" section carries a standing
-   disclaimer that a roadmap item number cited elsewhere but missing
-   from the current list was closed and archived — grep the archives
-   for it. Keep that disclaimer present; it's the safety net for
-   whatever a given sweep's grep still misses.
-
-### Archive discipline (`ARCHIVE_*.md`)
-- Full narrative — bug writeups, gotchas, design decisions, real
-  verification detail — lives in the topic archive that matches the
-  work, never inline in `NEXT_STEPS.md`. Current archives:
-  `ARCHIVE_ANDROID.md`, `ARCHIVE_TESTING.md`, `ARCHIVE_MONETIZATION.md`,
-  `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_EARLY_HISTORY.md`,
-  `ARCHIVE_DEAD_CODE.md`, `ARCHIVE_BREAKDOWN_SWEEP.md`.
-- Target detail level: a real account of what was tried, what broke,
-  and why the fix works — not a full transcript, but enough to
-  reconstruct the reasoning later without re-deriving it. This is
-  deliberately more detail than a one-line summary; it's affordable
-  specifically because it's out of the core file.
-- Every entry leads with a bold tag (`✅ **Real bug`, `**Decided`,
-  `**Design correction`, `**Important gotcha`, or similar) so `Grep`
-  can filter by type without reading the whole file. Keep using this
-  convention for every new entry.
-- If one archive file crosses roughly 800-1000 lines, that's a signal
-  to split it into a new topic file, not to compress its entries.
-
-### Pruning
-- When something documented earlier (a gotcha, a workaround, an open
-  question) gets fully superseded — automated away, permanently fixed,
-  answered for good — don't delete the original writeup. Add a short,
-  clearly-tagged note next to it (e.g. "✅ Automated, <date>: ...")
-  pointing at what superseded it. History stays traceable; nothing is
-  silently lost.
-- Only actually delete detail that's now flat-out wrong or actively
-  misleading if left standing without context — not detail that's
-  merely outdated.
-
-### Session-end habit
-- Before ending a session that did real work (not just discussion),
-  check: does `NEXT_STEPS.md` reflect what actually happened? Did
-  anything surface that isn't captured anywhere durable yet? Update
-  `NEXT_STEPS.md` and the relevant archive proactively — don't wait to
-  be asked, and don't wait for a context-compaction prompt to be the
-  trigger.

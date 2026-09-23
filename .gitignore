@@ -16,6 +16,7 @@ htmlcov/
 
 # Local Claude Code settings
 .claude/settings.local.json
+.claude/worktrees/
 
 # macOS
 .DS_Store

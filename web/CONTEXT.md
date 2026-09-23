@@ -16,3 +16,6 @@ The list of a user's **past, completed** checks (`HistoryEntry`: id, date, rig n
 
 **Dashboard**:
 The app's home screen, showing recent activity and entry points into the Wizard and History.
+
+**Disclaimer**:
+A session-scoped acknowledgment gate shown before results, independently implemented per platform with its own wording — see `android/CONTEXT.md` for the fuller definition and `CONTEXT-MAP.md`'s Relationships.

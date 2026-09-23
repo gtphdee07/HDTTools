@@ -2,6 +2,10 @@
 
 This project uses `uv` for Python and dependency management. Do not use standard `pip` or global `python` commands.
 
+## Working Branch
+
+All work on this project happens on the `MPSkills` branch. `main` sees no activity — never commit, push, or merge into `main` without explicit instruction.
+
 ## Agent skills
 
 ### Issue tracker

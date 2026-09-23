@@ -1,0 +1,3 @@
+# Hand-port breakdown/verdict math to Kotlin instead of sharing the Python implementation
+
+Android needs to compute the same weight-breakdown/verdict math as Core (`compute_breakdown`/`verdict_for`). Embedding a Python runtime in the Android app (e.g. via Chaquopy) was considered and rejected for app size, build complexity, and native-toolchain risk. Instead, the logic is hand-ported into Kotlin (`BreakdownTest.kt`/`VerdictTest.kt` and their implementations), accepting duplicate-maintenance risk in exchange for a normal native app. That risk is mitigated by `test-vectors/breakdown_cases.json`, a shared golden-vector fixture both platforms test against, so the two implementations can't silently drift apart undetected.

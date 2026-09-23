@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:prototype-checkout": "vite --open /prototype-checkout.html",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
@@ -14,6 +15,7 @@
     "check:dead-code": "knip"
   },
   "dependencies": {
+    "@revenuecat/purchases-js": "^1.63.1",
     "lucide-react": "^1.31.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

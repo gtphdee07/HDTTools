@@ -464,6 +464,7 @@ streamlit = [
 dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "streamlit" },
     { name = "vulture" },
 ]
 
@@ -486,6 +487,7 @@ provides-extras = ["streamlit"]
 dev = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
+    { name = "streamlit", specifier = ">=1.61.1" },
     { name = "vulture", specifier = ">=2.16" },
 ]
 

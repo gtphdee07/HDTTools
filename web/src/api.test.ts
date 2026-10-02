@@ -29,7 +29,7 @@ describe('extractTruckTag', () => {
 
     expect(result).toEqual({ manufacturer: 'Ford' });
     const [url, options] = fetchMock.mock.calls[0];
-    expect(url).toBe('http://localhost:8000/api/extract/truck-tag');
+    expect(url).toBe('/api/extract/truck-tag');
     expect(options.method).toBe('POST');
     expect(options.body).toBeInstanceOf(FormData);
     expect((options.body as FormData).get('file')).toBe(file);
@@ -54,7 +54,7 @@ describe('extractTrailerTag', () => {
 
     await extractTrailerTag(new File(['x'], 'trailer.jpg'));
 
-    expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:8000/api/extract/trailer-tag');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/extract/trailer-tag');
   });
 });
 
@@ -64,6 +64,6 @@ describe('extractScaleTicket', () => {
 
     await extractScaleTicket(new File(['x'], 'ticket.jpg'));
 
-    expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:8000/api/extract/scale-ticket');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/extract/scale-ticket');
   });
 });

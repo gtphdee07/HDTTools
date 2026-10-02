@@ -1,6 +1,7 @@
 import type { ScaleTicketData, TrailerTagData, TruckTagData } from './types';
 
-const API_BASE_URL = 'http://localhost:8000';
+// Set VITE_API_BASE_URL at build time to point at the scan endpoint host; empty means same-origin.
+const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? '';
 
 async function postFile<T>(path: string, file: File): Promise<T> {
   const formData = new FormData();

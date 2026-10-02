@@ -1,6 +1,6 @@
 # Web
 
-The React + Vite + TS frontend: the paid-product-in-progress surface that wraps Core's OCR/breakdown math in a guided, multi-step flow. Local dev only today, not hosted.
+The React + Vite + TS frontend: the paid-product-in-progress surface that wraps Core's OCR/breakdown math in a guided, multi-step flow. Hosted as a static site on Cloudflare Pages (push-to-deploy).
 
 ## Language
 

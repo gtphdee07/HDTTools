@@ -2,7 +2,7 @@
 
 ## Contexts
 
-- [Core](./src/hdttools/CONTEXT.md): shared OCR extraction and breakdown/verdict computation (the tow-rig safety-check math), plus the FastAPI backend that serves it to Web
+- [Core](./src/hdttools/CONTEXT.md): shared OCR extraction and breakdown/verdict computation (the tow-rig safety-check math), (the FastAPI app in `src/hdttools/api/` is no longer deployed for Web)
 - [Android](./android/CONTEXT.md): native Kotlin/Compose app — the Disclaimer gate; shares Core/Web's Rig/Breakdown/Verdict shape independently, see Relationships below
 - [Web](./web/CONTEXT.md): React + Vite + TS frontend — the guided Wizard flow, Rig/History/Dashboard concepts
 - [Streamlit](./streamlit_app/CONTEXT.md): free public-service demo, permanently Tesseract-only (ADR-0002) — no accounts, credits, or paywall
@@ -11,7 +11,7 @@
 ## Relationships
 
 - **Core ↔ Android**: Android hand-ports Core's breakdown/verdict math into Kotlin (Python is the source of truth); both are tested against the same shared golden-vector fixture, `test-vectors/breakdown_cases.json`.
-- **Core ↔ Web**: Web's FastAPI backend lives inside Core (`src/hdttools/api/`) and calls Core's OCR/breakdown logic directly.
+- **Core ↔ Web**: no runtime link. Web is a static app on Cloudflare Pages with its own TypeScript port of the breakdown math, tested against the same golden-vector fixture (`test-vectors/breakdown_cases.json`); the FastAPI app in `src/hdttools/api/` is no longer part of the Web deployment (ADR-0007).
 - **Core ↔ Streamlit**: Streamlit imports Core's OCR modules directly in-process; no network boundary between them.
 - **Scan Proxy ↔ Android**: Scan Proxy gates Android's paid Claude-vision scans behind a RevenueCat purchase check.
 - **Web ↔ Android (Rig)**: both maintain their own independent "Rig" concept (a saved, named truck+trailer pairing) — not a Core concept, and not (yet) shared/synced between the two platforms.

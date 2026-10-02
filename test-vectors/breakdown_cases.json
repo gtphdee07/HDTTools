@@ -1,5 +1,5 @@
 {
-  "_readme": "Shared golden test vectors for compute_breakdown/verdict_for (Python, source of truth) and its Kotlin hand-port (android/.../domain/Breakdown.kt). See TESTING.md's cross-platform section and tests/test_breakdown_golden_vectors.py. Field names are snake_case, matching the /api/breakdown wire convention - the Kotlin loader maps to its own camelCase data classes. actual_lb/limit_lb are rounded whole numbers (Python parses its actualLabel/limitLabel strings back to int; Kotlin rounds its raw Double) - this tests the math, not display formatting, which each platform already tests separately. 'requires' lists capability tags a case depends on that Kotlin's current port doesn't have; Kotlin's test runner skips any case whose requires isn't fully supported today. predictive_truck_estimate is the one remaining unsupported capability as of 2026-08-21 (Round 2, not yet built) - its case is deliberately left unskipped and is expected to fail, same honest-red pattern the fixed standalone_without_hitched case used while its bug was still live.",
+  "_readme": "Shared golden test vectors for compute_breakdown/verdict_for - THIS FILE is the source of truth, not any one implementation (ADR-0001 as amended by ADR-0007). Python (src/hdttools/api/breakdown.py), Kotlin (android/.../domain/Breakdown.kt) and the coming TypeScript port are all implementations tested against it; when one disagrees, resolve it here and record the decision in a case _note. Rounding rule: ties round half-UP (toward +infinity, like Kotlin roundToInt and JS Math.round), never Python round-half-to-even - see the rounding_half_way_* cases. See TESTING.md's cross-platform section and tests/test_breakdown_golden_vectors.py. Field names are snake_case, matching the /api/breakdown wire convention - the Kotlin loader maps to its own camelCase data classes. actual_lb/limit_lb are rounded whole numbers (Python parses its actualLabel/limitLabel strings back to int; Kotlin rounds its raw Double) - this tests the math, not display formatting, which each platform already tests separately. 'requires' lists capability tags a case depends on that Kotlin's current port doesn't have; Kotlin's test runner skips any case whose requires isn't fully supported today. predictive_truck_estimate is the one remaining unsupported capability as of 2026-08-21 (Round 2, not yet built) - its case is deliberately left unskipped and is expected to fail, same honest-red pattern the fixed standalone_without_hitched case used while its bug was still live.",
   "cases": [
     {
       "name": "baseline_all_real_readings",
@@ -229,6 +229,42 @@
           {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
           {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 1138000, "limit_lb": 12500, "pct": 100, "estimated": true},
           {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "rounding_half_way_values_round_up",
+      "requires": [],
+      "_note": "Rounding-edge case: every row has a value sitting exactly on a .5 boundary (all exactly representable in binary floating point, so no implementation can disagree because of float noise). The agreed answer is round-half-UP (ties toward positive infinity), matching Kotlin's roundToInt/roundToLong and JavaScript's Math.round. Python's built-in round() is half-to-even and would give 5000 / 6000 / 16000 / 26000 / 32000 for the .5 readings below and 12 / 62 for the pct ties - breakdown.py rounds half-up explicitly to match (ADR-0007). Rows: Front Axle pct is exactly 12.5 (1000/8000); Rear Axle actual is 5000.5; Tow Vehicle Total actual is 6000.5 and its limit is 16000.5; Trailer Axle pct is exactly 62.5 (5000/8000); Trailer Total is 10000 / 16000 = exactly 62.5 (pin_weight_pct 0.5 makes the axle-reading estimate exact); Combined Rig Weight actual is 26000.5 and its limit is 32000.5.",
+      "truck": {"gvwr_lb": 16000.5, "front_gawr_lb": 8000, "rear_gawr_lb": 8000},
+      "trailer": {"gvwr_lb": 16000, "gawr_per_axle_lb": 4000},
+      "scale": {"steer_axle_lb": 1000, "drive_axle_lb": 5000.5, "trailer_axle_lb": 5000, "gross_weight_lb": 26000.5},
+      "pin_weight_pct": 0.5,
+      "expected": {
+        "verdict_status": "pass",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 1000, "limit_lb": 8000, "pct": 13, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 5001, "limit_lb": 8000, "pct": 63, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 6001, "limit_lb": 16001, "pct": 38, "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 5000, "limit_lb": 8000, "pct": 63, "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 10000, "limit_lb": 16000, "pct": 63, "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26001, "limit_lb": 32001, "pct": 81, "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "rounding_half_way_predictive_truck_estimate",
+      "requires": ["predictive_truck_estimate", "adjustable_pin_weight_pct"],
+      "_note": "Rounding-edge case on the predictive standalone-only branch: stand-alone 7000.5 plus a tongue-weight estimate of 16000 * 0.25 = 4000 gives a Tow Vehicle Total of exactly 11000.5 lb, which rounds half-UP to 11001 (round-half-to-even would give 11000). See rounding_half_way_values_round_up for the agreed rule.",
+      "truck": {"gvwr_lb": 16000, "front_gawr_lb": 8000, "rear_gawr_lb": 8000, "standalone_weight_lb": 7000.5},
+      "trailer": {"gvwr_lb": 16000, "gawr_per_axle_lb": 4000},
+      "scale": {},
+      "pin_weight_pct": 0.25,
+      "expected": {
+        "verdict_status": "partial",
+        "items": [
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 11001, "limit_lb": 16000, "pct": 69, "estimated": true},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 16000, "limit_lb": 16000, "pct": 100, "estimated": true}
         ]
       }
     }

@@ -1,7 +1,7 @@
 """Runs compute_breakdown/verdict_for against the shared golden vectors in
 test-vectors/breakdown_cases.json - the same cases the Kotlin port
 (android/.../domain/BreakdownGoldenVectorTest.kt) checks itself against.
-Python is the source of truth, so every case here runs for real and must
+The fixture is the source of truth (ADR-0007), so every case here runs for real and must
 pass; Kotlin's own runner skips whatever capabilities its current port
 doesn't have yet (see the JSON file's _readme and each case's "requires").
 

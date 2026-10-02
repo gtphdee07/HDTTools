@@ -9,6 +9,7 @@ again.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 # Pin/tongue weight is commonly ~15-25% of trailer weight. Used two ways,
@@ -20,6 +21,17 @@ from typing import Any
 # measurement yet to divide. Overridable per-request; this is just the
 # default a caller gets if it doesn't say otherwise.
 DEFAULT_PIN_WEIGHT_PCT = 0.20
+
+
+def _round_half_up(value: float) -> int:
+    # Ties round toward positive infinity, matching Kotlin's roundToInt and
+    # JavaScript's Math.round. Python's built-in round() is half-to-even
+    # (round(0.5) == 0, round(12.5) == 12), which disagreed with the other
+    # implementations on exact .5 values - the golden-vector fixture is the
+    # source of truth and specifies half-up (ADR-0007). `value - floor` is
+    # exact in binary floating point, so no tie is mis-detected.
+    floor = math.floor(value)
+    return floor + 1 if value - floor >= 0.5 else floor
 
 
 def _lb(value: Any) -> float:
@@ -95,7 +107,7 @@ def compute_breakdown(
         tongue_weight = max(0.0, (steer + drive) - standalone_weight)
         trailer_total_actual = trailer_axle + tongue_weight
         trailer_total_note = (
-            f"Includes an estimated {round(tongue_weight):,.0f} lb tongue weight "
+            f"Includes an estimated {_round_half_up(tongue_weight):,.0f} lb tongue weight "
             "(steer + drive minus your truck's stand-alone weight)."
         )
     elif trailer_axle_raw is not None:
@@ -133,7 +145,7 @@ def compute_breakdown(
         truck_total_actual = standalone_weight + truck_tongue_weight_estimate
         truck_total_note = (
             "Estimated total weight — includes an estimated "
-            f"{round(truck_tongue_weight_estimate):,.0f} lb tongue weight "
+            f"{_round_half_up(truck_tongue_weight_estimate):,.0f} lb tongue weight "
             f"({pin_weight_pct:.0%} of the trailer's estimated total); enter a "
             "real hitched scale reading for an exact figure."
         )
@@ -215,8 +227,8 @@ def compute_breakdown(
                     "badgeLabel": "Not enough info",
                     "pct": 0,
                     "barColor": "var(--state-info)",
-                    "actualLabel": f"{round(actual):,.0f} lb",
-                    "limitLabel": f"{round(limit):,.0f} lb",
+                    "actualLabel": f"{_round_half_up(actual):,.0f} lb",
+                    "limitLabel": f"{_round_half_up(limit):,.0f} lb",
                     "note": note,
                     "estimated": False,
                 }
@@ -224,8 +236,8 @@ def compute_breakdown(
             continue
 
         passed = actual <= limit
-        margin = round(limit - actual)
-        pct = min(100, round((actual / limit) * 100))
+        margin = _round_half_up(limit - actual)
+        pct = min(100, _round_half_up((actual / limit) * 100))
         items.append(
             {
                 "label": label,
@@ -233,8 +245,8 @@ def compute_breakdown(
                 "badgeLabel": f"{margin:,.0f} lb to spare" if passed else f"{abs(margin):,.0f} lb over",
                 "pct": pct,
                 "barColor": "var(--state-success)" if passed else "var(--state-danger)",
-                "actualLabel": f"{round(actual):,.0f} lb",
-                "limitLabel": f"{round(limit):,.0f} lb",
+                "actualLabel": f"{_round_half_up(actual):,.0f} lb",
+                "limitLabel": f"{_round_half_up(limit):,.0f} lb",
                 "note": note,
                 "estimated": estimated,
             }

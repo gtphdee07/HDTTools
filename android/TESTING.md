@@ -281,8 +281,8 @@ root `TESTING.md`'s "Dashboard" section.
   `ARCHIVE_ANDROID.md` at the repo root for detail).
 - `BreakdownGoldenVectorTest.kt` — runs the shared
   `test-vectors/breakdown_cases.json` cases against this port, the same
-  cases `tests/test_breakdown_golden_vectors.py` runs against Python (the
-  source of truth). Cases needing a capability this port doesn't have yet
+  cases `tests/test_breakdown_golden_vectors.py` runs against Python (the fixture,
+  not Python, is the source of truth). Cases needing a capability this port doesn't have yet
   are skipped, not silently passed — the test's own console output
   reports the count every run. See the root `TESTING.md`'s cross-platform
   section and `ARCHIVE_TESTING.md` (repo root) for what running this the

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { HistoryEntry, RecentRig, Screen, WizardState } from './types';
 import { MODULES } from './mockData';
-import { createBreakdown, extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
-import type { CreateBreakdownResult } from './api';
+import { extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
+import { createBreakdown } from './breakdown';
+import type { CreateBreakdownResult } from './breakdown';
 import { loadRecentRigs, saveRecentRig } from './recentRigs';
 import { DisclaimerModal } from './components/DisclaimerModal';
 import { Header } from './components/Header';
@@ -132,7 +133,7 @@ function App() {
 
     setWizard((w) => ({ ...w, subStep: 'finalizing' }));
     try {
-      const result = await createBreakdown(wizard.truck, wizard.trailer, wizard.scale, wizard.pinWeightPct);
+      const result = createBreakdown(wizard.truck, wizard.trailer, wizard.scale, wizard.pinWeightPct);
       setCheckResult(result);
       setRecentRigs(saveRecentRig(wizard.rigNickname, wizard.truck, wizard.trailer));
       setHistory((h) => [

@@ -1,4 +1,4 @@
-import type { BreakdownItem, ScaleTicketData, TrailerTagData, TruckTagData, VerdictInfo } from './types';
+import type { ScaleTicketData, TrailerTagData, TruckTagData } from './types';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -25,27 +25,3 @@ export function extractScaleTicket(file: File): Promise<ScaleTicketData> {
   return postFile('/api/extract/scale-ticket', file);
 }
 
-export interface CreateBreakdownResult {
-  date: string;
-  verdict: 'pass' | 'fail' | 'partial' | 'insufficient';
-  breakdownItems: BreakdownItem[];
-  verdictInfo: VerdictInfo;
-}
-
-export async function createBreakdown(
-  truck: TruckTagData,
-  trailer: TrailerTagData,
-  scale: ScaleTicketData,
-  pinWeightPct: number,
-): Promise<CreateBreakdownResult> {
-  const res = await fetch(`${API_BASE_URL}/api/breakdown`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ truck, trailer, scale, pin_weight_pct: pinWeightPct / 100 }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.detail ?? `Request failed (${res.status})`);
-  }
-  return res.json();
-}

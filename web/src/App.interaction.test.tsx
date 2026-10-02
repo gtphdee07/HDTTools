@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import * as api from './api';
-import type { CreateBreakdownResult } from './api';
+import * as breakdown from './breakdown';
 import type { RecentRig } from './types';
 
 // Interaction tests: App.tsx has no exported handlers to unit-test in
@@ -11,44 +11,24 @@ import type { RecentRig } from './types';
 // object via closures, so the only way to verify their real call
 // sequence is to drive the actual rendered UI, the same "sociable, real
 // call sequence" category TESTING.md defines for Python/Kotlin. Network
-// calls (extract*/createBreakdown) are mocked; localStorage/
+// calls (extract*) are mocked and createBreakdown is a pass-through spy over the real local math; localStorage/
 // sessionStorage are the real jsdom implementations, matching how
 // recentRigs.ts and the disclaimer-acknowledged flag actually persist.
 // DOM cleanup between tests is centralized in setupTests.ts.
 
 vi.mock('./api');
+vi.mock('./breakdown', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./breakdown')>();
+  return { ...actual, createBreakdown: vi.fn(actual.createBreakdown) };
+});
 const mockedApi = vi.mocked(api);
+const spiedBreakdown = vi.mocked(breakdown);
 
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   vi.clearAllMocks();
 });
-
-const RESULT: CreateBreakdownResult = {
-  date: '2026-08-21',
-  verdict: 'pass',
-  breakdownItems: [
-    {
-      label: 'Front Axle (Steer)',
-      tone: 'success',
-      badgeLabel: '500 lb to spare',
-      pct: 80,
-      barColor: 'var(--state-success)',
-      actualLabel: '5,000 lb',
-      limitLabel: '6,000 lb',
-      note: null,
-      estimated: false,
-    },
-  ],
-  verdictInfo: {
-    status: 'pass',
-    headline: 'Safe to Tow',
-    subline: 'Every axle checks out under its rated limit.',
-    bandBg: 'var(--state-success)',
-    icon: 'check-circle-2',
-  },
-};
 
 async function startNewRig(nickname: string) {
   const user = userEvent.setup();
@@ -60,7 +40,6 @@ async function startNewRig(nickname: string) {
 
 describe('App wizard interactions', () => {
   it('start new rig, skip every image, reaches results and saves the rig + a history entry', async () => {
-    mockedApi.createBreakdown.mockResolvedValue(RESULT);
     render(<App />);
     const user = await startNewRig('Big Blue');
 
@@ -77,20 +56,20 @@ describe('App wizard interactions', () => {
     await user.click(screen.getByRole('button', { name: 'No Image / Enter Weight Manually' }));
     await user.click(screen.getByRole('button', { name: 'See My Results' }));
 
-    await waitFor(() => expect(mockedApi.createBreakdown).toHaveBeenCalledTimes(1));
-    expect(mockedApi.createBreakdown).toHaveBeenCalledWith({}, {}, {}, 20);
+    await waitFor(() => expect(spiedBreakdown.createBreakdown).toHaveBeenCalledTimes(1));
+    expect(spiedBreakdown.createBreakdown).toHaveBeenCalledWith({}, {}, {}, 20);
 
     expect(await screen.findByText('⚠️ Experimental Tool — Not for Safety Decisions')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'I Understand — Continue' }));
 
-    expect(screen.getByText('Safe to Tow')).toBeInTheDocument();
+    expect(screen.getByText('Not Enough Information')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Back to Dashboard' }));
     // Appears twice: once as a Recent Rig card, once as a Recent Checks
     // entry - both slices of state (recentRigs and history) updated from
     // the same continueReview call.
     expect(screen.getAllByText('Big Blue')).toHaveLength(2);
-    expect(screen.getByText('2026-08-21')).toBeInTheDocument();
+    expect(screen.getByText(/^[A-Z][a-z]{2} \d{2}, \d{4}$/)).toBeInTheDocument();
 
     const stored: RecentRig[] = JSON.parse(localStorage.getItem('rigcheck:recentRigs') ?? '[]');
     expect(stored).toHaveLength(1);
@@ -150,7 +129,6 @@ describe('App wizard interactions', () => {
   });
 
   it('adjusting the pin-weight slider sends the raw whole-number percentage, not a fraction', async () => {
-    mockedApi.createBreakdown.mockResolvedValue(RESULT);
     render(<App />);
     const user = await startNewRig('Big Blue');
     await user.click(screen.getByRole('button', { name: "I don't have this image" }));
@@ -164,6 +142,6 @@ describe('App wizard interactions', () => {
     await user.click(screen.getByRole('button', { name: 'No Image / Enter Weight Manually' }));
     await user.click(screen.getByRole('button', { name: 'See My Results' }));
 
-    await waitFor(() => expect(mockedApi.createBreakdown).toHaveBeenCalledWith({}, {}, {}, 15));
+    await waitFor(() => expect(spiedBreakdown.createBreakdown).toHaveBeenCalledWith({}, {}, {}, 15));
   });
 });

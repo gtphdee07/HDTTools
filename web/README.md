@@ -10,7 +10,6 @@ run in the browser, so there is no hosted backend. Field names in `src/types.ts`
 mirror `../src/hdttools/models.py`. Remembers up to 5 recent rigs in
 browser `localStorage`; check history is session-only.
 
-## Setup
 ## Build
 
 ```

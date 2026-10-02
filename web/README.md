@@ -29,7 +29,7 @@ Runs on `http://localhost:5173`. Optionally set `VITE_API_BASE_URL` (e.g. in
 
 ## Deploy (Cloudflare Pages)
 
-Push-to-deploy via Cloudflare Pages' Git integration (ADR-0007). One-time
+Live at https://rigcheck-web.pages.dev/. Push-to-deploy via Cloudflare Pages'
 dashboard setup: Workers & Pages → Create → Pages → connect the GitHub repo,
 then set **Root directory** `web`, **Build command** `npm run build`,
 **Build output directory** `dist`, and the production branch. `wrangler.toml`

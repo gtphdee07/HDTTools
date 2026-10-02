@@ -1,4 +1,5 @@
 import type { Screen } from '../types';
+import { useAuth } from '../auth';
 import { Button } from '../design-system/Button';
 
 interface HeaderProps {
@@ -6,9 +7,11 @@ interface HeaderProps {
   onGoHome: () => void;
   onGoHistory: () => void;
   onStartWizard: () => void;
+  onGoAccount: () => void;
 }
 
-export function Header({ screen, onGoHome, onGoHistory, onStartWizard }: HeaderProps) {
+export function Header({ screen, onGoHome, onGoHistory, onStartWizard, onGoAccount }: HeaderProps) {
+  const { user } = useAuth();
   return (
     <div
       style={{
@@ -75,6 +78,22 @@ export function Header({ screen, onGoHome, onGoHistory, onStartWizard }: HeaderP
             }}
           >
             History
+          </button>
+          <button
+            onClick={onGoAccount}
+            style={{
+              background: screen === 'account' ? 'var(--color-tint-purple)' : 'none',
+              border: 'none',
+              borderRadius: 'var(--radius-pill)',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 700,
+              fontSize: 14,
+              color: screen === 'account' ? 'var(--color-purple-deep)' : 'var(--fg-1)',
+              cursor: 'pointer',
+              padding: '10px 18px',
+            }}
+          >
+            {user ? 'Account' : 'Sign in'}
           </button>
         </nav>
         <Button variant="primary" size="sm" onClick={onStartWizard}>

@@ -78,7 +78,7 @@ export interface HistoryEntry {
   verdict: Verdict;
 }
 
-export type Screen = 'home' | 'history' | 'wizard';
+export type Screen = 'home' | 'history' | 'wizard' | 'account';
 type WizardSubStep = 'upload' | 'processing' | 'review' | 'error' | 'finalizing';
 
 export interface WizardState {

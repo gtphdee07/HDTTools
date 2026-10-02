@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { HistoryEntry, RecentRig, Screen, WizardState } from './types';
 import { MODULES } from './mockData';
 import { extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
@@ -11,6 +11,8 @@ import { Footer } from './components/Footer';
 import { StepPills } from './components/StepPills';
 import { Dashboard } from './screens/Dashboard';
 import { History } from './screens/History';
+import { Account } from './screens/Account';
+import { useAuth } from './auth';
 import { RigStep } from './wizard/RigStep';
 import { UploadStep } from './wizard/UploadStep';
 import { ProcessingStep } from './wizard/ProcessingStep';
@@ -46,8 +48,15 @@ function App() {
     setDisclaimerAcknowledged(true);
   };
 
+  const { recovering } = useAuth();
+  // A password-reset email link lands the visitor here; take them straight to the new-password form.
+  useEffect(() => {
+    if (recovering) setScreen('account');
+  }, [recovering]);
+
   const goHome = () => setScreen('home');
   const goHistory = () => setScreen('history');
+  const goAccount = () => setScreen('account');
 
   const startWizard = () => {
     setScreen('wizard');
@@ -171,13 +180,14 @@ function App() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-page)', fontFamily: 'var(--font-body)', color: 'var(--fg-1)', paddingBottom: 80 }}>
-      <Header screen={screen} onGoHome={goHome} onGoHistory={goHistory} onStartWizard={startWizard} />
+      <Header screen={screen} onGoHome={goHome} onGoHistory={goHistory} onStartWizard={startWizard} onGoAccount={goAccount} />
 
       <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', padding: '36px 32px' }}>
         {screen === 'home' && (
           <Dashboard recentRigs={recentRigs} history={history} onStartWizard={startWizard} onGoHistory={goHistory} />
         )}
         {screen === 'history' && <History history={history} recentRigs={recentRigs} />}
+        {screen === 'account' && <Account onDone={goHome} />}
 
         {isWizard && (
           <div>

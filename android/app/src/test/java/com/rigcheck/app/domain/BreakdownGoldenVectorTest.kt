@@ -3,47 +3,44 @@ package com.rigcheck.app.domain
 import com.rigcheck.app.domain.model.ScaleTicket
 import com.rigcheck.app.domain.model.TrailerTag
 import com.rigcheck.app.domain.model.TruckTag
+import com.rigcheck.app.ui.format.badgeLabel
 import java.io.File
 import kotlin.math.roundToInt
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
-import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 // Runs the shared golden vectors (test-vectors/breakdown_cases.json) - the
 // same cases tests/test_breakdown_golden_vectors.py checks against Python,
-// the source of truth. Kotlin's port doesn't have every capability Python
-// does yet (as of 2026-08-21: no predictive standalone-only truck estimate)
-// - cases needing those are skipped via Assume, not silently passed. This
+// the source of truth. Every case runs for real; a case whose "requires"
+// names a capability this runner doesn't know FAILS (never skips), so a new
+// capability in the fixture can't be silently ignored by this port. This
 // file does NOT replace BreakdownTest.kt's hand-written, one-scenario-per-
-// test suite; it exists specifically to catch this port drifting further
-// from Python.
+// test suite; it exists specifically to catch this port drifting from Python.
 //
 // Parses JSON manually (JsonObject field access) rather than
 // kotlinx.serialization's typed decodeFromString, so this file needs no
 // changes to the domain model classes (ScaleTicket isn't @Serializable
 // today, and shouldn't need to become so just for this test).
 
-// Update this set as the Kotlin port gains capabilities - see each
-// case's "requires" in the JSON file for what's still gated.
-//
-// "predictive_truck_estimate" (added to computeBreakdown 2026-08-21,
-// Round 2) covers the standalone-only truck-side estimate branch -
-// predictive_truck_estimate and standalone_without_hitched_falls_back_to_axle_estimate
-// both exercise it now.
+// Add a tag here only once the Kotlin port actually has that capability.
 private val SUPPORTED_CAPABILITIES = setOf(
     "insufficient_tone",
     "gvwr_fallback_trailer_estimate",
     "adjustable_pin_weight_pct",
     "predictive_truck_estimate",
 )
+
+private fun unsupportedCapabilities(requires: List<String>): List<String> =
+    requires.filterNot { it in SUPPORTED_CAPABILITIES }
 
 private fun findVectorsFile(): File {
     var dir = File("").absoluteFile
@@ -99,26 +96,19 @@ private fun item(items: List<BreakdownItem>, label: String): BreakdownItem =
 class BreakdownGoldenVectorTest {
 
     @Test
-    fun `golden vectors - cases fully supported by the current Kotlin port`() {
+    fun `golden vectors - every case matches the fixture`() {
         for (case in loadCases()) {
             val name = case.string("name")
             val requires = case["requires"]!!.jsonArray.map { it.jsonPrimitive.content }
-            if (!SUPPORTED_CAPABILITIES.containsAll(requires)) {
-                // Not a failure - this case needs a capability the Kotlin
-                // port doesn't have yet. Skipping (not silently passing,
-                // not failing) is what makes the size of the gap visible
-                // in the test report rather than hidden in a comment.
-                continue
-            }
+            assertEquals("$name: unknown capability", emptyList<String>(), unsupportedCapabilities(requires))
 
             val pinWeightPct = case.double("pin_weight_pct") ?: DEFAULT_PIN_WEIGHT_PCT
             val items = computeBreakdown(truckFrom(case), trailerFrom(case), scaleFrom(case), pinWeightPct)
             val expected = case["expected"]!!.jsonObject
-            assertEquals(
-                "$name: verdict status",
-                expected.string("verdict_status"),
-                verdictFor(items).status.name.lowercase(),
-            )
+            val verdict = verdictFor(items)
+            assertEquals("$name: verdict status", expected.string("verdict_status"), verdict.status.name.lowercase())
+            assertEquals("$name: headline", expected.string("headline"), verdict.headline)
+            assertEquals("$name: subline", expected.string("subline"), verdict.subline)
 
             for (expectedItemElement in expected["items"]!!.jsonArray) {
                 val expectedItem = expectedItemElement.jsonObject
@@ -129,25 +119,34 @@ class BreakdownGoldenVectorTest {
                 assertEquals("$name/$label: limit_lb", expectedItem.int("limit_lb"), row.limit.roundToInt())
                 assertEquals("$name/$label: pct", expectedItem.int("pct"), row.pct)
                 assertEquals("$name/$label: estimated", expectedItem["estimated"]!!.jsonPrimitive.boolean, row.estimated)
+                // Android has no "Not enough info" badge text (the UI renders insufficient rows
+                // without a badge), so the badge is compared for checked rows only.
+                if (row.tone != Tone.INSUFFICIENT) {
+                    assertEquals("$name/$label: badge", expectedItem.string("badge"), badgeLabel(row))
+                }
+                // "note_android" overrides "note" where Android deliberately words a row differently
+                // (see towVehicleTotalNote/combinedRigWeightNote in Breakdown.kt); null means no note.
+                val noteKey = if ("note_android" in expectedItem) "note_android" else "note"
+                assertEquals("$name/$label: note", expectedItem[noteKey]!!.jsonPrimitive.contentOrNull, row.note)
             }
         }
     }
 
     @Test
-    fun `golden vectors - report how many cases are currently skipped`() {
-        val cases = loadCases()
-        val skipped = cases.filter { case ->
-            val requires = case["requires"]!!.jsonArray.map { it.jsonPrimitive.content }
-            !SUPPORTED_CAPABILITIES.containsAll(requires)
-        }
-        // Not a pass/fail assertion on any specific number - just makes the
-        // gap's size visible in the test's own console output every run,
-        // rather than only discoverable by reading the JSON by hand.
-        println(
-            "Golden vectors: ${cases.size - skipped.size}/${cases.size} cases fully " +
-                "supported by the current Kotlin port. Skipped: " +
-                skipped.joinToString { it.string("name") },
-        )
-        assumeTrue("informational only", true)
+    fun `golden vectors - every breakdown row has an over-limit case`() {
+        val overLimitRows = loadCases().flatMap { case ->
+            case["expected"]!!.jsonObject["items"]!!.jsonArray
+                .map { it.jsonObject }
+                .filter { it.string("tone") == "warning" }
+                .map { it.string("label") }
+        }.toSet()
+        val allRows = computeBreakdown(TruckTag(), TrailerTag(), ScaleTicket(), DEFAULT_PIN_WEIGHT_PCT).map { it.label }
+        assertEquals(emptyList<String>(), allRows.filterNot { it in overLimitRows })
+    }
+
+    @Test
+    fun `golden vectors - an unknown capability is reported, not skipped`() {
+        assertEquals(listOf("no_such_capability"), unsupportedCapabilities(listOf("no_such_capability")))
+        assertEquals(emptyList<String>(), unsupportedCapabilities(listOf("insufficient_tone")))
     }
 }

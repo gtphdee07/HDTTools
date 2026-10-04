@@ -6,7 +6,19 @@ import PIN_CONTRACT from '../../test-vectors/pin_weight_pct_contract.json';
 // The golden-vector fixture is the source of truth for the breakdown math
 // (ADR-0001 as amended by ADR-0007); Python, Kotlin and this TypeScript port
 // are all implementations tested against it, so every case runs for real here
-// - nothing is skipped via "requires".
+// - nothing is skipped via "requires". A case that requires a capability this
+// runner doesn't know fails loudly instead, same as the Python and Kotlin runners.
+
+const SUPPORTED_CAPABILITIES = new Set([
+  'insufficient_tone',
+  'gvwr_fallback_trailer_estimate',
+  'adjustable_pin_weight_pct',
+  'predictive_truck_estimate',
+]);
+
+function unsupportedCapabilities(requires: readonly string[]): string[] {
+  return requires.filter((capability) => !SUPPORTED_CAPABILITIES.has(capability));
+}
 
 function parseLb(label: string): number {
   const match = /^([\d,]+) lb$/.exec(label);
@@ -20,8 +32,12 @@ afterEach(() => {
 
 describe('golden vectors', () => {
   it.each(GOLDEN.cases.map((c) => [c.name, c] as const))('%s', (_name, testCase) => {
+    expect(unsupportedCapabilities(testCase.requires), `${testCase.name}: unknown capability`).toEqual([]);
     const items = computeBreakdown(testCase.truck, testCase.trailer, testCase.scale, testCase.pin_weight_pct);
-    expect(verdictFor(items).status).toBe(testCase.expected.verdict_status);
+    const verdict = verdictFor(items);
+    expect(verdict.status).toBe(testCase.expected.verdict_status);
+    expect(verdict.headline, `${testCase.name}: headline`).toBe(testCase.expected.headline);
+    expect(verdict.subline, `${testCase.name}: subline`).toBe(testCase.expected.subline);
 
     const byLabel = new Map(items.map((item) => [item.label, item]));
     for (const expected of testCase.expected.items) {
@@ -32,7 +48,22 @@ describe('golden vectors', () => {
       expect(parseLb(actual!.limitLabel), `${expected.label}: limit_lb`).toBe(expected.limit_lb);
       expect(actual!.pct, `${expected.label}: pct`).toBe(expected.pct);
       expect(actual!.estimated, `${expected.label}: estimated`).toBe(expected.estimated);
+      expect(actual!.badgeLabel, `${expected.label}: badge`).toBe(expected.badge);
+      expect(actual!.note, `${expected.label}: note`).toBe(expected.note);
     }
+  });
+
+  it('has an over-limit case for every breakdown row', () => {
+    const overLimitRows = new Set(
+      GOLDEN.cases.flatMap((c) => c.expected.items.filter((i) => i.tone === 'warning').map((i) => i.label)),
+    );
+    const allRows = computeBreakdown({}, {}, {}, 0.2).map((item) => item.label);
+    expect(allRows.filter((label) => !overLimitRows.has(label))).toEqual([]);
+  });
+
+  it('fails, not skips, a case that needs an unknown capability', () => {
+    expect(unsupportedCapabilities(['no_such_capability'])).toEqual(['no_such_capability']);
+    expect(unsupportedCapabilities(['insufficient_tone'])).toEqual([]);
   });
 });
 

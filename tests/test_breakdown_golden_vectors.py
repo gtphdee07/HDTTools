@@ -2,8 +2,9 @@
 test-vectors/breakdown_cases.json - the same cases the Kotlin port
 (android/.../domain/BreakdownGoldenVectorTest.kt) checks itself against.
 The fixture is the source of truth (ADR-0007), so every case here runs for real and must
-pass; Kotlin's own runner skips whatever capabilities its current port
-doesn't have yet (see the JSON file's _readme and each case's "requires").
+pass. A case whose "requires" names a capability this runner doesn't know fails
+loudly rather than being skipped - all three runners (this one, Kotlin, TypeScript)
+share that rule, so a new capability can never be silently ignored.
 
 This does not replace tests/test_breakdown.py - that file's hand-written,
 one-scenario-per-test style stays the readable primary regression suite.
@@ -24,6 +25,19 @@ pytestmark = [pytest.mark.core]
 _VECTORS_PATH = Path(__file__).resolve().parent.parent / "test-vectors" / "breakdown_cases.json"
 _CASES = json.loads(_VECTORS_PATH.read_text(encoding="utf-8"))["cases"]
 
+# Python is the reference implementation, so it supports every capability the
+# fixture has today. A case needing anything else must fail until it is added here.
+_SUPPORTED_CAPABILITIES = {
+    "insufficient_tone",
+    "gvwr_fallback_trailer_estimate",
+    "adjustable_pin_weight_pct",
+    "predictive_truck_estimate",
+}
+
+
+def _unsupported(case: dict) -> set[str]:
+    return set(case["requires"]) - _SUPPORTED_CAPABILITIES
+
 
 def _parse_lb(label: str) -> int:
     # "8,500 lb" -> 8500. Python's items only expose pre-formatted display
@@ -38,10 +52,15 @@ def _parse_lb(label: str) -> int:
 
 @pytest.mark.parametrize("case", _CASES, ids=[c["name"] for c in _CASES])
 def test_golden_vector(case: dict):
+    unknown = _unsupported(case)
+    assert not unknown, f"{case['name']}: unknown capability {sorted(unknown)} - add it to the runner or fix the fixture"
+
     items = compute_breakdown(case["truck"], case["trailer"], case["scale"], case["pin_weight_pct"])
     verdict = verdict_for(items)
 
     assert verdict["status"] == case["expected"]["verdict_status"]
+    assert verdict["headline"] == case["expected"]["headline"], f"{case['name']}: headline"
+    assert verdict["subline"] == case["expected"]["subline"], f"{case['name']}: subline"
 
     by_label = {item["label"]: item for item in items}
     for expected_item in case["expected"]["items"]:
@@ -57,3 +76,21 @@ def test_golden_vector(case: dict):
         )
         assert actual_item["pct"] == expected_item["pct"], f"{case['name']}/{label}: pct"
         assert actual_item["estimated"] == expected_item["estimated"], f"{case['name']}/{label}: estimated"
+        assert actual_item["badgeLabel"] == expected_item["badge"], f"{case['name']}/{label}: badge"
+        assert actual_item["note"] == expected_item["note"], f"{case['name']}/{label}: note"
+
+
+def test_every_breakdown_row_has_an_over_limit_case():
+    over_limit_rows = {
+        item["label"]
+        for case in _CASES
+        for item in case["expected"]["items"]
+        if item["tone"] == "warning"
+    }
+    all_rows = {item["label"] for item in compute_breakdown({}, {}, {}, 0.20)}
+    assert all_rows - over_limit_rows == set()
+
+
+def test_unknown_capability_fails_instead_of_skipping():
+    assert _unsupported({"requires": ["no_such_capability"]}) == {"no_such_capability"}
+    assert _unsupported({"requires": ["insufficient_tone"]}) == set()

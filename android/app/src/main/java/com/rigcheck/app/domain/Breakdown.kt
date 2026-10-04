@@ -9,7 +9,7 @@ import kotlin.math.roundToInt
 
 // Kotlin port of src/hdttools/api/breakdown.py (the single source of truth,
 // itself already a port of web/src/calc.ts) — keep the three in sync, and
-// keep test-vectors/breakdown_cases.json's SUPPORTED_CAPABILITIES in
+// keep SUPPORTED_CAPABILITIES in
 // BreakdownGoldenVectorTest.kt updated as this port gains capabilities.
 // Pin/tongue weight is commonly ~15-25% of trailer weight - used as a
 // fraction of a REAL trailer-axle scale reading when one exists, or as a

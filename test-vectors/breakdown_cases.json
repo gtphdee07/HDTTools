@@ -1,5 +1,5 @@
 {
-  "_readme": "Shared golden test vectors for compute_breakdown/verdict_for - THIS FILE is the source of truth, not any one implementation (ADR-0001 as amended by ADR-0007). Python (src/hdttools/api/breakdown.py), Kotlin (android/.../domain/Breakdown.kt) and the coming TypeScript port are all implementations tested against it; when one disagrees, resolve it here and record the decision in a case _note. Rounding rule: ties round half-UP (toward +infinity, like Kotlin roundToInt and JS Math.round), never Python round-half-to-even - see the rounding_half_way_* cases. See TESTING.md's cross-platform section and tests/test_breakdown_golden_vectors.py. Field names are snake_case, matching the /api/breakdown wire convention - the Kotlin loader maps to its own camelCase data classes. actual_lb/limit_lb are rounded whole numbers (Python parses its actualLabel/limitLabel strings back to int; Kotlin rounds its raw Double) - this tests the math, not display formatting, which each platform already tests separately. 'requires' lists capability tags a case depends on that Kotlin's current port doesn't have; Kotlin's test runner skips any case whose requires isn't fully supported today. predictive_truck_estimate is the one remaining unsupported capability as of 2026-08-21 (Round 2, not yet built) - its case is deliberately left unskipped and is expected to fail, same honest-red pattern the fixed standalone_without_hitched case used while its bug was still live.",
+  "_readme": "Shared golden test vectors for compute_breakdown/verdict_for - THIS FILE is the source of truth, not any one implementation (ADR-0001 as amended by ADR-0007). Python (src/hdttools/api/breakdown.py), Kotlin (android/.../domain/Breakdown.kt) and the coming TypeScript port are all implementations tested against it; when one disagrees, resolve it here and record the decision in a case _note. Rounding rule: ties round half-UP (toward +infinity, like Kotlin roundToInt and JS Math.round), never Python round-half-to-even - see the rounding_half_way_* cases. See TESTING.md's cross-platform section and tests/test_breakdown_golden_vectors.py. Field names are snake_case, matching the /api/breakdown wire convention - the Kotlin loader maps to its own camelCase data classes. actual_lb/limit_lb are rounded whole numbers (Python parses its actualLabel/limitLabel strings back to int; Kotlin rounds its raw Double) - this tests the math, not display formatting, which each platform already tests separately. 'requires' lists capability tags a case depends on; every runner keeps its own set of supported tags and FAILS a case that names a tag outside it (never skips), so a new capability can't be silently ignored by a port. Besides the row figures, each case asserts expected.headline/subline (the verdict text) and, per row, 'badge' (e.g. '380 lb to spare', '250 lb over', 'Not enough info') and 'note'. Android words two rows' notes differently on purpose (Tow Vehicle Total and Combined Rig Weight spell out their arithmetic - see Breakdown.kt), so those rows carry 'note_android', which the Kotlin runner uses instead of 'note'; Android has no insufficient-row badge, so its runner compares badge text for checked rows only. Every Breakdown row has at least one over-limit (tone 'warning') case - the runners assert that too.",
   "cases": [
     {
       "name": "baseline_all_real_readings",
@@ -10,13 +10,15 @@
       "pin_weight_pct": 0.20,
       "expected": {
         "verdict_status": "fail",
+        "headline": "Not Safe to Tow",
+        "subline": "One or more axles are over their rated limit — see the breakdown below.",
         "items": [
-          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
-          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
-          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 14225, "limit_lb": 12500, "pct": 100, "estimated": true},
-          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "badge": "380 lb to spare", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "badge": "460 lb to spare", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "badge": "660 lb over", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (5,620) + drive (9,040) = 14,660 lb, which is 660 lb over this truck's 14,000 lb GVWR.", "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "badge": "620 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 14225, "limit_lb": 12500, "pct": 100, "badge": "1,725 lb over", "note": "Estimated total weight — assumes the axle reading is 80% of actual trailer weight; enter your truck's stand-alone weight for an exact figure.", "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "badge": "460 lb to spare", "note": null, "note_android": "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined weight — your 26,040 lb gross reading is 460 lb to spare.", "estimated": false}
         ]
       }
     },
@@ -29,13 +31,15 @@
       "pin_weight_pct": 0.20,
       "expected": {
         "verdict_status": "fail",
+        "headline": "Not Safe to Tow",
+        "subline": "One or more axles are over their rated limit — see the breakdown below.",
         "items": [
-          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
-          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
-          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 18000, "pct": 63, "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 14225, "limit_lb": 12500, "pct": 100, "estimated": true},
-          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "badge": "380 lb to spare", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "badge": "460 lb to spare", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "badge": "660 lb over", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (5,620) + drive (9,040) = 14,660 lb, which is 660 lb over this truck's 14,000 lb GVWR.", "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 18000, "pct": 63, "badge": "6,620 lb to spare", "note": "Trailer axle rating: 3 axle(s) at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 14225, "limit_lb": 12500, "pct": 100, "badge": "1,725 lb over", "note": "Estimated total weight — assumes the axle reading is 80% of actual trailer weight; enter your truck's stand-alone weight for an exact figure.", "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "badge": "460 lb to spare", "note": null, "note_android": "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined weight — your 26,040 lb gross reading is 460 lb to spare.", "estimated": false}
         ]
       }
     },
@@ -48,13 +52,15 @@
       "pin_weight_pct": 0.20,
       "expected": {
         "verdict_status": "fail",
+        "headline": "Not Safe to Tow",
+        "subline": "One or more axles are over their rated limit — see the breakdown below.",
         "items": [
-          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
-          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
-          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 13040, "limit_lb": 12500, "pct": 100, "estimated": false},
-          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "badge": "380 lb to spare", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "badge": "460 lb to spare", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "badge": "660 lb over", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (5,620) + drive (9,040) = 14,660 lb, which is 660 lb over this truck's 14,000 lb GVWR.", "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "badge": "620 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 13040, "limit_lb": 12500, "pct": 100, "badge": "540 lb over", "note": "Includes an estimated 1,660 lb tongue weight (steer + drive minus your truck's stand-alone weight).", "estimated": false},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "badge": "460 lb to spare", "note": null, "note_android": "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined weight — your 26,040 lb gross reading is 460 lb to spare.", "estimated": false}
         ]
       }
     },
@@ -67,13 +73,15 @@
       "pin_weight_pct": 0.20,
       "expected": {
         "verdict_status": "fail",
+        "headline": "Not Safe to Tow",
+        "subline": "One or more axles are over their rated limit — see the breakdown below.",
         "items": [
-          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
-          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
-          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 11380, "limit_lb": 12500, "pct": 91, "estimated": false},
-          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "badge": "380 lb to spare", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "badge": "460 lb to spare", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "badge": "660 lb over", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (5,620) + drive (9,040) = 14,660 lb, which is 660 lb over this truck's 14,000 lb GVWR.", "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "badge": "620 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 11380, "limit_lb": 12500, "pct": 91, "badge": "1,120 lb to spare", "note": "Includes an estimated 0 lb tongue weight (steer + drive minus your truck's stand-alone weight).", "estimated": false},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "badge": "460 lb to spare", "note": null, "note_android": "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined weight — your 26,040 lb gross reading is 460 lb to spare.", "estimated": false}
         ]
       }
     },
@@ -86,13 +94,15 @@
       "pin_weight_pct": 0.15,
       "expected": {
         "verdict_status": "fail",
+        "headline": "Not Safe to Tow",
+        "subline": "One or more axles are over their rated limit — see the breakdown below.",
         "items": [
-          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
-          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
-          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 13388, "limit_lb": 12500, "pct": 100, "estimated": true},
-          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "badge": "380 lb to spare", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "badge": "460 lb to spare", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "badge": "660 lb over", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (5,620) + drive (9,040) = 14,660 lb, which is 660 lb over this truck's 14,000 lb GVWR.", "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "badge": "620 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 13388, "limit_lb": 12500, "pct": 100, "badge": "888 lb over", "note": "Estimated total weight — assumes the axle reading is 85% of actual trailer weight; enter your truck's stand-alone weight for an exact figure.", "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "badge": "460 lb to spare", "note": null, "note_android": "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined weight — your 26,040 lb gross reading is 460 lb to spare.", "estimated": false}
         ]
       }
     },
@@ -105,13 +115,15 @@
       "pin_weight_pct": 0.20,
       "expected": {
         "verdict_status": "partial",
+        "headline": "Partially Checked",
+        "subline": "Some axles couldn't be checked yet — add more data for a complete picture.",
         "items": [
-          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 6000, "pct": 0, "estimated": false},
-          {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 9500, "pct": 0, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 14000, "pct": 0, "estimated": false},
-          {"label": "Trailer Axle(s)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 12000, "pct": 0, "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 12500, "limit_lb": 12500, "pct": 100, "estimated": true},
-          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 26500, "pct": 0, "estimated": false}
+          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 6000, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 9500, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 14000, "pct": 0, "badge": "Not enough info", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": null, "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 12000, "pct": 0, "badge": "Not enough info", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 12500, "limit_lb": 12500, "pct": 100, "badge": "0 lb to spare", "note": "Estimated total weight — no scale reading yet, so this assumes the trailer is loaded to its rated GVWR; weigh it for a real figure.", "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 26500, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false}
         ]
       }
     },
@@ -124,13 +136,15 @@
       "pin_weight_pct": 0.20,
       "expected": {
         "verdict_status": "insufficient",
+        "headline": "Not Enough Information",
+        "subline": "Add at least a truck tag, trailer tag, or scale ticket to check anything.",
         "items": [
-          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "estimated": false},
-          {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "estimated": false},
-          {"label": "Trailer Axle(s)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "estimated": false},
-          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "estimated": false}
+          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "badge": "Not enough info", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": null, "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "badge": "Not enough info", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "badge": "Not enough info", "note": "Estimated total weight — no scale reading yet, so this assumes the trailer is loaded to its rated GVWR; weigh it for a real figure.", "estimated": false},
+          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 0, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false}
         ]
       }
     },
@@ -143,13 +157,15 @@
       "pin_weight_pct": 0.20,
       "expected": {
         "verdict_status": "partial",
+        "headline": "Partially Checked",
+        "subline": "Some axles couldn't be checked yet — add more data for a complete picture.",
         "items": [
-          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 6000, "pct": 0, "estimated": false},
-          {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 9500, "pct": 0, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 8500, "limit_lb": 14000, "pct": 61, "estimated": true},
-          {"label": "Trailer Axle(s)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 12000, "pct": 0, "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 12500, "limit_lb": 12500, "pct": 100, "estimated": true},
-          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 26500, "pct": 0, "estimated": false}
+          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 6000, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 9500, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 8500, "limit_lb": 14000, "pct": 61, "badge": "5,500 lb to spare", "note": "Estimated total weight — includes an estimated 2,500 lb tongue weight (20% of the trailer's estimated total); enter a real hitched scale reading for an exact figure.", "estimated": true},
+          {"label": "Trailer Axle(s)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 12000, "pct": 0, "badge": "Not enough info", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 12500, "limit_lb": 12500, "pct": 100, "badge": "0 lb to spare", "note": "Estimated total weight — no scale reading yet, so this assumes the trailer is loaded to its rated GVWR; weigh it for a real figure.", "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 26500, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false}
         ]
       }
     },
@@ -162,13 +178,15 @@
       "pin_weight_pct": 0.20,
       "expected": {
         "verdict_status": "partial",
+        "headline": "Partially Checked",
+        "subline": "Some axles couldn't be checked yet — add more data for a complete picture.",
         "items": [
-          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
-          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 14660, "limit_lb": 16000, "pct": 92, "estimated": false},
-          {"label": "Trailer Axle(s)", "tone": "insufficient", "actual_lb": 11380, "limit_lb": 0, "pct": 0, "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "insufficient", "actual_lb": 14225, "limit_lb": 0, "pct": 0, "estimated": false},
-          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 26040, "limit_lb": 16000, "pct": 0, "estimated": false}
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "badge": "380 lb to spare", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "badge": "460 lb to spare", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 14660, "limit_lb": 16000, "pct": 92, "badge": "1,340 lb to spare", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (5,620) + drive (9,040) = 14,660 lb, which is 1,340 lb under this truck's 16,000 lb GVWR.", "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "insufficient", "actual_lb": 11380, "limit_lb": 0, "pct": 0, "badge": "Not enough info", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "insufficient", "actual_lb": 14225, "limit_lb": 0, "pct": 0, "badge": "Not enough info", "note": "Estimated total weight — assumes the axle reading is 80% of actual trailer weight; enter your truck's stand-alone weight for an exact figure.", "estimated": false},
+          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 26040, "limit_lb": 16000, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false}
         ]
       }
     },
@@ -182,13 +200,15 @@
       "pin_weight_pct": 0.20,
       "expected": {
         "verdict_status": "fail",
+        "headline": "Not Safe to Tow",
+        "subline": "One or more axles are over their rated limit — see the breakdown below.",
         "items": [
-          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 6000, "pct": 0, "estimated": false},
-          {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 9500, "pct": 0, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 12845, "limit_lb": 14000, "pct": 92, "estimated": true},
-          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 14225, "limit_lb": 12500, "pct": 100, "estimated": true},
-          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 26500, "pct": 0, "estimated": false}
+          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 6000, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 9500, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 12845, "limit_lb": 14000, "pct": 92, "badge": "1,155 lb to spare", "note": "Estimated total weight — includes an estimated 2,845 lb tongue weight (20% of the trailer's estimated total); enter a real hitched scale reading for an exact figure.", "estimated": true},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "badge": "620 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 14225, "limit_lb": 12500, "pct": 100, "badge": "1,725 lb over", "note": "Estimated total weight — assumes the axle reading is 80% of actual trailer weight; enter your truck's stand-alone weight for an exact figure.", "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 26500, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false}
         ]
       }
     },
@@ -202,13 +222,15 @@
       "pin_weight_pct": 0.20,
       "expected": {
         "verdict_status": "fail",
+        "headline": "Not Safe to Tow",
+        "subline": "One or more axles are over their rated limit — see the breakdown below.",
         "items": [
-          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 5620, "limit_lb": 0, "pct": 0, "estimated": false},
-          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
-          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 14225, "limit_lb": 12500, "pct": 100, "estimated": true},
-          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+          {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 5620, "limit_lb": 0, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "badge": "460 lb to spare", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "badge": "660 lb over", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (5,620) + drive (9,040) = 14,660 lb, which is 660 lb over this truck's 14,000 lb GVWR.", "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "badge": "620 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 14225, "limit_lb": 12500, "pct": 100, "badge": "1,725 lb over", "note": "Estimated total weight — assumes the axle reading is 80% of actual trailer weight; enter your truck's stand-alone weight for an exact figure.", "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "badge": "460 lb to spare", "note": null, "note_android": "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined weight — your 26,040 lb gross reading is 460 lb to spare.", "estimated": false}
         ]
       }
     },
@@ -222,13 +244,15 @@
       "pin_weight_pct": 1.0,
       "expected": {
         "verdict_status": "fail",
+        "headline": "Not Safe to Tow",
+        "subline": "One or more axles are over their rated limit — see the breakdown below.",
         "items": [
-          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "estimated": false},
-          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "estimated": false},
-          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 1138000, "limit_lb": 12500, "pct": 100, "estimated": true},
-          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "estimated": false}
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5620, "limit_lb": 6000, "pct": 94, "badge": "380 lb to spare", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "badge": "460 lb to spare", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "badge": "660 lb over", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (5,620) + drive (9,040) = 14,660 lb, which is 660 lb over this truck's 14,000 lb GVWR.", "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "badge": "620 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 1138000, "limit_lb": 12500, "pct": 100, "badge": "1,125,500 lb over", "note": "Estimated total weight — assumes the axle reading is 1% of actual trailer weight; enter your truck's stand-alone weight for an exact figure.", "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "badge": "460 lb to spare", "note": null, "note_android": "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined weight — your 26,040 lb gross reading is 460 lb to spare.", "estimated": false}
         ]
       }
     },
@@ -242,13 +266,15 @@
       "pin_weight_pct": 0.5,
       "expected": {
         "verdict_status": "pass",
+        "headline": "Safe to Tow",
+        "subline": "Every axle checks out under its rated limit.",
         "items": [
-          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 1000, "limit_lb": 8000, "pct": 13, "estimated": false},
-          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 5001, "limit_lb": 8000, "pct": 63, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 6001, "limit_lb": 16001, "pct": 38, "estimated": false},
-          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 5000, "limit_lb": 8000, "pct": 63, "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 10000, "limit_lb": 16000, "pct": 63, "estimated": true},
-          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26001, "limit_lb": 32001, "pct": 81, "estimated": false}
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 1000, "limit_lb": 8000, "pct": 13, "badge": "7,000 lb to spare", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 5001, "limit_lb": 8000, "pct": 63, "badge": "3,000 lb to spare", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 6001, "limit_lb": 16001, "pct": 38, "badge": "10,000 lb to spare", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (1,000) + drive (5,001) = 6,001 lb, which is 10,000 lb under this truck's 16,001 lb GVWR.", "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 5000, "limit_lb": 8000, "pct": 63, "badge": "3,000 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 10000, "limit_lb": 16000, "pct": 63, "badge": "6,000 lb to spare", "note": "Estimated total weight — assumes the axle reading is 50% of actual trailer weight; enter your truck's stand-alone weight for an exact figure.", "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26001, "limit_lb": 32001, "pct": 81, "badge": "6,000 lb to spare", "note": null, "note_android": "Truck GVWR (16,001) + trailer GVWR (16,000) = 32,001 lb allowed combined weight — your 26,001 lb gross reading is 6,000 lb to spare.", "estimated": false}
         ]
       }
     },
@@ -262,9 +288,99 @@
       "pin_weight_pct": 0.25,
       "expected": {
         "verdict_status": "partial",
+        "headline": "Partially Checked",
+        "subline": "Some axles couldn't be checked yet — add more data for a complete picture.",
         "items": [
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 11001, "limit_lb": 16000, "pct": 69, "estimated": true},
-          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 16000, "limit_lb": 16000, "pct": 100, "estimated": true}
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 11001, "limit_lb": 16000, "pct": 69, "badge": "5,000 lb to spare", "note": "Estimated total weight — includes an estimated 4,000 lb tongue weight (25% of the trailer's estimated total); enter a real hitched scale reading for an exact figure.", "estimated": true},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 16000, "limit_lb": 16000, "pct": 100, "badge": "0 lb to spare", "note": "Estimated total weight — no scale reading yet, so this assumes the trailer is loaded to its rated GVWR; weigh it for a real figure.", "estimated": true}
+        ]
+      }
+    },
+    {
+      "name": "front_axle_over_limit",
+      "requires": [],
+      "_note": "The steer axle is over its 6,000 lb GAWR (250 lb over); the Tow Vehicle Total (steer + drive = 14,250 lb) is also 250 lb over its 14,000 lb GVWR, because the steer reading feeds it. Every other row stays under its limit.",
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+      "scale": {"steer_axle_lb": 6250, "drive_axle_lb": 8000, "trailer_axle_lb": 9000, "gross_weight_lb": 22000},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "fail",
+        "headline": "Not Safe to Tow",
+        "subline": "One or more axles are over their rated limit — see the breakdown below.",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "warning", "actual_lb": 6250, "limit_lb": 6000, "pct": 100, "badge": "250 lb over", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 8000, "limit_lb": 9500, "pct": 84, "badge": "1,500 lb to spare", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14250, "limit_lb": 14000, "pct": 100, "badge": "250 lb over", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (6,250) + drive (8,000) = 14,250 lb, which is 250 lb over this truck's 14,000 lb GVWR.", "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 9000, "limit_lb": 12000, "pct": 75, "badge": "3,000 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 11250, "limit_lb": 12500, "pct": 90, "badge": "1,250 lb to spare", "note": "Estimated total weight — assumes the axle reading is 80% of actual trailer weight; enter your truck's stand-alone weight for an exact figure.", "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 22000, "limit_lb": 26500, "pct": 83, "badge": "4,500 lb to spare", "note": null, "note_android": "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined weight — your 22,000 lb gross reading is 4,500 lb to spare.", "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "rear_axle_over_limit",
+      "requires": [],
+      "_note": "Only the drive axle is over its 9,500 lb GAWR (300 lb over); the Tow Vehicle Total (steer + drive = 14,800 lb) is also over its 14,000 lb GVWR here, because the drive reading feeds it.",
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+      "scale": {"steer_axle_lb": 5000, "drive_axle_lb": 9800, "trailer_axle_lb": 9000, "gross_weight_lb": 22000},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "fail",
+        "headline": "Not Safe to Tow",
+        "subline": "One or more axles are over their rated limit — see the breakdown below.",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5000, "limit_lb": 6000, "pct": 83, "badge": "1,000 lb to spare", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "warning", "actual_lb": 9800, "limit_lb": 9500, "pct": 100, "badge": "300 lb over", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14800, "limit_lb": 14000, "pct": 100, "badge": "800 lb over", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (5,000) + drive (9,800) = 14,800 lb, which is 800 lb over this truck's 14,000 lb GVWR.", "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 9000, "limit_lb": 12000, "pct": 75, "badge": "3,000 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 11250, "limit_lb": 12500, "pct": 90, "badge": "1,250 lb to spare", "note": "Estimated total weight — assumes the axle reading is 80% of actual trailer weight; enter your truck's stand-alone weight for an exact figure.", "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 22000, "limit_lb": 26500, "pct": 83, "badge": "4,500 lb to spare", "note": null, "note_android": "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined weight — your 22,000 lb gross reading is 4,500 lb to spare.", "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "trailer_axles_over_limit",
+      "requires": [],
+      "_note": "Trailer axle reading 12,400 lb against 2 axles x 6,000 lb = 12,000 lb (400 lb over); the Trailer Total estimate (12,400 / 0.8 = 15,500 lb) is over its 12,500 lb GVWR too, because the axle reading feeds it.",
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+      "scale": {"steer_axle_lb": 5000, "drive_axle_lb": 8000, "trailer_axle_lb": 12400, "gross_weight_lb": 22000},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "fail",
+        "headline": "Not Safe to Tow",
+        "subline": "One or more axles are over their rated limit — see the breakdown below.",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5000, "limit_lb": 6000, "pct": 83, "badge": "1,000 lb to spare", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 8000, "limit_lb": 9500, "pct": 84, "badge": "1,500 lb to spare", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 13000, "limit_lb": 14000, "pct": 93, "badge": "1,000 lb to spare", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (5,000) + drive (8,000) = 13,000 lb, which is 1,000 lb under this truck's 14,000 lb GVWR.", "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "warning", "actual_lb": 12400, "limit_lb": 12000, "pct": 100, "badge": "400 lb over", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 15500, "limit_lb": 12500, "pct": 100, "badge": "3,000 lb over", "note": "Estimated total weight — assumes the axle reading is 80% of actual trailer weight; enter your truck's stand-alone weight for an exact figure.", "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 22000, "limit_lb": 26500, "pct": 83, "badge": "4,500 lb to spare", "note": null, "note_android": "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined weight — your 22,000 lb gross reading is 4,500 lb to spare.", "estimated": false}
+        ]
+      }
+    },
+    {
+      "name": "combined_rig_weight_over_limit",
+      "requires": [],
+      "_note": "Gross weight 27,000 lb against 14,000 + 12,500 = 26,500 lb (500 lb over). The gross reading is independent of the per-axle readings, so every other row stays under its limit and this row alone fails the verdict.",
+      "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
+      "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
+      "scale": {"steer_axle_lb": 5000, "drive_axle_lb": 8000, "trailer_axle_lb": 9000, "gross_weight_lb": 27000},
+      "pin_weight_pct": 0.20,
+      "expected": {
+        "verdict_status": "fail",
+        "headline": "Not Safe to Tow",
+        "subline": "One or more axles are over their rated limit — see the breakdown below.",
+        "items": [
+          {"label": "Front Axle (Steer)", "tone": "success", "actual_lb": 5000, "limit_lb": 6000, "pct": 83, "badge": "1,000 lb to spare", "note": null, "estimated": false},
+          {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 8000, "limit_lb": 9500, "pct": 84, "badge": "1,500 lb to spare", "note": null, "estimated": false},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 13000, "limit_lb": 14000, "pct": 93, "badge": "1,000 lb to spare", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (5,000) + drive (8,000) = 13,000 lb, which is 1,000 lb under this truck's 14,000 lb GVWR.", "estimated": false},
+          {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 9000, "limit_lb": 12000, "pct": 75, "badge": "3,000 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 11250, "limit_lb": 12500, "pct": 90, "badge": "1,250 lb to spare", "note": "Estimated total weight — assumes the axle reading is 80% of actual trailer weight; enter your truck's stand-alone weight for an exact figure.", "estimated": true},
+          {"label": "Combined Rig Weight", "tone": "warning", "actual_lb": 27000, "limit_lb": 26500, "pct": 100, "badge": "500 lb over", "note": null, "note_android": "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined weight — your 27,000 lb gross reading is 500 lb over.", "estimated": false}
         ]
       }
     }

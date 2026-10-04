@@ -1,9 +1,72 @@
 {
-  "_comment": "Python test contexts for scripts/test_planner.py (#60). Context names follow CONTEXT-MAP.md. An interface's 'files' are its public surface; a change to one adds its 'tests' and forces its context's Major suite.",
+  "_comment": "Test contexts for scripts/test_planner.py (#60, #61). Context names follow CONTEXT-MAP.md. A context with a 'marker' is a pytest context; one with 'commands' runs shell commands. An interface's 'files' are its public surface; a change to one adds its 'tests' and forces its context's Major suite. Command templates take {rel} (path under the context root), {fqcn} (Kotlin class) and {file}. The non-Python commands are the ones #52 documents; change them here if #52 settles on others.",
   "dependency_files": ["pyproject.toml", "uv.lock"],
+  "scope": {"file_max_files": 2},
   "contexts": {
-    "core": {"marker": "core", "paths": ["src/hdttools/", "scripts/"]},
-    "streamlit": {"marker": "streamlit", "paths": ["streamlit_app/"]}
+    "core": {
+      "marker": "core",
+      "paths": ["src/hdttools/", "scripts/"],
+      "file": "uv run pytest {file}",
+      "test_for": ["tests/test_{stem}.py"],
+      "context": "uv run pytest -m core",
+      "application": "uv run pytest"
+    },
+    "streamlit": {
+      "marker": "streamlit",
+      "paths": ["streamlit_app/"],
+      "file": "uv run pytest {file}",
+      "test_for": ["tests/test_{stem}.py", "tests/test_streamlit_app.py"],
+      "context": "uv run pytest -m streamlit",
+      "application": "uv run pytest"
+    },
+    "web": {
+      "paths": ["web/"],
+      "platform": "web",
+      "dependency_files": ["web/package.json", "web/package-lock.json"],
+      "test_globs": ["web/src/*.test.ts", "web/src/*.test.tsx"],
+      "live_globs": ["web/src/external/*"],
+      "commands": {"minor": "npm --prefix web test", "major": "npm --prefix web test"},
+      "file": "npm --prefix web test -- {rel}",
+      "test_for": ["{dir}/{stem}.test.ts", "{dir}/{stem}.test.tsx"],
+      "context": "npm --prefix web test",
+      "gate": "uv run scripts/external_freshness.py --platform web",
+      "external": "powershell web/test-external.ps1"
+    },
+    "scan-proxy": {
+      "paths": ["workers/scan-proxy/"],
+      "platform": "scan-proxy",
+      "dependency_files": ["workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json"],
+      "test_globs": ["workers/scan-proxy/src/*.test.ts"],
+      "live_globs": ["workers/scan-proxy/src/external/*", "workers/scan-proxy/src/weekly/*", "workers/scan-proxy/src/release/*"],
+      "commands": {"minor": "npm --prefix workers/scan-proxy run test:sanity", "major": "npm --prefix workers/scan-proxy test"},
+      "file": "node --test workers/scan-proxy/{rel}",
+      "test_for": ["{dir}/{stem}.test.ts"],
+      "context": "npm --prefix workers/scan-proxy test",
+      "external": "powershell workers/scan-proxy/test-external.ps1",
+      "release": [
+        {"command": "npm --prefix workers/scan-proxy test", "reason": "Major suite (offline)"},
+        {"command": "powershell workers/scan-proxy/test-weekly.ps1", "reason": "old weekly suite (live, paid)", "confirm": true},
+        {"command": "powershell workers/scan-proxy/test-release.ps1", "reason": "old release suite (live, paid)", "confirm": true}
+      ]
+    },
+    "android": {
+      "paths": ["android/"],
+      "platform": "android",
+      "dependency_files": ["android/gradle/libs.versions.toml", "android/app/build.gradle.kts", "android/build.gradle.kts"],
+      "test_globs": ["android/app/src/test/*"],
+      "device_covered": ["android/app/src/main/java/com/rigcheck/app/ui/*", "android/app/src/androidTest/*"],
+      "commands": {"minor": "android/gradlew -p android test", "major": "android/gradlew -p android test"},
+      "device": "android/gradlew -p android connectedDebugAndroidTest",
+      "file": "android/gradlew -p android testDebugUnitTest --tests {fqcn}",
+      "test_for": ["{dir}/{stem}Test.kt"],
+      "dir_rewrite": ["src/main/", "src/test/"],
+      "context": "android/gradlew -p android test",
+      "release": [
+        {"command": "android/gradlew -p android test", "reason": "JVM tests"},
+        {"command": "android/gradlew -p android connectedDebugAndroidTest", "reason": "instrumented tests (needs a device)"},
+        {"command": "powershell android/test-weekly.ps1", "reason": "old weekly suite (live, paid)", "confirm": true}
+      ]
+    }
   },
   "interfaces": [
     {
@@ -16,9 +79,13 @@
     {
       "name": "breakdown-golden-vectors",
       "context": "core",
-      "files": ["src/hdttools/api/breakdown.py", "test-vectors/breakdown_cases.json"],
+      "files": ["src/hdttools/api/breakdown.py", "test-vectors/breakdown_cases.json", "web/src/breakdown.ts", "android/app/src/main/java/com/rigcheck/app/domain/*"],
       "tests": ["tests/test_breakdown_golden_vectors.py"],
-      "shares_with": ["android", "web"]
+      "shares_with": ["android", "web"],
+      "shares_tests": {
+        "web": "npm --prefix web test -- src/breakdown.test.ts",
+        "android": "android/gradlew -p android testDebugUnitTest --tests com.rigcheck.app.domain.BreakdownGoldenVectorTest"
+      }
     },
     {
       "name": "api-contract",
@@ -33,6 +100,13 @@
       "files": ["src/hdttools/__init__.py", "src/hdttools/truck_tag.py", "src/hdttools/trailer_tag.py", "src/hdttools/scale_ticket.py"],
       "tests": ["tests/test_readers_integration.py"],
       "shares_with": ["streamlit"]
+    },
+    {
+      "name": "scan-proxy-http",
+      "context": "scan-proxy",
+      "files": ["workers/scan-proxy/src/index.ts", "workers/scan-proxy/src/request.ts", "workers/scan-proxy/src/types.ts"],
+      "tests": [],
+      "shares_with": ["android"]
     }
   ]
 }

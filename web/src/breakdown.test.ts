@@ -71,7 +71,7 @@ describe('golden vectors', () => {
   });
 
   it('fails the run for a fixture case that needs an unknown capability', () => {
-    const badCase = { ...GOLDEN.cases[0], requires: ['no_such_capability'] };
+    const badCase = { ...GOLDEN.cases[0], requires: ['no_such_capability'] } as GoldenCase;
     expect(() => checkCase(badCase)).toThrow(/unknown capability/);
   });
 

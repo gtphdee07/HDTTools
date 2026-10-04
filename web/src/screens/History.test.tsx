@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { HistoryEntry, Verdict } from '../types';
 import { History } from './History';
@@ -50,5 +51,70 @@ describe('History', () => {
     expect(screen.getAllByText('Red Rocket').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Safe to Tow')).toBeInTheDocument();
     expect(screen.getByText('Over Limit')).toBeInTheDocument();
+  });
+});
+
+describe('History filters', () => {
+  function mixedHistory(): HistoryEntry[] {
+    return [
+      entry('pass', { id: '1', date: '2026-08-21', rigNickname: 'Big Blue' }),
+      entry('fail', { id: '2', date: '2026-08-22', rigNickname: 'Red Rocket' }),
+      entry('partial', { id: '3', date: '2026-08-23', rigNickname: 'Big Blue' }),
+      entry('insufficient', { id: '4', date: '2026-08-24', rigNickname: 'Red Rocket' }),
+    ];
+  }
+
+  it('shows every entry under "All rigs"', () => {
+    render(<History history={mixedHistory()} />);
+    for (const date of ['2026-08-21', '2026-08-22', '2026-08-23', '2026-08-24']) {
+      expect(screen.getByText(date)).toBeInTheDocument();
+    }
+  });
+
+  it('"Within limits" shows only pass verdicts, not partial or insufficient ones', async () => {
+    const user = userEvent.setup();
+    render(<History history={mixedHistory()} />);
+    await user.click(screen.getByRole('button', { name: 'Within limits' }));
+
+    expect(screen.getByText('2026-08-21')).toBeInTheDocument();
+    expect(screen.queryByText('2026-08-22')).not.toBeInTheDocument();
+    expect(screen.queryByText('2026-08-23')).not.toBeInTheDocument();
+    expect(screen.queryByText('2026-08-24')).not.toBeInTheDocument();
+  });
+
+  it('"Over limit" shows only fail verdicts, not partial or insufficient ones', async () => {
+    const user = userEvent.setup();
+    render(<History history={mixedHistory()} />);
+    await user.click(screen.getByRole('button', { name: 'Over limit' }));
+
+    expect(screen.getByText('2026-08-22')).toBeInTheDocument();
+    expect(screen.queryByText('2026-08-21')).not.toBeInTheDocument();
+    expect(screen.queryByText('2026-08-23')).not.toBeInTheDocument();
+    expect(screen.queryByText('2026-08-24')).not.toBeInTheDocument();
+  });
+
+  it('a per-rig pill shows only that rig\'s entries, of any verdict', async () => {
+    const user = userEvent.setup();
+    render(<History history={mixedHistory()} />);
+    await user.click(screen.getByRole('button', { name: 'Big Blue' }));
+
+    expect(screen.getByText('2026-08-21')).toBeInTheDocument();
+    expect(screen.getByText('2026-08-23')).toBeInTheDocument();
+    expect(screen.queryByText('2026-08-22')).not.toBeInTheDocument();
+    expect(screen.queryByText('2026-08-24')).not.toBeInTheDocument();
+  });
+
+  it('shows the empty state when the active filter matches nothing', async () => {
+    const user = userEvent.setup();
+    render(<History history={[entry('fail', { id: '1', rigNickname: 'Red Rocket' })]} />);
+    expect(screen.queryByText('No checks match this filter.')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Within limits' }));
+    expect(screen.getByText('No checks match this filter.')).toBeInTheDocument();
+  });
+
+  it('shows the empty state with no history and no filter applied', () => {
+    render(<History history={[]} />);
+    expect(screen.getByText('No checks match this filter.')).toBeInTheDocument();
   });
 });

@@ -20,6 +20,16 @@ import CONTRACT from '../../test-vectors/breakdown_response_shape_contract.json'
 // file, and this file's own assertion then forces them to touch the
 // shared contract (and, in turn, the paired Python test) to make it
 // green again.
+//
+// Kept deliberately (test audit #57, 2026-10-04) even though ADR-0007
+// removed /api/breakdown from Web's own deployment, so Web itself no
+// longer calls the endpoint this fixture was named for. The fixture is
+// still the one place BreakdownItem/VerdictInfo's shape is pinned across
+// platforms (Python's test_api.py is the other half; Android mirrors the
+// same shape by convention, not via this file), so retiring this test
+// would drop the only guard against Web's own types drifting from it.
+// Revisit if the fixture is retired outright or Web's contract role is
+// replaced by something else.
 describe('BreakdownItem/VerdictInfo shape', () => {
   it('BreakdownItem has exactly the keys the shared API contract declares', () => {
     const sample: BreakdownItem = {

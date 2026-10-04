@@ -13,6 +13,10 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],
+      // Scope the report to application code: without this, v8 only reports
+      // files a test happened to import, so an unimported file (main.tsx) is
+      // silently absent instead of showing up as an uncovered gap.
+      include: ['src/**'],
     },
   },
 })

@@ -38,6 +38,19 @@ async function startNewRig(nickname: string) {
   return user;
 }
 
+// Skips all three image steps to reach Results, with none of the
+// per-step assertions the "start new rig..." test below makes along the
+// way - just the click sequence, for tests that only care what's on the
+// other side of it.
+async function reachResults(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: "I don't have this image" }));
+  await user.click(screen.getByRole('button', { name: 'Next: Trailer Tag' }));
+  await user.click(screen.getByRole('button', { name: "I don't have this image" }));
+  await user.click(screen.getByRole('button', { name: 'Next: Scale Ticket' }));
+  await user.click(screen.getByRole('button', { name: 'No Image / Enter Weight Manually' }));
+  await user.click(screen.getByRole('button', { name: 'See My Results' }));
+}
+
 describe('App wizard interactions', () => {
   it('start new rig, skip every image, reaches results and saves the rig + a history entry', async () => {
     render(<App />);
@@ -143,5 +156,33 @@ describe('App wizard interactions', () => {
     await user.click(screen.getByRole('button', { name: 'See My Results' }));
 
     await waitFor(() => expect(spiedBreakdown.createBreakdown).toHaveBeenCalledWith({}, {}, {}, 15));
+  });
+});
+
+describe('Disclaimer gate', () => {
+  it('withholds the results until the Disclaimer is acknowledged, then reveals them and records the acknowledgement', async () => {
+    render(<App />);
+    const user = await startNewRig('Big Blue');
+    await reachResults(user);
+
+    expect(await screen.findByText('⚠️ Experimental Tool — Not for Safety Decisions')).toBeInTheDocument();
+    expect(screen.queryByText('Not Enough Information')).not.toBeInTheDocument();
+    expect(sessionStorage.getItem('rigcheck:disclaimerAcknowledged')).not.toBe('true');
+
+    await user.click(screen.getByRole('button', { name: 'I Understand — Continue' }));
+
+    expect(screen.getByText('Not Enough Information')).toBeInTheDocument();
+    expect(screen.queryByText('⚠️ Experimental Tool — Not for Safety Decisions')).not.toBeInTheDocument();
+    expect(sessionStorage.getItem('rigcheck:disclaimerAcknowledged')).toBe('true');
+  });
+
+  it('does not show the Disclaimer again once it was already acknowledged earlier in the session', async () => {
+    sessionStorage.setItem('rigcheck:disclaimerAcknowledged', 'true');
+    render(<App />);
+    const user = await startNewRig('Big Blue');
+    await reachResults(user);
+
+    expect(await screen.findByText('Not Enough Information')).toBeInTheDocument();
+    expect(screen.queryByText('⚠️ Experimental Tool — Not for Safety Decisions')).not.toBeInTheDocument();
   });
 });

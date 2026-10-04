@@ -264,3 +264,25 @@ tests also included in the Minor category.
 - **No timeout on the Anthropic/RevenueCat `fetch` calls** — not a test gap so much as a missing feature (both here and Android-client-side); a hung call currently means the Android loading spinner never resolves. Raised, not yet a task.
 - **No request-level idempotency across client retries** — each `runScan` call mints its own key; a client retry after a timeout is a second real charge. Documented as current behavior in `scan.test.ts`, not fixed.
 - **Workers-runtime-specific behavior** (`@cloudflare/vitest-pool-workers`) — this Worker doesn't currently use any Workers-only APIs, so plain Node test coverage is representative; low-risk gap, unblocked but not written.
+
+## Per-surface External suite (ADR-0008, #38)
+
+The `revenuecat-rest` surface (boundary file `src/revenuecat.ts`) has its own
+suite in `src/external/revenuecatRest.external.test.ts`, every test tagged
+`[revenuecat-rest]`. Run it with `.\test-external.ps1` (only runs when the
+surface is stale per `scripts/external_freshness.py`; records pass/fail per
+surface) or `npm run test:external`. Needs `REVENUECAT_SECRET_KEY` (a v2 key
+with Customer information read and write); a missing key fails the run, and
+`.\test-external.ps1 -Skip` records `skipped` and leaves the surface stale.
+A 401/403 names the call and the missing permission.
+
+Depths covered, against `weekly-test-user` / `weekly-test-user-no-credits`
+(never `smoke-test-user`): reachable and authenticated (good key reads, bad key
+is 401); response shape (balance list, adjustment response); error contracts
+(empty balance is the 422 `scan.ts` relies on, unknown customer is a 404);
+journey (Spend then Refund restores the balance, same-key retries of both
+change nothing). Calls are free ledger adjustments, so `max_paid_calls` is 0
+and the shared paid-call counter does not apply. No registry package is watched:
+RevenueCat REST v2 has no client library this Worker uses, so freshness comes
+from boundary-file changes only. The Anthropic cases in `src/release/` are a
+separate surface, still to be tagged. Android's chain includes this surface.

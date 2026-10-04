@@ -1,0 +1,9 @@
+{
+  "name": "revenuecat-rest",
+  "status": "active",
+  "platforms": ["scan-proxy", "android"],
+  "boundary_files": ["workers/scan-proxy/src/revenuecat.ts"],
+  "dependency_pins": [],
+  "registry_packages": [],
+  "max_paid_calls": 0
+}

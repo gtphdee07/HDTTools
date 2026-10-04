@@ -12,6 +12,13 @@
     }
   },
   "surfaces": {
+    "revenuecat-rest": {
+      "commit": "51dc229be878658671944c43dcb73eb073d5ec48",
+      "passed": true,
+      "result": "pass",
+      "timestamp": "2026-10-04T05:16:54Z",
+      "versions": {}
+    },
     "supabase-auth": {
       "commit": "2aa05b680bc0a11a290cc89c723af1501e1196de",
       "passed": true,

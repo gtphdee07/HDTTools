@@ -283,7 +283,7 @@ def test_cli_json_output_and_exit_code(tmp_path, capsys):
     status_file = tmp_path / "s.json"
     status_file.write_text(json.dumps(status_with(passed())))
     code = ef.main(
-        ["--json"],
+        ["--json", "--surface", "supabase-auth"],
         git=FakeGit(),
         registry=FakeRegistry(QUIET_REGISTRY),
         status_file=status_file,
@@ -296,7 +296,7 @@ def test_cli_json_output_and_exit_code(tmp_path, capsys):
 
 def test_cli_exits_1_and_lists_stale_surfaces(tmp_path, capsys):
     code = ef.main(
-        ["--json"],
+        ["--json", "--surface", "supabase-auth"],
         git=FakeGit(),
         registry=FakeRegistry(QUIET_REGISTRY),
         status_file=tmp_path / "missing.json",
@@ -304,3 +304,11 @@ def test_cli_exits_1_and_lists_stale_surfaces(tmp_path, capsys):
     out = json.loads(capsys.readouterr().out)
     assert code == 1
     assert out["stale"] == ["supabase-auth"]
+
+
+def test_revenuecat_rest_is_in_the_real_manifest_with_android_and_scan_proxy_chains():
+    surface = ef.load_manifest()["surfaces"]["revenuecat-rest"]
+    assert surface["status"] == "active"
+    assert surface["max_paid_calls"] == 0
+    assert "workers/scan-proxy/src/revenuecat.ts" in surface["boundary_files"]
+    assert {"scan-proxy", "android"} <= set(surface["platforms"])

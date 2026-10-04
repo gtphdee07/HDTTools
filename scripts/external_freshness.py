@@ -140,6 +140,8 @@ def _evaluate_one(surface: dict, status: dict, git, registry) -> Verdict:
     else:
         paths = [*surface.get("boundary_files", []), *surface.get("dependency_pins", [])]
         try:
+            if not last_pass.get("commit"):
+                raise GitError("pass has no commit recorded")
             changed = git.changed_since(last_pass["commit"], paths)
         except GitError as exc:
             reasons.append(f"recorded commit unusable: {exc}")

@@ -120,6 +120,13 @@ def test_stale_when_recorded_commit_is_unknown_to_git():
     assert any("commit" in r for r in v.reasons)
 
 
+def test_a_pass_with_no_recorded_commit_is_stale_not_a_crash():
+    entry = {"result": "pass", "passed": True, "timestamp": PASS_TS}
+    v = verdict(status_with(entry))
+    assert v.state == "stale"
+    assert any("commit" in r for r in v.reasons)
+
+
 def test_stale_when_newer_stable_release_published_after_last_pass():
     times = {PKG: {"2.100.0": "2026-09-01T00:00:00Z", "2.101.0": "2026-10-02T00:00:00Z"}}
     v = verdict(status_with(passed()), registry=FakeRegistry(times))

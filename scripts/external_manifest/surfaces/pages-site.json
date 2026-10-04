@@ -1,0 +1,11 @@
+{
+  "name": "pages-site",
+  "status": "planned",
+  "platforms": ["web"],
+  "boundary_files": ["web/wrangler.toml"],
+  "dependency_pins": ["web/wrangler.toml"],
+  "registry_packages": [
+    {"ecosystem": "npm", "package": "wrangler"}
+  ],
+  "max_paid_calls": 0
+}

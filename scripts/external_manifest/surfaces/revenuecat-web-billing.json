@@ -1,0 +1,11 @@
+{
+  "name": "revenuecat-web-billing",
+  "status": "planned",
+  "platforms": ["web"],
+  "boundary_files": [],
+  "dependency_pins": ["web/package.json", "web/package-lock.json"],
+  "registry_packages": [
+    {"ecosystem": "npm", "package": "@revenuecat/purchases-js"}
+  ],
+  "max_paid_calls": 0
+}

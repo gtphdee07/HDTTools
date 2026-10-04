@@ -53,7 +53,13 @@ SNAPSHOT_FILE = REPO_ROOT / "scripts" / "dashboard_data" / "test_results.json"
 
 PLATFORMS = ("Core", "Streamlit", "Web", "Android", "Scan Proxy")
 PYTHON_CONTEXTS = {"Core": ("core", "src/hdttools/"), "Streamlit": ("streamlit", "streamlit_app/")}
-SURFACE_PLATFORM = {"Web": "web", "Android": "android", "Scan Proxy": "scan-proxy"}
+SURFACE_PLATFORM = {
+    "Web": "web",
+    "Android": "android",
+    "Scan Proxy": "scan-proxy",
+    "Core": "core",
+    "Streamlit": "streamlit",
+}
 
 WEB_JUNIT_REPORT = REPO_ROOT / "web" / "test-results" / "junit.xml"
 SCAN_PROXY_MINOR_JUNIT_REPORT = (

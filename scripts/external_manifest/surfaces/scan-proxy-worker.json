@@ -1,0 +1,13 @@
+{
+  "name": "scan-proxy-worker",
+  "status": "planned",
+  "platforms": ["scan-proxy", "android", "web"],
+  "boundary_files": ["workers/scan-proxy/src/index.ts", "workers/scan-proxy/wrangler.toml"],
+  "dependency_pins": ["workers/scan-proxy/wrangler.toml", "workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json"],
+  "registry_packages": [
+    {"ecosystem": "npm", "package": "wrangler"},
+    {"ecosystem": "npm", "package": "workerd"},
+    {"ecosystem": "npm", "package": "@cloudflare/workers-types"}
+  ],
+  "max_paid_calls": 0
+}

@@ -314,3 +314,49 @@ def test_revenuecat_rest_is_in_the_real_manifest_with_android_and_scan_proxy_cha
     assert surface["max_paid_calls"] == 0
     assert "workers/scan-proxy/src/revenuecat.ts" in surface["boundary_files"]
     assert {"scan-proxy", "android"} <= set(surface["platforms"])
+
+
+_REQUIRED_PROVIDER_SURFACES = {
+    "anthropic",
+    "scan-proxy-worker",
+    "pages-site",
+    "revenuecat-android-sdk",
+    "google-play-billing",
+    "revenuecat-web-billing",
+    "supabase-tables",
+    "worker-token-verification",
+}
+
+
+def test_every_required_provider_surface_is_registered_in_the_real_manifest():
+    surfaces = ef.load_manifest()["surfaces"]
+    missing = _REQUIRED_PROVIDER_SURFACES - set(surfaces)
+    assert not missing, f"missing manifest entries: {sorted(missing)}"
+
+
+def test_surfaces_with_no_tagged_test_yet_are_planned_and_never_block():
+    surfaces = ef.load_manifest()["surfaces"]
+    for name in _REQUIRED_PROVIDER_SURFACES:
+        assert surfaces[name]["status"] == "planned", f"{name} should be planned until it has a tagged test"
+
+
+def test_every_real_manifest_entry_is_well_formed():
+    manifest = ef.load_manifest()
+    for name, surface in manifest["surfaces"].items():
+        assert surface["name"] == name
+        assert surface["status"] in {"active", "planned"}, f"{name}: unknown status {surface['status']!r}"
+
+        platforms = surface.get("platforms")
+        assert isinstance(platforms, list) and platforms, f"{name}: platforms must be a non-empty list"
+        assert all(isinstance(p, str) and p for p in platforms), f"{name}: platform names must be non-empty strings"
+
+        assert isinstance(surface.get("boundary_files"), list), f"{name}: boundary_files must be a list"
+        assert isinstance(surface.get("dependency_pins"), list), f"{name}: dependency_pins must be a list"
+
+        max_paid_calls = surface.get("max_paid_calls")
+        assert isinstance(max_paid_calls, int) and max_paid_calls >= 0, f"{name}: max_paid_calls must be a non-negative int"
+
+        for pkg in surface.get("registry_packages", []):
+            assert set(pkg) == {"ecosystem", "package"}, f"{name}: registry_packages entries need exactly ecosystem and package"
+            assert isinstance(pkg["ecosystem"], str) and pkg["ecosystem"], f"{name}: ecosystem must be a non-empty string"
+            assert isinstance(pkg["package"], str) and pkg["package"], f"{name}: package must be a non-empty string"

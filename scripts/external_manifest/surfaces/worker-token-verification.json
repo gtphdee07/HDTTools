@@ -1,0 +1,9 @@
+{
+  "name": "worker-token-verification",
+  "status": "planned",
+  "platforms": ["scan-proxy", "android", "web"],
+  "boundary_files": [],
+  "dependency_pins": ["workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json"],
+  "registry_packages": [],
+  "max_paid_calls": 0
+}

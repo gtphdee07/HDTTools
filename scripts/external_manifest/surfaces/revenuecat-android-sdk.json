@@ -1,0 +1,14 @@
+{
+  "name": "revenuecat-android-sdk",
+  "status": "planned",
+  "platforms": ["android"],
+  "boundary_files": [
+    "android/app/src/main/java/com/rigcheck/app/data/RevenueCatManager.kt",
+    "android/app/src/main/java/com/rigcheck/app/RigCheckApplication.kt"
+  ],
+  "dependency_pins": ["android/gradle/libs.versions.toml", "android/app/build.gradle.kts"],
+  "registry_packages": [
+    {"ecosystem": "maven", "package": "com.revenuecat.purchases:purchases"}
+  ],
+  "max_paid_calls": 0
+}

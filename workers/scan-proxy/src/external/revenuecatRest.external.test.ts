@@ -115,17 +115,22 @@ test("[revenuecat-rest] balance response shape: a funded customer lists a numeri
 test("[revenuecat-rest] adjustment response shape: Spend and Refund return the updated balance list", async () => {
   const before = await balanceOf(FUNDED);
   const key = freshKey();
+  let spent = false;
   try {
     const spend = await spendCredit(env, FUNDED, key);
     assertAuthorized("spendCredit", spend);
     assert.equal(spend.status, 200, JSON.stringify(spend.body));
+    spent = true;
     assert.equal(spend.ok, true);
     assert.equal(scanBalance(assertBalanceList(spend.body)), before - 1);
   } finally {
-    const refund = await refundCredit(env, FUNDED, key);
-    assertAuthorized("refundCredit", refund);
-    assert.equal(refund.status, 200, JSON.stringify(refund.body));
-    assert.equal(scanBalance(assertBalanceList(refund.body)), before);
+    // Only undo a Spend that happened; refunding a failed one would inflate the balance.
+    if (spent) {
+      const refund = await refundCredit(env, FUNDED, key);
+      assertAuthorized("refundCredit", refund);
+      assert.equal(refund.status, 200, JSON.stringify(refund.body));
+      assert.equal(scanBalance(assertBalanceList(refund.body)), before);
+    }
   }
 });
 
@@ -149,15 +154,17 @@ test("[revenuecat-rest] error contract: an unknown customer is a 404 resource_mi
 test("[revenuecat-rest] journey: Spend then Refund restores the balance, and retrying either with the same key changes nothing", async () => {
   const before = await balanceOf(FUNDED);
   const key = freshKey();
+  let spent = false;
   try {
     assert.equal((await spendCredit(env, FUNDED, key)).status, 200);
+    spent = true;
     assert.equal(await balanceOf(FUNDED), before - 1);
 
     const retriedSpend = await spendCredit(env, FUNDED, key);
     assert.equal(retriedSpend.status, 200);
     assert.equal(await balanceOf(FUNDED), before - 1, "an idempotent Spend retry must not charge twice");
   } finally {
-    assert.equal((await refundCredit(env, FUNDED, key)).status, 200);
+    if (spent) assert.equal((await refundCredit(env, FUNDED, key)).status, 200);
   }
   assert.equal(await balanceOf(FUNDED), before, "Refund restores the balance");
 

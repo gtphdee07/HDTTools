@@ -285,7 +285,7 @@ change nothing). Calls are free ledger adjustments, so `max_paid_calls` is 0
 and the shared paid-call counter does not apply. No registry package is watched:
 RevenueCat REST v2 has no client library this Worker uses, so freshness comes
 from boundary-file changes only. The Anthropic cases in `src/release/` are a
-X
+separate surface, still to be tagged. Android's chain includes this surface.
 
 Review of the existing suites against the four depths (#38): the RevenueCat cases
 in `src/release/scan.release.test.ts` (Spend/Refund journey, empty-balance 422)

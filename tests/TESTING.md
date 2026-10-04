@@ -40,11 +40,11 @@ this suite uses) fail (`test_live_provider_guard.py` checks it).
 
 | Run | Command | Tests |
 |---|---|---|
-| Minor only, one context | `uv run pytest -m "minor and core"` / `-m "minor and streamlit"` | 580 / 8 |
-| Minor only, whole app | `uv run pytest -m minor` | 588 |
-| One context | `uv run pytest -m core` / `-m streamlit` | 644 / 8 |
-| Major (everything but external) | `uv run pytest` | 652 |
-| Fast Minor | `uv run pytest -m "minor and not slow"` | 188 |
+| Minor only, one context | `uv run pytest -m "minor and core"` / `-m "minor and streamlit"` | 581 / 8 |
+| Minor only, whole app | `uv run pytest -m minor` | 589 |
+| One context | `uv run pytest -m core` / `-m streamlit` | 691 / 8 |
+| Major (everything but external) | `uv run pytest` | 699 |
+| Fast Minor | `uv run pytest -m "minor and not slow"` | 189 |
 | External (live, billed) | `uv run pytest -m external` | 3 |
 
 Counts are collected tests at 2026-10-04. `core` and `streamlit` do not overlap, but `test_ocr_output_key_contracts.py` (marked `core`) also

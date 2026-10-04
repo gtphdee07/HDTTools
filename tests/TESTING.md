@@ -10,13 +10,15 @@ root — `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_TESTING.md`,
 `ARCHIVE_EARLY_HISTORY.md`) for the narrative history of individual
 features/bugs each test file guards against.
 
-`uv run pytest -q` — 740 tests selected by default (736 passing, 4
-deliberate `xfail`s — see `test_real_photo_ocr_accuracy.py` below), 743
+`uv run pytest -q` — 751 tests selected by default (747 passing, 4
+deliberate `xfail`s — see `test_real_photo_ocr_accuracy.py` below), 754
 collected in all: the other 3 are the live `external` tests, which a
 default run deselects. No CI; everything runs manually, matching the root
 `TESTING.md`'s "session regression" model rather than a cadence. Counted
-2026-10-04 (issue #52, after adding `test_context_test_commands.py` and
-`test_android_file_command_slow.py`).
+2026-10-04 (issue #56, after adding the Streamlit disclaimer-gate test
+and tests for the recent-rig chooser, Start Another Check, the
+estimated-model skip button, a "pass" verdict, the estimated-figures
+notice, the OCR error branches, and the pin-weight slider).
 
 ## Markers and commands
 
@@ -41,11 +43,11 @@ this suite uses) fail (`test_live_provider_guard.py` checks it).
 
 | Run | Command | Tests |
 |---|---|---|
-| Minor only, one context | `uv run pytest -m "minor and core"` / `-m "minor and streamlit"` | 613 / 8 |
-| Minor only, whole app | `uv run pytest -m minor` | 621 |
-| One context | `uv run pytest -m core` / `-m streamlit` | 732 / 8 |
-| Major (everything but external) | `uv run pytest` | 740 |
-| Fast Minor | `uv run pytest -m "minor and not slow"` | 221 |
+| Minor only, one context | `uv run pytest -m "minor and core"` / `-m "minor and streamlit"` | 613 / 19 |
+| Minor only, whole app | `uv run pytest -m minor` | 632 |
+| One context | `uv run pytest -m core` / `-m streamlit` | 732 / 19 |
+| Major (everything but external) | `uv run pytest` | 751 |
+| Fast Minor | `uv run pytest -m "minor and not slow"` | 232 |
 | External (live, billed) | `uv run pytest -m external` | 3 |
 
 Counts are collected tests at 2026-10-04. `core` and `streamlit` do not overlap, but `test_ocr_output_key_contracts.py` (marked `core`) also
@@ -77,7 +79,11 @@ missed), `streamlit_app/fields.py` 100%, `streamlit_app/recent_rigs.py`
 79%. Kept as an explicit, separate command rather than a default
 `pytest -q` `addopts` — matching Android's Minor/Major suites, coverage
 reporting stays a deliberate, occasional check, not overhead on every
-routine run.
+routine run. (Issue #56's new Streamlit tests, 2026-10-04, raised measured
+`streamlit_app/app.py` to 99% — see `test_streamlit_app.py`'s row below.
+The 79%/80% figures just above are left as-is since they're the frozen
+`coverage_gate.py` floor, not a running total; re-baselining that floor
+to the current measured number is its own separate, not-yet-filed task.)
 
 **This 79% total is the enforced baseline `scripts/coverage_gate.py`
 checks Python against at release time** — see the root `TESTING.md`'s
@@ -130,7 +136,7 @@ whitelist applied, the command above exits clean (0 findings).
 | `test_scale_ticket_real_photo.py` | Function + **Interface** | Real Tesseract against a real `ExampleDocs/` file — the module-level `_parse_fields` case is Function (real input, one function); the `/api/extract/scale-ticket` case is Interface (the real endpoint, no mocks anywhere in the chain). |
 | `test_real_photo_ocr_accuracy.py` | Function, real-photo, parametrized | New 2026-08-24 (closes item #7's truck/trailer real-photo OCR gap too). Real Tesseract against every real `ExampleDocs/` photo in `ExampleDocs/golden_fields.json`'s `"photos"` — one parametrized case per field, so a future brand/format needs only a new JSON entry, no new test code. Found and fixed two real regex bugs (a stray OCR glyph breaking `truck_tag_ocr._kg_lb`'s label match; a comma `scale_ticket_ocr`'s `location_name` prefix didn't tolerate) — see `ARCHIVE_WEB_STREAMLIT.md`. Two remaining real OCR-accuracy limits (a digit-drop, a two-column layout jumble) are `xfail(strict=True)` with the real reason recorded on `golden_fields.json` — a value real OCR doesn't currently produce is never silently asserted or hidden. |
 | `test_readers_integration.py` | Module | Each `read_*_tag`/`read_scale_ticket`'s one public entry point, every I/O boundary (file picker, vision, review form, database) mocked. Explicit sequential composition (each step's output passed to the next as an argument) — no implicit shared state, so this is module-surface testing, not interaction testing, despite the docstring's "orchestration and control flow" framing. New 2026-09-09: also covers the new headless, pure `extract_truck_tag_fields`/`extract_trailer_tag_fields`/`extract_scale_ticket_fields` (`truck_tag.py`/`trailer_tag.py`/`scale_ticket.py`) directly — `extract_via_claude` mocked, no file picker/review form/database involved at all, proving the `TireSpec(**fields.pop(...))` unpacking these functions now share with `read_*_tag()` (which was refactored to call them, removing the old inline duplication). |
-| `test_streamlit_app.py` | **Interaction**, real-photo | The clearest interaction-test example in this repo. `_render_review` and `_render_standalone_ticket_section`/`_module_step` in `streamlit_app/app.py` share `st.session_state` implicitly, across reruns — these tests drive the real multi-step sequence and assert the net state, which is exactly what caught the real stale-widget-value bug a solitary test of either function could not have seen. `test_full_walkthrough_with_real_photos_reaches_a_real_verdict` (new 2026-08-24, parametrized over `golden_fields.json`'s `"rigs"`) is the first test anywhere in this repo to drive all four real ExampleDocs/ photos of one rig (truck tag, standalone ticket, trailer tag, full-rig scale ticket) through the real app to a real, hand-verified Results verdict — every prior "full walkthrough" (this file and `web/`'s Playwright suite both) only ever exercised the zero-image, skip-everything path. New 2026-09-09: `test_claude_backend_*_upload_calls_the_matching_extractor` cases (one per module) set `HDTTOOLS_OCR_BACKEND=claude` and mock the matching `extract_*_fields` function, proving `_extract_fields`'s dispatch and the `keep`-filtering against `fields.py`'s `FIELDS` still work identically on that branch; `test_claude_backend_never_shows_the_tesseract_raw_text_warning` is the regression case for the real edge found during design — the `app.py:169` "Tesseract returned no text" warning is keyed off `raw_text.strip()`, which is always empty under Claude (no raw OCR text exists on that path), so it now also checks `get_ocr_backend() == "tesseract"` before firing. |
+| `test_streamlit_app.py` | **Interaction**, real-photo | The clearest interaction-test example in this repo. `_render_review` and `_render_standalone_ticket_section`/`_module_step` in `streamlit_app/app.py` share `st.session_state` implicitly, across reruns — these tests drive the real multi-step sequence and assert the net state, which is exactly what caught the real stale-widget-value bug a solitary test of either function could not have seen. `test_full_walkthrough_with_real_photos_reaches_a_real_verdict` (new 2026-08-24, parametrized over `golden_fields.json`'s `"rigs"`) is the first test anywhere in this repo to drive all four real ExampleDocs/ photos of one rig (truck tag, standalone ticket, trailer tag, full-rig scale ticket) through the real app to a real, hand-verified Results verdict — every prior "full walkthrough" (this file and `web/`'s Playwright suite both) only ever exercised the zero-image, skip-everything path. New 2026-09-09: `test_claude_backend_*_upload_calls_the_matching_extractor` cases (one per module) set `HDTTOOLS_OCR_BACKEND=claude` and mock the matching `extract_*_fields` function, proving `_extract_fields`'s dispatch and the `keep`-filtering against `fields.py`'s `FIELDS` still work identically on that branch; `test_claude_backend_never_shows_the_tesseract_raw_text_warning` is the regression case for the real edge found during design — the `app.py:169` "Tesseract returned no text" warning is keyed off `raw_text.strip()`, which is always empty under Claude (no raw OCR text exists on that path), so it now also checks `get_ocr_backend() == "tesseract"` before firing. New 2026-10-04 (issue #56, closes the test-audit's worst-flagged gap): `test_results_is_hidden_until_the_disclaimer_is_acknowledged` is the first test to assert Results is actually gated on `disclaimer_acknowledged` rather than just click through it (confirmed it fails if the gate is removed), alongside a wording check, plus mocked-Claude-backend tests for the recent-rig chooser, `Start Another Check`'s reset (and what it deliberately leaves alone), the `Build Estimated Model` skip button and the predictive-estimate notice it makes reachable, the pin-weight slider feeding `compute_breakdown`'s axle-estimate branch, a "pass" verdict (the first anywhere in this repo), and the three OCR-failure/no-weight-found error branches for both the main and standalone-ticket uploads. Raised `streamlit_app/app.py` coverage from 81% to 99%. |
 | `test_review_form_coerce.py` | Function | `_coerce`'s type conversion + its `ValueError` on invalid input. |
 | `test_file_picker.py` | Function | `select_image_file`/`prompt_vehicle_name`'s cancel/blank-input error paths. |
 | `test_optional_tkinter_import.py` | Module, real subprocess | New 2026-09-18 — regression test for a real bug (see `ARCHIVE_WEB_STREAMLIT.md`): `file_picker.py`/`review_form.py`'s tkinter imports are now guarded (`try/except ImportError`), so `hdttools.scale_ticket`/`trailer_tag`/`truck_tag`/`file_picker`/`review_form` all import cleanly even where tkinter's system library isn't installed (e.g. Streamlit Community Cloud), and `select_image_file`/`review_and_edit` raise a clear `RuntimeError` instead of a raw `ImportError` if actually called there. Runs in a real subprocess with `sys.modules["tkinter"] = None` rather than monkeypatching this process's own already-imported modules, to avoid poisoning other tests' module state. |

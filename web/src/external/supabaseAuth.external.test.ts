@@ -1,33 +1,24 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { readConfig } from './config';
+import type { ExternalConfig } from './config';
 
 // External suite (ADR-0008): real calls to the live Supabase project, run only via
 // `npm run test:external`. The "[supabase-auth]" name tag is what the wrapper filters on.
 // Never creates a user and never triggers an email: sign-up and password reset are
 // exercised only with a malformed address, which the server rejects before sending anything.
 
-const REQUIRED = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY', 'WEB_EXTERNAL_TEST_EMAIL', 'WEB_EXTERNAL_TEST_PASSWORD'] as const;
-
-type Config = Record<(typeof REQUIRED)[number], string>;
-
-function readConfig(): Config {
-  const env = import.meta.env as Record<string, string | undefined>;
-  const missing = REQUIRED.filter((name) => !env[name]);
-  if (missing.length > 0) {
-    throw new Error(`External test credentials missing (set them in web/.env.local): ${missing.join(', ')}`);
-  }
-  return Object.fromEntries(REQUIRED.map((name) => [name, env[name]])) as Config;
-}
+const MALFORMED_EMAIL = 'not-an-email';
 
 const isJwt = (token: string) => /^[\w-]+\.[\w-]+\.[\w-]+$/.test(token);
 
 describe('[supabase-auth] Supabase Auth live contract', () => {
-  let cfg: Config;
+  let cfg: ExternalConfig;
   let supabase: SupabaseClient;
 
   beforeAll(() => {
-    cfg = readConfig();
+    cfg = readConfig(import.meta.env as Record<string, string | undefined>);
   });
 
   const freshClient = () =>
@@ -114,7 +105,7 @@ describe('[supabase-auth] Supabase Auth live contract', () => {
 
   it('rejects sign-up with a malformed email before creating a user or sending mail', async () => {
     const { data, error } = await freshClient().auth.signUp({
-      email: 'not-an-email',
+      email: MALFORMED_EMAIL,
       password: cfg.WEB_EXTERNAL_TEST_PASSWORD,
     });
 
@@ -125,7 +116,7 @@ describe('[supabase-auth] Supabase Auth live contract', () => {
   });
 
   it('rejects a password-reset request for a malformed email before sending mail', async () => {
-    const { error } = await freshClient().auth.resetPasswordForEmail('not-an-email');
+    const { error } = await freshClient().auth.resetPasswordForEmail(MALFORMED_EMAIL);
 
     expect(error?.status).toBe(400);
     expect(error?.code).toBe('validation_failed');

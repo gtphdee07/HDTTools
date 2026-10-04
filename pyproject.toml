@@ -38,7 +38,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = '-m "not external"'
+addopts = '--strict-markers -m "not external"'
 markers = [
     "external: live provider calls (billed); run on purpose with `pytest -m external`",
     "minor: function and interaction tests; unmarked means Major",

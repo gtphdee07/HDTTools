@@ -19,7 +19,7 @@ default run deselects. No CI; everything runs manually, matching the root
 
 ## Markers and commands
 
-Markers are declared in `pyproject.toml` (`--strict-markers` safe). Each
+Markers are declared in `pyproject.toml` (`--strict-markers` is on, so a typo'd marker errors). Each
 test file sets a module-level `pytestmark`; a file mixing categories marks
 its odd tests individually. No test files moved.
 
@@ -32,10 +32,11 @@ its odd tests individually. No test files moved.
 | `streamlit` | Tests that drive `streamlit_app/` (`test_streamlit_app.py`). |
 
 `addopts = -m "not external"`, so bare `pytest`, `scripts/coverage_gate.py`
-and `scripts/generate_dashboard.py` never reach a live provider, whatever
+and `scripts/generate_dashboard.py` never select the live tests, whatever
 `ANTHROPIC_API_KEY` is set to. The missing-key `skipif` stays as a second
 guard, and `tests/conftest.py` makes any unmarked test that reaches the
-real Anthropic client fail (`test_live_provider_guard.py` checks it).
+real Anthropic client (`anthropic.Anthropic`, the only provider client
+this suite uses) fail (`test_live_provider_guard.py` checks it).
 
 | Run | Command | Tests |
 |---|---|---|

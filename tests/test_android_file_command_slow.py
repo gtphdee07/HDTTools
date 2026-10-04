@@ -11,15 +11,14 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from tests.test_context_test_commands import ANDROID, ANDROID_CLASS, ANDROID_FILE_CMD, _gradle
+from tests._test_command_helpers import ANDROID, ANDROID_CLASS, gradle
 
 pytestmark = [pytest.mark.core, pytest.mark.slow]
 
 
 def test_android_file_command_runs_exactly_that_class():
-    assert ANDROID_FILE_CMD == f"./gradlew testDebugUnitTest --tests {ANDROID_CLASS}"
     # Clean first so a cached or earlier full run cannot stand in for this one.
-    _gradle("cleanTestDebugUnitTest", "testDebugUnitTest", "--tests", ANDROID_CLASS, timeout=900)
+    gradle("cleanTestDebugUnitTest", "testDebugUnitTest", "--tests", ANDROID_CLASS, timeout=900)
     results = sorted((ANDROID / "app/build/test-results/testDebugUnitTest").glob("TEST-*.xml"))
     assert [p.name for p in results] == [f"TEST-{ANDROID_CLASS}.xml"]
     suite = ET.parse(results[0]).getroot()

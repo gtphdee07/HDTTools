@@ -17,6 +17,9 @@ included, since `tsconfig.app.json`'s `include` is just `["src"]`.
 | One file | `npm test -- src/breakdown.test.ts` (run from `web/`) |
 | Whole context (offline) | `npm test` |
 
+The one-file command is a Vitest path filter, not an exact match — a less
+specific path can select more than one file.
+
 Neither reaches a live provider: `vite.config.ts` excludes
 `*.external.test.ts`, which only `npm run test:external` runs. A command
 check (`tests/test_context_test_commands.py`, #52) confirms both commands

@@ -55,14 +55,14 @@
       "dependency_files": ["android/gradle/libs.versions.toml", "android/app/build.gradle.kts", "android/build.gradle.kts"],
       "test_globs": ["android/app/src/test/*"],
       "device_covered": ["android/app/src/main/java/com/rigcheck/app/ui/*", "android/app/src/androidTest/*"],
-      "commands": {"minor": "android/gradlew -p android test", "major": "android/gradlew -p android test"},
+      "commands": {"minor": "android/gradlew -p android testDebugUnitTest", "major": "android/gradlew -p android testDebugUnitTest"},
       "device": "android/gradlew -p android connectedDebugAndroidTest",
       "file": "android/gradlew -p android testDebugUnitTest --tests {fqcn}",
       "test_for": ["{dir}/{stem}Test.kt"],
       "dir_rewrite": ["src/main/", "src/test/"],
       "context": "android/gradlew -p android testDebugUnitTest",
       "release": [
-        {"command": "android/gradlew -p android test", "reason": "JVM tests"},
+        {"command": "android/gradlew -p android testDebugUnitTest", "reason": "JVM tests"},
         {"command": "uv run pytest tests/test_context_test_commands.py tests/test_android_file_command_slow.py", "reason": "documented Android file command really runs one class (#52)"},
         {"command": "android/gradlew -p android connectedDebugAndroidTest", "reason": "instrumented tests (needs a device)"},
         {"command": "powershell android/test-weekly.ps1", "reason": "old weekly suite (live, paid)", "confirm": true}

@@ -27,6 +27,8 @@ from hdttools.scale_ticket_ocr import _parse_fields as _parse_scale_ticket
 from hdttools.trailer_tag_ocr import _parse_fields as _parse_trailer_tag
 from hdttools.truck_tag_ocr import _parse_fields as _parse_truck_tag
 
+pytestmark = [pytest.mark.core, pytest.mark.minor, pytest.mark.slow]
+
 _EXAMPLE_DOCS = Path(__file__).resolve().parent.parent / "ExampleDocs"
 _GOLDEN = json.loads((_EXAMPLE_DOCS / "golden_fields.json").read_text(encoding="utf-8"))
 

@@ -10,37 +10,51 @@ root — `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_TESTING.md`,
 `ARCHIVE_EARLY_HISTORY.md`) for the narrative history of individual
 features/bugs each test file guards against.
 
-`uv run pytest -q` — currently 156 tests (153 passing, 3 deliberate
-`xfail`s — see `test_real_photo_ocr_accuracy.py` below), no CI; everything
-runs manually, matching the root `TESTING.md`'s "session regression"
-model rather than a cadence.
+`uv run pytest -q` — 652 tests selected by default (648 passing, 4
+deliberate `xfail`s — see `test_real_photo_ocr_accuracy.py` below), 655
+collected in all: the other 3 are the live `external` tests, which a
+default run deselects. No CI; everything runs manually, matching the root
+`TESTING.md`'s "session regression" model rather than a cadence. Counted
+2026-10-04 (issue #50).
 
-## Event-based tiers
+## Markers and commands
 
-Per the root `TESTING.md`'s Minor/Major/External model (retired
-2026-08-24 — full narrative in `ARCHIVE_TESTING.md`): this suite has never tagged a fast subset,
-so today a full `uv run pytest -q` run covers both **Minor** and
-**Major** undifferentiated — there's no `[sanity]`-equivalent marker
-splitting them yet, documented honestly here rather than inventing a
-split that doesn't exist. Scoping which specific test files a given
-change actually calls for (Minor vs. Major, per the root file's
-regression-scoping rules) is still a per-session judgment call against
-the real diff, same as any other platform. **An External suite now
-exists** (new 2026-09-09, see `ARCHIVE_WEB_STREAMLIT.md`'s item #16 entry
-— corrects this section's
-former "N/A, nothing calls a real 3rd-party boundary" claim, true only
-until this work added one): `test_claude_vision_external.py`,
-`@pytest.mark.skipif`'d unless a real `ANTHROPIC_API_KEY` is set,
-mirroring `workers/scan-proxy`'s `src/release/*.test.ts` skip-if-
-missing-key pattern (that platform's only prior precedent for this
-class of test). **Real environment gotcha, confirmed 2026-09-09**: this
-dev machine has `ANTHROPIC_API_KEY` set ambiently (the same class of
-surprise `TDD_METHODOLOGY.md`'s scan-proxy section already flags for
-that platform) — a routine `uv run pytest -q` on this machine does **not**
-skip the External suite, it makes real billed calls. Check
-`echo $ANTHROPIC_API_KEY`/`$env:ANTHROPIC_API_KEY` (or just unset it for
-a routine run) before running the full suite if avoiding that cost
-matters for that session.
+Markers are declared in `pyproject.toml` (`--strict-markers` safe). Each
+test file sets a module-level `pytestmark`; a file mixing categories marks
+its odd tests individually. No test files moved.
+
+| Marker | Meaning |
+|---|---|
+| `external` | Live provider calls (billed). Only `test_claude_vision_external.py`. |
+| `minor` | Function and interaction tests. **Unmarked for `minor` means Major.** |
+| `slow` | Real-photo OCR and the combinatorial sweep. |
+| `core` | `src/hdttools` and the `scripts/` tooling tests (tooling rides with Core). |
+| `streamlit` | Tests that drive `streamlit_app/` (`test_streamlit_app.py`). |
+
+`addopts = -m "not external"`, so bare `pytest`, `scripts/coverage_gate.py`
+and `scripts/generate_dashboard.py` never reach a live provider, whatever
+`ANTHROPIC_API_KEY` is set to. The missing-key `skipif` stays as a second
+guard, and `tests/conftest.py` makes any unmarked test that reaches the
+real Anthropic client fail (`test_live_provider_guard.py` checks it).
+
+| Run | Command | Tests |
+|---|---|---|
+| Minor only, one context | `uv run pytest -m "minor and core"` / `-m "minor and streamlit"` | 580 / 8 |
+| Minor only, whole app | `uv run pytest -m minor` | 588 |
+| One context | `uv run pytest -m core` / `-m streamlit` | 644 / 8 |
+| Major (everything but external) | `uv run pytest` | 652 |
+| Fast Minor | `uv run pytest -m "minor and not slow"` | 188 |
+| External (live, billed) | `uv run pytest -m external` | 3 |
+
+Counts are collected tests at 2026-10-04. `core` and `streamlit` do not overlap, but `test_ocr_output_key_contracts.py` (marked `core`) also
+checks Streamlit's `fields.py`, and `test_live_provider_guard.py` is
+marked `core`. A **Major** run is everything except `external`; a Minor
+run is a subset of it. Live tests run on purpose only, after the owner
+confirms the cost (about $0.01-0.03 per call).
+
+The earlier real-environment gotcha — this dev machine has
+`ANTHROPIC_API_KEY` set ambiently, so a bare run used to make real billed
+calls (confirmed 2026-09-09) — is closed by the default `-m "not external"`.
 
 ## Coverage
 

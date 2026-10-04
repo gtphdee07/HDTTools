@@ -2,6 +2,8 @@ import pytest
 
 from hdttools import file_picker
 
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 
 class _FakeRoot:
     def __init__(self):

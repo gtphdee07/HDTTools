@@ -10,6 +10,8 @@ import pytest
 
 from hdttools.ocr_common import get_ocr_backend
 
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 
 def test_get_ocr_backend_defaults_to_tesseract_when_unset(monkeypatch):
     monkeypatch.delenv("HDTTOOLS_OCR_BACKEND", raising=False)

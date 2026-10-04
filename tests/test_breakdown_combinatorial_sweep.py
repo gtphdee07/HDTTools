@@ -24,6 +24,8 @@ import pytest
 
 from hdttools.api.breakdown import compute_breakdown, verdict_for
 
+pytestmark = [pytest.mark.core, pytest.mark.minor, pytest.mark.slow]
+
 _VALID_TONES = {"success", "warning", "insufficient"}
 _VALID_STATUSES = {"pass", "fail", "partial", "insufficient"}
 

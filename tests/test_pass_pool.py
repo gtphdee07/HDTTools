@@ -25,6 +25,8 @@ sys.path.insert(0, str(_SCRIPTS_DIR))  # pass_pool.py is a standalone module, li
 
 import pass_pool  # noqa: E402
 
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 
 def test_resolve_pass_pool_image_returns_a_registered_truck_photo():
     filename, photo = pass_pool.resolve_pass_pool_image("truck_tag", rng=random.Random(0))

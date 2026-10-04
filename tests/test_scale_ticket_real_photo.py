@@ -16,6 +16,10 @@ from hdttools.api import main
 from hdttools.ocr_common import ensure_tesseract_configured, ocr_text, open_image, preprocess_image
 from hdttools.scale_ticket_ocr import _parse_fields
 
+import pytest
+
+pytestmark = [pytest.mark.core, pytest.mark.slow]
+
 _PHOTO = Path(__file__).resolve().parent.parent / "ExampleDocs" / "CatScale-GooseOnly.jpg"
 
 

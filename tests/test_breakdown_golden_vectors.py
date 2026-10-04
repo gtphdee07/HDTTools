@@ -19,6 +19,8 @@ import pytest
 
 from hdttools.api.breakdown import compute_breakdown, verdict_for
 
+pytestmark = [pytest.mark.core]
+
 _VECTORS_PATH = Path(__file__).resolve().parent.parent / "test-vectors" / "breakdown_cases.json"
 _CASES = json.loads(_VECTORS_PATH.read_text(encoding="utf-8"))["cases"]
 

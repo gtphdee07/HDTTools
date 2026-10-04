@@ -18,6 +18,10 @@ from __future__ import annotations
 import subprocess
 import sys
 
+import pytest
+
+pytestmark = [pytest.mark.core]
+
 _SCRIPT = """
 import sys
 sys.modules["tkinter"] = None

@@ -2,6 +2,8 @@ import pytest
 
 from hdttools import vision_client
 
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 
 class _FakeToolUseBlock:
     type = "tool_use"

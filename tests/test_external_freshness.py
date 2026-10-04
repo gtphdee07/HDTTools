@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 _SCRIPT_PATH = Path(__file__).resolve().parent.parent / "scripts" / "external_freshness.py"
 _spec = importlib.util.spec_from_file_location("external_freshness", _SCRIPT_PATH)
 ef = importlib.util.module_from_spec(_spec)

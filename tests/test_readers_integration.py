@@ -5,6 +5,10 @@ save) mocked, so we're testing orchestration and control flow only."""
 from hdttools import file_picker, review_form, scale_ticket, scale_ticket_ocr, trailer_tag, truck_tag
 from hdttools.models import TireSpec
 
+import pytest
+
+pytestmark = [pytest.mark.core]
+
 _SCALE_FIELDS = {
     "ticket_number": "123",
     "weigh_number": None,

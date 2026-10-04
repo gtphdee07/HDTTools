@@ -56,6 +56,10 @@ from hdttools.models import TireSpec
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "streamlit_app"))
 from fields import FIELDS  # noqa: E402
 
+import pytest
+
+pytestmark = [pytest.mark.core]
+
 _MANUAL_ONLY_FIELDS = {
     "truck": {"standalone_weight_lb"},
     "trailer": {"axle_count"},

@@ -58,10 +58,13 @@ _EXTRACTORS = {
     "scale_ticket": scale_ticket.extract_scale_ticket_fields,
 }
 
-pytestmark = pytest.mark.skipif(
-    not os.getenv("ANTHROPIC_API_KEY"),
-    reason="requires a real ANTHROPIC_API_KEY",
-)
+pytestmark = [
+    pytest.mark.external,
+    pytest.mark.skipif(
+        not os.getenv("ANTHROPIC_API_KEY"),
+        reason="requires a real ANTHROPIC_API_KEY",
+    ),
+]
 
 
 @pytest.mark.parametrize("doc_type", sorted(_EXTRACTORS))

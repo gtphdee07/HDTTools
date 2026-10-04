@@ -5,6 +5,10 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 _SCRIPT_PATH = Path(__file__).resolve().parent.parent / "scripts" / "record_external_result.py"
 _spec = importlib.util.spec_from_file_location("record_external_result", _SCRIPT_PATH)
 record_external_result = importlib.util.module_from_spec(_spec)

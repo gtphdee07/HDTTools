@@ -26,6 +26,8 @@ sys.path.insert(0, str(_SCRIPTS_DIR))  # vehicle_discovery.py is a standalone mo
 
 import vehicle_discovery  # noqa: E402
 
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 
 def _scans_root(tmp_path):
     return tmp_path / "scans"

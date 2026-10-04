@@ -1,5 +1,9 @@
 from hdttools.models import ScaleTicketData, TireSpec, TrailerTagData, TruckTagData
 
+import pytest
+
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 
 def test_scale_ticket_defaults_to_none():
     record = ScaleTicketData(source_image="a.jpg")

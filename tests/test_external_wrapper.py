@@ -5,6 +5,10 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 _SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(_SCRIPTS))
 _spec = importlib.util.spec_from_file_location("external_wrapper", _SCRIPTS / "external_wrapper.py")

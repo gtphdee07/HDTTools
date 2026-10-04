@@ -14,6 +14,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import coverage_lib  # noqa: E402
 
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 
 def test_parse_android_report_computes_percent_from_missed_and_total():
     html = (

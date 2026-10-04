@@ -8,7 +8,12 @@ from hdttools.database import (
 )
 from hdttools.models import ScaleTicketData, TireSpec, TrailerTagData, TruckTagData
 
+import pytest
 
+pytestmark = [pytest.mark.core]
+
+
+@pytest.mark.minor
 def test_flatten_prefixes_nested_dataclass_fields():
     truck = TruckTagData(
         vehicle_name="Goose",

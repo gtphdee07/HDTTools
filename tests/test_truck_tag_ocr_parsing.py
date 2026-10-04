@@ -1,5 +1,9 @@
 from hdttools.truck_tag_ocr import _kg_lb, _parse_fields
 
+import pytest
+
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 # Transcribed OCR-like text from the real Ford-style label in
 # ExampleDocs/AddieTag.jpg (same photo as test_readers_integration.py's
 # _TRUCK_FIELDS, used here as ground truth for the GVWR/GAWR values).

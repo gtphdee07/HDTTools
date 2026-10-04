@@ -1,5 +1,9 @@
 from hdttools.trailer_tag_ocr import _parse_fields
 
+import pytest
+
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 # Transcribed OCR-like text from the real bilingual Brinkley RV label in
 # ExampleDocs/GooseTag.jpg (same photo as test_readers_integration.py's
 # _TRAILER_FIELDS, used here as ground truth for the GVWR/GAWR/UVW values).

@@ -38,6 +38,14 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = '-m "not external"'
+markers = [
+    "external: live provider calls (billed); run on purpose with `pytest -m external`",
+    "minor: function and interaction tests; unmarked means Major",
+    "slow: real-photo OCR and the combinatorial sweep",
+    "core: tests for src/hdttools and the scripts/ tooling",
+    "streamlit: tests that drive streamlit_app/",
+]
 
 [tool.coverage.run]
 source = ["src/hdttools", "streamlit_app"]

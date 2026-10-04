@@ -15,6 +15,10 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 _SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(_SCRIPTS_DIR))  # coverage_gate.py imports coverage_lib
 

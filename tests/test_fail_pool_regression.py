@@ -40,6 +40,8 @@ sys.path.insert(0, str(_SCRIPTS_DIR))  # fail_pool.py is a standalone module, li
 
 import fail_pool  # noqa: E402
 
+pytestmark = [pytest.mark.core, pytest.mark.slow]
+
 _PARSERS = {
     "truck_tag": _parse_truck_tag,
 }

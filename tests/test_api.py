@@ -14,6 +14,8 @@ from fastapi.testclient import TestClient
 from hdttools.api import main
 from hdttools.models import TireSpec
 
+pytestmark = [pytest.mark.core]
+
 _PIN_WEIGHT_PCT_CONTRACT = json.loads(
     (Path(__file__).resolve().parent.parent / "test-vectors" / "pin_weight_pct_contract.json").read_text()
 )

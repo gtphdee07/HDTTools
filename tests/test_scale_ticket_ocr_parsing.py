@@ -1,5 +1,9 @@
 from hdttools.scale_ticket_ocr import _find_num, _find_str, _parse_fields
 
+import pytest
+
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 
 def test_find_str_matches_and_returns_none_on_miss():
     assert _find_str(r"DATE:?\s*(\S+)", "DATE: 7-12-26") == "7-12-26"

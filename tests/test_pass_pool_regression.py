@@ -46,6 +46,8 @@ sys.path.insert(0, str(_SCRIPTS_DIR))  # pass_pool.py is a standalone module, li
 import pass_pool  # noqa: E402
 import vehicle_discovery  # noqa: E402
 
+pytestmark = [pytest.mark.core, pytest.mark.slow]
+
 _PARSERS = {
     "truck_tag": _parse_truck_tag,
     "trailer_tag": _parse_trailer_tag,

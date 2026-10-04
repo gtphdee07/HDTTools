@@ -31,6 +31,8 @@ _GOLDEN = json.loads((_EXAMPLE_DOCS / "golden_fields.json").read_text(encoding="
 sys.path.insert(0, str(_APP_PATH.parent))
 import recent_rigs  # noqa: E402
 
+pytestmark = [pytest.mark.streamlit, pytest.mark.minor]
+
 
 def _photo_bytes(filename: str) -> bytes:
     return (_EXAMPLE_DOCS / filename).read_bytes()
@@ -98,6 +100,7 @@ _STANDALONE_WEIGHT_LB = (
 )
 
 
+@pytest.mark.slow
 def test_scanning_a_real_tow_vehicle_only_photo_fills_in_standalone_weight():
     # Regression test for a real bug: scanning the ticket set
     # truck["standalone_weight_lb"] correctly, but the very next render of
@@ -130,6 +133,7 @@ def test_scanning_a_real_tow_vehicle_only_photo_fills_in_standalone_weight():
 _VERDICT_ELEMENTS = {"pass": "success", "fail": "error"}
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("rig", _GOLDEN["rigs"], ids=[rig["name"] for rig in _GOLDEN["rigs"]])
 def test_full_walkthrough_with_real_photos_reaches_a_real_verdict(rig):
     # The actual gap roadmap item #6 closes: every existing "full

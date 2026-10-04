@@ -15,6 +15,8 @@ import pytest
 
 from hdttools.review_form import _leaf_fields, _rebuild_from_values
 
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 
 @dataclasses.dataclass
 class TireSpecLike:

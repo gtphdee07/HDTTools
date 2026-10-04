@@ -15,6 +15,10 @@ reports "Safe to Tow".
 
 from hdttools.api.breakdown import compute_breakdown, verdict_for
 
+import pytest
+
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 _TRUCK = {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500}
 _TRAILER = {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000}
 _SCALE = {

@@ -10,6 +10,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import dashboard_lib  # noqa: E402
 
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 
 # --- color_for_percent ---
 

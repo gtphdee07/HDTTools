@@ -2,6 +2,8 @@ import pytest
 
 from hdttools.review_form import _coerce
 
+pytestmark = [pytest.mark.core, pytest.mark.minor]
+
 
 @pytest.mark.parametrize(
     "raw, type_hint, expected",

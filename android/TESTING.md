@@ -12,6 +12,19 @@ sections for how this maps to that file's regression-scoping rules —
 the commands below are unchanged from before the rename, only the tier
 names changed.
 
+## Running tests
+
+| Level | Command |
+|---|---|
+| One file | `./gradlew testDebugUnitTest --tests com.rigcheck.app.domain.BreakdownTest` (run from `android/`) |
+| Whole context (JVM, no device) | `./gradlew testDebugUnitTest` |
+
+Both run the JVM unit tests only; no emulator or device is needed. Device
+tests (`connectedDebugAndroidTest`) and the weekly External suite are never
+part of either command. A command check
+(`tests/test_context_test_commands.py`, #52) reads Gradle's dry-run task
+graph and confirms no device task is in it.
+
 ## Categories
 
 | Category | Status | Trigger | Network calls | Command |

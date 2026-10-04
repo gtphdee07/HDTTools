@@ -10,6 +10,18 @@ suite this package has ever had. See `ARCHIVE_TESTING.md` and
 `npm run build` (`tsc -b && vite build`) typechecks `src/**`, test files
 included, since `tsconfig.app.json`'s `include` is just `["src"]`.
 
+## Running tests
+
+| Level | Command |
+|---|---|
+| One file | `npm test -- src/breakdown.test.ts` (run from `web/`) |
+| Whole context (offline) | `npm test` |
+
+Neither reaches a live provider: `vite.config.ts` excludes
+`*.external.test.ts`, which only `npm run test:external` runs. A command
+check (`tests/test_context_test_commands.py`, #52) confirms both commands
+select the intended files and never an external one.
+
 ## Event-based tiers
 
 Per the root `TESTING.md`'s Minor/Major/External model (retired

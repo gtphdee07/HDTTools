@@ -12,6 +12,18 @@ Sanity/Daily/Weekly/Release tiers as a second axis alongside Minor/
 Major — see the root `TESTING.md`'s "Event-based tiers, not
 time-cadence tiers" section for why that's now one axis, not two.
 
+## Running tests
+
+| Level | Command |
+|---|---|
+| One file | `node --test src/docTypes.test.ts` (run from `workers/scan-proxy/`) |
+| Whole context (offline) | `npm test` |
+
+`npm test` runs `src/*.test.ts` only, so it never picks up `src/weekly/`,
+`src/release/` or `src/external/` (live, paid) and has no `pretest` hook
+that deploys. A command check (`tests/test_context_test_commands.py`, #52)
+confirms this.
+
 ## Categories
 
 | Category | Status | Trigger | Network calls | Command |

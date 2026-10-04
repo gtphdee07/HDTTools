@@ -19,6 +19,7 @@ names changed.
 | One file | `./gradlew testDebugUnitTest --tests com.rigcheck.app.domain.BreakdownTest` (run from `android/`) |
 | Whole context (JVM, no device) | `./gradlew testDebugUnitTest` |
 
+From PowerShell use `.\gradlew` (or `gradlew.bat`) instead of `./gradlew`.
 Both run the JVM unit tests only; no emulator or device is needed. Device
 tests (`connectedDebugAndroidTest`) and the weekly External suite are never
 part of either command. A command check

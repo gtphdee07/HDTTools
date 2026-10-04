@@ -19,10 +19,23 @@ undifferentiated — documented honestly here rather than inventing a
 split that doesn't exist. Scoping which specific test files a given
 change actually calls for (Minor vs. Major, per the root file's
 regression-scoping rules) is still a per-session judgment call against
-the real diff, same as any other platform. **No External suite exists
-here today** — every network call (`./api`'s `extractTruckTag`/etc.) is
-mocked in this suite; nothing here calls a real 3rd-party boundary
-directly, so that category is N/A for this platform, not a gap.
+the real diff, same as any other platform. `npm test` runs no live
+call: every network call (`./api`'s `extractTruckTag`/etc.) is mocked, and
+`vite.config.ts` excludes `*.external.test.ts`.
+
+## External suite (ADR-0008)
+
+`npm run test:external` runs `src/external/*.external.test.ts` against the
+live providers via `vitest.external.config.ts`. Today that is one surface,
+`supabase-auth` (tests tagged `[supabase-auth]` in their name), using the
+test user from `scripts/wizard_web_external_test_user.sh`; credentials come
+from the gitignored `web/.env.local` and a missing one fails the run. It
+never creates a user or sends mail. Normally run through `.	est-external.ps1`,
+which runs only the surfaces `scripts/external_freshness.py` reports stale
+and records each result with `scripts/record_external_result.py`
+(`-Skip` records `skipped`, which leaves the surface stale). Add a surface
+by adding `scripts/external_manifest/surfaces/<name>.json` and a
+`<name>.external.test.ts` whose describe title carries `[<name>]`.
 
 ## Coverage
 

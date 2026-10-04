@@ -59,7 +59,18 @@ if ($Skip) {
     exit 0
 }
 
-$env:EXTERNAL_SURFACES = $stale -join ','
+# Vitest exits 0 when the tag filter matches nothing, which would record a false pass.
+$untested = @($stale | Where-Object {
+    -not (Select-String -Path (Join-Path $PSScriptRoot 'src\external\*.external.test.ts') -SimpleMatch "[$_]" -Quiet)
+})
+foreach ($surface in $untested) {
+    Write-Output "No external tests tagged [$surface]; recording fail."
+    Record $surface 'fail'
+}
+$runnable = @($stale | Where-Object { $untested -notcontains $_ })
+if ($runnable.Count -eq 0) { exit 1 }
+
+$env:EXTERNAL_SURFACES = $runnable -join ','
 Push-Location $PSScriptRoot
 try {
     & npm run test:external
@@ -70,5 +81,6 @@ try {
 }
 
 $outcome = if ($testExitCode -eq 0) { 'pass' } else { 'fail' }
-foreach ($surface in $stale) { Record $surface $outcome }
+foreach ($surface in $runnable) { Record $surface $outcome }
+if ($untested.Count -gt 0 -and $testExitCode -eq 0) { exit 1 }
 exit $testExitCode

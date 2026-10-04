@@ -10,5 +10,16 @@
       "passed": true,
       "timestamp": "2026-08-24T18:29:35Z"
     }
+  },
+  "surfaces": {
+    "supabase-auth": {
+      "commit": "a5830eaa423a851c2df6ba2120eac0890924d5cb",
+      "passed": true,
+      "result": "pass",
+      "timestamp": "2026-10-04T04:28:05Z",
+      "versions": {
+        "@supabase/supabase-js": "2.117.2"
+      }
+    }
   }
 }

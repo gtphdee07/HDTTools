@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => ({
     environment: 'node',
     include: ['src/**/*.external.test.ts'],
     env: loadEnv(mode, process.cwd(), ['VITE_SUPABASE_', 'WEB_EXTERNAL_']),
-    testNamePattern: surfaces.length > 0 ? `\[(${surfaces.join('|')})\]` : undefined,
+    testNamePattern: surfaces.length > 0 ? new RegExp(String.raw`\[(${surfaces.join('|')})\]`) : undefined,
     testTimeout: 30_000,
     hookTimeout: 30_000,
   },

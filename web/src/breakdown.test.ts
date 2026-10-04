@@ -30,27 +30,36 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// Rows Android words differently on purpose (see Breakdown.kt); only these may carry "note_android".
+const ANDROID_NOTE_ROWS = new Set(['Tow Vehicle Total (GVWR)', 'Combined Rig Weight']);
+
+type GoldenCase = (typeof GOLDEN.cases)[number];
+
+function checkCase(testCase: GoldenCase): void {
+  expect(unsupportedCapabilities(testCase.requires), `${testCase.name}: unknown capability`).toEqual([]);
+  const items = computeBreakdown(testCase.truck, testCase.trailer, testCase.scale, testCase.pin_weight_pct);
+  const verdict = verdictFor(items);
+  expect(verdict.status).toBe(testCase.expected.verdict_status);
+  expect(verdict.headline, `${testCase.name}: headline`).toBe(testCase.expected.headline);
+  expect(verdict.subline, `${testCase.name}: subline`).toBe(testCase.expected.subline);
+
+  const byLabel = new Map(items.map((item) => [item.label, item]));
+  for (const expected of testCase.expected.items) {
+    const actual = byLabel.get(expected.label);
+    expect(actual, `${testCase.name}: missing row ${expected.label}`).toBeDefined();
+    expect(actual!.tone, `${expected.label}: tone`).toBe(expected.tone);
+    expect(parseLb(actual!.actualLabel), `${expected.label}: actual_lb`).toBe(expected.actual_lb);
+    expect(parseLb(actual!.limitLabel), `${expected.label}: limit_lb`).toBe(expected.limit_lb);
+    expect(actual!.pct, `${expected.label}: pct`).toBe(expected.pct);
+    expect(actual!.estimated, `${expected.label}: estimated`).toBe(expected.estimated);
+    expect(actual!.badgeLabel, `${expected.label}: badge`).toBe(expected.badge);
+    expect(actual!.note, `${expected.label}: note`).toBe(expected.note);
+  }
+}
+
 describe('golden vectors', () => {
   it.each(GOLDEN.cases.map((c) => [c.name, c] as const))('%s', (_name, testCase) => {
-    expect(unsupportedCapabilities(testCase.requires), `${testCase.name}: unknown capability`).toEqual([]);
-    const items = computeBreakdown(testCase.truck, testCase.trailer, testCase.scale, testCase.pin_weight_pct);
-    const verdict = verdictFor(items);
-    expect(verdict.status).toBe(testCase.expected.verdict_status);
-    expect(verdict.headline, `${testCase.name}: headline`).toBe(testCase.expected.headline);
-    expect(verdict.subline, `${testCase.name}: subline`).toBe(testCase.expected.subline);
-
-    const byLabel = new Map(items.map((item) => [item.label, item]));
-    for (const expected of testCase.expected.items) {
-      const actual = byLabel.get(expected.label);
-      expect(actual, `${testCase.name}: missing row ${expected.label}`).toBeDefined();
-      expect(actual!.tone, `${expected.label}: tone`).toBe(expected.tone);
-      expect(parseLb(actual!.actualLabel), `${expected.label}: actual_lb`).toBe(expected.actual_lb);
-      expect(parseLb(actual!.limitLabel), `${expected.label}: limit_lb`).toBe(expected.limit_lb);
-      expect(actual!.pct, `${expected.label}: pct`).toBe(expected.pct);
-      expect(actual!.estimated, `${expected.label}: estimated`).toBe(expected.estimated);
-      expect(actual!.badgeLabel, `${expected.label}: badge`).toBe(expected.badge);
-      expect(actual!.note, `${expected.label}: note`).toBe(expected.note);
-    }
+    checkCase(testCase);
   });
 
   it('has an over-limit case for every breakdown row', () => {
@@ -59,6 +68,20 @@ describe('golden vectors', () => {
     );
     const allRows = computeBreakdown({}, {}, {}, 0.2).map((item) => item.label);
     expect(allRows.filter((label) => !overLimitRows.has(label))).toEqual([]);
+  });
+
+  it('fails the run for a fixture case that needs an unknown capability', () => {
+    const badCase = { ...GOLDEN.cases[0], requires: ['no_such_capability'] };
+    expect(() => checkCase(badCase)).toThrow(/unknown capability/);
+  });
+
+  it('only puts note_android on the rows Android words differently', () => {
+    const stray = GOLDEN.cases.flatMap((c) =>
+      c.expected.items
+        .filter((i) => 'note_android' in i && !ANDROID_NOTE_ROWS.has(i.label))
+        .map((i) => `${c.name}/${i.label}`),
+    );
+    expect(stray).toEqual([]);
   });
 
   it('fails, not skips, a case that needs an unknown capability', () => {

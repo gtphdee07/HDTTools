@@ -177,16 +177,18 @@ implementation.
 
 **Built 2026-08-21** for `compute_breakdown`/`verdict_for`:
 `test-vectors/breakdown_cases.json`, consumed by
-`tests/test_breakdown_golden_vectors.py` (Python) and
-`android/.../domain/BreakdownGoldenVectorTest.kt` (Kotlin). Each case
-declares a `requires` list of capabilities it depends on; Kotlin's runner
-skips (not silently passes) any case needing something its current port
-doesn't have. First run that day found real drift (4 of 9 cases
+`tests/test_breakdown_golden_vectors.py` (Python),
+`android/.../domain/BreakdownGoldenVectorTest.kt` (Kotlin) and
+`web/src/breakdown.test.ts` (TypeScript). Each case declares a `requires`
+list of capabilities it depends on; every runner FAILS (never skips) a case
+naming a capability it doesn't know (#55), and asserts each row's note and
+badge plus the verdict headline and subline, not only the figures. Every
+Breakdown row has an over-limit case (18 cases today). First run that day found real drift (4 of 9 cases
 supported, including a live bug — see `ARCHIVE_TESTING.md` at the repo
 root for that writeup);
 by the end of the same day's follow-up work, the Kotlin port had gained
-every missing capability and this file reports **10 of 10 cases fully
-supported** — full parity with Python.
+every missing capability, so all cases run for real in every runner —
+full parity with Python.
 
 **Also built 2026-08-21**, a narrower fixture for a single risky
 convention rather than full input/output cases:

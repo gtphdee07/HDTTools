@@ -7,7 +7,9 @@ import com.rigcheck.app.ui.format.badgeLabel
 import java.io.File
 import kotlin.math.roundToInt
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
@@ -16,6 +18,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 // Runs the shared golden vectors (test-vectors/breakdown_cases.json) - the
@@ -93,43 +96,66 @@ private fun scaleFrom(case: JsonObject): ScaleTicket {
 private fun item(items: List<BreakdownItem>, label: String): BreakdownItem =
     items.first { it.label == label }
 
+// Rows Android words differently on purpose (see Breakdown.kt); only these may carry "note_android".
+private val ANDROID_NOTE_ROWS = setOf("Tow Vehicle Total (GVWR)", "Combined Rig Weight")
+
+private fun checkCase(case: JsonObject) {
+        val name = case.string("name")
+        val requires = case["requires"]!!.jsonArray.map { it.jsonPrimitive.content }
+        assertEquals("$name: unknown capability", emptyList<String>(), unsupportedCapabilities(requires))
+
+        val pinWeightPct = case.double("pin_weight_pct") ?: DEFAULT_PIN_WEIGHT_PCT
+        val items = computeBreakdown(truckFrom(case), trailerFrom(case), scaleFrom(case), pinWeightPct)
+        val expected = case["expected"]!!.jsonObject
+        val verdict = verdictFor(items)
+        assertEquals("$name: verdict status", expected.string("verdict_status"), verdict.status.name.lowercase())
+        assertEquals("$name: headline", expected.string("headline"), verdict.headline)
+        assertEquals("$name: subline", expected.string("subline"), verdict.subline)
+
+        for (expectedItemElement in expected["items"]!!.jsonArray) {
+            val expectedItem = expectedItemElement.jsonObject
+            val label = expectedItem.string("label")
+            val row = item(items, label)
+            assertEquals("$name/$label: tone", expectedItem.string("tone"), row.tone.name.lowercase())
+            assertEquals("$name/$label: actual_lb", expectedItem.int("actual_lb"), row.actual.roundToInt())
+            assertEquals("$name/$label: limit_lb", expectedItem.int("limit_lb"), row.limit.roundToInt())
+            assertEquals("$name/$label: pct", expectedItem.int("pct"), row.pct)
+            assertEquals("$name/$label: estimated", expectedItem["estimated"]!!.jsonPrimitive.boolean, row.estimated)
+            // Android has no "Not enough info" badge text (the UI renders insufficient rows
+            // without a badge), so the badge is compared for checked rows only.
+            if (row.tone != Tone.INSUFFICIENT) {
+                assertEquals("$name/$label: badge", expectedItem.string("badge"), badgeLabel(row))
+            }
+            // "note_android" overrides "note" where Android deliberately words a row differently
+            // (see towVehicleTotalNote/combinedRigWeightNote in Breakdown.kt); null means no note.
+            val noteKey = if ("note_android" in expectedItem) "note_android" else "note"
+            assertEquals("$name/$label: note", expectedItem[noteKey]!!.jsonPrimitive.contentOrNull, row.note)
+        }
+}
+
 class BreakdownGoldenVectorTest {
 
     @Test
     fun `golden vectors - every case matches the fixture`() {
-        for (case in loadCases()) {
-            val name = case.string("name")
-            val requires = case["requires"]!!.jsonArray.map { it.jsonPrimitive.content }
-            assertEquals("$name: unknown capability", emptyList<String>(), unsupportedCapabilities(requires))
+        loadCases().forEach(::checkCase)
+    }
 
-            val pinWeightPct = case.double("pin_weight_pct") ?: DEFAULT_PIN_WEIGHT_PCT
-            val items = computeBreakdown(truckFrom(case), trailerFrom(case), scaleFrom(case), pinWeightPct)
-            val expected = case["expected"]!!.jsonObject
-            val verdict = verdictFor(items)
-            assertEquals("$name: verdict status", expected.string("verdict_status"), verdict.status.name.lowercase())
-            assertEquals("$name: headline", expected.string("headline"), verdict.headline)
-            assertEquals("$name: subline", expected.string("subline"), verdict.subline)
+    @Test
+    fun `golden vectors - a fixture case with an unknown capability fails the run`() {
+        val bad = JsonObject(loadCases().first() + ("requires" to JsonArray(listOf(JsonPrimitive("no_such_capability")))))
+        val failure = runCatching { checkCase(bad) }.exceptionOrNull()
+        assertTrue("expected an AssertionError", failure is AssertionError)
+        assertTrue(failure!!.message!!.contains("unknown capability"))
+    }
 
-            for (expectedItemElement in expected["items"]!!.jsonArray) {
-                val expectedItem = expectedItemElement.jsonObject
-                val label = expectedItem.string("label")
-                val row = item(items, label)
-                assertEquals("$name/$label: tone", expectedItem.string("tone"), row.tone.name.lowercase())
-                assertEquals("$name/$label: actual_lb", expectedItem.int("actual_lb"), row.actual.roundToInt())
-                assertEquals("$name/$label: limit_lb", expectedItem.int("limit_lb"), row.limit.roundToInt())
-                assertEquals("$name/$label: pct", expectedItem.int("pct"), row.pct)
-                assertEquals("$name/$label: estimated", expectedItem["estimated"]!!.jsonPrimitive.boolean, row.estimated)
-                // Android has no "Not enough info" badge text (the UI renders insufficient rows
-                // without a badge), so the badge is compared for checked rows only.
-                if (row.tone != Tone.INSUFFICIENT) {
-                    assertEquals("$name/$label: badge", expectedItem.string("badge"), badgeLabel(row))
-                }
-                // "note_android" overrides "note" where Android deliberately words a row differently
-                // (see towVehicleTotalNote/combinedRigWeightNote in Breakdown.kt); null means no note.
-                val noteKey = if ("note_android" in expectedItem) "note_android" else "note"
-                assertEquals("$name/$label: note", expectedItem[noteKey]!!.jsonPrimitive.contentOrNull, row.note)
-            }
+    @Test
+    fun `golden vectors - note_android only appears on the rows Android words differently`() {
+        val stray = loadCases().flatMap { case ->
+            case["expected"]!!.jsonObject["items"]!!.jsonArray.map { it.jsonObject }
+                .filter { "note_android" in it && it.string("label") !in ANDROID_NOTE_ROWS }
+                .map { "${case.string("name")}/${it.string("label")}" }
         }
+        assertEquals(emptyList<String>(), stray)
     }
 
     @Test

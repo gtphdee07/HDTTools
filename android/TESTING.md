@@ -282,9 +282,10 @@ root `TESTING.md`'s "Dashboard" section.
 - `BreakdownGoldenVectorTest.kt` — runs the shared
   `test-vectors/breakdown_cases.json` cases against this port, the same
   cases `tests/test_breakdown_golden_vectors.py` runs against Python (the fixture,
-  not Python, is the source of truth). Cases needing a capability this port doesn't have yet
-  are skipped, not silently passed — the test's own console output
-  reports the count every run. See the root `TESTING.md`'s cross-platform
+  not Python, is the source of truth). A case needing a capability this port doesn't
+  have fails (it is never skipped), and notes, badges, headline and subline are
+  asserted too (`note_android` overrides `note` for the two rows Android words
+  differently; the badge is compared for checked rows only). See the root `TESTING.md`'s cross-platform
   section and `ARCHIVE_TESTING.md` (repo root) for what running this the
   first time found (several generations of drift, including a live bug
   this exact mechanism proved and then verified fixed).

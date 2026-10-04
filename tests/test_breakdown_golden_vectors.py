@@ -50,8 +50,16 @@ def _parse_lb(label: str) -> int:
     return int(match.group(1).replace(",", ""))
 
 
+# Rows Android words differently on purpose (see Breakdown.kt); only these may carry "note_android".
+_ANDROID_NOTE_ROWS = {"Tow Vehicle Total (GVWR)", "Combined Rig Weight"}
+
+
 @pytest.mark.parametrize("case", _CASES, ids=[c["name"] for c in _CASES])
 def test_golden_vector(case: dict):
+    _check_case(case)
+
+
+def _check_case(case: dict):
     unknown = _unsupported(case)
     assert not unknown, f"{case['name']}: unknown capability {sorted(unknown)} - add it to the runner or fix the fixture"
 
@@ -94,3 +102,19 @@ def test_every_breakdown_row_has_an_over_limit_case():
 def test_unknown_capability_fails_instead_of_skipping():
     assert _unsupported({"requires": ["no_such_capability"]}) == {"no_such_capability"}
     assert _unsupported({"requires": ["insufficient_tone"]}) == set()
+
+
+def test_a_fixture_case_with_an_unknown_capability_fails_the_run():
+    bad_case = {**_CASES[0], "requires": ["no_such_capability"]}
+    with pytest.raises(AssertionError, match="unknown capability"):
+        _check_case(bad_case)
+
+
+def test_note_android_only_appears_on_the_rows_android_words_differently():
+    stray = {
+        f"{case['name']}/{item['label']}"
+        for case in _CASES
+        for item in case["expected"]["items"]
+        if "note_android" in item and item["label"] not in _ANDROID_NOTE_ROWS
+    }
+    assert stray == set()

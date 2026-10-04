@@ -134,12 +134,15 @@ class PlatformRow(NamedTuple):
     external: tuple[Color, str] | None  # None = never recorded, or N/A
     coverage: tuple[float, Color] | None  # None = no data (e.g. report failed)
     coverage_gated: bool = True  # False = real number shown, but report-only
+    surfaces: tuple[Color, str] | None = None  # per-surface External freshness; None = no surfaces
 
 
-_CATEGORY_LABELS = ("Minor", "Major", "External", "Coverage")
+_CATEGORY_LABELS = ("Minor", "Major", "External", "Surfaces", "Coverage")
 
 
-def render_dashboard_svg(rows: list[PlatformRow], generated: str) -> str:
+def render_dashboard_svg(
+    rows: list[PlatformRow], generated: str, results_note: str = ""
+) -> str:
     """Renders a small grid: a "Graphic generated" meta line, one row per
     platform, one column per category plus coverage. Pure string
     templating - no image library dependency. `generated` is a caller-
@@ -156,7 +159,7 @@ def render_dashboard_svg(rows: list[PlatformRow], generated: str) -> str:
     # centered-with-a-fixed-offset rendering did (real bug, found from a
     # screenshot of scan-proxy's row: an earlier, unbounded-length raw-date
     # version of this label ran straight into "100.0%").
-    col_widths = [130, 80, 80, 170, 160]
+    col_widths = [130, 80, 80, 170, 150, 160]
     width = sum(col_widths)
     height = meta_height + header_height + row_height * len(rows)
 
@@ -169,7 +172,7 @@ def render_dashboard_svg(rows: list[PlatformRow], generated: str) -> str:
         f'font-size="13">',
         f'<rect x="0" y="0" width="{width}" height="{height}" fill="#0d1117"/>',
         f'<text x="8" y="{meta_height - 7}" fill="#8b949e" font-size="11">'
-        f"Graphic generated: {generated}</text>",
+        f"Graphic generated: {generated}{results_note}</text>",
     ]
 
     headers = ["Platform", *_CATEGORY_LABELS]
@@ -185,7 +188,7 @@ def render_dashboard_svg(rows: list[PlatformRow], generated: str) -> str:
             f'<text x="{cell_x(0) + 8}" y="{y + row_height // 2 + 5}" '
             f'fill="#c9d1d9">{row.name}</text>'
         )
-        cells = [row.minor, row.major, row.external]
+        cells = [row.minor, row.major, row.external, row.surfaces]
         for col, cell in enumerate(cells, start=1):
             left = cell_x(col) + 8
             cy = y + row_height // 2
@@ -201,7 +204,7 @@ def render_dashboard_svg(rows: list[PlatformRow], generated: str) -> str:
             svg_parts.append(
                 f'<text x="{left + 21}" y="{cy + 5}" fill="#c9d1d9">{label}</text>'
             )
-        coverage_col = 4
+        coverage_col = 5
         cx = cell_x(coverage_col) + 8
         cy = y + row_height // 2
         if row.coverage is None:
@@ -218,3 +221,82 @@ def render_dashboard_svg(rows: list[PlatformRow], generated: str) -> str:
 
     svg_parts.append("</svg>")
     return "\n".join(svg_parts)
+
+
+def format_surface_cell(states: list[str]) -> tuple[Color, str] | None:
+    """One platform's External-surface cell from its surfaces' freshness
+    states ("fresh" | "stale" | "planned", as external_freshness reports
+    them). Only active surfaces (fresh or stale) count toward the score;
+    planned ones are shown as a count so what is not covered stays
+    visible (ADR-0008). None means the platform has no surfaces at all.
+    """
+    active = [s for s in states if s != "planned"]
+    planned = len(states) - len(active)
+    if not states:
+        return None
+    if not active:
+        return "red", f"0/0 ({planned} planned)"
+    fresh = sum(1 for s in active if s == "fresh")
+    color = color_for_percent(fresh / len(active) * 100)
+    suffix = f" ({planned} planned)" if planned else ""
+    return color, f"{fresh}/{len(active)}{suffix}"
+
+
+def python_percent_for(report: dict, prefix: str) -> float | None:
+    """Statement coverage of the files under `prefix` from pytest-cov's
+    --cov-report=json output (its `files` map holds per-file summaries).
+    None when no measured file sits under the prefix."""
+    covered = statements = 0
+    for path, entry in report.get("files", {}).items():
+        if path.replace("\\", "/").startswith(prefix):
+            covered += entry["summary"]["covered_lines"]
+            statements += entry["summary"]["num_statements"]
+    return None if statements == 0 else covered / statements * 100
+
+
+def snapshot_entry(
+    minor: tuple[Color, str] | None,
+    major: tuple[Color, str] | None,
+    coverage: tuple[float, Color] | None,
+    coverage_gated: bool,
+) -> dict:
+    """JSON-able measured results for one platform (the part of a row that
+    comes from running suites, as opposed to the External columns, which
+    are always read live)."""
+    return {
+        "minor": list(minor) if minor else None,
+        "major": list(major) if major else None,
+        "coverage": list(coverage) if coverage else None,
+        "coverage_gated": coverage_gated,
+    }
+
+
+def row_from_snapshot(
+    name: str,
+    entry: dict | None,
+    external: tuple[Color, str] | None,
+    surfaces: tuple[Color, str] | None,
+) -> PlatformRow:
+    """A dashboard row from a stored snapshot entry plus live External
+    cells. A platform missing from the snapshot renders n/a."""
+    entry = entry or {}
+    pair = lambda v: tuple(v) if v else None  # noqa: E731
+    return PlatformRow(
+        name=name,
+        minor=pair(entry.get("minor")),
+        major=pair(entry.get("major")),
+        external=external,
+        coverage=pair(entry.get("coverage")),
+        coverage_gated=entry.get("coverage_gated", True),
+        surfaces=surfaces,
+    )
+
+
+def results_note(snapshot: dict | None) -> str:
+    """Header suffix saying when the shown test results were measured, so a
+    graphic built from a cached snapshot never looks fresher than it is."""
+    if not snapshot or not snapshot.get("timestamp"):
+        return " | tests: no results recorded"
+    day = snapshot["timestamp"][:10]
+    commit = (snapshot.get("commit") or "")[:7]
+    return f" | tests run: {day}" + (f" @ {commit}" if commit else "")

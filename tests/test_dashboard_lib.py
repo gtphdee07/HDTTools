@@ -270,3 +270,66 @@ def test_render_dashboard_svg_fits_a_long_external_label_without_overlapping_cov
     # per-character width estimate must still land left of where the
     # coverage text starts.
     assert external_x + len(external_text.text) * 8 < coverage_x
+
+
+# --- surfaces column, python per-context coverage, snapshot rows (#49) ---
+
+
+def test_format_surface_cell_all_fresh_is_blue():
+    assert dashboard_lib.format_surface_cell(["fresh", "fresh"]) == ("blue", "2/2")
+
+
+def test_format_surface_cell_counts_only_active_surfaces_in_the_score():
+    color, label = dashboard_lib.format_surface_cell(["fresh", "stale", "planned"])
+    assert (color, label) == ("red", "1/2 (1 planned)")
+
+
+def test_format_surface_cell_only_planned_surfaces_is_red_and_says_so():
+    assert dashboard_lib.format_surface_cell(["planned", "planned"]) == ("red", "0/0 (2 planned)")
+
+
+def test_format_surface_cell_without_surfaces_is_none():
+    assert dashboard_lib.format_surface_cell([]) is None
+
+
+def test_python_percent_for_sums_only_files_under_the_prefix():
+    report = {"files": {
+        "src/hdttools/a.py": {"summary": {"covered_lines": 8, "num_statements": 10}},
+        r"src\hdttools\b.py": {"summary": {"covered_lines": 2, "num_statements": 10}},
+        "streamlit_app/app.py": {"summary": {"covered_lines": 10, "num_statements": 10}},
+    }}
+    assert dashboard_lib.python_percent_for(report, "src/hdttools/") == 50.0
+    assert dashboard_lib.python_percent_for(report, "streamlit_app/") == 100.0
+
+
+def test_python_percent_for_no_matching_files_is_none():
+    assert dashboard_lib.python_percent_for({"files": {}}, "src/hdttools/") is None
+
+
+def test_snapshot_entry_round_trips_into_a_row_with_live_external_cells():
+    entry = dashboard_lib.snapshot_entry(("green", "9/10"), None, (86.1, "yellow"), False)
+    row = dashboard_lib.row_from_snapshot("Core", entry, ("blue", "1/1 (3d)"), ("blue", "2/2"))
+    assert row.minor == ("green", "9/10") and row.major is None
+    assert row.coverage == (86.1, "yellow") and row.coverage_gated is False
+    assert row.external == ("blue", "1/1 (3d)") and row.surfaces == ("blue", "2/2")
+
+
+def test_row_from_snapshot_missing_platform_renders_everything_n_a():
+    row = dashboard_lib.row_from_snapshot("Web", None, None, None)
+    assert (row.minor, row.major, row.coverage, row.external, row.surfaces) == (None,) * 5
+
+
+def test_results_note_shows_the_measured_date_and_short_commit():
+    snap = {"timestamp": "2026-10-04T12:00:00Z", "commit": "abcdef1234567"}
+    assert dashboard_lib.results_note(snap) == " | tests run: 2026-10-04 @ abcdef1"
+
+
+def test_results_note_without_a_snapshot_says_no_results():
+    assert "no results" in dashboard_lib.results_note(None)
+
+
+def test_render_dashboard_svg_shows_surfaces_column_and_results_note():
+    row = dashboard_lib.PlatformRow("Web", None, None, None, None, surfaces=("yellow", "1/2 (3 planned)"))
+    svg = dashboard_lib.render_dashboard_svg([row], "2026-10-04", " | tests run: 2026-10-03")
+    ET.fromstring(svg)
+    assert "Surfaces" in svg and "1/2 (3 planned)" in svg and "tests run: 2026-10-03" in svg

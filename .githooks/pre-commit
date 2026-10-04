@@ -1,0 +1,12 @@
+#!/bin/sh
+# Rebuilds dashboard.svg from the saved test results and the live External
+# cells, then stages it so the README graphic is committed with the change.
+# Runs no tests and contacts no registry. Never blocks a commit: on any
+# failure it warns and lets the commit continue.
+# Enable once per clone: git config core.hooksPath .githooks
+if uv run scripts/generate_dashboard.py --from-snapshot >/dev/null 2>&1; then
+  git add dashboard.svg
+else
+  echo "pre-commit: dashboard.svg not updated (non-fatal)" >&2
+fi
+exit 0

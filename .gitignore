@@ -38,3 +38,4 @@ AuditReports/
 # vendored (same treatment as .venv/ above).
 .agents/
 .claude/skills/
+junit-*.xml

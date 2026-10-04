@@ -1,0 +1,75 @@
+{
+  "timestamp": "2026-10-04T16:02:34Z",
+  "commit": "6e2de5f03dabeec2818ff530f71cbac917faeac2",
+  "platforms": {
+    "Core": {
+      "minor": [
+        "green",
+        "577/581"
+      ],
+      "major": [
+        "green",
+        "687/691"
+      ],
+      "coverage": [
+        86.12244897959184,
+        "yellow"
+      ],
+      "coverage_gated": false
+    },
+    "Streamlit": {
+      "minor": [
+        "blue",
+        "8/8"
+      ],
+      "major": [
+        "blue",
+        "8/8"
+      ],
+      "coverage": [
+        80.859375,
+        "yellow"
+      ],
+      "coverage_gated": false
+    },
+    "Web": {
+      "minor": [
+        "blue",
+        "107/107"
+      ],
+      "major": [
+        "blue",
+        "107/107"
+      ],
+      "coverage": [
+        91.74,
+        "green"
+      ],
+      "coverage_gated": false
+    },
+    "Android": {
+      "minor": [
+        "blue",
+        "38/38"
+      ],
+      "major": null,
+      "coverage": null,
+      "coverage_gated": true
+    },
+    "Scan Proxy": {
+      "minor": [
+        "blue",
+        "9/9"
+      ],
+      "major": [
+        "blue",
+        "57/57"
+      ],
+      "coverage": [
+        100.0,
+        "blue"
+      ],
+      "coverage_gated": true
+    }
+  }
+}

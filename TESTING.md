@@ -334,6 +334,37 @@ bare `npm run test:weekly`, with no way to record a result anywhere.
 forces every already-cached report to be regenerated instead of reused;
 without it, an existing report on disk is read as-is.
 
+### Dashboard update, 2026-10-04 (#49)
+
+The rows are now the five contexts of `CONTEXT-MAP.md` (Core, Streamlit,
+Web, Android, Scan Proxy) instead of four platforms. Python's Minor and
+Major are real: the pytest markers from #50 split the shared suite, so
+Core and Streamlit each get `-m "minor and <ctx>"` and `-m <ctx>` runs.
+Their coverage comes from the per-file figures in `coverage.json`
+(`src/hdttools/` and `streamlit_app/`), shown report-only because the
+release gate's floor applies to the combined Python number. The new
+**Surfaces** column shows fresh/active External surfaces per platform
+(planned ones as a count), computed from the manifest, recorded status
+and git; registries are not contacted, so a new upstream release shows
+in `external_freshness.py`, not here. The legacy External column is
+unchanged and still read from `external_status.json`.
+
+Measured results are saved to `scripts/dashboard_data/test_results.json`
+(date and commit; the graphic's header shows them) by any run that
+measures. `uv run scripts/generate_dashboard.py --from-snapshot` runs
+nothing and rebuilds the graphic from that file plus the live External
+cells.
+
+**Commit hook.** `.githooks/pre-commit` runs `--from-snapshot` and stages
+`dashboard.svg`. It runs no tests, never blocks a commit (any failure
+only warns), and is enabled once per clone with
+`git config core.hooksPath .githooks`. `--no-verify` skips it. Because
+it does not re-measure, the pass-rates and coverage stay as of the date
+and commit in the header until someone runs the generator without
+`--from-snapshot`. Android's device tier and coverage need a connected
+device and show `n/a` without one. Python's expected failures (xfail)
+count as not passed, as before.
+
 ## Status of this repo against the framework
 
 This framework was defined 2026-08-20, after most of this repo's existing

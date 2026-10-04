@@ -16,9 +16,12 @@ disclaimer before results.
 
 ![RigCheck test status](dashboard.svg)
 
-Per-platform test status (Minor/Major, run fresh) and External status
-(last real run) and code coverage — regenerate via `uv run
-scripts/generate_dashboard.py`, see `TESTING.md`'s "Dashboard" section.
+Per-context test status: Minor/Major pass-rate and coverage (measured
+when the suites were last run, date and commit in the header), the old
+External suites, and per-surface External freshness. The pre-commit hook
+refreshes the graphic from saved results; `uv run
+scripts/generate_dashboard.py` re-measures. See `TESTING.md`'s "Dashboard"
+section.
 
 RigCheck ships on three platforms, each self-contained (no shared backend
 or database):

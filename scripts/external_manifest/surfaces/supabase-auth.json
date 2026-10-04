@@ -1,0 +1,9 @@
+{
+  "name": "supabase-auth",
+  "status": "active",
+  "platforms": ["web"],
+  "boundary_files": ["web/src/auth.tsx"],
+  "dependency_pins": ["web/package.json", "web/package-lock.json"],
+  "registry_packages": [{"ecosystem": "npm", "package": "@supabase/supabase-js"}],
+  "max_paid_calls": 0
+}

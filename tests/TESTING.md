@@ -10,12 +10,13 @@ root — `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_TESTING.md`,
 `ARCHIVE_EARLY_HISTORY.md`) for the narrative history of individual
 features/bugs each test file guards against.
 
-`uv run pytest -q` — 652 tests selected by default (648 passing, 4
-deliberate `xfail`s — see `test_real_photo_ocr_accuracy.py` below), 655
+`uv run pytest -q` — 740 tests selected by default (736 passing, 4
+deliberate `xfail`s — see `test_real_photo_ocr_accuracy.py` below), 743
 collected in all: the other 3 are the live `external` tests, which a
 default run deselects. No CI; everything runs manually, matching the root
 `TESTING.md`'s "session regression" model rather than a cadence. Counted
-2026-10-04 (issue #50).
+2026-10-04 (issue #52, after adding `test_context_test_commands.py` and
+`test_android_file_command_slow.py`).
 
 ## Markers and commands
 
@@ -40,11 +41,11 @@ this suite uses) fail (`test_live_provider_guard.py` checks it).
 
 | Run | Command | Tests |
 |---|---|---|
-| Minor only, one context | `uv run pytest -m "minor and core"` / `-m "minor and streamlit"` | 581 / 8 |
-| Minor only, whole app | `uv run pytest -m minor` | 589 |
-| One context | `uv run pytest -m core` / `-m streamlit` | 691 / 8 |
-| Major (everything but external) | `uv run pytest` | 699 |
-| Fast Minor | `uv run pytest -m "minor and not slow"` | 189 |
+| Minor only, one context | `uv run pytest -m "minor and core"` / `-m "minor and streamlit"` | 613 / 8 |
+| Minor only, whole app | `uv run pytest -m minor` | 621 |
+| One context | `uv run pytest -m core` / `-m streamlit` | 732 / 8 |
+| Major (everything but external) | `uv run pytest` | 740 |
+| Fast Minor | `uv run pytest -m "minor and not slow"` | 221 |
 | External (live, billed) | `uv run pytest -m external` | 3 |
 
 Counts are collected tests at 2026-10-04. `core` and `streamlit` do not overlap, but `test_ocr_output_key_contracts.py` (marked `core`) also

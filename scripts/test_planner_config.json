@@ -1,0 +1,38 @@
+{
+  "_comment": "Python test contexts for scripts/test_planner.py (#60). Context names follow CONTEXT-MAP.md. An interface's 'files' are its public surface; a change to one adds its 'tests' and forces its context's Major suite.",
+  "dependency_files": ["pyproject.toml", "uv.lock"],
+  "contexts": {
+    "core": {"marker": "core", "paths": ["src/hdttools/", "scripts/"]},
+    "streamlit": {"marker": "streamlit", "paths": ["streamlit_app/"]}
+  },
+  "interfaces": [
+    {
+      "name": "ocr-output-keys",
+      "context": "core",
+      "files": ["src/hdttools/*_ocr.py", "src/hdttools/api/schemas.py", "streamlit_app/fields.py"],
+      "tests": ["tests/test_ocr_output_key_contracts.py"],
+      "shares_with": ["streamlit"]
+    },
+    {
+      "name": "breakdown-golden-vectors",
+      "context": "core",
+      "files": ["src/hdttools/api/breakdown.py", "test-vectors/breakdown_cases.json"],
+      "tests": ["tests/test_breakdown_golden_vectors.py"],
+      "shares_with": ["android", "web"]
+    },
+    {
+      "name": "api-contract",
+      "context": "core",
+      "files": ["src/hdttools/api/main.py", "src/hdttools/api/schemas.py", "src/hdttools/api/breakdown.py"],
+      "tests": ["tests/test_api.py"],
+      "shares_with": ["web"]
+    },
+    {
+      "name": "reader-entry-points",
+      "context": "core",
+      "files": ["src/hdttools/__init__.py", "src/hdttools/truck_tag.py", "src/hdttools/trailer_tag.py", "src/hdttools/scale_ticket.py"],
+      "tests": ["tests/test_readers_integration.py"],
+      "shares_with": ["streamlit"]
+    }
+  ]
+}

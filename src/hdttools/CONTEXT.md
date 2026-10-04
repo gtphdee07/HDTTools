@@ -38,8 +38,16 @@ A trailer's own empty weight, read from its Tag. Captured and displayed, but **n
 The truck manufacturer's maximum rated weight for the truck-plus-trailer combination, specified separately from GVWR (typically in the owner's manual, not the compliance Tag) and often lower than the sum of the two vehicles' individual GVWRs. An **optional, manually entered** truck value in pounds, never read from a Tag. For Class 3 trucks it is hard to find (many manufacturers don't publish it, even on the build sheet), so most checks will have none. **Not yet captured anywhere in this product** — see the "Combined Rig Weight" entry below and [issue #1](https://github.com/gtphdee07/HDTTools/issues/1).
 
 **Pin Weight**:
-The portion of a hitched fifth-wheel/gooseneck trailer's weight transferred onto the truck's hitch point, expressed as a percentage of the trailer's total weight (`DEFAULT_PIN_WEIGHT_PCT` = 20%). This product is scoped to fifth-wheel/gooseneck trailers today.
-_Avoid_: tongue weight — a related but physically distinct concept for bumper-pull/ball-hitch trailers, which this product doesn't yet distinguish or support (see [issue #2](https://github.com/gtphdee07/HDTTools/issues/2)). Don't use the two terms interchangeably in new code or copy.
+The portion of a hitched fifth-wheel/gooseneck trailer's weight transferred onto the truck's hitch point, expressed as a percentage of the trailer's total weight (default 20%). Used for **Fifth-wheel / Gooseneck** Hitch Type. For a bumper-pull trailer the equivalent concept is Tongue Weight; the two are physically distinct and must not be used interchangeably in code or copy.
+
+**Tongue Weight**:
+The portion of a hitched **bumper-pull** trailer's weight carried on the ball hitch, expressed as a percentage of the trailer's total weight (default 12%, typically 10 to 15%). Planned, not yet supported: see [issue #2](https://github.com/gtphdee07/HDTTools/issues/2). Until it ships, any user-visible text that says "tongue weight" for the fifth-wheel hitch load is a bug (see issue #48).
+
+**Hitch Type**:
+Which kind of hitch a trailer uses: **Fifth-wheel / Gooseneck** (Pin Weight) or **Bumper-pull** (Tongue Weight). A property of the Trailer, saved with the Rig. Defaults to Fifth-wheel / Gooseneck, so every existing Rig keeps today's behavior. Planned; see issue #2.
+
+**Receiver Rating**:
+A truck's hitch-receiver limits for bumper-pull towing: maximum tongue weight and maximum trailer weight, as the user enters them for the way they tow (with or without a weight-distributing hitch). Optional, manually entered, in pounds, and often unpublished. Each produces an **Advisory Item** (shown only when entered). Planned; see issue #2.
 
 ## Breakdown
 
@@ -62,7 +70,7 @@ A flag on an Item marking that its actual weight was derived (via Pin Weight mat
 The Breakdown Item comparing the rig's actual gross weight against the truck's GCWR. Today it uses `truck GVWR + trailer GVWR` — an unintended approximation, since no real GCWR is ever captured. The intended behaviour ([issue #1](https://github.com/gtphdee07/HDTTools/issues/1)): compare against the entered GCWR when there is one, and otherwise leave the Item out of the Breakdown entirely (never approximate it). It is the product's one **Advisory Item**.
 
 **Advisory Item**:
-A Breakdown Item that is shown only when its own input exists, and whose missing data never lowers the Verdict: when its input is absent it is not shown, and when its input is present but its actual weight is missing (so it is `insufficient`) the Verdict is computed as if it were absent. If it *is* checked and fails, it counts like any other failure. Only Combined Rig Weight is advisory, and the reason is the Class 3 reality above: nearly every user has no GCWR, so withholding "Safe to Tow" for it would make that verdict near-unreachable.
+A Breakdown Item that is shown only when its own input exists, and whose missing data never lowers the Verdict: when its input is absent it is not shown, and when its input is present but its actual weight is missing (so it is `insufficient`) the Verdict is computed as if it were absent. If it *is* checked and fails, it counts like any other failure. Combined Rig Weight is advisory, and (once Receiver Ratings are supported) so are the two Receiver Rating Items, for the Class 3 reality above: nearly every user has no GCWR, so withholding "Safe to Tow" for it would make that verdict near-unreachable.
 
 **Verdict**:
 The overall `pass` / `fail` / `partial` / `insufficient` summary computed across every Item in a Breakdown (`verdict_for`). A single `fail` Tone anywhere always wins, even if other Items are `insufficient` — missing data never hides a genuine over-limit reading. An insufficient Advisory Item is ignored rather than counted toward `partial`.

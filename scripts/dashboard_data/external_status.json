@@ -13,10 +13,10 @@
   },
   "surfaces": {
     "anthropic": {
-      "commit": "de0dffac112c431ddeda9600bb63eb57c79095e0",
+      "commit": "f0f88134d836f26fb366e7c887cc91ac36b38b06",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-05T02:14:12Z",
+      "timestamp": "2026-10-05T02:54:45Z",
       "versions": {
         "@anthropic-ai/sdk": "0.131.0",
         "anthropic": "1.11.0"

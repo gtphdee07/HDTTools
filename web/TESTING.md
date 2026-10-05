@@ -6,7 +6,7 @@ root `TESTING.md`. Written 2026-08-21, the same day the harness itself
 suite this package has ever had. See `ARCHIVE_TESTING.md` and
 `ARCHIVE_WEB_STREAMLIT.md` (repo root) for the narrative history.
 
-`npm test` (`vitest run`) — currently 156 tests, all passing (count last
+`npm test` (`vitest run`) — currently 165 tests, all passing (count last
 confirmed 2026-10-05; a fuller refresh of this document is #64).
 `npm run build` (`tsc -b && vite build`) typechecks `src/**`, test files
 included, since `tsconfig.app.json`'s `include` is just `["src"]`.
@@ -61,6 +61,20 @@ Both are free, so the wrapper runs them without a confirmation prompt.
 `externalGuards.test.ts` (in `npm test`) statically guards both files: never
 collected by `npm test`, never create a user or send mail, never print a
 secret, and the Pages file only issues GETs and never signs in.
+
+**Credential scope (security audit, 2026-10-05).** The Pages journey runs
+the live site's JS bundle with `(0, eval)(bundle)` inside its test worker, and
+vitest gives a worker the project's `test.env`. So `vitest.external.config.ts`
+runs the Pages test as its own `pages-site` project with only the
+`VITE_SUPABASE_` variables; every other external test (including any new one)
+stays in the default `external` project, which also gets the `WEB_EXTERNAL_`
+test-account credentials. The Pages test also scrubs any inherited
+`WEB_EXTERNAL_*` variable from its `process.env`, and refuses to fetch a script
+that the shell names on another origin. `externalGuards.test.ts` checks the
+config split and both safeguards. This is defence in depth, not a sandbox:
+`jsdom` and `eval` are not a security boundary, so a compromised deployed site
+could still run code as the developer; the fix is that the test-account password
+is no longer in that process.
 
 ### `supabase-auth`
 

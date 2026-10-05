@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assetUrls, bakedSecretKinds, bakedSupabaseHosts, hostOf } from './siteShell';
+import { assetUrls, bakedSecretKinds, bakedSupabaseHosts, foreignUrls, hostOf } from './siteShell';
 
 const SHELL = `<!doctype html>
 <html lang="en"><head>
@@ -65,6 +65,29 @@ describe('bakedSecretKinds', () => {
 
   it('ignores JWT-looking text that is not valid base64 JSON', () => {
     expect(bakedSecretKinds('x("eyJhbGciOi.@@@.zzz")')).toEqual([]);
+  });
+});
+
+describe('foreignUrls', () => {
+  const site = 'https://site.example/';
+
+  it('is empty when every URL is on the site origin', () => {
+    expect(foreignUrls(['https://site.example/assets/a.js', 'https://site.example/b.css'], site)).toEqual([]);
+  });
+
+  it('lists a URL on another host', () => {
+    expect(foreignUrls(['https://site.example/a.js', 'https://cdn.evil.example/a.js'], site)).toEqual(['https://cdn.evil.example/a.js']);
+  });
+
+  it('treats a different scheme or port as a different origin', () => {
+    expect(foreignUrls(['http://site.example/a.js', 'https://site.example:8443/a.js'], site)).toEqual([
+      'http://site.example/a.js',
+      'https://site.example:8443/a.js',
+    ]);
+  });
+
+  it('is not fooled by a lookalike host that merely starts with the site host', () => {
+    expect(foreignUrls(['https://site.example.evil.test/a.js'], site)).toEqual(['https://site.example.evil.test/a.js']);
   });
 });
 

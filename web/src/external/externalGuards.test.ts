@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import viteConfig from '../../vite.config';
+import externalConfig from '../../vitest.external.config';
 
 // Guards for the External suite's ground rules (ADR-0008), checked statically so they run in `npm test`.
 
@@ -55,6 +56,50 @@ describe('external test files never create users, send mail or print secrets', (
     for (const line of sensitive) {
       expect(line).not.toMatch(/expect\(|Error\(|toBe\(|toEqual\(|toThrow|message/);
     }
+  });
+});
+
+describe('the Pages site test never runs with the test-account credentials', () => {
+  type Project = { test?: { name?: string; include?: string[]; exclude?: string[]; env?: Record<string, string> } };
+  const resolved = (externalConfig as unknown as (env: { mode: string; command: string }) => { test?: { projects?: Project[] } })({
+    mode: 'test',
+    command: 'serve',
+  });
+  const projects = resolved.test?.projects ?? [];
+  const pages = projects.find((p) => p.test?.name === 'pages-site');
+  const others = projects.filter((p) => p.test?.name !== 'pages-site');
+
+  it('runs the Pages site test as its own project', () => {
+    expect(pages).toBeDefined();
+    expect(pages?.test?.include).toEqual(['src/**/pagesSite.external.test.ts']);
+  });
+
+  it('gives that project only the VITE_SUPABASE_ variables, never WEB_EXTERNAL_ ones', () => {
+    expect(pages).toBeDefined();
+    const names = Object.keys(pages?.test?.env ?? {});
+    expect(names.filter((n) => n.startsWith('WEB_EXTERNAL_'))).toEqual([]);
+    expect(names.filter((n) => !n.startsWith('VITE_SUPABASE_'))).toEqual([]);
+  });
+
+  it('keeps every other external test in a project that excludes the Pages test, so none is silently skipped', () => {
+    expect(others.length).toBeGreaterThan(0);
+    for (const p of others) {
+      expect(p.test?.include).toEqual(['src/**/*.external.test.ts']);
+      expect(p.test?.exclude).toContain('src/**/pagesSite.external.test.ts');
+    }
+  });
+
+  const pagesText = Object.entries(externalFiles).find(([name]) => name.includes('pagesSite'))?.[1] ?? '';
+
+  it('the test scrubs any inherited WEB_EXTERNAL_ variable before evaluating fetched code', () => {
+    const scrub = pagesText.indexOf("startsWith('WEB_EXTERNAL_')");
+    const evalAt = pagesText.indexOf('(0, eval)(');
+    expect(scrub).toBeGreaterThan(-1);
+    expect(scrub).toBeLessThan(evalAt);
+  });
+
+  it('the test refuses fetched script or stylesheet URLs from another origin', () => {
+    expect(pagesText).toContain('foreignUrls(');
   });
 });
 

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readConfig } from './config';
-import { assetUrls, bakedSecretKinds, bakedSupabaseHosts, hostOf } from './siteShell';
+import { assetUrls, bakedSecretKinds, bakedSupabaseHosts, foreignUrls, hostOf } from './siteShell';
 
 // External suite (ADR-0008): real requests to the deployed Cloudflare Pages site, run only via
 // `npm run test:external`. The "[pages-site]" name tag is what the wrapper filters on.
@@ -38,10 +38,16 @@ describe('[pages-site] Deployed Pages site live contract', () => {
   let assets: ReturnType<typeof assetUrls>;
 
   beforeAll(async () => {
+    // The journey runs fetched code in this process. vitest.external.config.ts already keeps the test-account
+    // credentials out of this project's env; scrub any that a shell export inherited as well.
+    for (const name of Object.keys(process.env)) if (name.startsWith('WEB_EXTERNAL_')) delete process.env[name];
+
     cfg = readConfig(import.meta.env as Record<string, string | undefined>, REQUIRED_HERE);
     shellResponse = await get(SITE_URL);
     shell = await shellResponse.text();
     assets = assetUrls(shell, SITE_URL);
+    const foreign = foreignUrls(assets.scripts, SITE_URL);
+    if (foreign.length > 0) throw new Error(`The shell names a script on another origin; refusing to fetch or run it: ${foreign.join(', ')}`);
     bundleResponse = await get(assets.scripts[0] ?? SITE_URL);
     bundle = await bundleResponse.text();
   });
@@ -60,6 +66,7 @@ describe('[pages-site] Deployed Pages site live contract', () => {
   it('serves the JS bundle and stylesheet the shell references', async () => {
     expect(assets.scripts).toHaveLength(1);
     expect(assets.styles).toHaveLength(1);
+    expect(foreignUrls([...assets.scripts, ...assets.styles], SITE_URL)).toEqual([]);
 
     expect(bundleResponse.status).toBe(200);
     expect(bundleResponse.headers.get('content-type')).toMatch(/javascript/);
@@ -95,6 +102,10 @@ describe('[pages-site] Deployed Pages site live contract', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toMatch(/^text\/html/);
     expect(await response.text()).toBe(shell);
+  });
+
+  it('runs without the test-account credentials in its process environment', () => {
+    expect(Object.keys(process.env).filter((name) => name.startsWith('WEB_EXTERNAL_'))).toEqual([]);
   });
 
   it('journey: loads the page and reaches the sign-in screen', async () => {

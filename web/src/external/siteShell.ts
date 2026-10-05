@@ -20,6 +20,12 @@ export function assetUrls(html: string, siteUrl: string): AssetUrls {
   return { scripts: scripts.map(resolve), styles: styles.map(resolve) };
 }
 
+// URLs that are not on the site's own origin (scheme, host and port must all match).
+export function foreignUrls(urls: string[], siteUrl: string): string[] {
+  const origin = new URL(siteUrl).origin;
+  return urls.filter((u) => new URL(u).origin !== origin);
+}
+
 // Every distinct "<name>.supabase.co" host named in a bundle, so a placeholder like undefined.supabase.co shows up.
 export function bakedSupabaseHosts(bundle: string): string[] {
   return [...new Set([...bundle.matchAll(/[\w-]+\.supabase\.co/g)].map((m) => m[0]))];

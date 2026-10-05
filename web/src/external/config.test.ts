@@ -25,6 +25,14 @@ describe('readConfig', () => {
     expect(() => readConfig({})).toThrow(new RegExp(REQUIRED.join('.*')));
   });
 
+  it('checks only the named variables when given a subset', () => {
+    const subset = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY'] as const;
+    const env = { VITE_SUPABASE_URL: 'https://a.invalid', VITE_SUPABASE_PUBLISHABLE_KEY: 'k' };
+    expect(readConfig(env, subset)).toEqual(env);
+    expect(() => readConfig({ VITE_SUPABASE_URL: 'https://a.invalid' }, subset)).toThrow('VITE_SUPABASE_PUBLISHABLE_KEY');
+    expect(() => readConfig({ VITE_SUPABASE_URL: 'https://a.invalid' }, subset)).not.toThrow('WEB_EXTERNAL_TEST_EMAIL');
+  });
+
   it('never includes a value in the message', () => {
     let message = '';
     try {

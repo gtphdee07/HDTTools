@@ -6,8 +6,8 @@ root `TESTING.md`. Written 2026-08-21, the same day the harness itself
 suite this package has ever had. See `ARCHIVE_TESTING.md` and
 `ARCHIVE_WEB_STREAMLIT.md` (repo root) for the narrative history.
 
-`npm test` (`vitest run`) — currently 138 tests, all passing (count last
-confirmed 2026-10-04; a fuller refresh of this document is #64).
+`npm test` (`vitest run`) — currently 156 tests, all passing (count last
+confirmed 2026-10-05; a fuller refresh of this document is #64).
 `npm run build` (`tsc -b && vite build`) typechecks `src/**`, test files
 included, since `tsconfig.app.json`'s `include` is just `["src"]`.
 
@@ -42,16 +42,72 @@ call: every network call (`./api`'s `extractTruckTag`/etc.) is mocked, and
 ## External suite (ADR-0008)
 
 `npm run test:external` runs `src/external/*.external.test.ts` against the
-live providers via `vitest.external.config.ts`. Today that is one surface,
-`supabase-auth` (tests tagged `[supabase-auth]` in their name), using the
-test user from `scripts/wizard_web_external_test_user.sh`; credentials come
-from the gitignored `web/.env.local` and a missing one fails the run. It
-never creates a user or sends mail. Normally run through `.	est-external.ps1`,
-which runs only the surfaces `scripts/external_freshness.py` reports stale
-and records each result with `scripts/record_external_result.py`
-(`-Skip` records `skipped`, which leaves the surface stale). Add a surface
-by adding `scripts/external_manifest/surfaces/<name>.json` and a
+live providers via `vitest.external.config.ts`. Two surfaces today, each
+tagged `[surface]` in its describe title; credentials come from the
+gitignored `web/.env.local` and a missing one fails the run, never skips
+it. Normally run through `web/test-external.ps1`, which runs only the
+surfaces `scripts/external_freshness.py` reports stale and records each
+result with `scripts/record_external_result.py` (`-Skip` records
+`skipped`, which leaves the surface stale). Add a surface by adding
+`scripts/external_manifest/surfaces/<name>.json` and a
 `<name>.external.test.ts` whose describe title carries `[<name>]`.
+
+| Surface | Test file | Paid calls |
+|---|---|---|
+| `supabase-auth` | `supabaseAuth.external.test.ts` | 0 |
+| `pages-site` | `pagesSite.external.test.ts` | 0 |
+
+Both are free, so the wrapper runs them without a confirmation prompt.
+`externalGuards.test.ts` (in `npm test`) statically guards both files: never
+collected by `npm test`, never create a user or send mail, never print a
+secret, and the Pages file only issues GETs and never signs in.
+
+### `supabase-auth`
+
+Real calls to the live Supabase project with the test user from
+`scripts/wizard_web_external_test_user.sh`. It never creates a user or sends
+mail.
+
+### `pages-site` (#42)
+
+Real requests to the deployed Cloudflare Pages site
+(`https://rigcheck-web.pages.dev/`). Boundary files are `web/wrangler.toml`,
+`web/.env.production`, `web/index.html`, `web/vite.config.ts`,
+`web/src/main.tsx` and `web/public/`; pins are `web/wrangler.toml`,
+`web/package.json` and `web/package-lock.json`; the watched registry package
+is `wrangler` (Pages' deploy tool). Only `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_PUBLISHABLE_KEY` are needed (to know what the production
+build should have baked in); no test account is used.
+
+Two deliberate trade-offs. The expected host and key come from the
+gitignored `web/.env.local`, i.e. the same Supabase project the
+`supabase-auth` suite tests, so a deployed build pointing at a different
+project fails; the committed `web/.env.production` is a freshness boundary
+file, not the test's oracle. And `wrangler` appears in no pin file (it is
+not a `web/` dependency), so a wrangler change is detected only through
+its registry release date; `web/package.json` and the lockfile are pins
+shared with `supabase-auth`, so unrelated dependency churn can also mark
+this surface stale.
+
+| ADR-0008 depth | Covered by |
+|---|---|
+| Reachable and authenticated | The URL returns 200 over HTML with the app shell (`<div id="root">`, the RigCheck title). **Authentication does not apply**: the site is public and read-only, so there is nothing to sign in to. |
+| Response shape | The shell names one module script and one stylesheet; the bundle is real JavaScript (not an HTML fallback) of plausible size, the stylesheet is CSS, `/logo.png` is a PNG. The bundle names exactly one Supabase host, equal to the configured project's host (so not `undefined`, a placeholder or a second project), and contains the configured publishable key and no `sb_secret_` key or `service_role` JWT. |
+| Error contract | Unknown paths (`/no/such/page`, `/history/deep/link`) return the app shell with 200, identical to `/`, not a Cloudflare error page. |
+| Full journey | Loads the shell, runs the live production bundle in jsdom, clicks the header's "Sign in", and sees the email and password fields, with no "Accounts unavailable" card (what a build without the Supabase variables shows). It never submits the form. |
+
+Not covered, by design: a missing hashed asset (`/assets/nope.js`) also
+returns the shell with a 200, a Pages behaviour we do not depend on; and
+real-browser layout or interaction beyond reaching the sign-in screen.
+
+**Review of existing external tests against the four depths** (read-only,
+per the #51 scope note): the only existing Web external file,
+`supabaseAuth.external.test.ts`, already covers reachable-and-authenticated
+(project URL and key accepted, bad key rejected), response shape (session
+with a three-part JWT, user id, confirmed email), error contracts (bad
+password, unknown email, malformed sign-up and reset) and a full
+sign-in/sign-out journey. No gaps; nothing was changed or retagged. Web has
+no older release or weekly External suites.
 
 ## Coverage
 

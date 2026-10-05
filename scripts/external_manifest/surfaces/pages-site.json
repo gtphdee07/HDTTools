@@ -1,9 +1,16 @@
 {
   "name": "pages-site",
-  "status": "planned",
+  "status": "active",
   "platforms": ["web"],
-  "boundary_files": ["web/wrangler.toml"],
-  "dependency_pins": ["web/wrangler.toml"],
+  "boundary_files": [
+    "web/wrangler.toml",
+    "web/.env.production",
+    "web/index.html",
+    "web/vite.config.ts",
+    "web/src/main.tsx",
+    "web/public"
+  ],
+  "dependency_pins": ["web/wrangler.toml", "web/package.json", "web/package-lock.json"],
   "registry_packages": [
     {"ecosystem": "npm", "package": "wrangler"}
   ],

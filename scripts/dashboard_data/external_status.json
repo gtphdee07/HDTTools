@@ -22,6 +22,15 @@
         "anthropic": "1.11.0"
       }
     },
+    "pages-site": {
+      "commit": "61c2892bc8631ec611923d994723ba55be7197fc",
+      "passed": true,
+      "result": "pass",
+      "timestamp": "2026-10-05T03:57:04Z",
+      "versions": {
+        "wrangler": "4.147.0"
+      }
+    },
     "revenuecat-rest": {
       "commit": "51dc229be878658671944c43dcb73eb073d5ec48",
       "passed": true,

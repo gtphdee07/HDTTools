@@ -36,9 +36,10 @@ describe('external test files never create users, send mail or print secrets', (
   const calls = (text: string, method: string) => [...text.matchAll(new RegExp(String.raw`\.${method}\(([^)]*)\)`, 'g'))];
 
   it.each(files)('%s: sign-up and reset only ever use the malformed-address constant', (_name, text) => {
-    expect(text).toMatch(/const MALFORMED_EMAIL = '[^'@]*'/);
     const signUps = calls(text, 'signUp');
     const resets = calls(text, 'resetPasswordForEmail');
+    // A file that never signs up or resets (e.g. the Pages site's) has nothing to constrain.
+    if (signUps.length + resets.length > 0) expect(text).toMatch(/const MALFORMED_EMAIL = '[^'@]*'/);
     for (const m of signUps) expect(m[1]).toMatch(/^\s*\{\s*email: MALFORMED_EMAIL,/);
     for (const m of resets) expect(m[1].trim()).toBe('MALFORMED_EMAIL');
   });
@@ -54,5 +55,18 @@ describe('external test files never create users, send mail or print secrets', (
     for (const line of sensitive) {
       expect(line).not.toMatch(/expect\(|Error\(|toBe\(|toEqual\(|toThrow|message/);
     }
+  });
+});
+
+describe('the Pages site external test only reads', () => {
+  const [pagesFile, text] = Object.entries(externalFiles).find(([name]) => name.includes('pagesSite')) ?? ['', ''];
+
+  it('exists', () => {
+    expect(pagesFile).not.toBe('');
+  });
+
+  it('never signs in, never submits a form and only issues GETs', () => {
+    expect(text).not.toMatch(/signInWithPassword|\.submit\(|requestSubmit|method:\s*['"](POST|PUT|PATCH|DELETE)/i);
+    expect(text).not.toMatch(/\.(signUp|resetPasswordForEmail)\(/);
   });
 });

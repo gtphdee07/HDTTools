@@ -10,12 +10,14 @@ root — `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_TESTING.md`,
 `ARCHIVE_EARLY_HISTORY.md`) for the narrative history of individual
 features/bugs each test file guards against.
 
-`uv run pytest -q` — 796 tests selected by default (792 passing, 4
-deliberate `xfail`s — see `test_real_photo_ocr_accuracy.py` below), 801
+`uv run pytest -q` — 797 tests selected by default (793 passing, 4
+deliberate `xfail`s — see `test_real_photo_ocr_accuracy.py` below), 802
 collected in all: the other 5 are the live `external` tests, which a
 default run deselects. No CI; everything runs manually, matching the root
 `TESTING.md`'s "session regression" model rather than a cadence. Counted
-2026-10-05 (issue #37, after adding the `anthropic` surface's
+2026-10-05 (issue #42's `pages-site` manifest-entry test added one; its
+live tests are Web's, not pytest's — see `web/TESTING.md`. Before that,
+issue #37, after adding the `anthropic` surface's
 reachable/authenticated and malformed-image cases to
 `test_claude_vision_external.py`, the PyPI registry fetcher and its tests
 to `test_external_freshness.py`, and the paid-call-budget tests to

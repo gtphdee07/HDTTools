@@ -354,6 +354,18 @@ def test_anthropic_is_in_the_real_manifest_active_with_both_consumer_chains():
     assert {"npm", "pypi"} == {p["ecosystem"] for p in surface["registry_packages"]}
 
 
+def test_pages_site_is_in_the_real_manifest_active_with_the_web_chain():
+    surface = ef.load_manifest()["surfaces"]["pages-site"]
+    assert surface["status"] == "active"
+    assert surface["max_paid_calls"] == 0
+    assert surface["platforms"] == ["web"]
+    # The deploy config, the production env file the Supabase vars are baked from, and the shell it builds.
+    assert {"web/wrangler.toml", "web/.env.production", "web/index.html"} <= set(surface["boundary_files"])
+    assert {"web/package.json", "web/package-lock.json"} <= set(surface["dependency_pins"])
+    assert {"ecosystem": "npm", "package": "wrangler"} in surface["registry_packages"]
+    assert "pages-site" in ef.surfaces_for_platform(ef.load_manifest(), "web")
+
+
 _REQUIRED_PROVIDER_SURFACES = {
     "scan-proxy-worker",
     "pages-site",
@@ -365,6 +377,10 @@ _REQUIRED_PROVIDER_SURFACES = {
 }
 
 
+# Surfaces from the list above that have since gained a tagged External test and flipped to active.
+_SURFACES_NOW_ACTIVE = {"pages-site"}
+
+
 def test_every_required_provider_surface_is_registered_in_the_real_manifest():
     surfaces = ef.load_manifest()["surfaces"]
     missing = _REQUIRED_PROVIDER_SURFACES - set(surfaces)
@@ -373,7 +389,7 @@ def test_every_required_provider_surface_is_registered_in_the_real_manifest():
 
 def test_surfaces_with_no_tagged_test_yet_are_planned_and_never_block():
     surfaces = ef.load_manifest()["surfaces"]
-    for name in _REQUIRED_PROVIDER_SURFACES:
+    for name in _REQUIRED_PROVIDER_SURFACES - _SURFACES_NOW_ACTIVE:
         assert surfaces[name]["status"] == "planned", f"{name} should be planned until it has a tagged test"
 
 

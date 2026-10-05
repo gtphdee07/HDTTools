@@ -81,7 +81,21 @@ def fetch_npm_times(package: str, *, opener=_default_opener, timeout: float = 20
         raise RegistryError(f"npm registry lookup for {package} failed: {exc}") from exc
 
 
-_FETCHERS = {"npm": fetch_npm_times}
+def fetch_pypi_times(package: str, *, opener=_default_opener, timeout: float = 20) -> dict[str, str]:
+    url = f"https://pypi.org/pypi/{package}/json"
+    try:
+        releases = json.loads(opener(url, timeout))["releases"]
+    except Exception as exc:
+        raise RegistryError(f"PyPI registry lookup for {package} failed: {exc}") from exc
+    times: dict[str, str] = {}
+    for version, files in releases.items():
+        uploaded = [f["upload_time_iso_8601"] for f in files if f.get("upload_time_iso_8601")]
+        if uploaded:
+            times[version] = min(uploaded)
+    return times
+
+
+_FETCHERS = {"npm": fetch_npm_times, "pypi": fetch_pypi_times}
 
 
 def fetch_publish_times(ecosystem: str, package: str) -> dict[str, str]:

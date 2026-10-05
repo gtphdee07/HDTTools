@@ -107,3 +107,81 @@ def test_tagged_in_finds_bracketed_tags_in_external_test_files(tmp_path):
     has = ew.tagged_in(tmp_path)
     assert has("a") is True
     assert has("b") is False
+
+
+def test_tagged_in_supports_a_custom_glob_and_pytest_marker_tag_style(tmp_path):
+    (tmp_path / "test_anthropic_external.py").write_text(
+        "pytestmark = [pytest.mark.external, pytest.mark.anthropic]"
+    )
+    (tmp_path / "test_other.py").write_text("pytestmark = [pytest.mark.external, pytest.mark.supabase]")
+    has = ew.tagged_in(tmp_path, "test_*_external.py", ew.TAG_FORMATS["marker"])
+    assert has("anthropic") is True
+    assert has("supabase") is False
+
+
+class BudgetHarness(Harness):
+    def __init__(self, *, confirm, paid_calls, max_calls, tagged=("a",), exit_code=0):
+        super().__init__(tagged=tagged, exit_code=exit_code)
+        self.paid_calls = paid_calls
+        self.budget = ew.PaidCallBudget(max_calls=max_calls, confirm=confirm, out=self.lines.append)
+
+    def go(self, verdicts, skip=False):
+        return ew.execute_plan(
+            verdicts,
+            skip=skip,
+            has_tests=lambda s: s in self.tagged,
+            run_tests=lambda surfaces: (self.ran.append(list(surfaces)) or self.exit_code),
+            record=lambda s, o, v: self.recorded.append((s, o, v)),
+            out=self.lines.append,
+            paid_calls=self.paid_calls,
+            budget=self.budget,
+        )
+
+
+def test_a_confirmed_paid_surface_runs_and_records_pass():
+    h = BudgetHarness(confirm=lambda d, c: True, paid_calls={"a": 3}, max_calls=3)
+    assert h.go([stale("a")]) == 0
+    assert h.ran == [["a"]]
+    assert h.recorded == [("a", "pass", {"p": "1.0.0"})]
+
+
+def test_a_declined_paid_surface_is_recorded_skipped_and_not_run():
+    h = BudgetHarness(confirm=lambda d, c: False, paid_calls={"a": 3}, max_calls=3)
+    assert h.go([stale("a")]) == 1
+    assert h.ran == []
+    assert [(s, o) for s, o, _ in h.recorded] == [("a", "skipped")]
+
+
+def test_a_paid_surface_exceeding_the_budget_aborts_without_prompting():
+    confirmed = []
+    h = BudgetHarness(confirm=lambda d, c: confirmed.append((d, c)) or True, paid_calls={"a": 4}, max_calls=3)
+    assert h.go([stale("a")]) == 1
+    assert confirmed == []
+    assert h.ran == []
+    assert h.recorded == []
+    assert any("Aborting" in line for line in h.lines)
+
+
+def test_a_free_surface_alongside_a_confirmed_paid_one_both_run_together():
+    h = BudgetHarness(confirm=lambda d, c: True, paid_calls={"a": 3}, max_calls=3, tagged=("a", "b"))
+    assert h.go([stale("a"), stale("b")]) == 0
+    assert h.ran == [["a", "b"]]
+
+
+def test_paid_calls_for_reads_each_in_scope_surfaces_declared_cost():
+    manifest = {"surfaces": {"a": {"max_paid_calls": 3}, "b": {}, "c": {"max_paid_calls": 0}}}
+    assert ew.paid_calls_for(manifest, ["a", "b"]) == {"a": 3, "b": 0}
+
+
+def test_budget_for_is_none_when_nothing_in_scope_is_paid():
+    assert ew.budget_for({"a": 0, "b": 0}) is None
+
+
+def test_budget_for_defaults_the_ceiling_to_the_sum_of_declared_costs():
+    budget = ew.budget_for({"a": 3, "b": 2})
+    assert budget.max_calls == 5
+
+
+def test_budget_for_accepts_an_independent_ceiling_override():
+    budget = ew.budget_for({"a": 3}, max_calls=1)
+    assert budget.max_calls == 1

@@ -315,8 +315,7 @@ journey (Spend then Refund restores the balance, same-key retries of both
 change nothing). Calls are free ledger adjustments, so `max_paid_calls` is 0
 and the shared paid-call counter does not apply. No registry package is watched:
 RevenueCat REST v2 has no client library this Worker uses, so freshness comes
-from boundary-file changes only. The Anthropic cases in `src/release/` are a
-separate surface, still to be tagged. Android's chain includes this surface.
+from boundary-file changes only. Android's chain includes this surface.
 
 Review of the existing suites against the four depths (#38): the RevenueCat cases
 in `src/release/scan.release.test.ts` (Spend/Refund journey, empty-balance 422)
@@ -324,3 +323,48 @@ are now a subset of the `[revenuecat-rest]` suite and are kept only as the
 Release tier's direct-boundary check; the through-the-Worker cases in
 `src/weekly/` exercise `scan.ts` behaviour, not the REST contract, so they are
 left untagged. Neither feeds the freshness record.
+
+## Per-surface External suite: `anthropic` (ADR-0008, #37)
+
+The `anthropic` surface (boundary files `src/claude.ts` here and
+`src/hdttools/vision_client.py` on the Python side; shared manifest entry at
+`scripts/external_manifest/surfaces/anthropic.json`, platforms `scan-proxy`/
+`core`/`streamlit`) has its own suite in
+`src/external/anthropic.external.test.ts`, every test tagged `[anthropic]`.
+Run it the same way as `revenuecat-rest` above: `.\test-external.ps1` (only
+when stale) or `npm run test:external`. Needs `ANTHROPIC_API_KEY`; a missing
+key fails the run, and `-Skip` records `skipped`.
+
+Depths covered, calling `extractFields` directly (never through the deployed
+Worker or RevenueCat — that stays the Release/Weekly tiers' job): reachable
+and authenticated (a bad key gets a real 401); error contract (a
+corrupted/undecodable image is rejected before any model call, free, same
+reasoning as `scan.weekly.test.ts`'s equivalent case); response shape and
+journey, one real scan per doc type against `ExampleDocs/AddieTag.jpg`
+(truck_tag), `GooseTag.jpg` (trailer_tag) and `CatScale-Ticket.jpg`
+(scale_ticket), asserting the forced tool_use output carries the field names
+each parser (TS `docTypes.ts` consumers / Python `truck_tag.py`/
+`trailer_tag.py`/`scale_ticket.py`) actually reads. **Real cost: exactly 3
+billed Claude calls per run** (one per doc type) — matches the manifest's
+`max_paid_calls: 3`, enforced by `scripts/external_wrapper.py`'s paid-call
+budget gate (`scripts/paid_call_budget.py`), which asks for confirmation
+before running this surface. By default the ceiling it confirms against is
+the sum of the stale paid surfaces' own declared `max_paid_calls` - a
+self-reported number nothing here independently checks against the real
+calls a suite makes, so `.\test-external.ps1 -MaxPaidCalls N` (mirroring
+`.\release.ps1`'s own flag) lets an operator set a genuinely independent,
+tighter cap for a given run instead.
+
+Review of the existing suites against the four depths (#37): `release/
+scan.release.test.ts` already covers reachable-and-authenticated and the
+bad-key error contract for `truck_tag` only (direct `extractFields` calls,
+kept as-is — it is the Release tier's own direct-provider check, not
+retagged into this suite per the ticket's scope note); it does not cover
+`trailer_tag`/`scale_ticket` or the malformed-image contract.
+`weekly/scan.weekly.test.ts` covers the malformed-image error contract (and a
+real success) for `truck_tag` only, through the deployed Worker rather than
+`extractFields` directly, so it is left untagged (it exercises `scan.ts`
+behaviour, same reasoning as the `revenuecat-rest` review above) — also kept
+as-is. The new `[anthropic]` suite is what first covers all three doc types
+and the malformed-image contract at the `claude.ts` boundary itself; neither
+older suite feeds the freshness record.

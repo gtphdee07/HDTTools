@@ -1,6 +1,6 @@
 {
   "name": "anthropic",
-  "status": "planned",
+  "status": "active",
   "platforms": ["scan-proxy", "core", "streamlit"],
   "boundary_files": ["workers/scan-proxy/src/claude.ts", "src/hdttools/vision_client.py"],
   "dependency_pins": ["workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json", "pyproject.toml", "uv.lock"],

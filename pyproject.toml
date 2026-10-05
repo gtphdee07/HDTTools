@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "anthropic>=0.120.2",
+    "anthropic>=0.120.2,<1.0.0",
     "easyocr>=1.7.2",
     "fastapi>=0.141.1",
     "opencv-python-headless>=5.0.0.93",
@@ -41,6 +41,7 @@ testpaths = ["tests"]
 addopts = '--strict-markers -m "not external"'
 markers = [
     "external: live provider calls (billed); run on purpose with `pytest -m external`",
+    "anthropic: External suite surface tag (ADR-0008) for the Claude vision API boundary",
     "minor: function and interaction tests; unmarked means Major",
     "slow: real-photo OCR and the combinatorial sweep",
     "core: tests for src/hdttools and the scripts/ tooling",

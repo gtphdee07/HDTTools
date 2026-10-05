@@ -276,6 +276,34 @@ def test_npm_fetcher_wraps_network_errors():
         ef.fetch_npm_times("x", opener=boom)
 
 
+def test_pypi_fetcher_returns_the_earliest_upload_time_per_version():
+    body = json.dumps({
+        "releases": {
+            "1.0.0": [
+                {"upload_time_iso_8601": "2026-01-01T12:00:00Z"},
+                {"upload_time_iso_8601": "2026-01-01T00:00:00Z"},
+            ],
+            "0.9.0": [],
+        }
+    }).encode()
+    seen = []
+
+    def fake_open(url, timeout):
+        seen.append(url)
+        return body
+
+    assert ef.fetch_pypi_times("anthropic", opener=fake_open) == {"1.0.0": "2026-01-01T00:00:00Z"}
+    assert seen == ["https://pypi.org/pypi/anthropic/json"]
+
+
+def test_pypi_fetcher_wraps_network_errors():
+    def boom(url, timeout):
+        raise OSError("no network")
+
+    with pytest.raises(ef.RegistryError):
+        ef.fetch_pypi_times("x", opener=boom)
+
+
 def test_unknown_ecosystem_is_a_registry_error():
     with pytest.raises(ef.RegistryError):
         ef.fetch_publish_times("cobol", "x")
@@ -316,8 +344,17 @@ def test_revenuecat_rest_is_in_the_real_manifest_with_android_and_scan_proxy_cha
     assert {"scan-proxy", "android"} <= set(surface["platforms"])
 
 
+def test_anthropic_is_in_the_real_manifest_active_with_both_consumer_chains():
+    surface = ef.load_manifest()["surfaces"]["anthropic"]
+    assert surface["status"] == "active"
+    assert surface["max_paid_calls"] == 3
+    assert "workers/scan-proxy/src/claude.ts" in surface["boundary_files"]
+    assert "src/hdttools/vision_client.py" in surface["boundary_files"]
+    assert {"scan-proxy", "core"} <= set(surface["platforms"])
+    assert {"npm", "pypi"} == {p["ecosystem"] for p in surface["registry_packages"]}
+
+
 _REQUIRED_PROVIDER_SURFACES = {
-    "anthropic",
     "scan-proxy-worker",
     "pages-site",
     "revenuecat-android-sdk",

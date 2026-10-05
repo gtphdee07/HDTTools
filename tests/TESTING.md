@@ -10,15 +10,18 @@ root — `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_TESTING.md`,
 `ARCHIVE_EARLY_HISTORY.md`) for the narrative history of individual
 features/bugs each test file guards against.
 
-`uv run pytest -q` — 751 tests selected by default (747 passing, 4
-deliberate `xfail`s — see `test_real_photo_ocr_accuracy.py` below), 754
-collected in all: the other 3 are the live `external` tests, which a
+`uv run pytest -q` — 796 tests selected by default (792 passing, 4
+deliberate `xfail`s — see `test_real_photo_ocr_accuracy.py` below), 801
+collected in all: the other 5 are the live `external` tests, which a
 default run deselects. No CI; everything runs manually, matching the root
 `TESTING.md`'s "session regression" model rather than a cadence. Counted
-2026-10-04 (issue #56, after adding the Streamlit disclaimer-gate test
-and tests for the recent-rig chooser, Start Another Check, the
-estimated-model skip button, a "pass" verdict, the estimated-figures
-notice, the OCR error branches, and the pin-weight slider).
+2026-10-05 (issue #37, after adding the `anthropic` surface's
+reachable/authenticated and malformed-image cases to
+`test_claude_vision_external.py`, the PyPI registry fetcher and its tests
+to `test_external_freshness.py`, and the paid-call-budget tests to
+`test_external_wrapper.py` — see "Per-surface External suite" below; the
+per-context breakdowns further down this file were last refreshed for
+issue #56 and are not re-verified here).
 
 ## Markers and commands
 
@@ -29,6 +32,7 @@ its odd tests individually. No test files moved.
 | Marker | Meaning |
 |---|---|
 | `external` | Live provider calls (billed). Only `test_claude_vision_external.py`. |
+| `anthropic` | External-suite surface tag (ADR-0008) for the Claude vision API boundary; always paired with `external` on the same tests. |
 | `minor` | Function and interaction tests. **Unmarked for `minor` means Major.** |
 | `slow` | Real-photo OCR and the combinatorial sweep. |
 | `core` | `src/hdttools` and the `scripts/` tooling tests (tooling rides with Core). |
@@ -48,7 +52,7 @@ this suite uses) fail (`test_live_provider_guard.py` checks it).
 | One context | `uv run pytest -m core` / `-m streamlit` | 732 / 19 |
 | Major (everything but external) | `uv run pytest` | 751 |
 | Fast Minor | `uv run pytest -m "minor and not slow"` | 232 |
-| External (live, billed) | `uv run pytest -m external` | 3 |
+| External (live, billed) | `uv run pytest -m external` | 5 |
 
 Counts are collected tests at 2026-10-04. `core` and `streamlit` do not overlap, but `test_ocr_output_key_contracts.py` (marked `core`) also
 checks Streamlit's `fields.py`, and `test_live_provider_guard.py` is
@@ -59,6 +63,46 @@ confirms the cost (about $0.01-0.03 per call).
 The earlier real-environment gotcha — this dev machine has
 `ANTHROPIC_API_KEY` set ambiently, so a bare run used to make real billed
 calls (confirmed 2026-09-09) — is closed by the default `-m "not external"`.
+
+## Per-surface External suite: `anthropic` (ADR-0008, #37)
+
+The `anthropic` surface (boundary files `src/hdttools/vision_client.py`
+here and `workers/scan-proxy/src/claude.ts` on the Worker side; shared
+manifest entry at `scripts/external_manifest/surfaces/anthropic.json`,
+platforms `core`/`streamlit`/`scan-proxy`) is covered by
+`test_claude_vision_external.py`, every case tagged with the `anthropic`
+marker (ADR-0008's "marker for pytest" convention — matched by
+`scripts/external_wrapper.py`'s `tagged_in(..., tag_style="marker")` as a
+`mark.anthropic` text search). Run it via the repo-root `.\test-external.ps1`
+(only when the surface is stale per `scripts/external_freshness.py`;
+records pass/fail per surface through `scripts/run_external_pytest.py`) or
+directly with `uv run pytest -m "external and anthropic"`. Needs
+`ANTHROPIC_API_KEY`; a missing key fails the run (an autouse
+`_require_api_key` fixture calls `pytest.fail`, not `pytest.skip` - a skip
+would exit 0 and the wrapper would record a false `pass` for a surface
+never actually exercised, exactly what ADR-0008 rejects). Collection still
+succeeds without the key, so a key-less default run (which deselects
+`external` entirely before setup) is unaffected. `-Skip` records `skipped`
+without ever invoking pytest.
+
+Depths covered: reachable and authenticated
+(`test_a_bad_key_is_rejected_with_a_real_auth_error` — a wrong key raises
+`anthropic.AuthenticationError`, free); error contract
+(`test_a_corrupted_image_is_rejected_before_any_billed_model_call` — a
+truncated real image raises `anthropic.BadRequestError` before any model
+call, free, same reasoning as `scan.weekly.test.ts`'s equivalent Worker-side
+case); response shape and full journey
+(`test_claude_vision_extraction_matches_documented_pass_pool_state`,
+parametrized over all three doc types via the existing pass-pool fixtures —
+**the only billed part of this file: exactly 3 real calls**, matching the
+manifest's `max_paid_calls: 3`).
+
+Review of the pre-existing file against the four depths (#37): before this
+ticket, it covered only response shape and journey (added for roadmap item
+#16); reachable-and-authenticated and the malformed-image error contract
+were gaps, now filled by the two new free cases above. No older Python
+suite exists to leave untouched here — this was the first (and remains the
+only) External-tier file on this platform.
 
 ## Coverage
 

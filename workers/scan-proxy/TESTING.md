@@ -18,11 +18,30 @@ time-cadence tiers" section for why that's now one axis, not two.
 |---|---|
 | One file | `node --test src/docTypes.test.ts` (run from `workers/scan-proxy/`) |
 | Whole context (offline) | `npm test` |
+| Full release | `.\release.ps1` (run from `workers/scan-proxy/`) |
 
 `npm test` runs `src/*.test.ts` only, so it never picks up `src/weekly/`,
 `src/release/` or `src/external/` (live, paid) and has no `pretest` hook
 that deploys. A command check (`tests/test_context_test_commands.py`, #52)
 confirms this.
+
+### Release run (#62)
+
+`.\release.ps1` is the one command for a Worker deploy: it runs the
+offline suite, the stale surface suites, the direct-provider release
+suite and the through-the-Worker weekly suite (which redeploys the
+Worker) in that order, stopping on the first failure. The release and
+weekly suites are both paid, so each asks the owner to confirm before it
+runs and counts against a shared paid-call budget
+(`scripts/paid_call_budget.py`) declared with `-MaxPaidCalls` (default 3:
+the release suite's 1 call plus the weekly suite's 2); a confirmation
+that would exceed the budget aborts the run instead of spending further.
+The step order, the confirmation/counting/abort behaviour and the
+budget's reuse across contexts are unit-tested with a fake runner in
+`tests/test_scan_proxy_release.py` and `tests/test_paid_call_budget.py` —
+no real deploy, test run or network call happens in those tests. The same
+budget module is reusable by future paid External surfaces (the
+Anthropic surface, #37).
 
 ## Categories
 

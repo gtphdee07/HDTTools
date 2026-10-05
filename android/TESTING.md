@@ -18,6 +18,7 @@ names changed.
 |---|---|
 | One file | `./gradlew testDebugUnitTest --tests com.rigcheck.app.domain.BreakdownTest` (run from `android/`) |
 | Whole context (JVM, no device) | `./gradlew testDebugUnitTest` |
+| Full release | `.\release.ps1` (run from `android/`) |
 
 From PowerShell use `.\gradlew` (or `gradlew.bat`) instead of `./gradlew`.
 Both run the JVM unit tests only; no emulator or device is needed. Device
@@ -25,6 +26,26 @@ tests (`connectedDebugAndroidTest`) and the weekly External suite are never
 part of either command. A command check
 (`tests/test_context_test_commands.py`, #52) reads Gradle's dry-run task
 graph and confirms no device task is in it.
+
+### Release run (#63)
+
+`.\release.ps1` is the one command for a Play Store push: it runs the JVM
+suite, the instrumented suite on an attached device, the stale surfaces in
+Android's chain (including the Worker's, since the old weekly suite below
+depends on a freshly deployed Worker) and the old weekly suite, in that
+order, stopping on the first failure. A missing device or emulator
+(`adb devices` reports none) fails the run outright — it is never silently
+skipped. The old weekly suite both redeploys the Worker and makes two real
+Claude calls, so it asks the owner to confirm (naming both) before it runs
+and counts against a shared paid-call budget
+(`scripts/paid_call_budget.py`, the same module the Worker's own
+`workers/scan-proxy/release.ps1` uses) declared with `-MaxPaidCalls`
+(default 2); a confirmation that would
+exceed the budget aborts the run instead of spending further. The step
+order, the missing-device failure and the confirmation/counting/abort
+behaviour are unit-tested with a fake runner and a fake device list in
+`tests/test_android_release.py` and `tests/test_paid_call_budget.py` — no
+real device, deploy or network call happens in those tests.
 
 ## Categories
 

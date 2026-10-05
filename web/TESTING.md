@@ -96,9 +96,12 @@ this surface stale.
 | Error contract | Unknown paths (`/no/such/page`, `/history/deep/link`) return the app shell with 200, identical to `/`, not a Cloudflare error page. |
 | Full journey | Loads the shell, runs the live production bundle in jsdom, clicks the header's "Sign in", and sees the email and password fields, with no "Accounts unavailable" card (what a build without the Supabase variables shows). It never submits the form. |
 
-Not covered, by design: a missing hashed asset (`/assets/nope.js`) also
-returns the shell with a 200, a Pages behaviour we do not depend on; and
-real-browser layout or interaction beyond reaching the sign-in screen.
+Not covered, by design: a stale page that still points at a deleted hashed
+asset (`/assets/nope.js`) gets the shell back with a 200 instead of a 404,
+a Pages behaviour a test cannot change (the suite does catch the current
+shell's own bundle, stylesheet or logo failing to load, or coming back as
+HTML); and real-browser layout or interaction beyond reaching the sign-in
+screen.
 
 **Review of existing external tests against the four depths** (read-only,
 per the #51 scope note): the only existing Web external file,

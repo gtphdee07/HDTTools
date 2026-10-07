@@ -15,7 +15,7 @@ import java.security.SecureRandom
 // Supabase's Google provider is configured with (not the Android client id).
 // Public by design, like the other client config. Blank until the owner
 // creates it - scripts/wizard_android_sign_in.sh walks through that.
-internal const val GOOGLE_WEB_CLIENT_ID = ""
+internal const val GOOGLE_WEB_CLIENT_ID = "637640434916-hr8umbivo9p2n0utemas605fm9u5qi58.apps.googleusercontent.com"
 
 class GoogleSignInCancelled : Exception("Google sign-in was cancelled")
 class GoogleAccountMissing : Exception("No Google account is set up on this device.")

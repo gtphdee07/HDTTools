@@ -19,6 +19,7 @@ import com.rigcheck.app.data.ScanResult
 import com.rigcheck.app.data.encodePhotoForScan
 import com.rigcheck.app.testsupport.AssetFixtureFileSource
 import com.rigcheck.app.testsupport.ScanFixturePool
+import com.rigcheck.app.testsupport.weeklyAccessToken
 import com.rigcheck.app.ui.navigation.EntryModule
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -161,7 +162,7 @@ class PaywallScreenWeeklyTest {
         val imageBase64 = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
 
         val balanceBefore = RevenueCatManager.getScanCreditBalance()
-        val result = ScanApiClient.scan(RevenueCatManager.appUserId, EntryModule.TRUCK, imageBase64)
+        val result = ScanApiClient.scan(weeklyAccessToken(), EntryModule.TRUCK, imageBase64)
 
         val success = result as? ScanResult.Success
         assertNotNull("Expected a successful scan, got: $result", success)
@@ -190,7 +191,7 @@ class PaywallScreenWeeklyTest {
         val balanceBefore = RevenueCatManager.getScanCreditBalance()
 
         val first = ScanApiClient.scan(
-            RevenueCatManager.appUserId,
+            weeklyAccessToken(),
             EntryModule.TRUCK,
             imageBase64,
             clientRequestId = sharedClientRequestId,
@@ -198,7 +199,7 @@ class PaywallScreenWeeklyTest {
         assertNotNull("Expected the first scan to succeed, got: $first", first as? ScanResult.Success)
 
         val second = ScanApiClient.scan(
-            RevenueCatManager.appUserId,
+            weeklyAccessToken(),
             EntryModule.TRUCK,
             imageBase64,
             clientRequestId = sharedClientRequestId,
@@ -236,7 +237,7 @@ class PaywallScreenWeeklyTest {
         val (imagePath, vehicle) = ScanFixturePool.resolveRandom(source, "pass", "truck_tag")
 
         val imageBase64 = encodeFixtureImageForScan(instrumentation, imagePath)
-        val result = ScanApiClient.scan(RevenueCatManager.appUserId, EntryModule.TRUCK, imageBase64)
+        val result = ScanApiClient.scan(weeklyAccessToken(), EntryModule.TRUCK, imageBase64)
 
         val success = result as? ScanResult.Success
         assertNotNull("Expected a successful scan for pass-pool image $imagePath, got: $result", success)
@@ -255,7 +256,7 @@ class PaywallScreenWeeklyTest {
         val (imagePath, vehicle) = ScanFixturePool.resolveRandom(source, "fail", "truck_tag")
 
         val imageBase64 = encodeFixtureImageForScan(instrumentation, imagePath)
-        val result = ScanApiClient.scan(RevenueCatManager.appUserId, EntryModule.TRUCK, imageBase64)
+        val result = ScanApiClient.scan(weeklyAccessToken(), EntryModule.TRUCK, imageBase64)
 
         val success = result as? ScanResult.Success
         assertNotNull("Expected a successful (but partial) scan for fail-pool image $imagePath, got: $result", success)

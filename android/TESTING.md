@@ -334,6 +334,18 @@ root `TESTING.md`'s "Dashboard" section.
   root) for the two MockK deadlocks hit and worked around while writing
   this.
 
+- `AccountManagerTest.kt` (#22) — the Account ↔ RevenueCat link, with fake
+  Supabase and RevenueCat behind `AccountBackend`/`BillingIdentity`: a
+  restored or new session logs the account id in to RevenueCat once (not on
+  token refresh), a different account replaces it, sign-out logs out only if
+  an account was logged in, a failed RevenueCat login leaves the user signed
+  in but not billing-linked until `ensureBillingLinked()` succeeds, and
+  failures/exceptions become messages, not crashes.
+- `GoogleSignInTest.kt` (#22) — the Google nonce (Supabase gets the raw
+  nonce, Google its SHA-256 hex) and cancel/missing-account messages.
+- `ScanApiClientTest.kt` (#22) — scan requests carry
+  `Authorization: Bearer <account token>` and no `app_user_id`.
+
 ### Major (instrumented) — `./gradlew connectedDebugAndroidTest`
 
 **Screen-level tests** (`ui/screens/`, `ui/components/`) — fake
@@ -405,9 +417,20 @@ network involved:
   return real package data (no injection point to fake it here) — that
   stays the External suite's job.
 
+- `AccountScreenTest` (#22) — the sign-in / create-account screen with fake
+  callbacks: all three methods present, submit disabled until a valid
+  email + password, sign-in vs sign-up wiring (trimmed email), failure and
+  "check your email" messages, Apple's "finish in your browser" note, a
+  cancelled chooser shows nothing, the form disables while a call is in
+  flight, forgot-password, Not now.
+- `PaywallScreenTest` also covers (#22) the "Buying for <account>" row and
+  its Sign out button.
+
 **Navigation-flow tests** (`ui/navigation/RigCheckNavHostTest.kt`) — the
 real `RigCheckNavHost` + `RigCheckViewModel`, offline via
-`CustomTestRunner`:
+`CustomTestRunner`. Since #22 a signed-out visit to the Paywall route shows
+the sign-in screen first (the two Paywall-entry tests assert that, and a
+third checks "Not now" returns to the Chooser).
 
 - Happy path: RigPicker → Chooser → Truck/Trailer/Scale entry (manual) →
   Disclaimer (first checkout) → Results.
@@ -513,6 +536,25 @@ infrastructure the External suite below depends on:
     `Activity` (`composeRule.activity`).
 
 ## Known gaps (deliberately not tested, or not yet)
+
+- **Five Major-suite tests fail since the item #23 re-skin, not from #22**
+  (seen 2026-10-07, 71/76 pass): `continueButtonInvokesOnContinue` in the
+  Truck, Trailer and Scale entry screen tests, plus
+  `newRigHappyPathShowsDisclaimerThenResults` and
+  `recentRigSelectionRoutesThroughTheChooserAndSkipsTheDisclaimerSecondTime`
+  in `RigCheckNavHostTest`. All fail at `performScrollTo()` with "no parent
+  layout with a Scroll SemanticsAction" on screens #22 didn't touch. (The
+  nav tests' stale "Rig nickname (e.g. Big Blue)" placeholder text was fixed
+  in #22 because its new tests needed it.)
+- **The External suite can't authenticate its real scans yet (#22).** The
+  Worker now needs an account token (#21); `testsupport/WeeklyAccessToken.kt`
+  fails loudly until `test-weekly.ps1` signs in a funded Supabase test user
+  and the suite buys against that account id instead of `weekly-test-user`.
+  Not run.
+- **Google and Apple sign-in are untested against the real providers.** The
+  Supabase project had both disabled on 2026-10-07; `scripts/wizard_android_sign_in.sh`
+  sets them up. Email sign-in against real Supabase is also not exercised
+  by an automated Android test.
 
 - **Real camera/gallery intents** — `ChooserScreenTest` confirms the
   source-choice dialog appears and its options are present, not that

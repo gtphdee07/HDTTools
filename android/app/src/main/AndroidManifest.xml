@@ -39,6 +39,19 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Where Apple sign-in (a browser tab) returns the session;
+                 see AUTH_REDIRECT_SCHEME/HOST in SupabaseAccountBackend.kt. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="login"
+                    android:scheme="rigcheck" />
+            </intent-filter>
         </activity>
 
         <!-- Isolated research spike (ClaudePlans/2026-08-27-android-camera-overlay-spike.md) -

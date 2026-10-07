@@ -7,6 +7,8 @@ import com.revenuecat.purchases.Package
 import com.revenuecat.purchases.PurchaseParams
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.awaitGetVirtualCurrencies
+import com.revenuecat.purchases.awaitLogIn
+import com.revenuecat.purchases.awaitLogOut
 import com.revenuecat.purchases.interfaces.PurchaseCallback
 import com.revenuecat.purchases.interfaces.ReceiveCustomerInfoCallback
 import com.revenuecat.purchases.interfaces.ReceiveOfferingsCallback
@@ -25,7 +27,18 @@ class PurchaseCancelledException : Exception("Purchase was cancelled by the user
 // suspend functions instead - keeps RigCheckViewModel from calling the
 // SDK directly, mirroring the injectable-dependency pattern already used
 // server-side (workers/scan-proxy/src/scan.ts's spendCredit/refundCredit).
-object RevenueCatManager {
+object RevenueCatManager : BillingIdentity {
+
+    // Makes the signed-in account the RevenueCat customer, so purchases and
+    // the SCAN balance are the account's, shared with every other device.
+    // No anonymous-id migration (out of scope, #22).
+    override suspend fun logIn(accountId: String) {
+        Purchases.sharedInstance.awaitLogIn(accountId)
+    }
+
+    override suspend fun logOut() {
+        Purchases.sharedInstance.awaitLogOut()
+    }
 
     // The Worker deducts/refunds credits via a direct server-side RevenueCat
     // REST call, not through this SDK's own purchase flow - so the SDK's

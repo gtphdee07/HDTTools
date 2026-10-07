@@ -12,22 +12,14 @@ import com.revenuecat.purchases.PurchasesConfiguration
 // "Install the SDK" screen, not a production key.
 private const val REVENUECAT_PUBLIC_API_KEY = "test_LFhGCYRgSfTFUpYRaWkEakLWOdS"
 
-// TESTING-PHASE ONLY: identifies every install as the one known RevenueCat
-// test customer (already has a real SCAN balance, verified server-side
-// 2026-08-17) rather than letting the SDK generate a fresh per-install
-// anonymous ID. Must change before any real release - swap back to the
-// default anonymous-ID behavior (drop .appUserID(...) entirely) once
-// Phase 4 moves past manual testing.
-private const val TESTING_APP_USER_ID = "smoke-test-user"
-
 class RigCheckApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         Purchases.logLevel = LogLevel.DEBUG
-        Purchases.configure(
-            PurchasesConfiguration.Builder(this, REVENUECAT_PUBLIC_API_KEY)
-                .appUserID(TESTING_APP_USER_ID)
-                .build(),
-        )
+        // No app user id here: RevenueCat starts anonymous, and AccountManager
+        // logs the signed-in account's id in (and back out) so purchases land
+        // on the shared account (#22). The old shared "smoke-test-user" id
+        // is gone - a signed-in account now owns its own SCAN balance.
+        Purchases.configure(PurchasesConfiguration.Builder(this, REVENUECAT_PUBLIC_API_KEY).build())
     }
 }

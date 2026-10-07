@@ -1,8 +1,13 @@
 package com.rigcheck.app.ui.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -11,7 +16,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.rigcheck.app.data.AccountState
 import com.rigcheck.app.ui.RigCheckViewModel
+import com.rigcheck.app.ui.screens.AccountScreen
 import com.rigcheck.app.ui.screens.ChooserScreen
 import com.rigcheck.app.ui.screens.DisclaimerScreen
 import com.rigcheck.app.ui.screens.PaywallScreen
@@ -28,6 +35,7 @@ fun RigCheckNavHost(
     viewModel: RigCheckViewModel = viewModel(),
 ) {
     val recentRigs by viewModel.recentRigs.collectAsStateWithLifecycle()
+    val accountState by viewModel.accountState.collectAsStateWithLifecycle()
 
     // Routes to the screen after the scale ticket - the disclaimer only
     // once per process lifetime (per the brief: "shown once per app
@@ -82,14 +90,33 @@ fun RigCheckNavHost(
             )
         }
 
+        // Buying (and so scanning, which needs credits) is the one place the
+        // app asks for an account - the free manual flow never gets here.
         composable<RigCheckRoute.Paywall> {
             val activity = LocalContext.current.findActivity()
-            PaywallScreen(
-                creditBalance = viewModel.creditBalance,
-                onPurchase = { pkg, onResult -> viewModel.purchase(activity, pkg, onResult) },
-                onRestore = { onResult -> viewModel.restorePurchases(onResult) },
-                onDone = { navController.popBackStack() },
-            )
+            when (val account = accountState) {
+                AccountState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+                AccountState.SignedOut -> AccountScreen(
+                    reason = "Sign in or create an account to buy scans. Your purchases and scan balance " +
+                        "follow your account to every device.",
+                    onSignIn = { email, password, onResult -> viewModel.signIn(email, password, onResult) },
+                    onSignUp = { email, password, onResult -> viewModel.signUp(email, password, onResult) },
+                    onGoogle = { onResult -> viewModel.signInWithGoogle(activity, onResult) },
+                    onApple = { onResult -> viewModel.signInWithApple(onResult) },
+                    onForgotPassword = { email, onResult -> viewModel.requestPasswordReset(email, onResult) },
+                    onNotNow = { navController.popBackStack() },
+                )
+                is AccountState.SignedIn -> PaywallScreen(
+                    creditBalance = viewModel.creditBalance,
+                    onPurchase = { pkg, onResult -> viewModel.purchase(activity, pkg, onResult) },
+                    onRestore = { onResult -> viewModel.restorePurchases(onResult) },
+                    onDone = { navController.popBackStack() },
+                    accountLabel = account.account.email ?: account.account.id,
+                    onSignOut = { viewModel.signOut() },
+                )
+            }
         }
 
         composable<RigCheckRoute.TruckTagEntry> {

@@ -38,6 +38,10 @@ fun PaywallScreen(
     onPurchase: (Package, (success: Boolean, error: String?) -> Unit) -> Unit,
     onRestore: ((success: Boolean, error: String?) -> Unit) -> Unit,
     onDone: () -> Unit,
+    // The signed-in account the purchase will be made for (its email, else
+    // its id) - purchases land on this account across every device.
+    accountLabel: String? = null,
+    onSignOut: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var offering by remember { mutableStateOf<Offering?>(null) }
@@ -52,6 +56,16 @@ fun PaywallScreen(
 
     Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
         Text("Get More Scans", style = MaterialTheme.typography.headlineMedium)
+        accountLabel?.let { label ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Buying for $label", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                TextButton(enabled = !isBusy, onClick = onSignOut) { Text("Sign out") }
+            }
+        }
         Text(
             "You have ${creditBalance ?: 0} scan credit${if (creditBalance == 1) "" else "s"} left. " +
                 "Claude reads your truck tag, trailer tag, or scale ticket for you.",

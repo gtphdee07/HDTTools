@@ -23,8 +23,9 @@ import okhttp3.Response
 
 // The already-deployed, already-verified (2026-08-17) Worker - see
 // workers/scan-proxy/README.md for the full contract this client
-// implements: POST /v1/scan, {app_user_id, doc_type, image_base64,
-// media_type} -> {ok:true, doc_type, fields} or {ok:false, code, message}.
+// implements: POST /v1/scan with an `Authorization: Bearer <account token>`
+// header, {doc_type, image_base64, media_type} ->
+// {ok:true, doc_type, fields} or {ok:false, code, message}.
 private const val SCAN_ENDPOINT = "https://rigcheck-scan-proxy.wanderingtrailswaggingtails.workers.dev/v1/scan"
 private val JSON_MEDIA_TYPE = "application/json".toMediaType()
 
@@ -42,6 +43,28 @@ fun EntryModule.toDocType(): String = when (this) {
     EntryModule.SCALE -> "scale_ticket"
 }
 
+// The Worker takes the account to charge from the signed-in user's access
+// token and ignores any user id in the body, so none is sent.
+internal fun buildScanRequest(
+    accessToken: String,
+    module: EntryModule,
+    imageBase64: String,
+    mediaType: String,
+    clientRequestId: String?,
+): Request {
+    val requestJson = buildJsonObject {
+        put("doc_type", module.toDocType())
+        put("image_base64", imageBase64)
+        put("media_type", mediaType)
+        clientRequestId?.let { put("client_request_id", it) }
+    }
+    return Request.Builder()
+        .url(SCAN_ENDPOINT)
+        .header("Authorization", "Bearer $accessToken")
+        .post(requestJson.toString().toRequestBody(JSON_MEDIA_TYPE))
+        .build()
+}
+
 object ScanApiClient {
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -53,7 +76,7 @@ object ScanApiClient {
     // already charges-then-refunds server-side; a client retry after a
     // lost response risks a redundant paid Claude call.
     suspend fun scan(
-        appUserId: String,
+        accessToken: String,
         module: EntryModule,
         imageBase64: String,
         mediaType: String = "image/jpeg",
@@ -63,15 +86,7 @@ object ScanApiClient {
         // back to the Worker's own random-key behavior.
         clientRequestId: String? = null,
     ): ScanResult {
-        val requestJson = buildJsonObject {
-            put("app_user_id", appUserId)
-            put("doc_type", module.toDocType())
-            put("image_base64", imageBase64)
-            put("media_type", mediaType)
-            clientRequestId?.let { put("client_request_id", it) }
-        }
-        val body = requestJson.toString().toRequestBody(JSON_MEDIA_TYPE)
-        val request = Request.Builder().url(SCAN_ENDPOINT).post(body).build()
+        val request = buildScanRequest(accessToken, module, imageBase64, mediaType, clientRequestId)
 
         return suspendCancellableCoroutine { continuation ->
             val call = client.newCall(request)

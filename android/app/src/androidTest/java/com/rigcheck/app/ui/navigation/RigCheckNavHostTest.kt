@@ -26,7 +26,7 @@ class RigCheckNavHostTest {
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     private fun goThroughManualEntryFlow(nickname: String) {
-        composeRule.onNodeWithText("Rig nickname (e.g. Big Blue)").performTextInput(nickname)
+        composeRule.onNodeWithText("Rig nickname").performTextInput(nickname)
         composeRule.onNodeWithText("Create").performClick()
 
         composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
@@ -108,13 +108,14 @@ class RigCheckNavHostTest {
     fun scanPhotoWithoutCreditsRoutesToPaywallAndBackReturnsToChooser() {
         composeRule.setContent { RigCheckNavHost() }
 
-        composeRule.onNodeWithText("Rig nickname (e.g. Big Blue)").performTextInput("Zoomer")
+        composeRule.onNodeWithText("Rig nickname").performTextInput("Zoomer")
         composeRule.onNodeWithText("Create").performClick()
         composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
 
         composeRule.onNodeWithText("Scan Photo").performClick()
 
-        composeRule.onNodeWithText("Get More Scans").assertIsDisplayed()
+        // Signed out, buying asks for an account first (#22).
+        composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
 
         pressBack()
 
@@ -131,17 +132,37 @@ class RigCheckNavHostTest {
     fun creditChipTapOpensPaywallDirectlyAndBackReturnsToChooser() {
         composeRule.setContent { RigCheckNavHost() }
 
-        composeRule.onNodeWithText("Rig nickname (e.g. Big Blue)").performTextInput("Chip Test")
+        composeRule.onNodeWithText("Rig nickname").performTextInput("Chip Test")
         composeRule.onNodeWithText("Create").performClick()
         composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
 
         // "…" is CreditBalanceChip's not-yet-loaded placeholder text.
         composeRule.onNodeWithText("…").performClick()
 
-        composeRule.onNodeWithText("Get More Scans").assertIsDisplayed()
+        composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
 
         pressBack()
 
         composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
+    }
+
+    // The free flow must never be gated: a full manual check reaches
+    // Results with no account and no sign-in screen along the way (the
+    // happy-path test above already does exactly that) - and the only
+    // thing that asks for an account is buying, so "Not now" on that
+    // screen returns to where the user was with nothing lost.
+    @Test
+    fun notNowOnTheSignInScreenReturnsToTheChooser() {
+        composeRule.setContent { RigCheckNavHost() }
+
+        composeRule.onNodeWithText("Rig nickname").performTextInput("Maybe Later")
+        composeRule.onNodeWithText("Create").performClick()
+        composeRule.onNodeWithText("Scan Photo").performClick()
+        composeRule.onNodeWithText("Continue with Apple").assertIsDisplayed()
+
+        composeRule.onNodeWithText("Not now").performClick()
+
+        composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
+        composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
     }
 }

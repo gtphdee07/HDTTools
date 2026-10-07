@@ -57,6 +57,52 @@ class PaywallScreenTest {
         composeRule.onNodeWithText("Restore purchase").assertIsDisplayed()
     }
 
+    // Purchases land on the signed-in account (#22), so the paywall names
+    // it - and signing out from here is how a different household member
+    // switches accounts on a shared phone.
+    @Test
+    fun namesTheAccountThePurchaseIsFor() {
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 2,
+                onPurchase = { _, _ -> },
+                onRestore = { },
+                onDone = { },
+                accountLabel = "alice@example.com",
+            )
+        }
+
+        composeRule.onNodeWithText("Buying for alice@example.com").assertIsDisplayed()
+    }
+
+    @Test
+    fun signOutButtonInvokesOnSignOut() {
+        var signedOut = false
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 2,
+                onPurchase = { _, _ -> },
+                onRestore = { },
+                onDone = { },
+                accountLabel = "alice@example.com",
+                onSignOut = { signedOut = true },
+            )
+        }
+
+        composeRule.onNodeWithText("Sign out").performClick()
+
+        assert(signedOut) { "onSignOut should have fired" }
+    }
+
+    @Test
+    fun showsNoAccountRowWhenNoAccountIsGiven() {
+        composeRule.setContent {
+            PaywallScreen(creditBalance = 2, onPurchase = { _, _ -> }, onRestore = { }, onDone = { })
+        }
+
+        composeRule.onNodeWithText("Sign out").assertDoesNotExist()
+    }
+
     // creditBalance = null is a real, previously-untested branch of
     // `creditBalance ?: 0` and its pluralization check - every existing
     // test above passes a non-null Int (7, 1, 0), so the elvis operator's

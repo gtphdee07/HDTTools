@@ -9,13 +9,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.rigcheck.app.data.AccountManager
+import com.rigcheck.app.data.AccountResult
+import com.rigcheck.app.data.AccountState
 import com.rigcheck.app.data.PurchaseCancelledException
 import com.rigcheck.app.data.RecentRigsRepository
 import com.rigcheck.app.data.RevenueCatManager
 import com.rigcheck.app.data.ScanApiClient
 import com.rigcheck.app.data.ScanResult
+import com.rigcheck.app.data.SupabaseAccountBackend
+import com.rigcheck.app.data.UnavailableAccountBackend
 import com.rigcheck.app.data.encodePhotoForScan
+import com.rigcheck.app.data.googleFailureMessage
 import com.rigcheck.app.data.mergeScanFields
+import com.rigcheck.app.data.requestGoogleIdentity
 import com.rigcheck.app.data.standaloneWeightFrom
 import com.rigcheck.app.domain.BreakdownItem
 import com.rigcheck.app.domain.DEFAULT_PIN_WEIGHT_PCT
@@ -29,10 +36,17 @@ import com.rigcheck.app.domain.verdictFor
 import com.rigcheck.app.ui.navigation.EntryModule
 import com.revenuecat.purchases.Package
 import java.util.UUID
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+private const val BILLING_NOT_LINKED = "Couldn't connect your account to purchases. Check your connection and try again."
+private val NOT_SIGNED_IN = ScanResult.Failure("not_signed_in", "Sign in to scan.")
 
 sealed interface ScanUiState {
     data object Idle : ScanUiState
@@ -75,8 +89,61 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     val verdict: VerdictInfo
         get() = verdictFor(breakdown)
 
+    // The shared account (#22). Free manual entry never touches it; only
+    // buying and scanning need a signed-in account.
+    private val accountManager = AccountManager(
+        backend = SupabaseAccountBackend.get() ?: UnavailableAccountBackend,
+        billing = RevenueCatManager,
+        scope = viewModelScope,
+    )
+    val accountState: StateFlow<AccountState> = accountManager.state
+
     init {
         refreshCreditBalance()
+        // The SCAN balance belongs to whichever account RevenueCat is
+        // currently logged in as, so re-read it whenever that changes.
+        viewModelScope.launch {
+            accountManager.state
+                .map { state -> (state as? AccountState.SignedIn)?.let { it.account.id to it.billingLinked } }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { signedIn ->
+                    if (signedIn == null) creditBalance = null
+                    refreshCreditBalance()
+                }
+        }
+    }
+
+    fun signIn(email: String, password: String, onResult: (AccountResult) -> Unit) =
+        launchAccountAction(onResult) { accountManager.signIn(email, password) }
+
+    fun signUp(email: String, password: String, onResult: (AccountResult) -> Unit) =
+        launchAccountAction(onResult) { accountManager.signUp(email, password) }
+
+    fun requestPasswordReset(email: String, onResult: (AccountResult) -> Unit) =
+        launchAccountAction(onResult) { accountManager.requestPasswordReset(email) }
+
+    fun signInWithApple(onResult: (AccountResult) -> Unit) =
+        launchAccountAction(onResult) { accountManager.signInWithApple() }
+
+    fun signInWithGoogle(activity: Activity, onResult: (AccountResult) -> Unit) =
+        launchAccountAction(onResult) {
+            try {
+                val identity = requestGoogleIdentity(activity)
+                accountManager.signInWithGoogle(identity.idToken, identity.rawNonce)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                googleFailureMessage(e)?.let { AccountResult.Failure(it) } ?: AccountResult.Cancelled
+            }
+        }
+
+    fun signOut() {
+        viewModelScope.launch { accountManager.signOut() }
+    }
+
+    private fun launchAccountAction(onResult: (AccountResult) -> Unit, action: suspend () -> AccountResult) {
+        viewModelScope.launch { onResult(action()) }
     }
 
     fun refreshCreditBalance() {
@@ -135,8 +202,9 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
             // ScanApiClient) is enough to cover "the same logical attempt."
             val clientRequestId = UUID.randomUUID().toString()
             val result = runCatching {
+                val token = accountManager.accessToken() ?: return@runCatching NOT_SIGNED_IN
                 val base64 = encodePhotoForScan(contentResolver, photoUri)
-                ScanApiClient.scan(RevenueCatManager.appUserId, module, base64, clientRequestId = clientRequestId)
+                ScanApiClient.scan(token, module, base64, clientRequestId = clientRequestId)
             }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
 
             when (result) {
@@ -175,13 +243,9 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val clientRequestId = UUID.randomUUID().toString()
             val result = runCatching {
+                val token = accountManager.accessToken() ?: return@runCatching NOT_SIGNED_IN
                 val base64 = encodePhotoForScan(contentResolver, photoUri)
-                ScanApiClient.scan(
-                    RevenueCatManager.appUserId,
-                    EntryModule.SCALE,
-                    base64,
-                    clientRequestId = clientRequestId,
-                )
+                ScanApiClient.scan(token, EntryModule.SCALE, base64, clientRequestId = clientRequestId)
             }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
 
             when (result) {
@@ -214,6 +278,12 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
 
     fun purchase(activity: Activity, pkg: Package, onResult: (success: Boolean, error: String?) -> Unit) {
         viewModelScope.launch {
+            // A purchase made before RevenueCat knows the account would land
+            // on the wrong customer, so it waits for the link.
+            if (!accountManager.ensureBillingLinked()) {
+                onResult(false, BILLING_NOT_LINKED)
+                return@launch
+            }
             runCatching { RevenueCatManager.purchasePackage(activity, pkg) }
                 .onSuccess {
                     refreshCreditBalance()
@@ -231,6 +301,10 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
 
     fun restorePurchases(onResult: (success: Boolean, error: String?) -> Unit) {
         viewModelScope.launch {
+            if (!accountManager.ensureBillingLinked()) {
+                onResult(false, BILLING_NOT_LINKED)
+                return@launch
+            }
             runCatching { RevenueCatManager.restorePurchases() }
                 .onSuccess {
                     refreshCreditBalance()

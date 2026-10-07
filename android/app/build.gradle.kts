@@ -199,6 +199,13 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.revenuecat.purchases)
     implementation(libs.okhttp)
+    // Shared account (#22): Supabase Auth over Ktor's OkHttp engine, with
+    // Google sign-in through Credential Manager.
+    implementation(libs.supabase.auth)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.google.googleid)
     // Camera-overlay spike (ClaudePlans/2026-08-27-android-camera-overlay-spike.md)
     // - isolated proof-of-concept only, not wired into production navigation.
     implementation(libs.androidx.camera.core)

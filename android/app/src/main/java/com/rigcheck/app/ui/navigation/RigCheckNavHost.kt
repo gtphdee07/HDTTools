@@ -16,6 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.rigcheck.app.data.APPLE_SIGN_IN_ENABLED
 import com.rigcheck.app.data.AccountState
 import com.rigcheck.app.ui.RigCheckViewModel
 import com.rigcheck.app.ui.screens.AccountScreen
@@ -101,6 +102,7 @@ fun RigCheckNavHost(
                 AccountState.SignedOut -> AccountScreen(
                     reason = "Sign in or create an account to buy scans. Your purchases and scan balance " +
                         "follow your account to every device.",
+                    showApple = APPLE_SIGN_IN_ENABLED,
                     onSignIn = { email, password, onResult -> viewModel.signIn(email, password, onResult) },
                     onSignUp = { email, password, onResult -> viewModel.signUp(email, password, onResult) },
                     onGoogle = { onResult -> viewModel.signInWithGoogle(activity, onResult) },

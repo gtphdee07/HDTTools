@@ -551,10 +551,12 @@ infrastructure the External suite below depends on:
   fails loudly until `test-weekly.ps1` signs in a funded Supabase test user
   and the suite buys against that account id instead of `weekly-test-user`.
   Not run.
-- **Google and Apple sign-in are untested against the real providers.** The
-  Supabase project had both disabled on 2026-10-07; `scripts/wizard_android_sign_in.sh`
-  sets them up. Email sign-in against real Supabase is also not exercised
-  by an automated Android test.
+- **Google sign-in is untested against the real provider.** The Supabase
+  project had it disabled on 2026-10-07; `scripts/wizard_android_sign_in.sh`
+  sets it up. Email sign-in against real Supabase is also not exercised by
+  an automated Android test.
+- **Apple sign-in is built but hidden** (`APPLE_SIGN_IN_ENABLED = false`) and
+  untested against Apple; deferred to #77 with the iOS port.
 
 - **Real camera/gallery intents** — `ChooserScreenTest` confirms the
   source-choice dialog appears and its options are present, not that

@@ -184,7 +184,7 @@ finish() {
 # Replace the example below. Set TOTAL_STAGES to match the stages you write.
 # ──────────────────────────────────────────────────────────────────────────
 
-TOTAL_STAGES=6
+TOTAL_STAGES=4
 
 # Public values that already live in the Android source; the wizard reads them
 # from there so there is one place to change them.
@@ -196,19 +196,9 @@ SUPABASE_KEY=$(grep -oE 'SUPABASE_PUBLISHABLE_KEY = "[^"]+"' "$KT_BACKEND" | cut
 SUPABASE_REF=${SUPABASE_URL#https://}; SUPABASE_REF=${SUPABASE_REF%%.*}
 [[ -n "$SUPABASE_URL" && -n "$SUPABASE_KEY" ]] || { echo "Couldn't read the Supabase config from $KT_BACKEND." >&2; exit 1; }
 
-banner "Android sign-in: Google and Apple (#22)"
+banner "Android sign-in: Google (#22; Apple is #77)"
 
 # ── 1 ─────────────────────────────────────────────────────────────────────
-stage "Supabase: allow the app's return link"
-say "Apple sign-in opens a browser tab and returns to the app through rigcheck://login."
-say "Supabase refuses redirects that aren't on its allow list."
-open_url "https://supabase.com/dashboard/project/$SUPABASE_REF/auth/url-configuration"
-step "Under 'Redirect URLs' click 'Add URL'."
-step "Enter exactly:  rigcheck://login"
-step "Click 'Save changes'. Leave 'Site URL' alone (the Web app uses it)."
-pause "Done? Press Enter."
-
-# ── 2 ─────────────────────────────────────────────────────────────────────
 stage "Google Cloud: the Web OAuth client"
 say "Supabase checks Google's ID token against a *Web application* client."
 open_url "https://console.cloud.google.com/apis/credentials"
@@ -221,7 +211,7 @@ ask GOOGLE_WEB_CLIENT_ID "Paste the Web client ID (ends .apps.googleusercontent.
 ask_secret GOOGLE_WEB_CLIENT_SECRET "Paste the Web client secret (hidden):"
 [[ "$GOOGLE_WEB_CLIENT_ID" == *.apps.googleusercontent.com ]] || warn "That doesn't look like a Google client ID; double-check it."
 
-# ── 3 ─────────────────────────────────────────────────────────────────────
+# ── 2 ─────────────────────────────────────────────────────────────────────
 stage "Google Cloud: the Android OAuth client"
 say "Google only issues ID tokens to an app it can recognise by package name + signing key."
 if command -v keytool >/dev/null 2>&1 && [[ -f "$HOME/.android/debug.keystore" ]]; then
@@ -238,7 +228,7 @@ step "SHA-1 certificate fingerprint: the debug value above (add the Play app-sig
 step "Create. You don't need to copy anything from this one."
 pause "Done? Press Enter."
 
-# ── 4 ─────────────────────────────────────────────────────────────────────
+# ── 3 ─────────────────────────────────────────────────────────────────────
 stage "Supabase: turn on the Google provider"
 open_url "https://supabase.com/dashboard/project/$SUPABASE_REF/auth/providers"
 step "Open 'Google' and switch 'Enable Sign in with Google' on."
@@ -248,20 +238,7 @@ step "Leave 'Skip nonce checks' OFF (the app sends a nonce)."
 step "Save."
 pause "Done? Press Enter."
 
-# ── 5 ─────────────────────────────────────────────────────────────────────
-stage "Apple: Services ID and key, then Supabase"
-say "Apple needs an Apple Developer account (paid). This is the longest step."
-say "Follow Supabase's own walkthrough, which stays current with Apple's console:"
-open_url "https://supabase.com/docs/guides/auth/social-login/auth-apple"
-say "You will create, in order: an App ID, a Services ID, and a Sign in with Apple key."
-step "Use  $SUPABASE_URL/auth/v1/callback  as the Services ID's return URL."
-step "Generate the client-secret JWT from the key as the guide describes."
-open_url "https://supabase.com/dashboard/project/$SUPABASE_REF/auth/providers"
-step "Open 'Apple', enable it, paste the Services ID and the generated secret, Save."
-warn "Apple's generated secret expires (at most every 6 months); set yourself a reminder."
-pause "Apple enabled in Supabase? Press Enter."
-
-# ── 6 ─────────────────────────────────────────────────────────────────────
+# ── 4 ─────────────────────────────────────────────────────────────────────
 stage "Put the Web client ID in the app, then check Supabase"
 say "The Web client ID is public (like the Supabase key), so it goes in the source."
 if grep -q 'GOOGLE_WEB_CLIENT_ID = ""' "$KT_GOOGLE"; then
@@ -279,14 +256,14 @@ fi
 
 say "Asking Supabase which providers are live..."
 settings=$(curl -fsS -H "apikey: $SUPABASE_KEY" "$SUPABASE_URL/auth/v1/settings" 2>/dev/null || true)
-for provider in email google apple; do
+for provider in email google; do
   if grep -qE "\"$provider\" *: *true" <<<"$settings"; then
     printf '  %s✓%s %s is enabled\n' "$GREEN" "$RESET" "$provider"
   else
     warn "$provider does not show as enabled (or Supabase couldn't be reached)."
   fi
 done
-say "Then build and run the app, tap Scan Photo → 'Continue with Google' and 'Continue with Apple'."
+say "Then build and run the app, tap Scan Photo and try 'Continue with Google'."
 say "Commit the GoogleSignIn.kt change when it works."
 # ──────────────────────────────────────────────────────────────────────────
 

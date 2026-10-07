@@ -33,10 +33,11 @@ class AccountScreenTest {
         }
     }
 
-    private fun show(recorder: Recorder, onNotNow: () -> Unit = {}) {
+    private fun show(recorder: Recorder, onNotNow: () -> Unit = {}, showApple: Boolean = true) {
         composeRule.setContent {
             AccountScreen(
                 reason = "Sign in to buy scans.",
+                showApple = showApple,
                 onSignIn = { email, password, cb -> recorder.calls += "signIn:$email:$password"; recorder.respond(cb) },
                 onSignUp = { email, password, cb -> recorder.calls += "signUp:$email:$password"; recorder.respond(cb) },
                 onGoogle = { cb -> recorder.calls += "google"; recorder.respond(cb) },
@@ -133,6 +134,16 @@ class AccountScreenTest {
         composeRule.onNodeWithText("Continue with Apple").performClick()
 
         assert(recorder.calls == listOf("google", "apple")) { recorder.calls.toString() }
+    }
+
+    // Apple is deferred to #77 (needs the iOS app and an Apple Developer
+    // account), so the app hides the button rather than ship a dead one.
+    @Test
+    fun hidesTheAppleButtonWhenAppleIsNotEnabled() {
+        show(Recorder(), showApple = false)
+
+        composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
+        composeRule.onNodeWithText("Continue with Apple").assertDoesNotExist()
     }
 
     @Test

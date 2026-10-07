@@ -13,7 +13,7 @@ A blocking, once-per-app-session acknowledgment ("Experimental Tool — Not for 
 Which of the three documents (Truck Tag, Trailer Tag, or Scale Ticket) a given screen is currently collecting data for — the app's own routing/UI concept, not a Core concept.
 
 **Account**:
-The shared RigCheck sign-in (Supabase Auth; email + password, Google or Apple) that Android shares with Web — the same account on every device. Its id is also the RevenueCat app user id, so purchases and the Scan Credit balance follow the account (ADR-0003, ADR-0004). Asked for only when something needs it — buying or scanning; the free manual-entry flow never requires one. Signing out affects this device only. Anonymous-id beta users are not migrated.
+The shared RigCheck sign-in (Supabase Auth; email + password and Google; Apple is deferred to the iOS port, #77) that Android shares with Web — the same account on every device. Its id is also the RevenueCat app user id, so purchases and the Scan Credit balance follow the account (ADR-0003, ADR-0004). Asked for only when something needs it — buying or scanning; the free manual-entry flow never requires one. Signing out affects this device only. Anonymous-id beta users are not migrated.
 
 ## Open question, not yet a term
 

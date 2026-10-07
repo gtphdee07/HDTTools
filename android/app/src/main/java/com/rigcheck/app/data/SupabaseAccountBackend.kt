@@ -25,6 +25,10 @@ import kotlinx.coroutines.flow.map
 internal const val SUPABASE_URL = "https://lifginpapkevreyrzzex.supabase.co"
 internal const val SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Aph46sKPDsU90ZLFqo2Q5Q_m46x4R-Z"
 
+// Apple sign-in is built but not offered: it needs an Apple Developer account
+// and is best proven alongside the iOS app (#77). Flip this when that lands.
+const val APPLE_SIGN_IN_ENABLED = false
+
 // The custom-URL-scheme the Apple (browser) sign-in returns to. Must match
 // the intent-filter on MainActivity in AndroidManifest.xml and be on
 // Supabase's redirect-URL allow list (see scripts/wizard_android_sign_in.sh).

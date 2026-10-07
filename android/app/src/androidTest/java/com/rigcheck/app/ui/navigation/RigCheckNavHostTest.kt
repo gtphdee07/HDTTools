@@ -158,7 +158,7 @@ class RigCheckNavHostTest {
         composeRule.onNodeWithText("Rig nickname").performTextInput("Maybe Later")
         composeRule.onNodeWithText("Create").performClick()
         composeRule.onNodeWithText("Scan Photo").performClick()
-        composeRule.onNodeWithText("Continue with Apple").assertIsDisplayed()
+        composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
 
         composeRule.onNodeWithText("Not now").performClick()
 

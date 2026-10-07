@@ -37,6 +37,8 @@ private const val MIN_PASSWORD_LENGTH = 6
 @Composable
 fun AccountScreen(
     reason: String,
+    // Off until Apple sign-in is set up (#77); the flow itself is built.
+    showApple: Boolean,
     onSignIn: (email: String, password: String, (AccountResult) -> Unit) -> Unit,
     onSignUp: (email: String, password: String, (AccountResult) -> Unit) -> Unit,
     onGoogle: ((AccountResult) -> Unit) -> Unit,
@@ -141,11 +143,13 @@ fun AccountScreen(
             onClick = { perform(null) { cb -> onGoogle(cb) } },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Continue with Google") }
-        OutlinedButton(
-            enabled = !isBusy,
-            onClick = { perform("Finish signing in with Apple in your browser.") { cb -> onApple(cb) } },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Continue with Apple") }
+        if (showApple) {
+            OutlinedButton(
+                enabled = !isBusy,
+                onClick = { perform("Finish signing in with Apple in your browser.") { cb -> onApple(cb) } },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Continue with Apple") }
+        }
 
         TextButton(onClick = onNotNow) { Text("Not now") }
     }

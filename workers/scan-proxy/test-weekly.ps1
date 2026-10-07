@@ -5,9 +5,12 @@
 
 .DESCRIPTION
     Thin wrapper around `npm run test:weekly` (real, bounded calls
-    against the deployed Worker using the dedicated weekly-test-user /
-    weekly-test-user-no-credits RevenueCat test customers - see
-    workers/scan-proxy/TESTING.md). New 2026-08-24 (roadmap item #7):
+    against the deployed Worker, signing in the two dedicated Supabase
+    test users (funded / no-credits, each with a RevenueCat customer named
+    by its UUID; credentials from the environment or web/.env.local - set
+    up by scripts/wizard_scan_proxy_live_accounts.sh, see
+    workers/scan-proxy/TESTING.md). Redeploys the Worker first, and two of
+    its cases make billed Claude calls. New 2026-08-24 (roadmap item #7):
     before this wrapper existed, this suite only ever ran via bare `npm
     run test:weekly`, which had no hook to record a real result anywhere
     - scripts/generate_dashboard.py's External column needs a real

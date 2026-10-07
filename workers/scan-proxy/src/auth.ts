@@ -11,6 +11,7 @@ import {
   type AccountJwk,
   type JwksDocument,
 } from "./accountTokenContract.ts";
+import { base64urlToBytes, decodeJwtPart } from "./jwt.ts";
 import type { Env } from "./types.ts";
 
 export type AuthResult =
@@ -58,22 +59,6 @@ async function findKey(url: string, kid: string, deps: AuthDeps): Promise<Accoun
   return (await loadJwks(url, deps)).keys.find((key) => key.kid === kid);
 }
 
-function decodePart(part: string | undefined): unknown {
-  if (!part) return undefined;
-  try {
-    return JSON.parse(new TextDecoder().decode(base64urlToBytes(part)));
-  } catch {
-    return undefined;
-  }
-}
-
-function base64urlToBytes(value: string): Uint8Array {
-  if (!/^[A-Za-z0-9_-]*$/.test(value)) throw new Error("not base64url");
-  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
-  const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "="));
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
-}
-
 async function signatureIsValid(key: AccountJwk, signingInput: string, signature: string): Promise<boolean> {
   try {
     const publicKey = await crypto.subtle.importKey(
@@ -108,7 +93,7 @@ export async function verifyAccountToken(
 
   // The algorithm is checked against our own fixed value before any key is
   // looked up, so "none" and symmetric algorithms can never be negotiated.
-  const header = decodePart(headerPart);
+  const header = decodeJwtPart(headerPart);
   const headerProblem = headerViolation(header);
   if (headerProblem) return { ok: false, reason: headerProblem };
   const kid = (header as { kid: string }).kid;
@@ -131,7 +116,7 @@ export async function verifyAccountToken(
     return { ok: false, reason: `bad ${ACCOUNT_TOKEN_ALG} signature` };
   }
 
-  const claims = decodePart(claimsPart);
+  const claims = decodeJwtPart(claimsPart);
   const claimsProblem = claimsViolation(claims, env.SUPABASE_URL, deps.nowSeconds());
   if (claimsProblem) return { ok: false, reason: claimsProblem };
 

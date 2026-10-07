@@ -34,7 +34,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { extractFields } from "../claude.ts";
 import { DOC_TYPE_CONFIG } from "../docTypes.ts";
-import { signInTestAccount, subjectOf } from "../liveToken.ts";
+import { liveCredentialsMissing, signInTestAccount, subjectOf } from "../liveToken.ts";
 import { refundCredit, spendCredit } from "../revenuecat.ts";
 import type { Env } from "../types.ts";
 
@@ -42,17 +42,23 @@ const REVENUECAT_SECRET_KEY = process.env.REVENUECAT_SECRET_KEY;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const SKIP_KEYS = process.env.SKIP_KEYS === "1" || process.env.SKIP_KEYS === "true";
 
+// The RevenueCat cases also need the two Supabase test users' sign-in
+// credentials (environment or web/.env.local - see ../liveToken.ts).
+const missingSignIn = liveCredentialsMissing(["funded", "noCredits"]);
+
 if (!SKIP_KEYS) {
   const missing = [
     !REVENUECAT_SECRET_KEY && "REVENUECAT_SECRET_KEY",
     !ANTHROPIC_API_KEY && "ANTHROPIC_API_KEY",
+    ...missingSignIn,
   ].filter((name): name is string => Boolean(name));
 
   if (missing.length > 0) {
     throw new Error(
       `Release tier stopped before running: ${missing.join(" and ")} not set in the ` +
         "environment. Export the missing key(s) (the same values set via `wrangler secret " +
-        "put`) before running, or explicitly allow skipping with `.\\test-release.ps1 " +
+        "put`; the Supabase test-user ones may instead live in web/.env.local) before " +
+        "running, or explicitly allow skipping with `.\\test-release.ps1 " +
         "-SkipKeys` (or `SKIP_KEYS=1 npm run test:release` directly).",
     );
   }
@@ -60,9 +66,11 @@ if (!SKIP_KEYS) {
 
 // Missing-key skip reasons only ever apply once SKIP_KEYS=1 has already
 // let execution reach this point - see the hard stop above.
-const skipRevenueCat = REVENUECAT_SECRET_KEY
-  ? false
-  : "REVENUECAT_SECRET_KEY not set (SKIP_KEYS=1 was passed, so skipping instead of stopping).";
+const skipRevenueCat = !REVENUECAT_SECRET_KEY
+  ? "REVENUECAT_SECRET_KEY not set (SKIP_KEYS=1 was passed, so skipping instead of stopping)."
+  : missingSignIn.length > 0
+    ? `${missingSignIn.join(", ")} not set (SKIP_KEYS=1 was passed, so skipping instead of stopping).`
+    : false;
 const skipAnthropic = ANTHROPIC_API_KEY
   ? false
   : "ANTHROPIC_API_KEY not set (SKIP_KEYS=1 was passed, so skipping instead of stopping).";

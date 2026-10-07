@@ -12,6 +12,7 @@ import {
   type AccountTokenHeader,
   type JwksDocument,
 } from "./accountTokenContract.ts";
+import { decodeJwtPart } from "./jwt.ts";
 
 export const TEST_SUPABASE_URL = "https://test-project.supabase.co";
 const TEST_KID = "test-key-1";
@@ -82,5 +83,5 @@ export function unsignedToken(header: Record<string, unknown>, claims: Record<st
 }
 
 export function decodeTokenPart(token: string, index: 0 | 1): unknown {
-  return JSON.parse(Buffer.from(token.split(".")[index] ?? "", "base64url").toString("utf8"));
+  return decodeJwtPart(token.split(".")[index]);
 }

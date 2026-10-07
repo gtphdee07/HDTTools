@@ -27,7 +27,9 @@ import {
   headerViolation,
   jwksUrl,
   jwksViolation,
+  usableKeys,
 } from "../accountTokenContract.ts";
+import { decodeJwt } from "../jwt.ts";
 import { liveSupabaseUrl, signInTestAccount, type TestAccount } from "../liveToken.ts";
 
 const SCAN_ENDPOINT = "https://rigcheck-scan-proxy.wanderingtrailswaggingtails.workers.dev/v1/scan";
@@ -73,20 +75,16 @@ test("a request with no account token gets 401 unauthorized from the deployed Wo
 test("a real Supabase token and JWKS match the shared account-token contract", async () => {
   const supabaseUrl = liveSupabaseUrl();
   const token = await signInTestAccount("funded");
-  const [header, claims] = token
-    .split(".")
-    .slice(0, 2)
-    .map((part) => JSON.parse(Buffer.from(part, "base64url").toString("utf8")) as unknown);
+  const { header, claims } = decodeJwt(token);
 
   assert.equal(headerViolation(header), null);
   assert.equal(claimsViolation(claims, supabaseUrl, Math.floor(Date.now() / 1000)), null);
 
-  const jwks = await (await fetch(jwksUrl(supabaseUrl))).json();
+  const response = await fetch(jwksUrl(supabaseUrl));
+  const jwks = await response.json();
   assert.equal(jwksViolation(jwks), null);
-  assert.ok(
-    (jwks as { keys: Array<{ kid: string }> }).keys.some((key) => key.kid === (header as { kid: string }).kid),
-    "the token's kid is not in the published JWKS",
-  );
+  const publishedKids = usableKeys(jwks).map((key) => key.kid);
+  assert.ok(publishedKids.includes((header as { kid: string }).kid), "the token's kid is not in the published JWKS");
 });
 
 // The "noCredits" account: a second Supabase test user whose RevenueCat

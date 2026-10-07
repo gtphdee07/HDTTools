@@ -145,11 +145,11 @@ npm run test:coverage
 (`node --test --experimental-test-coverage src/*.test.ts` — the same
 files `npm test` already runs, with coverage instrumentation added.)
 Real numbers as of #21 (2026-10-07): **100.00%** line and function
-coverage across every source file (`accountTokenContract.ts`, `auth.ts`,
-`claude.ts`, `docTypes.ts`, `http.ts`, `index.ts`, `request.ts`,
-`revenuecat.ts`, `scan.ts`; branch coverage is 100% everywhere except the
-token modules and test fixtures, ~95% overall) — the Major suite's 93 tests
-exercise every line. (Earlier, 2026-08-24: 100% on all three metrics, 57
+coverage across every source file (`accountTokenContract.ts`, `auth.ts`, `jwt.ts`,
+`liveToken.ts`, `claude.ts`, `docTypes.ts`, `http.ts`, `index.ts`,
+`request.ts`, `revenuecat.ts`, `scan.ts`; branch coverage is 100% everywhere
+except the token modules and test fixtures, ~98% overall) — the Major suite's
+107 tests exercise every line. (Earlier, 2026-08-24: 100% on all three metrics, 57
 tests.) **This is the enforced baseline
 `scripts/coverage_gate.py` checks scan-proxy against at release time**
 (see the root `TESTING.md`'s "Coverage gate" section) — since it starts
@@ -278,6 +278,17 @@ validates a real token against.
 - **the failure cause is not leaked in the 401 body**.
 - **the offline fixtures conform to the shared contract**.
 
+### `jwt.test.ts` — `jwt.ts`, the one JWT-part decoder (Worker verifier, test fixtures and live suites all use it)
+
+- **decodes a base64url JSON part, including non-ASCII**; **an empty, missing, non-base64url or non-JSON part decodes to `undefined`, never throws**; **`decodeJwt` returns header and claims and ignores the signature**; **`base64urlToBytes` decodes unpadded input and rejects characters outside the alphabet**.
+
+### `liveToken.test.ts` — the live suites' credential and sign-in helper (mocked `fetch`; credentials injected through `process.env`, never Supabase)
+
+- **`parseEnvText`** reads `KEY=value` lines, skips comments/blanks, strips matching quotes, keeps `=` inside values.
+- **`missingVars` / `requireVars`** report names only (never values): the environment wins, `web/.env.local` is the fallback, empty counts as missing.
+- **`readEnvFile`** returns nothing, rather than throwing, for a missing file; **`liveCredentialsMissing`** lists only what the given accounts need (the release suite uses it to stop up front, or skip under `SKIP_KEYS`).
+- **`signInTestAccount`** posts the right account's credentials to Supabase's password grant and returns the access token; a failure names the account and HTTP status but never the credentials; a response without `access_token` throws. **`subjectOf`** returns the token's `sub` and throws without one.
+
 ### `index.test.ts` — the router/entry point, `worker.fetch` (real `defaultScanDeps` — no injection point at this layer, so `fetch` is mocked to route by URL between RevenueCat, Anthropic and the Supabase JWKS endpoint; every request carries a locally signed account token since #21)
 
 - `[sanity]` **a valid POST /v1/scan runs the real dependency wiring end-to-end and returns extracted fields** — the only place anywhere in this suite that exercises the real `defaultScanDeps`/lazy-`claude.ts`-import wiring rather than fake deps.
@@ -299,7 +310,7 @@ validates a real token against.
 
 ### `release/scan.release.test.ts` — real API calls directly at the RevenueCat/Anthropic boundaries (`.\test-release.ps1` / `npm run test:release`, needs your local secrets)
 
-- **Module-level hard stop, not a per-test skip, when a key is missing and `SKIP_KEYS` isn't set** — the whole file throws before any test runs, reported as one failed test naming which env var is missing. `SKIP_KEYS=1` (set by `-SkipKeys`) is required to fall back to the per-boundary skips below.
+- **Module-level hard stop, not a per-test skip, when a key is missing and `SKIP_KEYS` isn't set** — the whole file throws before any test runs, reported as one failed test naming which env var is missing. `SKIP_KEYS=1` (set by `-SkipKeys`) is required to fall back to the per-boundary skips below. Since #21 the two RevenueCat cases also need the Supabase test users' sign-in credentials (`liveCredentialsMissing`): missing ones are part of the hard stop, and under `SKIP_KEYS` they skip those cases just like a missing `REVENUECAT_SECRET_KEY`.
 - **spendCredit against a real funded customer succeeds, and refundCredit reverses it** — the `funded` account's UUID (read from a real signed-in token, #21), net zero balance change (spend then immediately refund with the paired idempotency key). Proves the real `Authorization`/`Idempotency-Key`/adjustment-body request shape `revenuecat.ts` sends is still accepted for both a debit and a credit.
 - **spendCredit against a real customer with zero balance gets the real 422 `scan.ts` depends on** — the `noCredits` account's UUID (#21), calling `revenuecat.ts` directly rather than through the Worker (the through-our-service suite's equivalent case goes through the deployed Worker's full request/response envelope; this one isolates the RevenueCat boundary itself).
 - **Both of the above fail explicitly as a bad-key problem, not a bare status mismatch, if `REVENUECAT_SECRET_KEY` is present but wrong** — `assertNotAuthFailure` turns a real 401/403 into `"REVENUECAT_SECRET_KEY appears invalid - RevenueCat returned <status>: <real error body>"`. Verified 2026-08-22 with a deliberately garbage key.

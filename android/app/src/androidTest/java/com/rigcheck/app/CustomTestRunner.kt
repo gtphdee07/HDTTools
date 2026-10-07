@@ -8,8 +8,8 @@ import java.io.File
 // Instrumented tests run inside the real app process, which would
 // otherwise instantiate the real RigCheckApplication and call
 // Purchases.configure() against RevenueCat's Test Store on every test run
-// - hitting real network and sharing smoke-test-user's balance with
-// manual field testing. Substituting a plain Application here keeps the
+// - hitting real network and spending a real RevenueCat customer's
+// balance. Substituting a plain Application here keeps the
 // daily-tier test suite offline and hermetic: RigCheckViewModel's
 // refreshCreditBalance() and PaywallScreen's getOfferings() call are
 // already wrapped in runCatching/onFailure, so an unconfigured

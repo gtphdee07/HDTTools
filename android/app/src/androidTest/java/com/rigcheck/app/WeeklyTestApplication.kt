@@ -5,8 +5,9 @@ import com.revenuecat.purchases.LogLevel
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchasesConfiguration
 
-// Mirrors RigCheckApplication.kt's real onCreate() exactly, except the
-// app user id - weekly-test-user instead of smoke-test-user. Lives in
+// Mirrors RigCheckApplication.kt's real onCreate(), except it pins the
+// app user id to weekly-test-user (production starts anonymous and logs the
+// signed-in account in). Lives in
 // androidTest only, never shipped. The public key is duplicated here
 // (not hoisted out of RigCheckApplication.kt) so the two onCreate()
 // bodies diff cleanly against each other; it's a RevenueCat *public* SDK

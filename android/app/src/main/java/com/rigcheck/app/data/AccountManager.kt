@@ -66,6 +66,9 @@ interface AccountBackend {
 
 // The slice of RevenueCat that identifies the customer.
 interface BillingIdentity {
+    // RevenueCat remembers its logged-in customer across app launches, so
+    // this can be false at launch before any sign-in this session.
+    val isAnonymous: Boolean
     suspend fun logIn(accountId: String)
     suspend fun logOut()
 }
@@ -96,11 +99,14 @@ class AccountManager(
             BackendStatus.Initializing -> Unit
             BackendStatus.NotAuthenticated -> {
                 // logOut on an anonymous RevenueCat user is an SDK error, so
-                // only call it when we actually logged an account in.
-                if (billingAccountId != null) {
+                // ask RevenueCat itself rather than trusting memory: it keeps
+                // the last account across launches, and a signed-out user
+                // must never see (or buy for) that account. Treat an
+                // unconfigured SDK as anonymous.
+                if (!runCatching { billing.isAnonymous }.getOrDefault(true)) {
                     runCatching { billing.logOut() }
-                    billingAccountId = null
                 }
+                billingAccountId = null
                 _state.value = AccountState.SignedOut
             }
             is BackendStatus.Authenticated -> {

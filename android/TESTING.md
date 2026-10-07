@@ -328,7 +328,7 @@ root `TESTING.md`'s "Dashboard" section.
   2026-08-18: `getScanCreditBalance()` must call
   `invalidateVirtualCurrenciesCache()` before reading the balance, not
   after (asserted via `verifyOrder`); balance-present, balance-absent,
-  and `appUserId`-passthrough cases. Uses MockK against
+  and `isAnonymous`-passthrough cases. Uses MockK against
   `Purchases.Companion` and the real callback-based
   `getVirtualCurrencies(...)` method — see `ARCHIVE_ANDROID.md` (repo
   root) for the two MockK deadlocks hit and worked around while writing

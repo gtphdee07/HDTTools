@@ -32,6 +32,9 @@ object RevenueCatManager : BillingIdentity {
     // Makes the signed-in account the RevenueCat customer, so purchases and
     // the SCAN balance are the account's, shared with every other device.
     // No anonymous-id migration (out of scope, #22).
+    override val isAnonymous: Boolean
+        get() = Purchases.sharedInstance.isAnonymous
+
     override suspend fun logIn(accountId: String) {
         Purchases.sharedInstance.awaitLogIn(accountId)
     }
@@ -95,7 +98,4 @@ object RevenueCatManager : BillingIdentity {
             }
         })
     }
-
-    val appUserId: String
-        get() = Purchases.sharedInstance.appUserID
 }

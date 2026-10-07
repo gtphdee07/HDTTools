@@ -67,13 +67,21 @@ class AccountManagerTest {
         val calls = mutableListOf<String>()
         var failLogIn: Boolean = false
 
+        // RevenueCat remembers its logged-in customer across app launches.
+        override var isAnonymous: Boolean = true
+
         override suspend fun logIn(accountId: String) {
             calls += "logIn:$accountId"
             if (failLogIn) throw IllegalStateException("RevenueCat unreachable")
+            isAnonymous = false
         }
+
+        var failLogOut: Boolean = false
 
         override suspend fun logOut() {
             calls += "logOut"
+            if (failLogOut) throw IllegalStateException("RevenueCat unreachable")
+            isAnonymous = true
         }
     }
 
@@ -111,7 +119,35 @@ class AccountManagerTest {
     }
 
     @Test
-    fun `signing out returns RevenueCat to anonymous exactly once`() = runTest(UnconfinedTestDispatcher()) {
+    fun `no session at launch logs RevenueCat out of an account it remembered from last time`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val f = Fixture(this)
+            f.billing.isAnonymous = false
+
+            f.backend.statusFlow.value = BackendStatus.NotAuthenticated
+
+            assertEquals(AccountState.SignedOut, f.manager.state.value)
+            assertEquals(listOf("logOut"), f.billing.calls)
+        }
+
+    @Test
+    fun `a sign-out whose RevenueCat logout failed is retried on the next signed-out launch`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val f = Fixture(this)
+            f.backend.statusFlow.value = BackendStatus.Authenticated(alice)
+            f.billing.failLogOut = true
+
+            f.manager.signOut()
+            assertFalse("RevenueCat is still logged in as the old account", f.billing.isAnonymous)
+
+            f.billing.failLogOut = false
+            f.backend.statusFlow.value = BackendStatus.Authenticated(alice) // a launch with a session...
+            f.backend.statusFlow.value = BackendStatus.NotAuthenticated // ...that is then gone
+            assertTrue(f.billing.isAnonymous)
+        }
+
+    @Test
+    fun `signing out returns RevenueCat to anonymous exactly once`()= runTest(UnconfinedTestDispatcher()) {
         val f = Fixture(this)
         f.backend.statusFlow.value = BackendStatus.Authenticated(alice)
 

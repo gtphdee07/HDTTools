@@ -53,7 +53,7 @@ fun AccountScreen(
 
     // Every action funnels through here: clears the old message, disables
     // the form while in flight, and turns the outcome into one message.
-    fun run(successInfo: String?, action: ((AccountResult) -> Unit) -> Unit) {
+    fun perform(successInfo: String?, action: ((AccountResult) -> Unit) -> Unit) {
         isBusy = true
         error = null
         info = null
@@ -110,8 +110,8 @@ fun AccountScreen(
         Button(
             enabled = canSubmit,
             onClick = {
-                if (creating) run(null) { cb -> onSignUp(email.trim(), password, cb) }
-                else run(null) { cb -> onSignIn(email.trim(), password, cb) }
+                if (creating) perform(null) { cb -> onSignUp(email.trim(), password, cb) }
+                else perform(null) { cb -> onSignIn(email.trim(), password, cb) }
             },
             modifier = Modifier.fillMaxWidth().testTag("account_submit"),
         ) {
@@ -126,7 +126,7 @@ fun AccountScreen(
                 TextButton(
                     enabled = !isBusy && email.isNotBlank(),
                     onClick = {
-                        run("If that email has an account, a reset link is on its way.") { cb ->
+                        perform("If that email has an account, a reset link is on its way.") { cb ->
                             onForgotPassword(email.trim(), cb)
                         }
                     },
@@ -138,12 +138,12 @@ fun AccountScreen(
 
         OutlinedButton(
             enabled = !isBusy,
-            onClick = { run(null) { cb -> onGoogle(cb) } },
+            onClick = { perform(null) { cb -> onGoogle(cb) } },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Continue with Google") }
         OutlinedButton(
             enabled = !isBusy,
-            onClick = { run("Finish signing in with Apple in your browser.") { cb -> onApple(cb) } },
+            onClick = { perform("Finish signing in with Apple in your browser.") { cb -> onApple(cb) } },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Continue with Apple") }
 

@@ -100,9 +100,9 @@ class RevenueCatManagerTest {
     }
 
     @Test
-    fun `appUserId reads straight through to Purchases sharedInstance`() {
-        every { purchases.appUserID } returns "smoke-test-user"
+    fun `isAnonymous reads straight through to Purchases sharedInstance`() {
+        every { purchases.isAnonymous } returns false
 
-        assertEquals("smoke-test-user", RevenueCatManager.appUserId)
+        assertEquals(false, RevenueCatManager.isAnonymous)
     }
 }

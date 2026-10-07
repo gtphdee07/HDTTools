@@ -24,11 +24,12 @@ class GoogleNonce private constructor(val raw: String, val hashed: String) {
     companion object {
         fun create(): GoogleNonce {
             val bytes = ByteArray(32).also { SecureRandom().nextBytes(it) }
-            val raw = bytes.joinToString("") { "%02x".format(it) }
-            val hashed = MessageDigest.getInstance("SHA-256").digest(raw.toByteArray())
-                .joinToString("") { "%02x".format(it) }
+            val raw = bytes.toHex()
+            val hashed = MessageDigest.getInstance("SHA-256").digest(raw.toByteArray()).toHex()
             return GoogleNonce(raw, hashed)
         }
+
+        private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
     }
 }
 

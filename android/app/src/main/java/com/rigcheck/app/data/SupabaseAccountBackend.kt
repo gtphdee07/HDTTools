@@ -3,6 +3,7 @@ package com.rigcheck.app.data
 import android.content.Intent
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.auth.SignOutScope
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.handleDeeplinks
@@ -11,8 +12,10 @@ import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.createSupabaseClient
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 // Both values ship in the app by design, like the Web build's
@@ -38,16 +41,16 @@ class SupabaseAccountBackend private constructor(private val client: SupabaseCli
     override val status: Flow<BackendStatus> = client.auth.sessionStatus.map { status ->
         when (status) {
             is SessionStatus.Initializing -> BackendStatus.Initializing
-            is SessionStatus.Authenticated -> status.session.user?.let { BackendStatus.Authenticated(Account(it.id, it.email)) }
-                ?: BackendStatus.NotAuthenticated
+            is SessionStatus.Authenticated -> authenticatedOrNot(status.session.user)
             is SessionStatus.NotAuthenticated -> BackendStatus.NotAuthenticated
             // A failed token refresh (offline at launch) keeps the stored
             // session; stay signed in rather than looking signed out.
-            is SessionStatus.RefreshFailure -> client.auth.currentUserOrNull()
-                ?.let { BackendStatus.Authenticated(Account(it.id, it.email)) }
-                ?: BackendStatus.NotAuthenticated
+            is SessionStatus.RefreshFailure -> authenticatedOrNot(client.auth.currentUserOrNull())
         }
     }
+
+    private fun authenticatedOrNot(user: UserInfo?): BackendStatus =
+        user?.let { BackendStatus.Authenticated(Account(it.id, it.email)) } ?: BackendStatus.NotAuthenticated
 
     override suspend fun signUp(email: String, password: String): AccountResult {
         client.auth.signUpWith(Email) {
@@ -110,6 +113,9 @@ class SupabaseAccountBackend private constructor(private val client: SupabaseCli
                 SupabaseAccountBackend(
                     createSupabaseClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) {
                         install(Auth) {
+                            // Explicit: the rigcheck:// redirect is claimable by any
+                            // app, so the code exchange must be PKCE-bound.
+                            flowType = FlowType.PKCE
                             scheme = AUTH_REDIRECT_SCHEME
                             host = AUTH_REDIRECT_HOST
                         }
@@ -124,7 +130,7 @@ class SupabaseAccountBackend private constructor(private val client: SupabaseCli
 // (the free flow) keeps working and sign-in explains itself.
 object UnavailableAccountBackend : AccountBackend {
     private val unavailable = AccountResult.Failure("Accounts are not available right now.")
-    override val status: Flow<BackendStatus> = kotlinx.coroutines.flow.flowOf(BackendStatus.NotAuthenticated)
+    override val status: Flow<BackendStatus> = flowOf(BackendStatus.NotAuthenticated)
     override suspend fun signUp(email: String, password: String) = unavailable
     override suspend fun signIn(email: String, password: String) = unavailable
     override suspend fun signInWithGoogle(idToken: String, rawNonce: String) = unavailable

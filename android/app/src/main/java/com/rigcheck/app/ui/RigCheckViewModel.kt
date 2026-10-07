@@ -40,7 +40,6 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -99,17 +98,18 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     val accountState: StateFlow<AccountState> = accountManager.state
 
     init {
-        refreshCreditBalance()
-        // The SCAN balance belongs to whichever account RevenueCat is
-        // currently logged in as, so re-read it whenever that changes.
+        // The SCAN balance belongs to whichever account RevenueCat is logged
+        // in as. Clear it whenever that changes (so one account's balance is
+        // never shown for another) and only read it once RevenueCat is
+        // linked to the signed-in account; signed out or unlinked, it stays
+        // "not loaded", which also routes Scan Photo to the sign-in screen.
         viewModelScope.launch {
             accountManager.state
-                .map { state -> (state as? AccountState.SignedIn)?.let { it.account.id to it.billingLinked } }
+                .map { state -> (state as? AccountState.SignedIn)?.takeIf { it.billingLinked }?.account?.id }
                 .distinctUntilChanged()
-                .drop(1)
-                .collect { signedIn ->
-                    if (signedIn == null) creditBalance = null
-                    refreshCreditBalance()
+                .collect { linkedAccountId ->
+                    creditBalance = null
+                    if (linkedAccountId != null) refreshCreditBalance()
                 }
         }
     }
@@ -140,6 +140,14 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
 
     fun signOut() {
         viewModelScope.launch { accountManager.signOut() }
+    }
+
+    // A purchase or restore made before RevenueCat knows the account would
+    // land on the wrong customer, so both wait for the link.
+    private suspend fun billingLinkedOrReport(onResult: (success: Boolean, error: String?) -> Unit): Boolean {
+        val linked = accountManager.ensureBillingLinked()
+        if (!linked) onResult(false, BILLING_NOT_LINKED)
+        return linked
     }
 
     private fun launchAccountAction(onResult: (AccountResult) -> Unit, action: suspend () -> AccountResult) {
@@ -278,12 +286,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
 
     fun purchase(activity: Activity, pkg: Package, onResult: (success: Boolean, error: String?) -> Unit) {
         viewModelScope.launch {
-            // A purchase made before RevenueCat knows the account would land
-            // on the wrong customer, so it waits for the link.
-            if (!accountManager.ensureBillingLinked()) {
-                onResult(false, BILLING_NOT_LINKED)
-                return@launch
-            }
+            if (!billingLinkedOrReport(onResult)) return@launch
             runCatching { RevenueCatManager.purchasePackage(activity, pkg) }
                 .onSuccess {
                     refreshCreditBalance()
@@ -301,10 +304,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
 
     fun restorePurchases(onResult: (success: Boolean, error: String?) -> Unit) {
         viewModelScope.launch {
-            if (!accountManager.ensureBillingLinked()) {
-                onResult(false, BILLING_NOT_LINKED)
-                return@launch
-            }
+            if (!billingLinkedOrReport(onResult)) return@launch
             runCatching { RevenueCatManager.restorePurchases() }
                 .onSuccess {
                     refreshCreditBalance()

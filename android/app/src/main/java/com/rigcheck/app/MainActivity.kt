@@ -16,7 +16,9 @@ import com.rigcheck.app.ui.theme.RigCheckTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        handleSignInRedirect(intent)
+        // Only the launch that started this Activity: after a rotation the
+        // original intent is still attached and must not be handled again.
+        if (savedInstanceState == null) handleSignInRedirect(intent)
         enableEdgeToEdge()
         setContent {
             RigCheckTheme {
@@ -28,7 +30,9 @@ class MainActivity : ComponentActivity() {
     }
 
     // Apple sign-in opens a browser tab and comes back as a rigcheck://login
-    // deep link carrying the session; Supabase's client completes it.
+    // deep link carrying the session; Supabase's client completes it. The
+    // Activity is singleTop so that return reaches this instance (and its
+    // ViewModel) instead of starting a second one.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleSignInRedirect(intent)

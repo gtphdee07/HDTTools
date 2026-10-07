@@ -6,6 +6,10 @@
     }
   },
   "scan_proxy": {
+    "release": {
+      "passed": true,
+      "timestamp": "2026-10-07T17:57:27Z"
+    },
     "weekly": {
       "passed": true,
       "timestamp": "2026-08-24T18:29:35Z"

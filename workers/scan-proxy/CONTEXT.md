@@ -13,6 +13,9 @@ The unit of paid usage, implemented as a RevenueCat "virtual currency" (currency
 **Spend / Refund**:
 The two credit-balance operations Scan Proxy performs against RevenueCat directly (server-side, not through the client SDK's own purchase flow): Spend happens before the costly Claude call; Refund happens only if extraction then fails, so a user is never billed for a Scan that didn't deliver.
 
+**Account token**:
+The signed Supabase access token (a JWT, ES256) a signed-in user's client sends as `Authorization: Bearer` on every Scan. The Worker verifies it against Supabase's public keys and takes the token's `sub` — the account id, which is also the RevenueCat app user id — as the one whose Scan Credit is spent. Anonymous Supabase users' tokens are refused. No request field can name a different account. Its expected shape is defined once, in `src/accountTokenContract.ts`.
+
 **Idempotency Key**:
 A client-supplied id, stable across retries of the same logical Scan attempt, that makes Spend/Refund safe to retry without double-charging or double-refunding after a lost or timed-out response.
 

@@ -8,4 +8,6 @@ export interface Env {
   // Plain config — set in wrangler.toml's [vars].
   REVENUECAT_PROJECT_ID: string;
   REVENUECAT_CURRENCY_CODE: string;
+  // Supabase project URL; account tokens are verified against its JWKS.
+  SUPABASE_URL: string;
 }

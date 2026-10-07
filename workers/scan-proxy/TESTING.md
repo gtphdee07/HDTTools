@@ -49,7 +49,7 @@ Anthropic surface, #37).
 |---|---|---|---|---|
 | **Minor** | ✅ built | a Minor change (internal-only) | none (mocked) | `npm run test:sanity` |
 | **Major** | ✅ built | a Major change (public-interface/new-library) | none (mocked) | `npm test` |
-| **External (through-our-service)** | ✅ built (4 tests) | event-driven — ongoing/ad hoc, cheap enough to run anytime; also diff-driven whenever a Major change touches boundary-calling code | real, bounded, dedicated test customer | `.\test-weekly.ps1` |
+| **External (through-our-service)** | ✅ built (6 tests) | event-driven — ongoing/ad hoc, cheap enough to run anytime; also diff-driven whenever a Major change touches boundary-calling code | real, bounded, dedicated test customer | `.\test-weekly.ps1` |
 | **External (direct-provider-boundary)** | 🟡 built, needs your local secrets to run | event-driven — before pushing a major update to the Play Store, not a fixed cadence; also diff-driven, same trigger as above | real, against RevenueCat/Anthropic directly | `.\test-release.ps1` (`-SkipKeys` to allow skipping) |
 
 (Command names — `test:sanity`, `test-release.ps1` — are unrenamed this
@@ -63,10 +63,12 @@ real result can be recorded for the README dashboard; see the root
 Minor's cases are a small subset of Major's tests, tagged `[sanity]` in
 their names and selected via `node --test`'s `--test-name-pattern`, not a
 separate set of test files. Both External suites need real dedicated
-RevenueCat test customers (never `smoke-test-user`, which stays reserved
-for manual Android field testing) — `weekly-test-user` and
-`weekly-test-user-no-credits` were created 2026-08-21 for exactly this
-(see `ARCHIVE_TESTING.md` at the repo root). The through-our-service
+test accounts (never `smoke-test-user`, which stays reserved for manual
+Android field testing). Since #21 these are two Supabase test users, each
+with a RevenueCat customer named by its UUID (see the weekly section below);
+the earlier `weekly-test-user` / `weekly-test-user-no-credits` customers,
+created 2026-08-21 (see `ARCHIVE_TESTING.md` at the repo root), are no longer
+used by these two suites. The through-our-service
 suite's tests live in `src/weekly/*.test.ts`, deliberately excluded from
 `src/*.test.ts`'s glob (so `npm test`/`npm run test:sanity` never pick
 them up) and run only via `npm run test:weekly`.
@@ -142,10 +144,13 @@ npm run test:coverage
 
 (`node --test --experimental-test-coverage src/*.test.ts` — the same
 files `npm test` already runs, with coverage instrumentation added.)
-Real numbers as of 2026-08-24: **100.00%** line/branch/function coverage
-across every source file (`claude.ts`, `docTypes.ts`, `http.ts`,
-`index.ts`, `request.ts`, `revenuecat.ts`, `scan.ts`) — the Major suite's
-57 tests already exercise every line. **This is the enforced baseline
+Real numbers as of #21 (2026-10-07): **100.00%** line and function
+coverage across every source file (`accountTokenContract.ts`, `auth.ts`,
+`claude.ts`, `docTypes.ts`, `http.ts`, `index.ts`, `request.ts`,
+`revenuecat.ts`, `scan.ts`; branch coverage is 100% everywhere except the
+token modules and test fixtures, ~95% overall) — the Major suite's 93 tests
+exercise every line. (Earlier, 2026-08-24: 100% on all three metrics, 57
+tests.) **This is the enforced baseline
 `scripts/coverage_gate.py` checks scan-proxy against at release time**
 (see the root `TESTING.md`'s "Coverage gate" section) — since it starts
 at 100%, in practice the gate can only ever catch a real regression, not
@@ -208,11 +213,11 @@ tests also included in the Minor category.
 - `[sanity]` **parses a fully valid request** — the whole-object happy path.
 - **defaults media_type to image/jpeg when omitted**.
 - **rejects a non-object body** — string, `null`, and a bare number all rejected.
-- **rejects a missing or blank app_user_id** — empty string, whitespace-only, and key entirely absent.
+- **app_user_id is ignored: not required, and never carried into the parsed request** (#21) — absent, valid, blank, wrong-typed and `null` values all parse to the same result.
 - **rejects an invalid doc_type** — an unrecognized value, and the key entirely absent.
 - **rejects a missing image_base64** — empty string, and the key entirely absent.
 - **rejects an unsupported media_type** — e.g. `image/heic`.
-- **rejects wrong-typed fields, not just wrong/missing values** — a number where `app_user_id`/`doc_type`/`image_base64` should be a string, and an array where `doc_type` should be a string.
+- **rejects wrong-typed fields, not just wrong/missing values** — a number where `doc_type`/`image_base64` should be a string, and an array where `doc_type` should be a string.
 - **an explicit null media_type is treated the same as an omitted one**.
 - **rejects an array payload the same way as any other non-conforming object** — `[]` and `["truck_tag"]`.
 - **silently ignores unknown extra fields rather than rejecting them** — documents intended behavior (only the four known keys are ever read).
@@ -222,7 +227,7 @@ tests also included in the Minor category.
 - `[sanity]` **successful scan charges exactly once and returns the extracted fields**.
 - **insufficient credits (422) returns 402 and never calls Claude** — proves the pay-before-extract ordering short-circuits correctly.
 - **a non-422 billing failure returns 502 and never calls Claude**.
-- **extraction failure refunds the credit for the same user and reports extraction_failed**.
+- **extraction failure refunds the credit for the same user and reports extraction_failed** — `runScan` takes the verified `userId` as its own argument (#21); it never reads a user id off the request.
 - **a failed refund attempt doesn't crash the request, and doesn't falsely claim a refund happened** — pins down the fix for the real "Credit refunded" lying-message bug found 2026-08-19: a refund that throws now returns `extraction_failed_no_refund` with an honest message, not the old always-says-refunded text.
 - **a refund call that resolves with ok:false (not a throw) is also treated as a failed refund** — the other way a refund can fail without throwing.
 - **a successful scan never issues a refund**.
@@ -255,7 +260,25 @@ tests also included in the Minor category.
 - **json() round-trips nested objects, arrays, and nulls unchanged**.
 - **badRequest() returns the exact ok:false/bad_request envelope at 400**.
 
-### `index.test.ts` — the router/entry point, `worker.fetch` (real `defaultScanDeps` — no injection point at this layer, so `fetch` is mocked to route by URL between RevenueCat and Anthropic)
+### `accountToken.test.ts` — account-token verification (#21), at the HTTP boundary via `worker.fetch`
+
+RevenueCat, Anthropic and Supabase's JWKS endpoint are all faked behind one
+mocked `fetch`; a locally generated ES256 key pair (`accountTokenFixtures.ts`)
+stands in for Supabase's. Fixtures mint to the same shared contract
+(`accountTokenContract.ts`) the Worker verifies and the live weekly check
+validates a real token against.
+
+- **rejects <each bad token> with 401 `unauthorized`, never touching RevenueCat or Anthropic** — one case each for: no header, non-Bearer scheme, empty Bearer, garbage token, undecodable parts, expired, signed by a different key under a known `kid`, payload altered after signing, `alg: none`, `alg: HS256`, wrong `iss`, wrong `aud`, missing `sub`, blank `sub`, missing `exp`, anonymous user, unknown `kid`. Each asserts the exact generic 401 body and zero RevenueCat/Anthropic calls.
+- `[sanity]` **a valid token spends the token's account and returns extracted fields**.
+- **a body `app_user_id` naming another account is ignored; only the token's account is charged**.
+- **a token is checked before the body** — a malformed body with no token is 401, not 400.
+- **accepts an array `aud` containing `authenticated`; tolerates a few seconds of clock skew past `exp` (the allowance is 30 s); enforces `nbf` (future and non-numeric rejected, past accepted)**; **a published key whose material can't be imported rejects the token with 401**.
+- **JWKS unreachable / not a valid key set / no usable EC P-256 key / `SUPABASE_URL` unset → 503 `auth_unavailable`** (not 401), with no RevenueCat or Anthropic call. Keys of other types alongside a usable one are skipped, not fatal.
+- **the JWKS is cached across requests; an unknown `kid` re-fetches once** (a rotated key is picked up; a stray `kid` is re-fetched once, then rejected).
+- **the failure cause is not leaked in the 401 body**.
+- **the offline fixtures conform to the shared contract**.
+
+### `index.test.ts` — the router/entry point, `worker.fetch` (real `defaultScanDeps` — no injection point at this layer, so `fetch` is mocked to route by URL between RevenueCat, Anthropic and the Supabase JWKS endpoint; every request carries a locally signed account token since #21)
 
 - `[sanity]` **a valid POST /v1/scan runs the real dependency wiring end-to-end and returns extracted fields** — the only place anywhere in this suite that exercises the real `defaultScanDeps`/lazy-`claude.ts`-import wiring rather than fake deps.
 - **extraction failure through the real wiring triggers a real refund and reports extraction_failed** — same real-wiring proof, on the failure path; confirms exactly two RevenueCat calls happen (one spend, one refund).
@@ -266,16 +289,19 @@ tests also included in the Minor category.
 
 ### `weekly/scan.weekly.test.ts` — real network, against the live deployed Worker (`npm run test:weekly` only)
 
-- **a customer with no SCAN credits gets 402 insufficient_credits, never reaches Claude** — real POST to the deployed Worker using `weekly-test-user-no-credits` (0 balance, no entitlement granted). Costs nothing to run repeatedly: `spendCredit`'s real 422 short-circuits the request before any real Claude call happens, the same control-flow ordering `scan.test.ts`'s equivalent mocked case already proves — this is that same claim, proven for real.
-- **a real scan of a real truck tag succeeds and returns real extracted fields** (2026-08-22) — `weekly-test-user`, `ExampleDocs/AddieTag.jpg`. The real-scan-and-charge case: proves the full Worker pipeline (spend → real Claude call → return fields) works end-to-end for a genuine success, not just the failure paths the other three cases in this file cover. **Real cost: one SCAN credit and one billed Claude call (~$0.01) every run** — not free to re-run repeatedly, unlike the case above.
+- **Credentials (#21)**: every case below signs in a real Supabase test user (`src/liveToken.ts`) and sends its access token. `funded` is the web external test user (`WEB_EXTERNAL_TEST_EMAIL`/`_PASSWORD`, from `scripts/wizard_web_external_test_user.sh`); `noCredits` is a second Supabase test user (`WEB_EXTERNAL_TEST_NOCREDITS_EMAIL`/`_PASSWORD`). Plus `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Read from the environment, falling back to `web/.env.local`; a missing value fails the run naming it, never skips. **Owner setup still required** before these run: in RevenueCat, a customer named by each test user's Supabase UUID — the `funded` one with a SCAN balance, the `noCredits` one left at zero. Never `smoke-test-user`. The old `weekly-test-user*` customers are no longer used.
+- **a request with no account token gets 401 unauthorized from the deployed Worker** (#21) — free: nothing is spent, Claude is never reached.
+- **a real Supabase token and JWKS match the shared account-token contract** (#21) — free: signs in `funded`, checks the real token's header and claims and the real JWKS document against `accountTokenContract.ts`, and that the token's `kid` is published.
+- **a customer with no SCAN credits gets 402 insufficient_credits, never reaches Claude** — real POST to the deployed Worker as the `noCredits` account (0 balance, no entitlement granted). Costs nothing to run repeatedly: `spendCredit`'s real 422 short-circuits the request before any real Claude call happens, the same control-flow ordering `scan.test.ts`'s equivalent mocked case already proves — this is that same claim, proven for real.
+- **a real scan of a real truck tag succeeds and returns real extracted fields** (2026-08-22) — as the `funded` account, `ExampleDocs/AddieTag.jpg`. The real-scan-and-charge case: proves the full Worker pipeline (spend → real Claude call → return fields) works end-to-end for a genuine success, not just the failure paths the other three cases in this file cover. **Real cost: one SCAN credit and one billed Claude call (~$0.01) every run** — not free to re-run repeatedly, unlike the case above.
 - **a real scan of a valid but irrelevant image still succeeds and is charged, not refunded** (2026-08-22) — the WTWT logo (`streamlit_app/assets/wtwt_logo.png`), a real, valid, real-world image that just isn't a truck tag. Exists because `claude.ts` forces Claude's `tool_choice` to the extraction tool — it can't refuse just because the photo is wrong, so it returns a (mostly-empty) result instead of erroring. Proves `scan.ts`'s refund path is genuinely conditioned on `extractFields` throwing, not on "was the result useful" — a real user who photographs the wrong thing still gets charged, matching current intended behavior. Same real cost as the case above.
 - **a corrupted/undecodable image triggers the real refund path** (2026-08-22) — the same logo file, deliberately truncated to its first 200 bytes so Anthropic's API genuinely rejects it before any model call happens (free — a rejected request is never billed). The response itself is the proof the refund succeeded: `code: "extraction_failed"` only appears when `refundCredit`'s own real call also succeeded; `"extraction_failed_no_refund"` would mean the refund itself failed, a different, worse real outcome this test would also have caught.
 
 ### `release/scan.release.test.ts` — real API calls directly at the RevenueCat/Anthropic boundaries (`.\test-release.ps1` / `npm run test:release`, needs your local secrets)
 
 - **Module-level hard stop, not a per-test skip, when a key is missing and `SKIP_KEYS` isn't set** — the whole file throws before any test runs, reported as one failed test naming which env var is missing. `SKIP_KEYS=1` (set by `-SkipKeys`) is required to fall back to the per-boundary skips below.
-- **spendCredit against a real funded customer succeeds, and refundCredit reverses it** — `weekly-test-user`, net zero balance change (spend then immediately refund with the paired idempotency key). Proves the real `Authorization`/`Idempotency-Key`/adjustment-body request shape `revenuecat.ts` sends is still accepted for both a debit and a credit.
-- **spendCredit against a real customer with zero balance gets the real 422 `scan.ts` depends on** — `weekly-test-user-no-credits`, calling `revenuecat.ts` directly rather than through the Worker (the through-our-service suite's equivalent case goes through the deployed Worker's full request/response envelope; this one isolates the RevenueCat boundary itself).
+- **spendCredit against a real funded customer succeeds, and refundCredit reverses it** — the `funded` account's UUID (read from a real signed-in token, #21), net zero balance change (spend then immediately refund with the paired idempotency key). Proves the real `Authorization`/`Idempotency-Key`/adjustment-body request shape `revenuecat.ts` sends is still accepted for both a debit and a credit.
+- **spendCredit against a real customer with zero balance gets the real 422 `scan.ts` depends on** — the `noCredits` account's UUID (#21), calling `revenuecat.ts` directly rather than through the Worker (the through-our-service suite's equivalent case goes through the deployed Worker's full request/response envelope; this one isolates the RevenueCat boundary itself).
 - **Both of the above fail explicitly as a bad-key problem, not a bare status mismatch, if `REVENUECAT_SECRET_KEY` is present but wrong** — `assertNotAuthFailure` turns a real 401/403 into `"REVENUECAT_SECRET_KEY appears invalid - RevenueCat returned <status>: <real error body>"`. Verified 2026-08-22 with a deliberately garbage key.
 - **extractFields against the real Anthropic API extracts real fields from a real truck tag photo** — `ExampleDocs/AddieTag.jpg`, the same file the original 2026-08-17 scan-proxy smoke test used. Proves the real request shape (model name, forced `tool_choice`, image content block) is still accepted and still returns a matching `tool_use` block with real field names — not any particular extracted value, since real vision accuracy isn't this test's concern (that's `tests/test_scale_ticket_real_photo.py`'s job on the Python/Tesseract side; this is the same idea applied directly to Claude). The one real, billed call in this file — fails explicitly as `"ANTHROPIC_API_KEY appears invalid"` (via `rejectingAuthFailureAsBadKey`), not a bare SDK error, if the real key is present but wrong.
 - **extractFields against the real Anthropic API rejects an invalid key with a real auth error** — free (fails before any billed inference), proves the auth-failure shape `extractFields`'s error handling assumes is still what a real 401 actually looks like. (This one's *point* is a bad key being correctly rejected, so it's not wrapped in `rejectingAuthFailureAsBadKey` — that wrapper is for `ANTHROPIC_API_KEY` unexpectedly being the thing that's wrong, not this test's own deliberately-bad key.)

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="770" height="278" font-family="Segoe UI, Arial, sans-serif" font-size="13">
 <rect x="0" y="0" width="770" height="278" fill="#0d1117"/>
-<text x="8" y="15" fill="#8b949e" font-size="11">Graphic generated: 2026-10-05 | tests run: 2026-10-04 @ 6e2de5f</text>
+<text x="8" y="15" fill="#8b949e" font-size="11">Graphic generated: 2026-10-07 | tests run: 2026-10-04 @ 6e2de5f</text>
 <text x="8" y="46" fill="#c9d1d9" font-weight="bold">Platform</text>
 <text x="138" y="46" fill="#c9d1d9" font-weight="bold">Minor</text>
 <text x="218" y="46" fill="#c9d1d9" font-weight="bold">Major</text>
@@ -39,7 +39,7 @@
 <text x="159" y="217" fill="#c9d1d9">38/38</text>
 <text x="218" y="217" fill="#8b949e">n/a</text>
 <circle cx="305" cy="212" r="7" fill="#2563eb"/>
-<text x="319" y="217" fill="#c9d1d9">1/1 (25d)</text>
+<text x="319" y="217" fill="#c9d1d9">1/1 (28d)</text>
 <circle cx="475" cy="212" r="7" fill="#2563eb"/>
 <text x="489" y="217" fill="#c9d1d9">1/1 (4 planned)</text>
 <text x="618" y="217" fill="#8b949e">n/a</text>
@@ -49,7 +49,7 @@
 <circle cx="225" cy="256" r="7" fill="#2563eb"/>
 <text x="239" y="261" fill="#c9d1d9">57/57</text>
 <circle cx="305" cy="256" r="7" fill="#2563eb"/>
-<text x="319" y="261" fill="#c9d1d9">1/1 (41d)</text>
+<text x="319" y="261" fill="#c9d1d9">1/1 (43d)</text>
 <circle cx="475" cy="256" r="7" fill="#2563eb"/>
 <text x="489" y="261" fill="#c9d1d9">2/2 (2 planned)</text>
 <text x="618" y="261" fill="#2563eb">100.0%</text>

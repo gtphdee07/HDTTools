@@ -8,6 +8,7 @@ const env: Env = {
   REVENUECAT_SECRET_KEY: "sk_test_123",
   REVENUECAT_PROJECT_ID: "proj_abc",
   REVENUECAT_CURRENCY_CODE: "SCAN",
+  SUPABASE_URL: "https://test-project.supabase.co",
 };
 
 test("[sanity] spendCredit posts a -1 adjustment to the right URL with the right headers", async (t) => {

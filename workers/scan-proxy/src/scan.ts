@@ -31,8 +31,11 @@ const defaultScanDeps: ScanDeps = {
   extractFields: defaultExtractFields,
 };
 
+// userId is the account whose Scan Credit is spent: the verified account
+// token's subject (see auth.ts), never anything the request body says.
 export async function runScan(
   env: Env,
+  userId: string,
   request: ScanRequest,
   deps: ScanDeps = defaultScanDeps,
 ): Promise<Response> {
@@ -51,7 +54,7 @@ export async function runScan(
   // the whole request ungracefully.
   let spend: TransactionResult;
   try {
-    spend = await deps.spendCredit(env, request.app_user_id, idempotencyKey);
+    spend = await deps.spendCredit(env, userId, idempotencyKey);
   } catch (err) {
     console.error("spendCredit threw", err);
     return json(
@@ -89,7 +92,7 @@ export async function runScan(
     // message must reflect what actually happened, not claim a refund that
     // didn't go through.
     const refund = await deps
-      .refundCredit(env, request.app_user_id, idempotencyKey)
+      .refundCredit(env, userId, idempotencyKey)
       .catch(() => null);
 
     if (refund?.ok) {
@@ -99,7 +102,7 @@ export async function runScan(
       );
     }
 
-    console.error("refundCredit failed after a charged scan", request.app_user_id, idempotencyKey);
+    console.error("refundCredit failed after a charged scan", userId, idempotencyKey);
     return json(
       {
         ok: false,

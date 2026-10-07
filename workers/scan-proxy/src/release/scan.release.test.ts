@@ -6,6 +6,10 @@
 // TESTING.md's "Reconciling..." section and this Worker's own
 // TESTING.md for the full design decision (2026-08-21).
 //
+// The RevenueCat cases name their customers the way the Worker now does
+// (#21): by the Supabase test user's UUID, read from a real signed-in
+// token (credentials: see ../liveToken.ts), never a made-up customer name.
+//
 // Needs ANTHROPIC_API_KEY and REVENUECAT_SECRET_KEY in the environment
 // this test runs in - the same two values already set as this Worker's
 // deployed secrets via `wrangler secret put`, exported here instead
@@ -30,6 +34,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { extractFields } from "../claude.ts";
 import { DOC_TYPE_CONFIG } from "../docTypes.ts";
+import { signInTestAccount, subjectOf } from "../liveToken.ts";
 import { refundCredit, spendCredit } from "../revenuecat.ts";
 import type { Env } from "../types.ts";
 
@@ -68,6 +73,7 @@ const env: Env = {
   // Both non-secret, same as wrangler.toml's [vars].
   REVENUECAT_PROJECT_ID: "proj07f52826",
   REVENUECAT_CURRENCY_CODE: "SCAN",
+  SUPABASE_URL: "", // unused here: these cases call RevenueCat and Anthropic directly
 };
 
 // A wrong RevenueCat secret key still gets a real HTTP response (401/403),
@@ -105,13 +111,14 @@ test(
   { skip: skipRevenueCat },
   async () => {
     const idempotencyKey = `release-test-${crypto.randomUUID()}`;
+    const customerId = subjectOf(await signInTestAccount("funded"));
 
-    const spend = await spendCredit(env, "weekly-test-user", idempotencyKey);
+    const spend = await spendCredit(env, customerId, idempotencyKey);
     assertNotAuthFailure(spend, "REVENUECAT_SECRET_KEY");
     assert.equal(spend.status, 200, `Expected 200, got ${spend.status}: ${JSON.stringify(spend.body)}`);
     assert.equal(spend.ok, true);
 
-    const refund = await refundCredit(env, "weekly-test-user", idempotencyKey);
+    const refund = await refundCredit(env, customerId, idempotencyKey);
     assertNotAuthFailure(refund, "REVENUECAT_SECRET_KEY");
     assert.equal(refund.status, 200, `Expected 200, got ${refund.status}: ${JSON.stringify(refund.body)}`);
     assert.equal(refund.ok, true);
@@ -124,7 +131,7 @@ test(
   async () => {
     const result = await spendCredit(
       env,
-      "weekly-test-user-no-credits",
+      subjectOf(await signInTestAccount("noCredits")),
       `release-test-${crypto.randomUUID()}`,
     );
 

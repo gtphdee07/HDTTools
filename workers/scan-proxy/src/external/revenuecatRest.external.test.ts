@@ -30,6 +30,7 @@ const env: Env = {
   // Both non-secret, same as wrangler.toml's [vars].
   REVENUECAT_PROJECT_ID: "proj07f52826",
   REVENUECAT_CURRENCY_CODE: "SCAN",
+  SUPABASE_URL: "", // unused here: this surface talks to RevenueCat only
 };
 
 const freshKey = () => `external-test-${crypto.randomUUID()}`;

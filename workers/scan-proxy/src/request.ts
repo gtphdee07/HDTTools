@@ -5,7 +5,6 @@ const DOC_TYPES = new Set<DocType>(["truck_tag", "trailer_tag", "scale_ticket"])
 const MEDIA_TYPES = new Set<MediaType>(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 export interface ScanRequest {
-  app_user_id: string;
   doc_type: DocType;
   image_base64: string;
   media_type: MediaType;
@@ -23,11 +22,6 @@ export function parseScanRequest(payload: unknown): ScanRequest | string {
     return "Body must be a JSON object.";
   }
   const body = payload as Record<string, unknown>;
-
-  const appUserId = body.app_user_id;
-  if (typeof appUserId !== "string" || !appUserId.trim()) {
-    return "app_user_id is required.";
-  }
 
   const docType = body.doc_type;
   if (typeof docType !== "string" || !DOC_TYPES.has(docType as DocType)) {
@@ -50,7 +44,6 @@ export function parseScanRequest(payload: unknown): ScanRequest | string {
   }
 
   const parsed: ScanRequest = {
-    app_user_id: appUserId,
     doc_type: docType as DocType,
     image_base64: imageBase64,
     media_type: mediaType as MediaType,

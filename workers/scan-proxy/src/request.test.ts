@@ -3,7 +3,6 @@ import test from "node:test";
 import { parseScanRequest } from "./request.ts";
 
 const validBody = {
-  app_user_id: "user-123",
   doc_type: "truck_tag",
   image_base64: "aGVsbG8=",
   media_type: "image/png",
@@ -26,11 +25,11 @@ test("rejects a non-object body", () => {
   assert.match(parseScanRequest(42) as string, /JSON object/);
 });
 
-test("rejects a missing or blank app_user_id", () => {
-  assert.match(parseScanRequest({ ...validBody, app_user_id: "" }) as string, /app_user_id/);
-  assert.match(parseScanRequest({ ...validBody, app_user_id: "   " }) as string, /app_user_id/);
-  const { app_user_id: _app_user_id, ...rest } = validBody;
-  assert.match(parseScanRequest(rest) as string, /app_user_id/);
+test("app_user_id is ignored: not required, and never carried into the parsed request", () => {
+  assert.deepEqual(parseScanRequest(validBody), validBody);
+  for (const appUserId of ["user-123", "", "   ", 123, null]) {
+    assert.deepEqual(parseScanRequest({ ...validBody, app_user_id: appUserId }), validBody);
+  }
 });
 
 test("rejects an invalid doc_type", () => {
@@ -50,7 +49,6 @@ test("rejects an unsupported media_type", () => {
 });
 
 test("rejects wrong-typed fields, not just wrong/missing values", () => {
-  assert.match(parseScanRequest({ ...validBody, app_user_id: 123 }) as string, /app_user_id/);
   assert.match(parseScanRequest({ ...validBody, doc_type: 42 }) as string, /doc_type/);
   assert.match(parseScanRequest({ ...validBody, doc_type: ["truck_tag"] }) as string, /doc_type/);
   assert.match(parseScanRequest({ ...validBody, image_base64: 123 }) as string, /image_base64/);
@@ -63,8 +61,8 @@ test("an explicit null media_type is treated the same as an omitted one", () => 
 });
 
 test("rejects an array payload the same way as any other non-conforming object", () => {
-  assert.match(parseScanRequest([]) as string, /app_user_id/);
-  assert.match(parseScanRequest(["truck_tag"]) as string, /app_user_id/);
+  assert.match(parseScanRequest([]) as string, /doc_type/);
+  assert.match(parseScanRequest(["truck_tag"]) as string, /doc_type/);
 });
 
 test("parses a request with client_request_id and passes it through", () => {

@@ -15,9 +15,11 @@ Worker ports those exact prompts/schemas to TypeScript
 (`src/docTypes.ts`) so both extraction paths agree on field names.
 
 **Request:**
+Header: `Authorization: Bearer <account token>` (a signed-in user's Supabase
+access token — see **Auth** below). Any `app_user_id` in the body is ignored.
+
 ```json
 {
-  "app_user_id": "the RevenueCat customer id (anonymous UUID the app generates)",
   "doc_type": "truck_tag" | "trailer_tag" | "scale_ticket",
   "image_base64": "...",
   "media_type": "image/jpeg",
@@ -28,6 +30,9 @@ Worker ports those exact prompts/schemas to TypeScript
 **Success (200):** `{ "ok": true, "doc_type": "...", "fields": { ... } }`
 
 **Errors:**
+- `401` `unauthorized` — missing, malformed, expired or wrongly-signed account
+  token (or an anonymous Supabase user); nothing was charged
+- `503` `auth_unavailable` — couldn't load Supabase's signing keys; retry later
 - `402` `insufficient_credits` — no credits left, nothing was charged
 - `502` `extraction_failed` — Claude couldn't read the image (including a
   timed-out call); the credit was refunded
@@ -103,13 +108,17 @@ adding once this is closer to shipping, not before.
   user isn't billed for a failure that wasn't their fault.
 - **No database.** RevenueCat's Virtual Currency feature holds the credit
   balance; this Worker is fully stateless.
-- **v1 auth is intentionally light.** The Worker trusts whatever
-  `app_user_id` the client sends — no signed token verifying the request
-  actually came from that account. Accepted trade-off for now: someone
-  who obtained another user's anonymous UUID could spend their credits,
-  but there's no way to *discover* another user's UUID short of device
-  compromise. Upgrade path if this ever matters: add Firebase
-  Authentication and verify a signed ID token before touching RevenueCat.
+- **Auth (#21).** Every scan must carry a Supabase access token (the
+  **account token**). The Worker verifies its ES256 signature against the
+  project's public JWKS (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`,
+  cached per isolate, re-fetched once on an unknown `kid`), then checks
+  `exp`, `iss`, `aud` and that the user isn't anonymous, before the body is
+  read or any credit is spent. The token's `sub` — the account id, which is
+  also the RevenueCat app user id (spec #15) — is the customer that gets
+  charged; `app_user_id` in the body is never read. There is no legacy
+  path: the shipped Android build, which still sends `app_user_id`, is
+  rejected until #22/#23 land. `SUPABASE_URL` is a public `[vars]` entry in
+  `wrangler.toml`.
 - **Model:** Haiku 4.5 (`src/claude.ts`) — structured extraction from a
   printed label is squarely its use case, and it's the cheapest tier.
 

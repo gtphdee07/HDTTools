@@ -12,10 +12,13 @@ const env: Env = {
   REVENUECAT_SECRET_KEY: "sk_test",
   REVENUECAT_PROJECT_ID: "proj",
   REVENUECAT_CURRENCY_CODE: "SCAN",
+  SUPABASE_URL: "https://test-project.supabase.co",
 };
 
+// What index.ts passes in after verifying the account token.
+const USER_ID = "user-1";
+
 const request: ScanRequest = {
-  app_user_id: "user-1",
   doc_type: "truck_tag",
   image_base64: "aGVsbG8=",
   media_type: "image/jpeg",
@@ -39,7 +42,7 @@ test("[sanity] successful scan charges exactly once and returns the extracted fi
     },
   });
 
-  const res = await runScan(env, request, deps);
+  const res = await runScan(env, USER_ID, request, deps);
   assert.equal(res.status, 200);
   assert.equal(spendCalls, 1);
   assert.deepEqual(await res.json(), {
@@ -59,7 +62,7 @@ test("insufficient credits (422) returns 402 and never calls Claude", async () =
     },
   });
 
-  const res = await runScan(env, request, deps);
+  const res = await runScan(env, USER_ID, request, deps);
   assert.equal(res.status, 402);
   assert.equal(((await res.json()) as { code: string }).code, "insufficient_credits");
   assert.equal(extractCalls, 0, "a zero-credit user must never trigger a paid Claude call");
@@ -75,7 +78,7 @@ test("a non-422 billing failure returns 502 and never calls Claude", async () =>
     },
   });
 
-  const res = await runScan(env, request, deps);
+  const res = await runScan(env, USER_ID, request, deps);
   assert.equal(res.status, 502);
   assert.equal(((await res.json()) as { code: string }).code, "billing_error");
   assert.equal(extractCalls, 0);
@@ -95,11 +98,11 @@ test("extraction failure refunds the credit for the same user and reports extrac
     },
   });
 
-  const res = await runScan(env, request, deps);
+  const res = await runScan(env, USER_ID, request, deps);
   assert.equal(res.status, 502);
   assert.equal(((await res.json()) as { code: string }).code, "extraction_failed");
   assert.equal(refundCalls, 1);
-  assert.equal(refundedUser, "user-1");
+  assert.equal(refundedUser, USER_ID);
 });
 
 test("a failed refund attempt doesn't crash the request, and doesn't falsely claim a refund happened", async () => {
@@ -112,7 +115,7 @@ test("a failed refund attempt doesn't crash the request, and doesn't falsely cla
     },
   });
 
-  const res = await runScan(env, request, deps);
+  const res = await runScan(env, USER_ID, request, deps);
   const body = (await res.json()) as { code: string; message: string };
   assert.equal(res.status, 502);
   assert.equal(body.code, "extraction_failed_no_refund");
@@ -127,7 +130,7 @@ test("a refund call that resolves with ok:false (not a throw) is also treated as
     refundCredit: async () => ({ ok: false, status: 500, body: {} }),
   });
 
-  const res = await runScan(env, request, deps);
+  const res = await runScan(env, USER_ID, request, deps);
   const body = (await res.json()) as { code: string };
   assert.equal(res.status, 502);
   assert.equal(body.code, "extraction_failed_no_refund");
@@ -142,7 +145,7 @@ test("a successful scan never issues a refund", async () => {
     },
   });
 
-  await runScan(env, request, deps);
+  await runScan(env, USER_ID, request, deps);
   assert.equal(refundCalls, 0);
 });
 
@@ -170,7 +173,7 @@ test("spendCredit and refundCredit are called with the same idempotency key", as
     },
   });
 
-  await runScan(env, request, deps);
+  await runScan(env, USER_ID, request, deps);
   assert.ok(spendKey, "spendCredit should have been called with a key");
   assert.equal(spendKey, refundKey);
 });
@@ -194,7 +197,7 @@ test("a spendCredit rejection (e.g. a timeout) is mapped to a clean billing_erro
     },
   });
 
-  const res = await runScan(env, request, deps);
+  const res = await runScan(env, USER_ID, request, deps);
   assert.equal(res.status, 502);
   assert.equal(((await res.json()) as { code: string }).code, "billing_error");
   assert.equal(extractCalls, 0, "a failed charge must never trigger a paid Claude call");
@@ -217,7 +220,7 @@ test("an extractFields timeout is refunded and mapped to extraction_failed like 
     },
   });
 
-  const res = await runScan(env, request, deps);
+  const res = await runScan(env, USER_ID, request, deps);
   assert.equal(res.status, 502);
   assert.equal(((await res.json()) as { code: string }).code, "extraction_failed");
   assert.equal(refundCalls, 1);
@@ -232,7 +235,7 @@ test("a request with client_request_id uses it as the RevenueCat idempotency key
     },
   });
 
-  await runScan(env, { ...request, client_request_id: "stable-attempt-1" }, deps);
+  await runScan(env, USER_ID, { ...request, client_request_id: "stable-attempt-1" }, deps);
   assert.equal(spendKey, "stable-attempt-1");
 });
 
@@ -251,8 +254,8 @@ test("two runScan calls with the same client_request_id use the same idempotency
   });
 
   const retryRequest = { ...request, client_request_id: "stable-attempt-2" };
-  await runScan(env, retryRequest, deps);
-  await runScan(env, retryRequest, deps);
+  await runScan(env, USER_ID, retryRequest, deps);
+  await runScan(env, USER_ID, retryRequest, deps);
 
   assert.deepEqual(spendKeys, ["stable-attempt-2", "stable-attempt-2"]);
 });
@@ -266,8 +269,8 @@ test("a request without client_request_id falls back to a fresh random key each 
     },
   });
 
-  await runScan(env, request, deps);
-  await runScan(env, request, deps);
+  await runScan(env, USER_ID, request, deps);
+  await runScan(env, USER_ID, request, deps);
 
   assert.notEqual(spendKeys[0], spendKeys[1]);
 });
@@ -278,7 +281,7 @@ test("trailer_tag and scale_ticket scans use their own doc type's config and ech
       extractFields: async (_apiKey, _image, _mediaType, config) => ({ toolNameUsed: config.toolName }),
     });
 
-    const res = await runScan(env, { ...request, doc_type: docType }, deps);
+    const res = await runScan(env, USER_ID, { ...request, doc_type: docType }, deps);
     assert.equal(res.status, 200);
     const body = (await res.json()) as { doc_type: string; fields: { toolNameUsed: string } };
     assert.equal(body.doc_type, docType);

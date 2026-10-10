@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -68,3 +69,16 @@ def gradle(*args: str, timeout: int = 300) -> str:
     if not wrapper.is_file() or not has_sdk:
         pytest.skip("no Gradle wrapper or Android SDK on this machine")
     return run([str(wrapper), "--offline", *args], ANDROID, timeout)
+
+
+def require_proxy_install(package_dir: Path = PROXY) -> None:
+    """Fail (never skip) with the proxy's install instruction when its dependencies are
+    missing, before a wrapper test runs the proxy's test command and reports a confusing
+    502 (#82). Asks the proxy's own guard, so the message has one source."""
+    proc = subprocess.run(
+        [tool("node"), "src/requireInstall.ts"], cwd=package_dir, capture_output=True, text=True, timeout=60
+    )
+    if proc.returncode == 0:
+        return
+    found = re.search(r"The scan proxy's dependencies are not installed.*?then run the tests again\.", proc.stderr, re.DOTALL)
+    pytest.fail(found.group(0) if found else proc.stderr[-800:], pytrace=False)

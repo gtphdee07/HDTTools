@@ -25,6 +25,20 @@ time-cadence tiers" section for why that's now one axis, not two.
 that deploys. A command check (`tests/test_context_test_commands.py`, #52)
 confirms this.
 
+### Missing install (#82)
+
+Every top-level `src/*.test.ts` starts with `import "./requireInstall.ts";`.
+If `npm install` was never run here (a fresh git worktree has no
+`node_modules`), the file fails at load with the missing package and the
+command to run (`npm --prefix workers/scan-proxy install`), instead of the
+misleading "expected 200, got 502" the lazily loaded Claude SDK used to
+produce. The guard is test-only; the shipped Worker does not import it, so
+a genuine Claude failure still refunds and returns 502. The Python wrapper
+tests (`tests/test_context_test_commands.py`) check first and fail with the
+same message; `tests/test_scan_proxy_install_guard.py` proves it against a
+copy of the proxy with no `node_modules`. A new top-level test file must
+also import the guard first (that test enforces it).
+
 ### Release run (#62)
 
 `.\release.ps1` is the one command for a Worker deploy: it runs the

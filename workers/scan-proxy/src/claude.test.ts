@@ -3,6 +3,7 @@
 // extractFields is the only module that touches the real @anthropic-ai/sdk,
 // and scan.ts deliberately isolates it behind an injectable dependency so
 // scan.test.ts never has to go near it. This file is the SDK's own coverage.
+import "./requireInstall.ts";
 import Anthropic from "@anthropic-ai/sdk";
 import assert from "node:assert/strict";
 import test from "node:test";

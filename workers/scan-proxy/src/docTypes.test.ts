@@ -1,3 +1,4 @@
+import "./requireInstall.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DOC_TYPE_CONFIG } from "./docTypes.ts";

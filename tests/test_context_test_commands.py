@@ -37,6 +37,7 @@ from tests._test_command_helpers import (
     npm_script,
     read,
     relative,
+    require_proxy_install,
     run,
     tool,
 )
@@ -108,6 +109,7 @@ def test_proxy_test_script_has_no_pretest_or_posttest_hook():
 
 
 def test_proxy_context_command_runs_every_top_level_test_file_and_no_other():
+    require_proxy_install()  # a missing install fails here with the fix, not as a 502 below (#82)
     # `node --test` only accepts a reporter flag *before* the file list, so appending one to
     # npm's own script args (after `--`) never reaches it — the real `npm test` run below has
     # to be read through Node's default reporter's summary counts instead of per-file junit.
@@ -131,6 +133,7 @@ def test_proxy_context_command_runs_every_top_level_test_file_and_no_other():
 
 
 def test_proxy_file_command_runs_that_file_and_nothing_else():
+    require_proxy_install()
     assert PROXY_FILE_CMD.split() == ["node", "--test", PROXY_FILE]
     assert _proxy_run(PROXY_FILE) == [PROXY_FILE]
 

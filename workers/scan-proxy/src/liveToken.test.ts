@@ -1,6 +1,7 @@
 // Offline tests for the live suites' credential and sign-in helper. Sign-in is
 // exercised against a mocked fetch, with credentials supplied through
 // process.env (which wins over web/.env.local), so nothing touches Supabase.
+import "./requireInstall.ts";
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
 import { generateTestKeyPair, signToken } from "./accountTokenFixtures.ts";

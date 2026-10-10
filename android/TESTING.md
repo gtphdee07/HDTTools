@@ -537,15 +537,6 @@ infrastructure the External suite below depends on:
 
 ## Known gaps (deliberately not tested, or not yet)
 
-- **Five Major-suite tests fail since the item #23 re-skin, not from #22**
-  (seen 2026-10-09, 72 of 77 pass): `continueButtonInvokesOnContinue` in the
-  Truck, Trailer and Scale entry screen tests, plus
-  `newRigHappyPathShowsDisclaimerThenResults` and
-  `recentRigSelectionRoutesThroughTheChooserAndSkipsTheDisclaimerSecondTime`
-  in `RigCheckNavHostTest`. All fail at `performScrollTo()` with "no parent
-  layout with a Scroll SemanticsAction" on screens #22 didn't touch. (The
-  nav tests' stale "Rig nickname (e.g. Big Blue)" placeholder text was fixed
-  in #22 because its new tests needed it.)
 - **The External suite can't authenticate its real scans yet (#22).** The
   Worker now needs an account token (#21); `testsupport/WeeklyAccessToken.kt`
   fails loudly until `test-weekly.ps1` signs in a funded Supabase test user

@@ -123,8 +123,8 @@ On macOS or Linux use `./gradlew`.
 
 **Needs an emulator or device (free):** boot an emulator, then
 `cd android && .\gradlew.bat connectedDebugAndroidTest`. It runs fully offline
-(`CustomTestRunner` swaps in a plain `Application`). At the time of writing,
-five of its tests fail for a known reason (#76), so 72 of 77 pass.
+(`CustomTestRunner` swaps in a plain `Application`). All 77 tests pass. Reboot
+a long-running emulator first: under heavy load, tests fail on timing.
 
 **Paid or live. Never run these without deciding to spend money.**
 `ANTHROPIC_API_KEY` and `REVENUECAT_SECRET_KEY` may already be set in your shell
@@ -142,7 +142,7 @@ The release scripts count paid calls against a budget declared with
 ignored and runs everything.
 
 Note: the Android External suite can't currently authenticate its real scans
-(#75), and `release.ps1` can't go green until #75 and #76 are fixed.
+(#75), and `release.ps1` can't go green until #75 is fixed.
 
 ## 5. Service configuration that lives outside git
 
@@ -285,7 +285,7 @@ Be explicit about these so nobody assumes they work:
 - **Web photo scanning:** `web/src/api.ts` still posts to `/api/extract/*`,
   endpoints that belonged to the retired FastAPI deploy, and Web is not yet
   calling the shared Worker. I did not verify this against the live site.
-- **Android External suite and five Major tests:** #75 and #76.
+- **Android External suite:** #75.
 
 ## 9. Where to read more
 

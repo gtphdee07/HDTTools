@@ -40,7 +40,8 @@ class TruckTagEntryScreenTest {
             TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = { continued = true })
         }
 
-        composeRule.onNodeWithText("Next: Trailer Tag").performScrollTo().performClick()
+        // Pinned below the scrolling form, so it is on screen however tall the content is.
+        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed().performClick()
 
         assert(continued) { "onContinue should have fired" }
     }

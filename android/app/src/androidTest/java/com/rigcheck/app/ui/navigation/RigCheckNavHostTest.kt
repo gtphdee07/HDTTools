@@ -6,7 +6,6 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -25,21 +24,29 @@ class RigCheckNavHostTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
+    // The Next / Check Weights buttons are pinned below each entry form's
+    // scrolling area, so they are always on screen and need no scrolling.
     private fun goThroughManualEntryFlow(nickname: String) {
         composeRule.onNodeWithText("Rig nickname").performTextInput(nickname)
         composeRule.onNodeWithText("Create").performClick()
 
         composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
         composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Trailer Tag").performScrollTo().performClick()
+        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed().performClick()
 
         composeRule.onNodeWithText("Trailer Tag").assertIsDisplayed()
         composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Scale Ticket").performScrollTo().performClick()
+        composeRule.onNodeWithText("Next: Scale Ticket").assertIsDisplayed().performClick()
 
         composeRule.onNodeWithText("Scale Ticket").assertIsDisplayed()
         composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Check Weights").performScrollTo().performClick()
+        composeRule.onNodeWithText("Check Weights").assertIsDisplayed().performClick()
+    }
+
+    // The re-skinned Results screen has no "Results" title; its pinned
+    // "Start another check" button is the one thing only it shows.
+    private fun assertOnResults() {
+        composeRule.onNodeWithText("Start another check").assertIsDisplayed()
     }
 
     @Test
@@ -52,7 +59,7 @@ class RigCheckNavHostTest {
         composeRule.onNodeWithText("Experimental Tool —\nNot for Safety Decisions").assertIsDisplayed()
         composeRule.onNodeWithText("I Understand, Continue").performClick()
 
-        composeRule.onNodeWithText("Results").assertIsDisplayed()
+        assertOnResults()
     }
 
     // Regression test for a real bug found during 2026-08-18 manual
@@ -68,7 +75,7 @@ class RigCheckNavHostTest {
 
         goThroughManualEntryFlow("Goose and Addie")
         composeRule.onNodeWithText("I Understand, Continue").performClick()
-        composeRule.onNodeWithText("Results").assertIsDisplayed()
+        assertOnResults()
 
         // Results -> RigPicker is a single pop (popUpTo RigPicker, inclusive = false).
         pressBack()
@@ -90,10 +97,10 @@ class RigCheckNavHostTest {
         composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
 
         composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Check Weights").performScrollTo().performClick()
+        composeRule.onNodeWithText("Check Weights").assertIsDisplayed().performClick()
 
         // Disclaimer already acknowledged this session - straight to Results.
-        composeRule.onNodeWithText("Results").assertIsDisplayed()
+        assertOnResults()
     }
 
     // Offline (CustomTestRunner), so creditBalance is always the "not yet

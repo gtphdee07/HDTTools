@@ -4,11 +4,14 @@
 // and scan.ts deliberately isolates it behind an injectable dependency so
 // scan.test.ts never has to go near it. This file is the SDK's own coverage.
 import "./requireInstall.ts";
-import Anthropic from "@anthropic-ai/sdk";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DOC_TYPE_CONFIG } from "./docTypes.ts";
-import { ANTHROPIC_TIMEOUT_MS, extractFields } from "./claude.ts";
+// Dynamic, not static, for the SDK and for claude.ts (which imports it): ESM links static
+// imports before running any module, so a missing SDK would fail with ERR_MODULE_NOT_FOUND
+// before requireInstall.ts could explain it.
+const { default: Anthropic } = await import("@anthropic-ai/sdk");
+const { ANTHROPIC_TIMEOUT_MS, extractFields } = await import("./claude.ts");
 
 const config = DOC_TYPE_CONFIG.truck_tag;
 

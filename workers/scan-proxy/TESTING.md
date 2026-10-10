@@ -312,6 +312,12 @@ validates a real token against.
 - **malformed JSON body returns 400 bad_request, not a 500**.
 - **valid JSON that fails parseScanRequest returns 400 with that specific message, not swallowed** — proves `index.ts` passes `parseScanRequest`'s actual error message through rather than replacing it with something generic.
 
+### `installGuard.test.ts` — `installGuard.ts`, the missing-install check every top-level test file imports first (#82)
+
+- `[sanity]` **reports every runtime dependency the resolver cannot find**, **reports nothing when all resolve**, and **only reports the ones that fail** — the pure `missingDependencies` with an injected resolver.
+- `[sanity]` **the message names the missing package and the exact install command** — `npm --prefix workers/scan-proxy install`.
+- `[sanity]` **with the real install present, the real dependencies all resolve** — pins the default (package.json `dependencies`) so a renamed dependency is noticed.
+
 ### `weekly/scan.weekly.test.ts` — real network, against the live deployed Worker (`npm run test:weekly` only)
 
 - **Credentials (#21)**: every case below signs in a real Supabase test user (`src/liveToken.ts`) and sends its access token. `funded` is the web external test user (`WEB_EXTERNAL_TEST_EMAIL`/`_PASSWORD`, from `scripts/wizard_web_external_test_user.sh`); `noCredits` is a second Supabase test user (`WEB_EXTERNAL_TEST_NOCREDITS_EMAIL`/`_PASSWORD`). Plus `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Read from the environment, falling back to `web/.env.local`; a missing value fails the run naming it, never skips. **Owner setup still required** before these run — walk through `scripts/wizard_scan_proxy_live_accounts.sh` (creates the second Supabase user, saves its credentials, creates both RevenueCat customers, and prompts the SCAN grant; it prints each page to open rather than launching a browser). What it sets up: in RevenueCat, a customer named by each test user's Supabase UUID — the `funded` one with a SCAN balance, the `noCredits` one left at zero. Never `smoke-test-user`. The old `weekly-test-user*` customers are no longer used.

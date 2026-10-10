@@ -17,11 +17,12 @@ from pathlib import Path
 
 import pytest
 
-from tests._test_command_helpers import PROXY, PROXY_FILE, read, require_proxy_install, tool
+from tests._test_command_helpers import PROXY, read, require_proxy_install, tool
 
 pytestmark = [pytest.mark.core, pytest.mark.minor]
 
 INSTALL_COMMAND = "npm --prefix workers/scan-proxy install"
+TOP_LEVEL_TEST_FILES = sorted(p.name for p in (PROXY / "src").glob("*.test.ts"))
 
 
 @pytest.fixture(scope="module")
@@ -58,14 +59,10 @@ def test_every_top_level_proxy_test_file_imports_the_guard_first():
     assert unguarded == []
 
 
-def test_a_test_file_run_directly_without_the_install_names_the_fix(uninstalled_proxy):
-    proc = _run([tool("node"), "--test", PROXY_FILE], uninstalled_proxy)
-    assert proc.returncode != 0
-    _assert_install_instruction(proc.stdout + proc.stderr)
-
-
-def test_the_token_tests_without_the_install_name_the_fix_instead_of_a_502(uninstalled_proxy):
-    proc = _run([tool("node"), "--test", "src/accountToken.test.ts"], uninstalled_proxy)
+@pytest.mark.parametrize("test_file", TOP_LEVEL_TEST_FILES)
+def test_each_test_file_run_directly_without_the_install_names_the_fix(uninstalled_proxy, test_file):
+    # Includes claude.test.ts, which imports the SDK: it must not fail at link time first.
+    proc = _run([tool("node"), "--test", f"src/{test_file}"], uninstalled_proxy)
     assert proc.returncode != 0
     _assert_install_instruction(proc.stdout + proc.stderr)
 

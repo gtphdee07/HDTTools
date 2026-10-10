@@ -538,7 +538,7 @@ infrastructure the External suite below depends on:
 ## Known gaps (deliberately not tested, or not yet)
 
 - **Five Major-suite tests fail since the item #23 re-skin, not from #22**
-  (seen 2026-10-07, 71/76 pass): `continueButtonInvokesOnContinue` in the
+  (seen 2026-10-09, 72 of 77 pass): `continueButtonInvokesOnContinue` in the
   Truck, Trailer and Scale entry screen tests, plus
   `newRigHappyPathShowsDisclaimerThenResults` and
   `recentRigSelectionRoutesThroughTheChooserAndSkipsTheDisclaimerSecondTime`

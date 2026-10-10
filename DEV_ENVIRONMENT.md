@@ -8,7 +8,9 @@ machine (see `NEXT_STEPS.md`'s "Fresh-machine setup checklist") will have
 different paths; update this file, don't assume it, if you set up on a
 new machine. Every path/command below is copy-pasteable as written — grep
 this file for a product line name or tool name rather than re-discovering
-via `Get-Command`/`where`.
+via `Get-Command`/`where`. Setting up a **new** machine, or deploying: see
+`docs/BUILD_AND_DEPLOY.md` (tools, which secret goes where, service settings
+that live outside git, deploy steps).
 
 ## Android
 

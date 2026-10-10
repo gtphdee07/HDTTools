@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from '../auth';
 import type { ActionResult } from '../auth';
+import { useBilling } from '../billing';
+import { ProPaywall } from '../components/ProPaywall';
 import { Button } from '../design-system/Button';
 import { Card } from '../design-system/Card';
 
@@ -88,17 +90,20 @@ export function Account({ onDone }: AccountProps) {
 
   if (auth.user) {
     return (
-      <Card title="Your account" subtitle={`Signed in as ${auth.user.email ?? auth.user.id}`}>
-        <Feedback error={error} notice={notice} />
-        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-          <Button variant="secondary" disabled={busy} onClick={() => void run(() => auth.signOut())}>
-            Sign out
-          </Button>
-          <Button variant="ghost" onClick={onDone}>
-            Back to Dashboard
-          </Button>
-        </div>
-      </Card>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Card title="Your account" subtitle={`Signed in as ${auth.user.email ?? auth.user.id}`}>
+          <Feedback error={error} notice={notice} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+            <Button variant="secondary" disabled={busy} onClick={() => void run(() => auth.signOut())}>
+              Sign out
+            </Button>
+            <Button variant="ghost" onClick={onDone}>
+              Back to Dashboard
+            </Button>
+          </div>
+        </Card>
+        <PlanSection />
+      </div>
     );
   }
 
@@ -147,6 +152,29 @@ export function Account({ onDone }: AccountProps) {
         )}
       </div>
     </Card>
+  );
+}
+
+// The signed-in user's plan and Scan Credit balance, and the way to buy Pro. Absent when this site has no purchases set up.
+function PlanSection() {
+  const billing = useBilling();
+  if (!billing.available) return null;
+
+  const planKnown = billing.isPro || billing.scanBalance !== null;
+  return (
+    <>
+      <Card title="Your plan">
+        {billing.loading && <div style={{ fontSize: 13, marginTop: 8 }}>Loading your plan...</div>}
+        {planKnown && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>{billing.isPro ? 'Pro plan' : 'Free plan'}</div>
+            {billing.scanBalance !== null && <div style={{ fontSize: 13 }}>Scan credits: {billing.scanBalance}</div>}
+          </div>
+        )}
+        <Feedback error={billing.error} notice={billing.notice} />
+      </Card>
+      {!billing.isPro && (planKnown || billing.loading) && <ProPaywall />}
+    </>
   );
 }
 

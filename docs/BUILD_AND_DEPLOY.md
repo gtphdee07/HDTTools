@@ -86,6 +86,7 @@ place listed.
 | `WEB_EXTERNAL_TEST_EMAIL`, `WEB_EXTERNAL_TEST_PASSWORD` | A real Supabase email+password test user, with a funded RevenueCat customer | `web/.env.local` (gitignored by `*.local`) | Web External suite; Worker live suites (they sign this user in) |
 | `WEB_EXTERNAL_TEST_NOCREDITS_EMAIL`, `WEB_EXTERNAL_TEST_NOCREDITS_PASSWORD` | A second Supabase test user whose RevenueCat customer has no balance | `web/.env.local` | Worker live suites |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` | The Supabase project URL and publishable key. Public by design. | **committed** in `web/.env.production` (the production build needs them baked in; Cloudflare Pages did not pass dashboard variables into the build). Also copy them into `web/.env.local` so local runs and live tests see them. | Web build; live tests |
+| `VITE_REVENUECAT_WEB_PUBLIC_API_KEY`, `VITE_REVENUECAT_WEB_OFFERING_ID` | The RevenueCat **Web Billing** public API key and the offering id the Web paywall reads. Public by design. Without both, the Web app hides purchases (the free calculator is unaffected). Optional: `VITE_REVENUECAT_PRO_ENTITLEMENT_ID` (default `pro`) and `VITE_REVENUECAT_PRO_PACKAGE_ID` (default: the offering's lifetime package). | **committed** in `web/.env.production`, like the Supabase values. Also copy into `web/.env.local` for local runs. | Web build |
 | Supabase URL + publishable key (Android) | same public values | **committed** in `SupabaseAccountBackend.kt` | Android app |
 | `SUPABASE_URL` (Worker) | same public project URL | **committed** in `workers/scan-proxy/wrangler.toml` `[vars]` | Worker |
 | RevenueCat *public* SDK key | The Android SDK key. Public by design. | **committed** in `RigCheckApplication.kt`. **Currently the Test Store key**, see section 8. | Android app |
@@ -197,6 +198,20 @@ the apps at a new project, all of it must be recreated or re-verified.
 - RevenueCat creates a customer automatically for each Supabase account id the
   first time the app logs it in. The app never sets a user id by itself, so a
   fresh install starts anonymous.
+- `scripts/wizard_web_revenuecat_dashboard.sh` (run from the repo root) walks
+  through the RevenueCat dashboard side of Web "Buy Pro": the Pro product, the
+  `pro` entitlement, the starter `SCAN` bundle and the offering package. It
+  offers to run the next wizard at the end.
+- `scripts/wizard_web_revenuecat.sh` (run from the repo root) walks through
+  collecting the Web Billing public key and offering id and writes the
+  `VITE_REVENUECAT_*` values into `web/.env.local` and, if you choose,
+  `web/.env.production`.
+- Web "Buy Pro" needs, on the RevenueCat side: a **Web Billing** app (its public
+  API key is the Web key above), a lifetime Pro product with a package in the
+  Web offering, a `pro` entitlement that product unlocks, and the product set
+  to grant the starter `SCAN` bundle. The Web app reads the entitlement and the
+  `SCAN` balance; it does not grant scans itself. Before shipping, run the real
+  sandbox cancel test in #11.
 - Real money needs a Google Play app, store products, and the Play credentials
   connected in RevenueCat. That's not configured (section 8).
 

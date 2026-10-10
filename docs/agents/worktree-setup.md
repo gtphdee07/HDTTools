@@ -52,6 +52,18 @@ That copies only a missing file, never overwrites one, and never prints contents
 
 Machine-wide tools (`uv`, Node 24, Tesseract OCR, and for Android the SDK and JDK) are not per-worktree and are not touched.
 
+## Removing a worktree on Windows
+
+`git worktree remove` can fail with "Filename too long" when the worktree has `node_modules` deep under a long path. If it does, git has usually already forgotten the worktree and only the folder is left. Delete the folder with a long-path prefix, then clean up git (run these from outside the worktree, because a shell sitting inside it keeps the folder locked):
+
+```
+cmd /c rmdir /s /q "\\?\<full path to the worktree folder>"
+git worktree prune
+git branch -d <the worktree's branch>
+```
+
+A shorter worktree location (for example `G:\wt\<name>`) avoids the problem.
+
 ## Live and External suites
 
 They are not part of the offline run. They need the file above and, for some, a deployed Worker or a billed provider call. Follow `TESTING.md` and the surface's own `TESTING.md`, and ask the owner before any paid run.

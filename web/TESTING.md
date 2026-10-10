@@ -126,6 +126,18 @@ password, unknown email, malformed sign-up and reset) and a full
 sign-in/sign-out journey. No gaps; nothing was changed or retagged. Web has
 no older release or weekly External suites.
 
+**Supabase dashboard settings the sign-up flow depends on** (not code, so no
+test sees them; checked by hand on 2026-10-09, #78): Authentication → URL
+Configuration → **Site URL** is `https://rigcheck-web.pages.dev`. The
+sign-up confirmation email's link ends there, so a Web or Android sign-up
+lands on the live app instead of `http://localhost:3000` (the default, which
+shows "refused to connect"). Redirect URLs also allow
+`https://rigcheck-web.pages.dev/**` (password-reset emails from Web and
+Android redirect to the site root) plus `http://localhost:5173/**` and the
+Pages preview hosts. If a confirmation link ever lands on `localhost` again,
+this setting was reset. Google sign-in is enabled under Authentication →
+Providers (Android's Google flow, #22); Apple is not, until #77.
+
 ## Coverage
 
 Real coverage, wired up 2026-08-24 (see `ARCHIVE_TESTING.md`) via

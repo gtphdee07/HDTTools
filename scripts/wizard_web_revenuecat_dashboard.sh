@@ -183,155 +183,113 @@ finish() {
 # STAGES: author this section. One stage() per step the human takes.
 # Replace the example below. Set TOTAL_STAGES to match the stages you write.
 # ──────────────────────────────────────────────────────────────────────────
-# Sets the VITE_REVENUECAT_* values the Web "Buy Pro" paywall reads, in
-# web/.env.local (sandbox, for local runs) and, optionally, web/.env.production
-# (the live site). Run from the repo root. Values here are all public by design
-# (the RevenueCat PUBLIC Web Billing key, never the secret key).
+# Walks through the RevenueCat DASHBOARD side of "Buy Pro on Web" (issue #24):
+# a one-time Pro product on the Web Billing app, the `pro` entitlement, the
+# starter bundle of SCAN virtual currency, and the offering package the Web
+# paywall reads. It builds on what #5 already set up (a Web Billing app linked
+# to a Stripe Sandbox, and the shared `default` offering that also holds
+# Android's Test Store packages). Nothing here is secret, and nothing is
+# written by this wizard: the values land in web/.env.* via the companion
+# wizard scripts/wizard_web_revenuecat.sh, which it offers to run at the end.
+#
+# Menu names below come from RevenueCat's docs (Product catalog > Products /
+# Entitlements / Offerings / In-App Currencies; Apps & Providers >
+# Configurations). The dashboard changes over time, so each stage says what to
+# look for rather than relying on an exact label.
 
-TOTAL_STAGES=5
-LOCAL_ENV="web/.env.local"
-PROD_ENV="web/.env.production"
+TOTAL_STAGES=7
+ENV_FILE="/dev/null" # this wizard writes no env file; keeps ask from reading a stray .env
 RC_PROJECT_ID="proj07f52826" # workers/scan-proxy/wrangler.toml REVENUECAT_PROJECT_ID
-
-# check_public_key VALUE: refuse a secret key outright, warn on an unexpected prefix.
-# Returns 0 if the key may be used, 1 if it must be re-entered.
-check_public_key() {
-  local key="$1"
-  if [[ -z "$key" ]]; then
-    warn "That was empty."
-    return 1
-  fi
-  if [[ "$key" == sk_* ]]; then
-    warn "That looks like a SECRET key (sk_...). It must never go in the Web app. Use the Web Billing PUBLIC key."
-    return 1
-  fi
-  if [[ "$key" != rcb_* ]]; then
-    warn "Web Billing public keys normally start with rcb_. This one starts differently; it may be an Android/iOS key."
-    confirm "Use it anyway?" || return 1
-  fi
-  return 0
-}
-
-# ask_public_key KEY "Prompt": ask until check_public_key accepts the value.
-ask_public_key() {
-  local key="$1" prompt="$2"
-  while true; do
-    ask "$key" "$prompt"
-    if check_public_key "${!key}"; then return 0; fi
-  done
-}
+RC_URL="https://app.revenuecat.com/projects/${RC_PROJECT_ID}"
 
 if [[ ! -d web || ! -d workers/scan-proxy ]]; then
   warn "Run this from the repo root (the folder that contains web/ and workers/)."
   exit 1
 fi
 
-banner "Web Billing: VITE_REVENUECAT_* setup"
+banner "RevenueCat dashboard: set up Buy Pro on Web"
 
-stage "Where things stand"
-say "The Web paywall needs two values to switch on; without them it hides purchases."
-for f in "$LOCAL_ENV" "$PROD_ENV"; do
-  say "$f:"
-  for k in VITE_REVENUECAT_WEB_PUBLIC_API_KEY VITE_REVENUECAT_WEB_OFFERING_ID VITE_REVENUECAT_PRO_ENTITLEMENT_ID VITE_REVENUECAT_PRO_PACKAGE_ID; do
-    ENV_FILE="$f"
-    if v=$(_existing "$k") && [[ -n "$v" ]]; then
-      if [[ "$k" == *API_KEY ]]; then note "    $k = ${v:0:8}... (set)"; else note "    $k = $v"; fi
-    else
-      note "    $k = (not set)"
-    fi
-  done
-done
+stage "What we're setting up"
+say "In the RevenueCat dashboard, you will:"
+step "make sure the Web Billing app exists (it should from the #5 prototype)"
+step "create a one-time 'Pro' product on it"
+step "attach that product to a 'pro' entitlement"
+step "have buying it grant a starter bundle of SCAN (scan credits)"
+step "put it on the offering's lifetime package, next to Android's product"
+step "hand off to the second wizard, which saves the ids into web/.env.local"
 say ""
-say "Needed from RevenueCat: a Web Billing app's PUBLIC key, the offering's id, and"
-say "(if not 'pro') the Pro entitlement id. Nothing here is secret."
-pause "Press Enter to continue"
+note "Prices and the starter bundle size are placeholders until launch pricing is set (ADR-0006)."
+note "Safe to stop and re-run: each stage tells you what to check if you already did it."
+open_url "$RC_URL"
+pause "RevenueCat project open in your browser? Press Enter"
 
-stage "RevenueCat: the Web Billing public key (sandbox)"
-ENV_FILE="$LOCAL_ENV"
-say "RevenueCat project id (the same one Android and the scan Worker use): $RC_PROJECT_ID"
-open_url "https://app.revenuecat.com/projects/${RC_PROJECT_ID}"
-step "In the left menu open 'Apps & Providers', then 'Configurations', then the web configuration."
-step "If there is no web configuration yet, create one (RevenueCat will ask you to link Stripe first)."
-step "Copy the SANDBOX public API key. It starts with rcb_sb_ and is the one to use locally."
-note "The same page also shows the production key (rcb_...). Dashboard labels move around over time."
-warn "Do NOT copy a secret key (sk_...). The Android/Test Store key is a different key; do not use it here."
-while true; do
-  ask_public_key VITE_REVENUECAT_WEB_PUBLIC_API_KEY "Paste the Web Billing public key (sandbox):"
-  if [[ "$VITE_REVENUECAT_WEB_PUBLIC_API_KEY" == rcb_sb_* ]]; then break; fi
-  warn "That is not a sandbox key (sandbox keys start rcb_sb_). Local runs with it could take real payments."
-  confirm "Use it locally anyway?" && break
-done
-write_env VITE_REVENUECAT_WEB_PUBLIC_API_KEY "$VITE_REVENUECAT_WEB_PUBLIC_API_KEY"
+stage "The Web Billing app"
+say "From #5 you already have a Web Billing app linked to a Stripe Sandbox."
+step "In the left menu open 'Apps & Providers', then 'Configurations'."
+step "Open the web configuration. You should see a sandbox public key starting rcb_sb_."
+step "If there is no web configuration, create one (RevenueCat will ask you to link Stripe)."
+note "A real Stripe account is only needed to go live. A Stripe Sandbox is fine for now."
+pause "Web configuration present? Press Enter"
 
-stage "RevenueCat: the offering id"
-ENV_FILE="$LOCAL_ENV"
-open_url "https://app.revenuecat.com/projects/${RC_PROJECT_ID}"
-step "In the left menu open 'Product catalog', then the 'Offerings' tab."
-step "Open (or create) the offering the Web paywall should read. The shared one from #5 is 'default'."
-step "It must contain a package for the lifetime Pro product, and that product must be a Web Billing product."
-step "Copy the offering's Identifier (for example 'default'), not its display name."
-ask VITE_REVENUECAT_WEB_OFFERING_ID "Offering identifier:"
-if [[ -z "$VITE_REVENUECAT_WEB_OFFERING_ID" ]]; then
-  warn "Empty: skipping. The paywall stays hidden until this is set; re-run the wizard to add it."
-  SKIPPED+=("VITE_REVENUECAT_WEB_OFFERING_ID (the paywall stays hidden without it)")
-else
-  write_env VITE_REVENUECAT_WEB_OFFERING_ID "$VITE_REVENUECAT_WEB_OFFERING_ID"
-fi
+stage "Create the Pro product"
+say "A one-time purchase that can only be bought once, i.e. a lifetime unlock."
+step "Open 'Product catalog', then the 'Products' tab."
+step "Click '+ New' next to your WEB billing configuration (not the Android/Test Store one)."
+step "Product type: 'Non-consumable' (NOT consumable, NOT subscription)."
+step "Identifier: suggested 'rigcheck_pro_lifetime' (you can't change it later)."
+step "Name: 'RigCheck Pro'. Description: 'One-time lifetime unlock'."
+step "Price: any placeholder, for example 9.99 USD. Launch pricing comes later."
+step "Save."
+ask PRO_PRODUCT_ID "Product identifier you used [rigcheck_pro_lifetime]:"
+PRO_PRODUCT_ID="${PRO_PRODUCT_ID:-rigcheck_pro_lifetime}"
+say "Using '$PRO_PRODUCT_ID' in the next steps."
+pause "Product created? Press Enter"
 
-stage "RevenueCat: the Pro entitlement and package (optional)"
-ENV_FILE="$LOCAL_ENV"
-open_url "https://app.revenuecat.com/projects/${RC_PROJECT_ID}"
+stage "The 'pro' entitlement"
+say "The Web app decides Free vs Pro from an active entitlement named 'pro'."
 step "In 'Product catalog', open the 'Entitlements' tab."
-step "Check there is an entitlement for Pro and that the lifetime Web Billing product is attached to it."
-step "The Web app assumes the entitlement id is 'pro'. If yours differs, copy its Identifier."
-say "Leave a prompt blank to accept the default."
-ask VITE_REVENUECAT_PRO_ENTITLEMENT_ID "Pro entitlement identifier [pro]:"
-if [[ -n "$VITE_REVENUECAT_PRO_ENTITLEMENT_ID" && "$VITE_REVENUECAT_PRO_ENTITLEMENT_ID" != "pro" ]]; then
-  write_env VITE_REVENUECAT_PRO_ENTITLEMENT_ID "$VITE_REVENUECAT_PRO_ENTITLEMENT_ID"
-fi
+step "If there is no 'pro' entitlement: '+ New entitlement', identifier exactly 'pro'."
+step "Open 'pro' and click 'Attach'. Attach '$PRO_PRODUCT_ID' (the Web product)."
 say ""
-say "By default the Web app buys the offering's 'lifetime' package. Only set a package"
-say "id if the Pro package is NOT the lifetime-type package in that offering."
-ask VITE_REVENUECAT_PRO_PACKAGE_ID "Pro package identifier [blank = lifetime package]:"
-if [[ -n "$VITE_REVENUECAT_PRO_PACKAGE_ID" ]]; then
-  write_env VITE_REVENUECAT_PRO_PACKAGE_ID "$VITE_REVENUECAT_PRO_PACKAGE_ID"
-fi
+say "Pro bought on Android is supposed to count on Web too (one purchase per household)."
+step "Optional but intended: also attach Android's lifetime product (today the Test Store 'Lifetime') to 'pro'."
+note "Skipping this only means Android lifetime buyers don't show as Pro on Web yet."
+note "If you used a different entitlement id than 'pro', the next wizard asks for it."
+pause "Entitlement attached? Press Enter"
 
-stage "The live site (web/.env.production), optional"
-say "web/.env.production is committed and baked into the live Cloudflare Pages build."
-warn "Only put the PRODUCTION Web Billing key here. A sandbox key would put test checkout on the live site."
-if confirm "Write the live-site values now?"; then
-  ENV_FILE="$PROD_ENV"
-  step "On the same web configuration page, copy the PRODUCTION public API key (starts rcb_, not rcb_sb_)."
-  note "If only a sandbox key shows, the configuration may not be linked to a real Stripe account yet."
-  while true; do
-    ask_public_key VITE_REVENUECAT_WEB_PUBLIC_API_KEY "Paste the Web Billing PRODUCTION public key:"
-    if [[ "$VITE_REVENUECAT_WEB_PUBLIC_API_KEY" == rcb_sb_* ]]; then
-      warn "That is a SANDBOX key (rcb_sb_). It must not go in the live-site file. Paste the production key."
-      continue
-    fi
-    break
-  done
-  write_env VITE_REVENUECAT_WEB_PUBLIC_API_KEY "$VITE_REVENUECAT_WEB_PUBLIC_API_KEY"
-  if [[ -n "$VITE_REVENUECAT_WEB_OFFERING_ID" ]]; then
-    write_env VITE_REVENUECAT_WEB_OFFERING_ID "$VITE_REVENUECAT_WEB_OFFERING_ID"
-  else
-    SKIPPED+=("VITE_REVENUECAT_WEB_OFFERING_ID in $PROD_ENV (no offering id captured)")
-  fi
-  if [[ -n "$VITE_REVENUECAT_PRO_ENTITLEMENT_ID" && "$VITE_REVENUECAT_PRO_ENTITLEMENT_ID" != "pro" ]]; then
-    write_env VITE_REVENUECAT_PRO_ENTITLEMENT_ID "$VITE_REVENUECAT_PRO_ENTITLEMENT_ID"
-  fi
-  if [[ -n "$VITE_REVENUECAT_PRO_PACKAGE_ID" ]]; then
-    write_env VITE_REVENUECAT_PRO_PACKAGE_ID "$VITE_REVENUECAT_PRO_PACKAGE_ID"
-  fi
-  note "$PROD_ENV is tracked by git: review the diff and commit it when you are ready to ship."
+stage "Starter scans (SCAN virtual currency)"
+say "Buying Pro should add a starter bundle of scans to the buyer's balance."
+say "Android already uses the 'SCAN' currency; Web reads the same balance."
+step "In 'Product catalog', open 'In-App Currencies' and open the SCAN currency."
+step "Under associated products click 'Add associated product'."
+step "Select '$PRO_PRODUCT_ID' and enter the amount granted on purchase."
+step "For now use a small placeholder like 5. The real number is a launch pricing decision."
+step "Save."
+note "Rule for later (ADR-0006): the Pro bundle must net at least 5x the worst-case scan cost (about \$0.016)."
+note "The Web app never grants scans itself; it only shows the balance RevenueCat reports."
+pause "Currency association saved? Press Enter"
+
+stage "Put Pro on the offering's lifetime package"
+say "The Web paywall reads an offering and buys its 'lifetime' package."
+say "From #5, the shared 'default' offering already has Android's Lifetime package."
+step "In 'Product catalog', open the 'Offerings' tab, then open the 'default' offering."
+step "Open the existing Lifetime package ('\$rc_lifetime') and attach '$PRO_PRODUCT_ID' to it as well."
+note "One package can hold a product per platform. This keeps Android and Web on one package."
+warn "If you made a separate new package instead, note its identifier: the next wizard asks for it."
+step "Make sure this offering is the project's default/current offering."
+pause "Package updated? Press Enter"
+
+stage "Save the ids into the Web app"
+say "The companion wizard stores the public key and ids in web/.env.local (and, if you choose,"
+say "web/.env.production), refusing secret keys and flagging a sandbox key bound for the live site."
+if confirm "Run scripts/wizard_web_revenuecat.sh now?"; then
+  exec bash scripts/wizard_web_revenuecat.sh
 else
-  SKIPPED+=("$PROD_ENV: not written (the live site keeps purchases hidden until it is)")
+  SKIPPED+=("run scripts/wizard_web_revenuecat.sh to save the public key and offering id into web/.env.local")
 fi
 
 finish
-say "Next:"
-step "Restart the Web dev server (cd web && npm run dev) to pick up $LOCAL_ENV."
-step "Sign in and open Account: you should see your plan and a 'Buy Pro' button."
-step "Before shipping, do the real sandbox cancel test in issue #11."
-note "Pro must also grant the starter SCAN bundle in RevenueCat; the Web app only reads the balance."
+say "Then check it works:"
+step "cd web && npm run dev, sign in, open Account: the plan, price and 'Buy Pro' should show."
+step "Use RevenueCat's sandbox test card, buy Pro, and watch 'Pro plan' and your scans appear."
+step "Then do the real cancel test in issue #11 before shipping."

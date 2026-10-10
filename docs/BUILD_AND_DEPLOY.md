@@ -198,6 +198,10 @@ the apps at a new project, all of it must be recreated or re-verified.
 - RevenueCat creates a customer automatically for each Supabase account id the
   first time the app logs it in. The app never sets a user id by itself, so a
   fresh install starts anonymous.
+- `scripts/wizard_web_revenuecat_dashboard.sh` (run from the repo root) walks
+  through the RevenueCat dashboard side of Web "Buy Pro": the Pro product, the
+  `pro` entitlement, the starter `SCAN` bundle and the offering package. It
+  offers to run the next wizard at the end.
 - `scripts/wizard_web_revenuecat.sh` (run from the repo root) walks through
   collecting the Web Billing public key and offering id and writes the
   `VITE_REVENUECAT_*` values into `web/.env.local` and, if you choose,

@@ -45,6 +45,30 @@ export function GarageProvider({ backend, children }: { backend: GarageBackend |
 
 const sameNickname = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
+// False if the update failed. The Rig may have been removed on another device since the list was
+// read; the caller then adds it, which refreshes a Rig of that name if one is still there.
+async function tryUpdate(backend: GarageBackend, rig: RecentRig & { id: string }): Promise<boolean> {
+  try {
+    await backend.updateRig({ ...rig, lastUsedAt: new Date().toISOString() });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// One key per save, reused on the retry, so a request that did land but whose reply was lost is
+// recognised by the server instead of counted twice. A full Garage is an answer, not a failure, so
+// it is not retried.
+async function addWithOneRetry(backend: GarageBackend, rig: NewRig): Promise<void> {
+  const key = crypto.randomUUID();
+  try {
+    await backend.addRig(key, rig);
+  } catch (err) {
+    if (err instanceof GarageFullError) throw err;
+    await backend.addRig(key, rig);
+  }
+}
+
 export function useGarage(): Garage {
   const { user } = useAuth();
   const backend = useContext(GarageBackendContext);
@@ -56,13 +80,16 @@ export function useGarage(): Garage {
   // sign-out (or an account switch) is dropped instead of showing the wrong Garage.
   const current = useRef<string | null>(null);
   current.current = remote ? accountId : null;
+  // Numbers each refresh so an older one answering late can't overwrite a newer list.
+  const latestLoad = useRef(0);
 
   const load = useCallback(async () => {
     if (!remote) return;
     const forAccount = accountId;
+    const thisLoad = ++latestLoad.current;
     try {
       const fetched = await remote.list();
-      if (current.current === forAccount) setRigs(fetched);
+      if (current.current === forAccount && latestLoad.current === thisLoad) setRigs(fetched);
     } catch {
       // Keep what is shown; the next refresh tries again.
     }
@@ -94,19 +121,8 @@ export function useGarage(): Garage {
       }
       try {
         const existing = rigs.find((r) => sameNickname(r.nickname, nickname));
-        if (existing?.id) {
-          await remote.updateRig({ ...existing, id: existing.id, truck, trailer, lastUsedAt: new Date().toISOString() });
-        } else {
-          // One key per save, reused on the retry, so a request that did land but whose reply was lost
-          // is recognised by the server instead of counted twice.
-          const key = crypto.randomUUID();
-          try {
-            await remote.addRig(key, { nickname, truck, trailer });
-          } catch (err) {
-            if (err instanceof GarageFullError) throw err;
-            await remote.addRig(key, { nickname, truck, trailer });
-          }
-        }
+        const updated = existing?.id ? await tryUpdate(remote, { ...existing, id: existing.id, truck, trailer }) : false;
+        if (!updated) await addWithOneRetry(remote, { nickname, truck, trailer });
       } catch (err) {
         return err instanceof GarageFullError ? { status: 'full', cap: err.cap } : { status: 'failed' };
       }

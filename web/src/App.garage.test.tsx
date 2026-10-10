@@ -208,6 +208,48 @@ describe('signed-in Garage', () => {
   });
 });
 
+describe('signed-in Garage, changed elsewhere', () => {
+  it('adds the Rig instead of failing when the one it meant to update was removed on another device', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    stored.set('Rig One', { nickname: 'Rig One', truck: {}, trailer: {}, lastUsedAt: '2026-01-01T00:00:00.000Z', id: 'r1', key: 'k' });
+    const user = renderDevice(backend);
+    await user.click(screen.getAllByRole('button', { name: 'Start New Check' })[0]);
+    await user.click(await screen.findByText('Rig One'));
+    stored.clear();
+    backend.updateRig.mockRejectedValueOnce(new Error('rig_not_found'));
+    await user.click(screen.getByRole('button', { name: 'No Image / Enter Weight Manually' }));
+    await user.click(screen.getByRole('button', { name: 'See My Results' }));
+    await acknowledgeDisclaimer(user);
+
+    await waitFor(() => expect([...stored.keys()]).toEqual(['Rig One']));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('keeps the newest Garage when an older refresh answers late', async () => {
+    const { backend } = makeFakeAccountGarage();
+    const realList = backend.list.getMockImplementation()!;
+    // jsdom reports every document as "prerender"; the app only refreshes a visible one.
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    const user = renderDevice(backend);
+    await waitFor(() => expect(backend.list).toHaveBeenCalled());
+
+    let answerLate!: (rigs: RecentRig[]) => void;
+    backend.list.mockImplementationOnce(() => new Promise<RecentRig[]>((resolve) => (answerLate = resolve)));
+    document.dispatchEvent(new Event('visibilitychange'));
+    backend.list.mockImplementation(realList);
+
+    await finishCheckForNewRig(user, 'Big Blue');
+    await acknowledgeDisclaimer(user);
+    await goHome(user);
+    expect((await screen.findAllByText('Big Blue')).length).toBeGreaterThan(0);
+
+    answerLate([]);
+    await new Promise((r) => setTimeout(r, 20));
+    // once as the Rig card, once as the check in Recent Checks
+    expect(screen.getAllByText('Big Blue')).toHaveLength(2);
+  });
+});
+
 describe('signed-out Garage', () => {
   it('still keeps Rigs in the browser and never touches the account backend', async () => {
     const { backend } = makeFakeAccountGarage();

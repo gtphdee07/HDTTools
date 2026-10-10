@@ -1,4 +1,4 @@
-import type { BillingClient, ProOffer, PurchaseOutcome } from './billing';
+import type { BillingClient, BillingStatus, ProOffer, PurchaseOutcome } from './billing';
 
 // RevenueCat's SDK is large, so it is loaded only when an account is first
 // identified - the free, account-less calculator never downloads it.
@@ -74,10 +74,10 @@ export function createRevenueCatBillingClient(
         return null;
       }
       proPackage = pkg;
-      return { title: pkg.webBillingProduct.title, price: pkg.webBillingProduct.currentPrice.formattedPrice };
+      return { price: pkg.webBillingProduct.currentPrice.formattedPrice };
     },
 
-    async getStatus() {
+    async getStatus(): Promise<BillingStatus> {
       const purchases = requireSdk();
       // Scans are charged by the Worker through RevenueCat's REST API, which the
       // SDK's cache never hears about, so always fetch a fresh balance.

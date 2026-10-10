@@ -37,7 +37,7 @@ function makeFakeBilling() {
 
   const client = {
     identify: vi.fn(async () => {}),
-    getProOffer: vi.fn(async () => ({ title: 'RigCheck Pro', price: '$9.99' })),
+    getProOffer: vi.fn(async () => ({ price: '$9.99' })),
     getStatus: vi.fn(async () => ({ isPro, scanBalance })),
     purchasePro: vi.fn(
       () =>
@@ -120,6 +120,19 @@ describe('Buy Pro on Web', () => {
     expect(screen.getByText(new RegExp(`scan credits: ${STARTER_SCANS}`, 'i'))).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Close checkout' })).not.toBeInTheDocument();
+  });
+
+  it('stays Pro after purchase even if RevenueCat has not yet reported the entitlement', async () => {
+    const billing = makeFakeBilling();
+    const user = renderApp(billing);
+    await openAccount(user);
+
+    await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+    billing.client.getStatus.mockResolvedValue({ isPro: false, scanBalance: 0 });
+    act(() => billing.completePayment());
+
+    expect(await screen.findByText('Pro plan')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
   });
 
   it('closes cleanly from the visible close control and allows a fresh retry', async () => {

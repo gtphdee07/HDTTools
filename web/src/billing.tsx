@@ -1,12 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from './auth';
+import { Button } from './design-system/Button';
 import { createRevenueCatBillingClient, readBillingConfig } from './revenueCatBilling';
 
 export interface ProOffer {
-  title: string;
   // already formatted for display, for example "$9.99"
   price: string;
+}
+
+export interface BillingStatus {
+  isPro: boolean;
+  scanBalance: number;
 }
 
 export type PurchaseOutcome = 'purchased' | 'cancelled';
@@ -18,7 +23,7 @@ export interface BillingClient {
   // SCAN balance are the account's, shared with every other device.
   identify(accountId: string): Promise<void>;
   getProOffer(): Promise<ProOffer | null>;
-  getStatus(): Promise<{ isPro: boolean; scanBalance: number }>;
+  getStatus(): Promise<BillingStatus>;
   // Opens the modal checkout and settles when it closes.
   purchasePro(): Promise<PurchaseOutcome>;
 }
@@ -132,11 +137,12 @@ export function BillingProvider({ client, children }: { client: BillingClient | 
       setNotice('Checkout closed. You were not charged.');
       return;
     }
+    // The completed purchase is what makes the user Pro; RevenueCat's entitlement
+    // can lag behind it, so the refresh below must not flip them back to Free.
     setIsPro(true);
     setNotice('Thank you! Pro is unlocked.');
     try {
       const status = await client.getStatus();
-      setIsPro(status.isPro);
       setScanBalance(status.scanBalance);
     } catch {
       setError('Your purchase went through, but we could not refresh your scan balance. Reload to see it.');
@@ -166,26 +172,13 @@ export function BillingProvider({ client, children }: { client: BillingClient | 
 // Sits above the RevenueCat modal overlay so the buyer always has a visible way out.
 function CloseCheckoutButton({ onClose }: { onClose: () => void }) {
   return (
-    <button
+    <Button
+      variant="secondary"
+      size="sm"
       onClick={onClose}
-      style={{
-        position: 'fixed',
-        top: 16,
-        right: 16,
-        zIndex: 2147483647,
-        padding: '10px 18px',
-        borderRadius: 'var(--radius-pill)',
-        border: '1.5px solid var(--accent-secondary)',
-        background: 'var(--bg-surface)',
-        color: 'var(--accent-secondary-hover)',
-        fontFamily: 'var(--font-display)',
-        fontWeight: 700,
-        fontSize: 14,
-        cursor: 'pointer',
-        boxShadow: 'var(--shadow-lg)',
-      }}
+      style={{ position: 'fixed', top: 16, right: 16, zIndex: 2147483647, boxShadow: 'var(--shadow-lg)' }}
     >
       Close checkout
-    </button>
+    </Button>
   );
 }

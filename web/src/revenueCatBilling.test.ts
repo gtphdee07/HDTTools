@@ -76,13 +76,13 @@ describe('RevenueCat billing client', () => {
   it('offers the lifetime package of the configured offering as Pro', async () => {
     const client = clientFor(makeFakeSdk());
     await client.identify('user-1');
-    expect(await client.getProOffer()).toEqual({ title: 'RigCheck Pro', price: '$9.99' });
+    expect(await client.getProOffer()).toEqual({ price: '$9.99' });
   });
 
   it('picks the Pro package by id when one is configured', async () => {
     const client = clientFor(makeFakeSdk(), { ...CONFIG, proPackageId: 'scan_pack' });
     await client.identify('user-1');
-    expect(await client.getProOffer()).toEqual({ title: 'Scan pack', price: '$2.99' });
+    expect(await client.getProOffer()).toEqual({ price: '$2.99' });
   });
 
   it('offers nothing when the offering has no web-purchasable Pro package', async () => {

@@ -9,7 +9,7 @@ A user-named, reusable pairing of a Truck Tag and Trailer Tag (a `RecentRig`: ni
 _Avoid_: vehicle combination, setup.
 
 **Garage**:
-The collection of a user's saved Rigs (not a single Rig). Capped per account — a count, not unbounded storage — with the cap itself a pricing-tier detail, not a Garage-concept detail. Account-synced per ADR-0005, superseding the device-local-only scoping in ADR-0004.
+The collection of a user's saved Rigs (not a single Rig). Capped per account — a count, not unbounded storage — with the cap itself a pricing-tier detail, not a Garage-concept detail. Account-synced per ADR-0005, superseding the device-local-only scoping in ADR-0004: for a signed-in user the Garage lives in Supabase (`garage_rigs`; the cap is enforced by the database function `add_rig`, currently 5 on the Free plan), identical on every device; a signed-out visitor keeps a browser-local Garage (`recentRigs.ts`), which is not carried into the account on sign-in. A full Garage refuses a new Rig with a message; it never silently drops the oldest.
 _Avoid_: using "Garage" and "Rig" interchangeably — Garage is the set, Rig is one member of it.
 
 **Wizard**:

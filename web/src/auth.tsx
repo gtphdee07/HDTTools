@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from './supabaseClient';
 
 interface AuthUser {
   id: string;
@@ -75,10 +75,8 @@ export function useAuth(): AuthState {
 }
 
 export function createSupabaseAuthClient(): AuthClient | null {
-  const url: string | undefined = import.meta.env.VITE_SUPABASE_URL;
-  const key: string | undefined = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key).auth as unknown as AuthClient;
+  const client = getSupabaseClient();
+  return client ? (client.auth as unknown as AuthClient) : null;
 }
 
 const fail = (error: { message: string } | null): ActionResult => (error ? { error: error.message } : {});

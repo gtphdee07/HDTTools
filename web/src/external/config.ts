@@ -5,8 +5,11 @@ export const REQUIRED = [
   'WEB_EXTERNAL_TEST_PASSWORD',
 ] as const;
 
-export type ConfigName = (typeof REQUIRED)[number];
-export type ExternalConfig = Record<ConfigName, string>;
+// A second, separate test account, for checking that one account cannot reach another's data.
+export const SECOND_ACCOUNT = ['WEB_EXTERNAL_TEST_NOCREDITS_EMAIL', 'WEB_EXTERNAL_TEST_NOCREDITS_PASSWORD'] as const;
+
+export type ConfigName = (typeof REQUIRED)[number] | (typeof SECOND_ACCOUNT)[number];
+export type ExternalConfig = Record<(typeof REQUIRED)[number], string>;
 
 // A missing credential must fail the run, never skip it. The message names variables only, never values.
 // `names` narrows the check to what one surface actually needs (e.g. the Pages site needs no test account).

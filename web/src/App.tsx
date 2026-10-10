@@ -4,7 +4,8 @@ import { MODULES } from './mockData';
 import { extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
 import { createBreakdown } from './breakdown';
 import type { CreateBreakdownResult } from './breakdown';
-import { loadRecentRigs, saveRecentRig } from './recentRigs';
+import { useGarage } from './garage';
+import type { SaveRigOutcome } from './garage';
 import { DisclaimerModal } from './components/DisclaimerModal';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -33,9 +34,21 @@ const EMPTY_WIZARD: WizardState = {
   pinWeightPct: 20,
 };
 
+function garageNoticeFor(nickname: string, outcome: SaveRigOutcome): string | null {
+  if (outcome.status === 'full') {
+    const limit = outcome.cap === null ? 'is full' : `is full (the Free plan holds ${outcome.cap} Rigs)`;
+    return `Your Garage ${limit}, so "${nickname}" wasn't saved to it. Your check is not affected.`;
+  }
+  if (outcome.status === 'failed') {
+    return `We couldn't save "${nickname}" to your Garage. Your check is not affected.`;
+  }
+  return null;
+}
+
 function App() {
   const [screen, setScreen] = useState<Screen>('home');
-  const [recentRigs, setRecentRigs] = useState<RecentRig[]>(() => loadRecentRigs());
+  const { rigs: recentRigs, saveRig, refresh: refreshGarage } = useGarage();
+  const [garageNotice, setGarageNotice] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [wizard, setWizard] = useState<WizardState>(EMPTY_WIZARD);
   const [checkResult, setCheckResult] = useState<CreateBreakdownResult | null>(null);
@@ -59,6 +72,8 @@ function App() {
   const goAccount = () => setScreen('account');
 
   const startWizard = () => {
+    refreshGarage();
+    setGarageNotice(null);
     setScreen('wizard');
     setCheckResult(null);
     setWizard(EMPTY_WIZARD);
@@ -144,7 +159,8 @@ function App() {
     try {
       const result = createBreakdown(wizard.truck, wizard.trailer, wizard.scale, wizard.pinWeightPct);
       setCheckResult(result);
-      setRecentRigs(saveRecentRig(wizard.rigNickname, wizard.truck, wizard.trailer));
+      const nickname = wizard.rigNickname;
+      void saveRig(nickname, wizard.truck, wizard.trailer).then((outcome) => setGarageNotice(garageNoticeFor(nickname, outcome)));
       setHistory((h) => [
         {
           id: crypto.randomUUID(),
@@ -183,6 +199,30 @@ function App() {
       <Header screen={screen} onGoHome={goHome} onGoHistory={goHistory} onStartWizard={startWizard} onGoAccount={goAccount} />
 
       <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', padding: '36px 32px' }}>
+        {garageNotice && (
+          <div
+            role="status"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              background: 'var(--color-tint-purple)',
+              color: 'var(--fg-1)',
+              borderRadius: 12,
+              padding: '12px 16px',
+              marginBottom: 20,
+              fontSize: 14,
+            }}
+          >
+            <span style={{ flex: 1 }}>{garageNotice}</span>
+            <button
+              onClick={() => setGarageNotice(null)}
+              style={{ background: 'none', border: 'none', color: 'var(--fg-2)', cursor: 'pointer', fontSize: 13 }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         {screen === 'home' && (
           <Dashboard recentRigs={recentRigs} history={history} onStartWizard={startWizard} onGoHistory={goHistory} />
         )}

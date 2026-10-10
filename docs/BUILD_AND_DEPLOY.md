@@ -164,6 +164,14 @@ the apps at a new project, all of it must be recreated or re-verified.
 - Check what's enabled without a login:
   `curl -H "apikey: <publishable key>" https://<project>.supabase.co/auth/v1/settings`
   and look for `"email"`, `"google"`, `"apple"` as true or false.
+- **Garage table (#28).** Run `supabase/migrations/20261010000000_garage_rigs.sql`
+  once: Dashboard, SQL Editor, paste the file, Run. It creates `garage_rigs`
+  (row-level security on), the `add_rig` function that enforces the Free cap of 5
+  and idempotent retry, and the grants. Without it a signed-in Web user's Rigs
+  fail to save and the `supabase-tables` External suite fails. Check it with
+  `cd web && EXTERNAL_SURFACES=supabase-tables npx vitest run --config vitest.external.config.ts`.
+  A new Supabase project needs the same step (section 7). Changing the cap means
+  a new migration that redefines `add_rig`, never an edit to the applied one.
 - Free tier: pauses after 7 idle days and has no automatic backups (accepted
   for now, ADR-0005). If sign-in suddenly stops working, check whether the
   project is paused.
@@ -254,7 +262,7 @@ few minutes (apt packages, then pip).
 ## 7. Moving to a new Supabase or Cloudflare account (checklist)
 
 1. New Supabase project: set Email and Google providers, Site URL and Redirect
-   URLs (section 5). Update the project URL in `web/.env.production`,
+   URLs (section 5), and run every file in `supabase/migrations/` in order. Update the project URL in `web/.env.production`,
    `SupabaseAccountBackend.kt` and `workers/scan-proxy/wrangler.toml`, and the
    publishable key in the first two.
 2. Google Cloud: the Web client's redirect URI must be the new project's

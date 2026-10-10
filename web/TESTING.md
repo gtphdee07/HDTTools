@@ -42,7 +42,7 @@ call: every network call (`./api`'s `extractTruckTag`/etc.) is mocked, and
 ## External suite (ADR-0008)
 
 `npm run test:external` runs `src/external/*.external.test.ts` against the
-live providers via `vitest.external.config.ts`. Two surfaces today, each
+live providers via `vitest.external.config.ts`. Three surfaces today, each
 tagged `[surface]` in its describe title; credentials come from the
 gitignored `web/.env.local` and a missing one fails the run, never skips
 it. Normally run through `web/test-external.ps1`, which runs only the
@@ -56,9 +56,10 @@ result with `scripts/record_external_result.py` (`-Skip` records
 |---|---|---|
 | `supabase-auth` | `supabaseAuth.external.test.ts` | 0 |
 | `pages-site` | `pagesSite.external.test.ts` | 0 |
+| `supabase-tables` | `supabaseTables.external.test.ts` | 0 |
 
-Both are free, so the wrapper runs them without a confirmation prompt.
-`externalGuards.test.ts` (in `npm test`) statically guards both files: never
+All are free, so the wrapper runs them without a confirmation prompt.
+`externalGuards.test.ts` (in `npm test`) statically guards every file: never
 collected by `npm test`, never create a user or send mail, never print a
 secret, and the Pages file only issues GETs and never signs in.
 
@@ -81,6 +82,31 @@ is no longer in that process.
 Real calls to the live Supabase project with the test user from
 `scripts/wizard_web_external_test_user.sh`. It never creates a user or sends
 mail.
+
+### `supabase-tables` (#28)
+
+Real calls to the live Supabase project's Garage table (`garage_rigs`) and its
+`add_rig` function, as the two throwaway test accounts (`WEB_EXTERNAL_TEST_*`
+and `WEB_EXTERNAL_TEST_NOCREDITS_*`; the second exists to prove one account
+cannot reach another's rows). Boundary files are `web/src/supabaseGarage.ts`
+and the migration `supabase/migrations/20261010000000_garage_rigs.sql`; the
+watched package is `@supabase/supabase-js`. **The migration must be applied to
+the project first** (`docs/BUILD_AND_DEPLOY.md`, Supabase section); until it is,
+the suite fails at its first call with a message saying so. It empties both
+accounts' Garages before and after every run, so it must only ever use
+throwaway accounts, and it never creates a user or sends mail.
+
+| ADR-0008 depth | Covered by |
+|---|---|
+| Reachable and authenticated | The table and `add_rig` answer a signed-in account and refuse a signed-out caller. |
+| Response shape | `add_rig` returns the Rig row (`id`, `nickname`, `truck`, `trailer`, `last_used_at`). |
+| Error contract | Over the cap the server answers `garage_full` with the cap in `details`; a direct insert, a change of owner, and another account's update or delete are refused or touch nothing. |
+| Full journey | Fills a Garage to the Free cap, is refused the next add, races eight adds from two sessions of one account into the last free slot (exactly one lands), retries an add (one Rig, even once full), updates a Rig in a full Garage, and frees a slot by deleting. |
+
+The offline counterpart is `src/garageSchema.test.ts` (in `npm test`): it runs
+the same migration on a real Postgres (PGlite) as the `authenticated` role and
+checks row-level security, grants, the cap and idempotency. It cannot run two
+transactions at once, which is why the concurrent-add check lives here.
 
 ### `pages-site` (#42)
 

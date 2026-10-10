@@ -366,6 +366,17 @@ def test_pages_site_is_in_the_real_manifest_active_with_the_web_chain():
     assert "pages-site" in ef.surfaces_for_platform(ef.load_manifest(), "web")
 
 
+def test_supabase_tables_is_in_the_real_manifest_active_with_the_web_chain():
+    surface = ef.load_manifest()["surfaces"]["supabase-tables"]
+    assert surface["status"] == "active"
+    assert surface["max_paid_calls"] == 0
+    assert surface["platforms"] == ["web"]
+    # The adapter that calls the table, and the migration that defines it: a change to either is a change to the surface.
+    assert {"web/src/supabaseGarage.ts", "supabase/migrations/20261010000000_garage_rigs.sql"} <= set(surface["boundary_files"])
+    assert {"ecosystem": "npm", "package": "@supabase/supabase-js"} in surface["registry_packages"]
+    assert "supabase-tables" in ef.surfaces_for_platform(ef.load_manifest(), "web")
+
+
 _REQUIRED_PROVIDER_SURFACES = {
     "scan-proxy-worker",
     "pages-site",
@@ -378,7 +389,7 @@ _REQUIRED_PROVIDER_SURFACES = {
 
 
 # Surfaces from the list above that have since gained a tagged External test and flipped to active.
-_SURFACES_NOW_ACTIVE = {"pages-site"}
+_SURFACES_NOW_ACTIVE = {"pages-site", "supabase-tables"}
 
 
 def test_every_required_provider_surface_is_registered_in_the_real_manifest():

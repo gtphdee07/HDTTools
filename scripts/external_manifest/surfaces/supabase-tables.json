@@ -1,8 +1,8 @@
 {
   "name": "supabase-tables",
-  "status": "planned",
+  "status": "active",
   "platforms": ["web"],
-  "boundary_files": [],
+  "boundary_files": ["web/src/supabaseGarage.ts", "supabase/migrations/20261010000000_garage_rigs.sql"],
   "dependency_pins": ["web/package.json", "web/package-lock.json"],
   "registry_packages": [
     {"ecosystem": "npm", "package": "@supabase/supabase-js"}

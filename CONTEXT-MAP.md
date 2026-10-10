@@ -14,5 +14,5 @@
 - **Core ↔ Web**: no runtime link. Web is a static app on Cloudflare Pages with its own TypeScript port of the breakdown math, tested against the same golden-vector fixture (`test-vectors/breakdown_cases.json`); the FastAPI app in `src/hdttools/api/` is no longer part of the Web deployment (ADR-0007).
 - **Core ↔ Streamlit**: Streamlit imports Core's OCR modules directly in-process; no network boundary between them.
 - **Scan Proxy ↔ Android**: Scan Proxy gates Android's paid Claude-vision scans behind a RevenueCat purchase check.
-- **Web ↔ Android (Rig)**: both maintain their own independent "Rig" concept (a saved, named truck+trailer pairing) — not a Core concept, and not (yet) shared/synced between the two platforms.
+- **Web ↔ Android (Rig)**: both maintain their own independent "Rig" concept (a saved, named truck+trailer pairing) — not a Core concept. Web's signed-in Garage is account-synced via Supabase (ADR-0005); Android's sync is not built yet.
 - **Web ↔ Android ↔ Streamlit (Disclaimer)**: all three independently implement a session-scoped "Disclaimer" acknowledgment gate before showing results, each with its own wording and no shared implementation or synced acknowledgment state.

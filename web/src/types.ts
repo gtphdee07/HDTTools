@@ -63,6 +63,8 @@ export interface TrailerTagData {
 }
 
 export interface RecentRig {
+  // Set for a Rig stored in the account's Garage; absent for one kept in this browser.
+  id?: string;
   nickname: string;
   truck: TruckTagData;
   trailer: TrailerTagData;

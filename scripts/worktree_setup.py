@@ -12,7 +12,8 @@ Usage (from inside the new worktree):
     uv run scripts/worktree_setup.py --copy-env      # also copy missing local-only
                                                      # files from the main checkout
 
-Everything it touches is inside the worktree. It never prints a local-only
+It writes only inside the worktree (uv and npm still use their shared download
+caches). Machine-wide tools and `android/local.properties` are not touched. It never prints a local-only
 file's contents, never overwrites one that is already there, and never writes
 one into a tracked path (they are gitignored by `*.local`). Steps are
 idempotent: re-running it on a set-up worktree just re-syncs.
@@ -57,7 +58,7 @@ LOCAL_FILES = [
     LocalFile(
         "web/.env.local",
         "External suites only (Web `test:external`, Scan Proxy live suites): "
-        "test-user credentials and the public VITE_* values. No offline suite reads it.",
+        "test-user credentials. No offline suite reads it.",
     ),
 ]
 

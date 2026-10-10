@@ -198,6 +198,10 @@ the apps at a new project, all of it must be recreated or re-verified.
 - RevenueCat creates a customer automatically for each Supabase account id the
   first time the app logs it in. The app never sets a user id by itself, so a
   fresh install starts anonymous.
+- `scripts/wizard_web_revenuecat.sh` (run from the repo root) walks through
+  collecting the Web Billing public key and offering id and writes the
+  `VITE_REVENUECAT_*` values into `web/.env.local` and, if you choose,
+  `web/.env.production`.
 - Web "Buy Pro" needs, on the RevenueCat side: a **Web Billing** app (its public
   API key is the Web key above), a lifetime Pro product with a package in the
   Web offering, a `pro` entitlement that product unlocks, and the product set

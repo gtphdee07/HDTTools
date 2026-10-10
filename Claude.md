@@ -20,6 +20,10 @@ Default five canonical roles (`needs-triage`, `needs-info`, `ready-for-agent`, `
 
 Multi-context: a root `CONTEXT-MAP.md` points at per-surface `CONTEXT.md` files (`android/`, `web/`, `src/hdttools/`, `streamlit_app/`, `workers/scan-proxy/`). See `docs/agents/domain.md`.
 
+### Session handoff
+
+Status between sessions travels as a comment on the ticket (claim it by assigning it; finish with a `STATUS:` comment), with live scratch notes outside the repo; no committed handoff files. See `docs/agents/session-handoff.md`.
+
 ## Environment Management Commands
 - Add a package: `uv add <package_name>`
 - Remove a package: `uv remove <package_name>`

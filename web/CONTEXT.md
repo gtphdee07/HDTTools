@@ -21,5 +21,8 @@ The list of a user's **past, completed** checks (`HistoryEntry`: id, date, rig n
 **Dashboard**:
 The app's home screen, showing recent activity and entry points into the Wizard and History.
 
+**Pro**:
+The one-time, lifetime paid plan (a RevenueCat entitlement shared across platforms through the account, ADR-0003/0006), as opposed to Free. A signed-in Free user buys it from the paywall on the Account screen, in RevenueCat's modal checkout; the Web app only reads the entitlement and the **Scan Credit** balance (the `SCAN` virtual currency) back from RevenueCat, it never grants either. The paywall states that results are not certified DOT weights; that is separate from the **Disclaimer** gate.
+
 **Disclaimer**:
 A session-scoped acknowledgment gate shown before results, independently implemented per platform with its own wording — see `android/CONTEXT.md` for the fuller definition and `CONTEXT-MAP.md`'s Relationships.

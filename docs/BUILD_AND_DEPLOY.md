@@ -108,7 +108,9 @@ console) and set it again.
 ## 4. Build and test each piece
 
 Run these from a clean clone to prove the machine works. Everything below the
-"free" label makes no paid or live calls.
+"free" label makes no paid or live calls. In a new git worktree on a machine that
+is already set up, run `uv run scripts/worktree_setup.py` first instead of
+installing by hand (`docs/agents/worktree-setup.md`).
 
 **Free, offline:**
 

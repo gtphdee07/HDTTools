@@ -24,6 +24,10 @@ Multi-context: a root `CONTEXT-MAP.md` points at per-surface `CONTEXT.md` files 
 
 Status between sessions travels as a comment on the ticket (claim it by assigning it; finish with a `STATUS:` comment), with live scratch notes outside the repo; no committed handoff files. See `docs/agents/session-handoff.md`.
 
+### Worktree setup
+
+A new git worktree has no `.venv` or `node_modules`; run `uv run scripts/worktree_setup.py` first, then the offline suites. See `docs/agents/worktree-setup.md`.
+
 ## Environment Management Commands
 - Add a package: `uv add <package_name>`
 - Remove a package: `uv remove <package_name>`

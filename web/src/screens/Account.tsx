@@ -168,7 +168,7 @@ function PlanSection() {
         {planKnown && (
           <div style={{ marginTop: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>{billing.isPro ? 'Pro plan' : 'Free plan'}</div>
-            {billing.scanBalance !== null && <div style={{ fontSize: 13 }}>Scan credits: {billing.scanBalance}</div>}
+            {billing.scanBalance !== null && <div style={{ fontSize: 13 }}>Scan Credit balance: {billing.scanBalance}</div>}
           </div>
         )}
         <Feedback error={billing.error} notice={billing.notice} />

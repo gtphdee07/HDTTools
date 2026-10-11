@@ -47,19 +47,28 @@ export function createRevenueCatBillingClient(
     return sdk;
   };
 
+  const applyIdentity = async (accountId: string) => {
+    if (accountId === currentUserId) return;
+    if (!sdk) {
+      module = await loadSdk();
+      // Configuring more than one Purchases instance is unsupported, so this
+      // happens once; later accounts switch the existing instance's user.
+      sdk = module.Purchases.configure({ apiKey: config.apiKey, appUserId: accountId });
+    } else {
+      await sdk.changeUser(accountId);
+    }
+    currentUserId = accountId;
+    proPackage = null;
+  };
+  // Identify calls can overlap (React StrictMode, a quick sign-out and sign-in),
+  // and the lazy SDK load is awaited, so they run one at a time, in call order.
+  let identifyQueue: Promise<void> = Promise.resolve();
+
   return {
-    async identify(accountId) {
-      if (accountId === currentUserId) return;
-      if (!sdk) {
-        module = await loadSdk();
-        // Configuring more than one Purchases instance is unsupported, so this
-        // happens once; later accounts switch the existing instance's user.
-        sdk = module.Purchases.configure({ apiKey: config.apiKey, appUserId: accountId });
-      } else {
-        await sdk.changeUser(accountId);
-      }
-      currentUserId = accountId;
-      proPackage = null;
+    identify(accountId) {
+      const run = identifyQueue.then(() => applyIdentity(accountId));
+      identifyQueue = run.catch(() => {});
+      return run;
     },
 
     async getProOffer(): Promise<ProOffer | null> {

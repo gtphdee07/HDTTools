@@ -35,6 +35,7 @@ def test_pro_entry_does_not_define_pro_as_an_entitlement():
     entry = _term_entry(WEB_CONTEXT.read_text(encoding="utf-8"), "Pro")
     assert not re.search(r"\ba RevenueCat entitlement\b", entry)
 
+
 def test_pro_entry_points_at_the_reserved_entitlement_term():
     entry = _term_entry(WEB_CONTEXT.read_text(encoding="utf-8"), "Pro")
     assert "workers/scan-proxy/CONTEXT.md" in entry

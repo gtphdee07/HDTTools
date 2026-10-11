@@ -136,7 +136,7 @@ describe('Buy Pro on Web', () => {
     await openAccount(user);
 
     expect(await screen.findByText('Free plan')).toBeInTheDocument();
-    expect(screen.getByText(/Scan Credits: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Scan Credit balance: 0/)).toBeInTheDocument();
     expect(screen.getByText(/\$9\.99/)).toBeInTheDocument();
     expect(screen.getByText(/not certified DOT weights/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Buy Pro' })).toBeEnabled();
@@ -155,7 +155,7 @@ describe('Buy Pro on Web', () => {
     act(() => billing.completePayment());
 
     expect(await screen.findByText('Pro plan')).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(`Scan Credits: ${STARTER_SCANS}`))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Scan Credit balance: ${STARTER_SCANS}`))).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Close checkout' })).not.toBeInTheDocument();
   });
@@ -222,7 +222,7 @@ describe('Buy Pro on Web', () => {
     await act(async () => billing.completePayment());
 
     expect(screen.getByText('Free plan')).toBeInTheDocument();
-    expect(screen.getByText(/Scan Credits: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Scan Credit balance: 0/)).toBeInTheDocument();
     expect(screen.queryByText(/pro is unlocked/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Buy Pro' })).toBeInTheDocument();
   });
@@ -240,7 +240,7 @@ describe('Buy Pro on Web', () => {
 
     expect(await screen.findByText('Signed in as sam@example.com')).toBeInTheDocument();
     expect(await screen.findByText('Free plan')).toBeInTheDocument();
-    expect(screen.getByText(/Scan Credits: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Scan Credit balance: 0/)).toBeInTheDocument();
     expect(screen.queryByText(/pro is unlocked/i)).not.toBeInTheDocument();
   });
 
@@ -309,7 +309,7 @@ describe('Buy Pro on Web', () => {
     await openAccount(user);
 
     expect(await screen.findByText('Pro plan')).toBeInTheDocument();
-    expect(screen.getByText(/Scan Credits: 12/)).toBeInTheDocument();
+    expect(screen.getByText(/Scan Credit balance: 12/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
   });
 

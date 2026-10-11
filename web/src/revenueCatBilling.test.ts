@@ -73,8 +73,8 @@ describe('RevenueCat billing client', () => {
     expect(fake.purchases.changeUser).toHaveBeenCalledWith('user-2');
   });
 
-  it('configures the SDK exactly once when two identify calls overlap', async () => {
-    const fake = makeFakeSdk();
+  // A client whose lazy SDK load stays pending until `releaseLoad()`, so identify calls can overlap.
+  const gatedClient = (fake: ReturnType<typeof makeFakeSdk>) => {
     let releaseLoad: () => void = () => {};
     const gate = new Promise<void>((resolve) => {
       releaseLoad = resolve;
@@ -83,6 +83,12 @@ describe('RevenueCat billing client', () => {
       await gate;
       return fake.sdk;
     });
+    return { client, releaseLoad };
+  };
+
+  it('configures the SDK exactly once when two identify calls overlap', async () => {
+    const fake = makeFakeSdk();
+    const { client, releaseLoad } = gatedClient(fake);
     // Neither call is awaited before the other starts - like StrictMode's double effect.
     const first = client.identify('user-1');
     const second = client.identify('user-1');
@@ -93,14 +99,7 @@ describe('RevenueCat billing client', () => {
 
   it('ends on the latest account when overlapping identify calls name different accounts', async () => {
     const fake = makeFakeSdk();
-    let releaseLoad: () => void = () => {};
-    const gate = new Promise<void>((resolve) => {
-      releaseLoad = resolve;
-    });
-    const client = createRevenueCatBillingClient(CONFIG, async () => {
-      await gate;
-      return fake.sdk;
-    });
+    const { client, releaseLoad } = gatedClient(fake);
     const first = client.identify('user-1');
     const second = client.identify('user-2');
     releaseLoad();

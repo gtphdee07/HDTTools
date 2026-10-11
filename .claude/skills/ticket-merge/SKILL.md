@@ -19,7 +19,7 @@ It stops unless this is the main checkout on a clean `MPSkills`, `ticket-<N>` ha
 Work in `.claude/worktrees/ticket-<N>` (it has the dependencies). Read the STATUS comment, then:
 
 1. **Read the code.** `git diff MPSkills...ticket-<N>`. Judge it against the ticket's acceptance criteria yourself, not against the comment's claims.
-2. **Re-run the suites** the comment lists, plus anything the diff touches that it omits (`uv run scripts/test_planner.py --level session`). Free suites only; paid ones need the owner's budget.
+2. **Re-run the suites** the comment lists, plus anything the diff touches that it omits (`uv run scripts/test_planner.py --base MPSkills --level session`, run in the worktree). Free suites only; paid ones need the owner's budget.
 3. **Trace every criterion to a test** in the comment's table. Open each named test and confirm it exists and asserts the criterion.
 4. **Spot-check by mutation.** Pick two or three of the most important behaviours, break each in the worktree (flip a condition, remove a guard), and confirm a named test fails. Restore every edit (`git checkout -- <file>`) and check `git status` is clean afterwards. A test that stays green under mutation does not prove its criterion.
 

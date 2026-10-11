@@ -246,13 +246,15 @@ tests also included in the Minor category.
 - **a failed refund attempt doesn't crash the request, and doesn't falsely claim a refund happened** — pins down the fix for the real "Credit refunded" lying-message bug found 2026-08-19: a refund that throws now returns `extraction_failed_no_refund` with an honest message, not the old always-says-refunded text.
 - **a refund call that resolves with ok:false (not a throw) is also treated as a failed refund** — the other way a refund can fail without throwing.
 - **a successful scan never issues a refund**.
-- **spendCredit and refundCredit are called with the same idempotency key** — scan.ts's own responsibility (revenuecat.ts derives the refund's distinct `-refund` suffix from whatever raw key it's given); a regression minting a fresh key per call would silently break the charge/refund pairing.
+- **spendCredit and refundCredit are called with the same idempotency key** — scan.ts's own responsibility (revenuecat.ts derives the refund's distinct `-refund` suffix from whatever key it's given); a regression minting a fresh key per call would silently break the charge/refund pairing.
 - **spendCredit itself rejecting propagates out of runScan rather than being caught** — documents a known gap: no `try/catch` around the spend call, so a real network failure here currently means an ungraceful failure rather than a clean `billing_error` response.
 - **trailer_tag and scale_ticket scans use their own doc type's config and echo it back** — every other test in this file uses `truck_tag`; this is the only one exercising the other two doc types through `runScan` directly.
 
-The next five use a fake RevenueCat ledger that replays a repeated Idempotency-Key and 422s when no credit is left (#94, the `client_request_id` replay lead):
+- **a request with client_request_id gets a stable RevenueCat idempotency key derived from it, never the raw id** and **two runScan calls with the same client_request_id use the same idempotency key both times** — the same id gives the same key, a different id a different one.
 
-- **one client_request_id with many different images cannot extract more than the credits paid for** — five images under one id and one credit give one extraction and four 402s. Red before the key was bound to the image.
+These use a fake RevenueCat ledger that replays a repeated Idempotency-Key and 422s when no credit is left (#94, the `client_request_id` replay lead):
+
+- **one client_request_id with many different images cannot extract more than the credits paid for** — five images under one id and one credit give one extraction and four 402s.
 - **the same client_request_id is charged separately per account, document type and image**.
 - **an honest retry of the same request (account, type, image and id) charges once** — the key is stable, so the Spend replays.
 - **a spend key is a fixed-width hash, so no other request's refund key can equal it** — ids `X` and `X-refund` share no spend or refund key.
@@ -360,7 +362,7 @@ validates a real token against.
   actually built.
 
 - **No timeout on the Anthropic/RevenueCat `fetch` calls** — not a test gap so much as a missing feature (both here and Android-client-side); a hung call currently means the Android loading spinner never resolves. Raised, not yet a task.
-- **An exact replay of a completed scan is still extracted again** — the RevenueCat key binds account, document type, image and `client_request_id` (#94), so a retry after a lost response charges once, but resending the identical request re-runs Claude each time (one credit, N billed extractions) and, if that second extraction fails, refunds the credit of a scan that was delivered. RevenueCat gives no replay signal and the Worker keeps no state, so only a server-side record (Workers KV or a single-use scan token) closes it; tracked as a follow-up ticket.
+- **An exact replay of a completed scan is still extracted again** — the RevenueCat key binds account, document type, image and `client_request_id` (#94), so a retry after a lost response charges once, but resending the identical request re-runs Claude each time (one credit, N billed extractions) and, if that second extraction fails, refunds the credit of a scan that was delivered. (The mirror case: after a failed, refunded first attempt, an honest retry replays the Spend and is extracted at no net credit.) RevenueCat gives no replay signal and the Worker keeps no state, so only a server-side record (Workers KV or a single-use scan token) closes it; tracked in #96.
 - **Workers-runtime-specific behavior** (`@cloudflare/vitest-pool-workers`) — this Worker doesn't currently use any Workers-only APIs, so plain Node test coverage is representative; low-risk gap, unblocked but not written.
 
 ## Per-surface External suite (ADR-0008, #38)

@@ -70,10 +70,13 @@ same request (same account, type, image and id) is answered as paid and
 re-runs Claude each time. A direct API caller with one credit can use that
 to buy repeated billed extractions of one image, and if a repeat's
 extraction fails, the refund credits back a scan that was delivered. The
+mirror case also holds: if the first attempt's extraction fails and is
+refunded, an honest retry replays the Spend and is extracted at no net
+credit. The
 shipped clients send a fresh id per tap, so only a hostile direct caller
 reaches it. Closing it needs a server-side record of completed scans
-(Workers KV, or a single-use scan token); that decision is tracked in a
-separate ticket rather than made here.
+(Workers KV, or a single-use scan token); that decision is tracked in
+#96 rather than made here.
 
 ## Testing
 

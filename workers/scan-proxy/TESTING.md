@@ -234,6 +234,7 @@ tests also included in the Minor category.
 - **rejects wrong-typed fields, not just wrong/missing values** — a number where `doc_type`/`image_base64` should be a string, and an array where `doc_type` should be a string.
 - **an explicit null media_type is treated the same as an omitted one**.
 - **rejects an array payload the same way as any other non-conforming object** — `[]` and `["truck_tag"]`.
+- **accepts a client_request_id up to the length cap, including a UUID**, and **rejects one over 128 characters or with characters outside `A-Za-z0-9._:-`** (space, newline, tab, non-ASCII, `/`, emoji, leading space), naming the rule in the message (#94).
 - **silently ignores unknown extra fields rather than rejecting them** — documents intended behavior (only the four known keys are ever read).
 
 ### `scan.test.ts` — `runScan`, the money-critical charge/extract/refund control flow (fake `ScanDeps`, no real network)
@@ -248,6 +249,14 @@ tests also included in the Minor category.
 - **spendCredit and refundCredit are called with the same idempotency key** — scan.ts's own responsibility (revenuecat.ts derives the refund's distinct `-refund` suffix from whatever raw key it's given); a regression minting a fresh key per call would silently break the charge/refund pairing.
 - **spendCredit itself rejecting propagates out of runScan rather than being caught** — documents a known gap: no `try/catch` around the spend call, so a real network failure here currently means an ungraceful failure rather than a clean `billing_error` response.
 - **trailer_tag and scale_ticket scans use their own doc type's config and echo it back** — every other test in this file uses `truck_tag`; this is the only one exercising the other two doc types through `runScan` directly.
+
+The next five use a fake RevenueCat ledger that replays a repeated Idempotency-Key and 422s when no credit is left (#94, the `client_request_id` replay lead):
+
+- **one client_request_id with many different images cannot extract more than the credits paid for** — five images under one id and one credit give one extraction and four 402s. Red before the key was bound to the image.
+- **the same client_request_id is charged separately per account, document type and image**.
+- **an honest retry of the same request (account, type, image and id) charges once** — the key is stable, so the Spend replays.
+- **a spend key is a fixed-width hash, so no other request's refund key can equal it** — ids `X` and `X-refund` share no spend or refund key.
+- **replaying a delivered scan's id with an undecodable image is charged on its own, not a free extraction** — the failed replay is its own charge and its own refund.
 
 ### `revenuecat.test.ts` — `spendCredit`/`refundCredit`, the RevenueCat Virtual Currency API client (`fetch`-mocked)
 
@@ -311,6 +320,7 @@ validates a real token against.
 - **an unknown route returns the same generic 404**.
 - **malformed JSON body returns 400 bad_request, not a 500**.
 - **valid JSON that fails parseScanRequest returns 400 with that specific message, not swallowed** — proves `index.ts` passes `parseScanRequest`'s actual error message through rather than replacing it with something generic.
+- **an over-long or unusable client_request_id returns a clear 400 and never reaches RevenueCat** (#94) — 129 characters and a space, each a 400 `bad_request` naming the 128 cap, with zero RevenueCat calls.
 
 ### `installGuard.test.ts` — `installGuard.ts`, the missing-install check every top-level test file imports first (#82)
 
@@ -350,7 +360,7 @@ validates a real token against.
   actually built.
 
 - **No timeout on the Anthropic/RevenueCat `fetch` calls** — not a test gap so much as a missing feature (both here and Android-client-side); a hung call currently means the Android loading spinner never resolves. Raised, not yet a task.
-- **No request-level idempotency across client retries** — each `runScan` call mints its own key; a client retry after a timeout is a second real charge. Documented as current behavior in `scan.test.ts`, not fixed.
+- **An exact replay of a completed scan is still extracted again** — the RevenueCat key binds account, document type, image and `client_request_id` (#94), so a retry after a lost response charges once, but resending the identical request re-runs Claude each time (one credit, N billed extractions) and, if that second extraction fails, refunds the credit of a scan that was delivered. RevenueCat gives no replay signal and the Worker keeps no state, so only a server-side record (Workers KV or a single-use scan token) closes it; tracked as a follow-up ticket.
 - **Workers-runtime-specific behavior** (`@cloudflare/vitest-pool-workers`) — this Worker doesn't currently use any Workers-only APIs, so plain Node test coverage is representative; low-risk gap, unblocked but not written.
 
 ## Per-surface External suite (ADR-0008, #38)

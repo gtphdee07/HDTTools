@@ -139,3 +139,15 @@ test("valid JSON that fails parseScanRequest returns 400 with that specific mess
   assert.equal(body.code, "bad_request");
   assert.match(body.message, /doc_type/);
 });
+
+test("an over-long or unusable client_request_id returns a clear 400 and never reaches RevenueCat", async (t) => {
+  const mocks = mockExternalApis(t, {});
+  for (const id of ["x".repeat(129), "has space"]) {
+    const res = await worker.fetch(postScan({ ...validBody, client_request_id: id }), env);
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as { code: string; message: string };
+    assert.equal(body.code, "bad_request");
+    assert.match(body.message, /client_request_id.*128/);
+  }
+  assert.equal(mocks.revenuecatCalls(), 0, "a rejected request must not spend a credit");
+});

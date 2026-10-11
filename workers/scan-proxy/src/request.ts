@@ -4,6 +4,11 @@ import type { MediaType } from "./types.ts";
 const DOC_TYPES = new Set<DocType>(["truck_tag", "trailer_tag", "scale_ticket"]);
 const MEDIA_TYPES = new Set<MediaType>(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
+// Roomy for a UUID (36) or any sane client scheme; the id is hashed into the
+// RevenueCat key (idempotencyKey.ts), so this only bounds what a caller can send.
+export const CLIENT_REQUEST_ID_MAX_LENGTH = 128;
+const CLIENT_REQUEST_ID_FORMAT = new RegExp(`^[A-Za-z0-9._:-]{1,${CLIENT_REQUEST_ID_MAX_LENGTH}}$`);
+
 export interface ScanRequest {
   doc_type: DocType;
   image_base64: string;
@@ -41,6 +46,12 @@ export function parseScanRequest(payload: unknown): ScanRequest | string {
   const clientRequestId = body.client_request_id ?? undefined;
   if (clientRequestId !== undefined && (typeof clientRequestId !== "string" || !clientRequestId.trim())) {
     return "client_request_id must be a non-empty string when present.";
+  }
+  if (typeof clientRequestId === "string" && !CLIENT_REQUEST_ID_FORMAT.test(clientRequestId)) {
+    return (
+      `client_request_id must be at most ${CLIENT_REQUEST_ID_MAX_LENGTH} characters ` +
+      "of letters, digits, '-', '_', '.' or ':'."
+    );
   }
 
   const parsed: ScanRequest = {

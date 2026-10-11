@@ -1,7 +1,7 @@
 import "./requireInstall.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseScanRequest } from "./request.ts";
+import { CLIENT_REQUEST_ID_MAX_LENGTH, parseScanRequest } from "./request.ts";
 
 const validBody = {
   doc_type: "truck_tag",
@@ -86,6 +86,30 @@ test("rejects a blank or wrong-typed client_request_id", () => {
   assert.match(parseScanRequest({ ...validBody, client_request_id: "" }) as string, /client_request_id/);
   assert.match(parseScanRequest({ ...validBody, client_request_id: "   " }) as string, /client_request_id/);
   assert.match(parseScanRequest({ ...validBody, client_request_id: 42 }) as string, /client_request_id/);
+});
+
+test("accepts a client_request_id up to the length cap, including a UUID", () => {
+  for (const id of ["a".repeat(CLIENT_REQUEST_ID_MAX_LENGTH), "0b6f3f0e-8c1d-4c55-9a43-6d1f0f6a2b11", "attempt_1.2:3"]) {
+    assert.equal(typeof parseScanRequest({ ...validBody, client_request_id: id }), "object", id);
+  }
+});
+
+test("rejects a client_request_id over the length cap or with unusable characters, naming the rule", () => {
+  const bad = [
+    "a".repeat(CLIENT_REQUEST_ID_MAX_LENGTH + 1),
+    "has space",
+    "line\nbreak",
+    "tab\there",
+    "ünïcode",
+    "emoji-😀",
+    "slash/id",
+    " leading",
+  ];
+  for (const id of bad) {
+    const result = parseScanRequest({ ...validBody, client_request_id: id });
+    assert.equal(typeof result, "string", JSON.stringify(id));
+    assert.match(result as string, new RegExp(`client_request_id.*${CLIENT_REQUEST_ID_MAX_LENGTH}`), JSON.stringify(id));
+  }
 });
 
 test("silently ignores unknown extra fields rather than rejecting them", () => {

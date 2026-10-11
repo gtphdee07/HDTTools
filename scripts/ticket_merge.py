@@ -14,13 +14,17 @@ is READY TO MERGE (`--allow-status` accepts PARTIAL/BLOCKED when the owner has
 decided to merge anyway). `merge` makes a `--no-ff` merge commit on MPSkills,
 aborting cleanly on a conflict. `close` posts FILE (a criterion-to-test table)
 with the merge sha, closes the issue, removes the worktree and deletes the
-branch. Nothing here pushes: that stays the owner's call.
+branch. On Windows, when git cannot delete the worktree because its path is too
+long (deep node_modules), `close` finishes the delete itself with a long-path
+`rmdir`, only for that error and only for ticket N's own worktree folder.
+Nothing here pushes: that stays the owner's call.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -93,7 +97,47 @@ def merge(n: int, *, shell: Shell, root: Path, out: Callable[[str], None] = prin
     return 0
 
 
-def close(n: int, comment_file: Path, *, shell: Shell, root: Path, out: Callable[[str], None] = print) -> int:
+def worktree_folder(root: Path, n: int) -> Path:
+    """The one folder the long-path fallback may delete: ticket N's own worktree."""
+    if n < 1:
+        raise ValueError(f"not a ticket number: {n}")
+    target = (root / worktree_relpath(n)).resolve()
+    if target.parent != (root / ".claude" / "worktrees").resolve():
+        raise ValueError(f"{target} is not directly under .claude/worktrees")
+    return target
+
+
+def long_path_remove_command(path: Path) -> list[str]:
+    """Deletes a folder tree git cannot (Windows MAX_PATH, deep node_modules).
+
+    The `\\\\?\\` prefix lifts the limit; see docs/agents/worktree-setup.md.
+    """
+    return ["cmd", "/c", "rmdir", "/s", "/q", "\\\\?\\" + str(path)]
+
+
+def _remove_worktree_folder(n: int, removed_err: str, *, shell: Shell, root: Path, windows: bool) -> str | None:
+    """After a failed `git worktree remove`: deletes the folder if, and only if, git
+    failed because the path is too long. Returns None once the worktree is gone,
+    else the reason it is not."""
+    if not windows or "filename too long" not in removed_err.lower():
+        return removed_err.strip()
+    target = worktree_folder(root, n)
+    shell(long_path_remove_command(target), root)
+    if target.exists():
+        return f"{target} is still there after the long-path delete (something may be holding it open; close it and retry)."
+    pruned = git(shell, root, "worktree", "prune")
+    return None if pruned.ok else f"git worktree prune failed: {pruned.err.strip()}"
+
+
+def close(
+    n: int,
+    comment_file: Path,
+    *,
+    shell: Shell,
+    root: Path,
+    out: Callable[[str], None] = print,
+    windows: bool | None = None,
+) -> int:
     branch = branch_name(n)
     if not git(shell, root, "merge-base", "--is-ancestor", branch, BASE_BRANCH).ok:
         out(f"{branch} is not merged into {BASE_BRANCH}; run the merge step first. Nothing was closed.")
@@ -112,9 +156,12 @@ def close(n: int, comment_file: Path, *, shell: Shell, root: Path, out: Callable
     out(f"Closed #{n}.")
 
     removed = git(shell, root, "worktree", "remove", worktree_relpath(n))
-    if not removed.ok:
+    failure = None if removed.ok else _remove_worktree_folder(
+        n, removed.err, shell=shell, root=root, windows=os.name == "nt" if windows is None else windows
+    )
+    if failure is not None:
         out(
-            f"#{n} is closed, but the worktree was not removed: {removed.err.strip()}\n"
+            f"#{n} is closed, but the worktree was not removed: {failure}\n"
             "See 'Removing a worktree on Windows' in docs/agents/worktree-setup.md, then run "
             f"`git worktree prune` and `git branch -d {branch}`."
         )

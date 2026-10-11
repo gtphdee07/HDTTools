@@ -24,6 +24,8 @@ It runs, in order, and stops at the first failure:
 
 `npm ci` installs exactly what the lockfile says. The script is safe to re-run. It then prints which local-only files are missing.
 
+If your terminal has another checkout's virtual environment active (the prompt shows a name such as `(hdttools)`), the script prints a note first, and `uv` warns that `VIRTUAL_ENV` "does not match the project environment path". That is harmless: `uv run` ignores the other environment and builds this worktree's own `.venv`. Run `deactivate` afterwards, because bare `python` or `pytest` in that terminal would use the other checkout's code.
+
 ## Then run the offline suites
 
 ```
@@ -54,7 +56,9 @@ Machine-wide tools (`uv`, Node 24, Tesseract OCR, and for Android the SDK and JD
 
 ## Removing a worktree on Windows
 
-`git worktree remove` can fail with "Filename too long" when the worktree has `node_modules` deep under a long path. If it does, git has usually already forgotten the worktree and only the folder is left. Delete the folder with a long-path prefix, then clean up git (run these from outside the worktree, because a shell sitting inside it keeps the folder locked):
+`git worktree remove` can fail with "Filename too long" when the worktree has `node_modules` deep under a long path. `uv run scripts/ticket_merge.py close <N>` (the `/ticket-merge` skill) handles this itself on Windows: for that error only, it deletes ticket N's own worktree folder with the long-path command below, then prunes and deletes the branch. If the folder is held open by another program it says so; close that program and run the steps by hand.
+
+By hand: git has usually already forgotten the worktree and only the folder is left. Delete the folder with a long-path prefix, then clean up git (run these from outside the worktree, because a shell sitting inside it keeps the folder locked):
 
 ```
 cmd /c rmdir /s /q "\\?\<full path to the worktree folder>"

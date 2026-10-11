@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -246,13 +247,103 @@ def test_a_worktree_that_will_not_go_is_reported_with_the_issue_already_closed(r
 
     def shell(cmd, cwd=None):
         if list(cmd)[:3] == ["git", "worktree", "remove"]:
-            return Result(1, "", "Filename too long")
+            return Result(1, "", "error: the folder is in use by another process")
         return real(cmd, cwd)
 
     code, out = _run(merge.close, 9, _comment_file(tmp_path), shell=shell, root=repo)
 
     assert code == 1 and "worktree-setup.md" in out
     assert len(real.closed_with()) == 1
+
+
+# --- Windows: a worktree whose path is too long for git to delete ------------
+
+
+TOO_LONG = "error: failed to delete 'X/.claude/worktrees/ticket-9': Filename too long"
+
+
+def _remove_fails(real, message, rmdir_calls, *, simulate_rmdir=True):
+    """A shell where `git worktree remove` fails with `message`; records any long-path rmdir."""
+
+    def shell(cmd, cwd=None):
+        cmd = list(cmd)
+        if cmd[:3] == ["git", "worktree", "remove"]:
+            return Result(1, "", message)
+        if cmd[:2] == ["cmd", "/c"]:
+            rmdir_calls.append(cmd)
+            if simulate_rmdir:  # what the real `rmdir /s /q` would do to the folder
+                shutil.rmtree(cmd[-1].removeprefix("\\\\?\\"), ignore_errors=True)
+            return Result(0)
+        return real(cmd, cwd)
+
+    return shell
+
+
+def test_long_path_remove_command_is_a_plain_recursive_rmdir_with_the_long_path_prefix(tmp_path):
+    cmd = merge.long_path_remove_command(tmp_path / "wt")
+
+    assert cmd == ["cmd", "/c", "rmdir", "/s", "/q", "\\\\?\\" + str(tmp_path / "wt")]
+
+
+def test_close_removes_a_worktree_git_cannot_delete_because_its_path_is_too_long(repo, tmp_path):
+    _merged(repo)
+    gh, rmdir_calls = Gh(), []
+    shell = _remove_fails(gh, TOO_LONG, rmdir_calls)
+    target = (repo / ".claude" / "worktrees" / "ticket-9").resolve()
+
+    code, out = _run(merge.close, 9, _comment_file(tmp_path), shell=shell, root=repo, windows=True)
+
+    assert code == 0, out
+    assert rmdir_calls == [merge.long_path_remove_command(target)]
+    assert not target.exists()
+    assert "ticket-9" not in _git(repo, "branch", "--list")
+    assert "ticket-9" not in _git(repo, "worktree", "list")
+    assert len(gh.closed_with()) == 1
+
+
+def test_close_never_force_deletes_a_worktree_git_refused_for_another_reason(repo, tmp_path):
+    _merged(repo)
+    gh, rmdir_calls = Gh(), []
+    dirty = "fatal: contains modified or untracked files, use --force to delete it"
+    shell = _remove_fails(gh, dirty, rmdir_calls)
+
+    code, out = _run(merge.close, 9, _comment_file(tmp_path), shell=shell, root=repo, windows=True)
+
+    assert code == 1 and "worktree-setup.md" in out
+    assert rmdir_calls == []
+    assert (repo / ".claude" / "worktrees" / "ticket-9").exists()
+    assert "ticket-9" in _git(repo, "branch", "--list")
+
+
+def test_the_long_path_fallback_runs_only_on_windows(repo, tmp_path):
+    _merged(repo)
+    gh, rmdir_calls = Gh(), []
+    shell = _remove_fails(gh, TOO_LONG, rmdir_calls)
+
+    code, out = _run(merge.close, 9, _comment_file(tmp_path), shell=shell, root=repo, windows=False)
+
+    assert code == 1 and "worktree-setup.md" in out
+    assert rmdir_calls == []
+    assert (repo / ".claude" / "worktrees" / "ticket-9").exists()
+
+
+def test_a_long_path_delete_that_leaves_the_folder_behind_is_reported_not_hidden(repo, tmp_path):
+    _merged(repo)
+    gh, rmdir_calls = Gh(), []
+    shell = _remove_fails(gh, TOO_LONG, rmdir_calls, simulate_rmdir=False)
+
+    code, out = _run(merge.close, 9, _comment_file(tmp_path), shell=shell, root=repo, windows=True)
+
+    assert code == 1 and "still there" in out.lower()
+    assert len(gh.closed_with()) == 1
+
+
+def test_the_fallback_only_ever_targets_the_tickets_own_worktree_folder(repo):
+    target = merge.worktree_folder(repo, 9)
+
+    assert target == (repo / ".claude" / "worktrees" / "ticket-9").resolve()
+    with pytest.raises(ValueError):
+        merge.worktree_folder(repo, -1)
 
 
 def test_preflight_refuses_commits_added_after_the_status_comment(repo):

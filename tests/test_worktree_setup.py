@@ -124,6 +124,47 @@ def test_run_report_lists_missing_local_files_and_which_suites_need_them(tmp_pat
     assert "External" in out
 
 
+def test_venv_hint_is_silent_when_no_environment_is_active(tmp_path):
+    assert worktree_setup.venv_hint(None, _make_root(tmp_path)) is None
+    assert worktree_setup.venv_hint("", _make_root(tmp_path, "wt2")) is None
+
+
+def test_venv_hint_is_silent_when_the_active_environment_is_this_worktrees_own(tmp_path):
+    root = _make_root(tmp_path)
+
+    assert worktree_setup.venv_hint(str(root / ".venv"), root) is None
+
+
+def test_venv_hint_names_the_other_environment_and_says_to_deactivate(tmp_path):
+    root = _make_root(tmp_path, "wt")
+    other = tmp_path / "main" / ".venv"
+
+    hint = worktree_setup.venv_hint(str(other), root)
+
+    assert hint is not None
+    assert str(other) in hint and "deactivate" in hint
+    assert "uv run" in hint  # says what is still safe
+
+
+def test_run_prints_the_venv_hint_before_the_first_step(tmp_path, capsys):
+    root = _make_root(tmp_path, "wt")
+    other = tmp_path / "main" / ".venv"
+
+    code = worktree_setup.run(root, runner=lambda step: 0, copy_from=None, virtual_env=str(other))
+
+    out = capsys.readouterr().out
+    assert code == 0
+    assert out.index("deactivate") < out.index("==>")
+
+
+def test_run_prints_no_venv_hint_when_the_active_environment_is_its_own(tmp_path, capsys):
+    root = _make_root(tmp_path)
+
+    worktree_setup.run(root, runner=lambda step: 0, copy_from=None, virtual_env=str(root / ".venv"))
+
+    assert "deactivate" not in capsys.readouterr().out
+
+
 def test_run_with_copy_from_copies_then_reports_present_without_printing_contents(tmp_path, capsys):
     src, dst = _make_root(tmp_path, "main"), _make_root(tmp_path, "wt")
     (src / "web" / ".env.local").write_text(f"KEY={SECRET}\n")

@@ -22,6 +22,7 @@ idempotent: re-running it on a set-up worktree just re-syncs.
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -112,7 +113,33 @@ def _run_step(step: Step) -> int:
     return subprocess.run([executable, *step.command[1:]], cwd=step.cwd).returncode
 
 
-def run(root: Path, *, runner: Callable[[Step], int] = _run_step, copy_from: Path | None) -> int:
+def venv_hint(virtual_env: str | None, root: Path) -> str | None:
+    """A note when another checkout's virtual environment is active in this terminal.
+
+    `uv run` ignores it (and warns), so the setup itself is fine; bare `python` or
+    `pytest` in the same terminal would use the other checkout's code, though.
+    """
+    if not virtual_env:
+        return None
+    if os.path.normcase(os.path.realpath(virtual_env)) == os.path.normcase(os.path.realpath(root / ".venv")):
+        return None
+    return (
+        f"Note: a different virtual environment is active in this terminal ({virtual_env}).\n"
+        "`uv run` ignores it and builds this worktree's own .venv, which is why uv warns below.\n"
+        "Run `deactivate` after this finishes: bare `python` or `pytest` would otherwise use the other checkout's code.\n"
+    )
+
+
+def run(
+    root: Path,
+    *,
+    runner: Callable[[Step], int] = _run_step,
+    copy_from: Path | None,
+    virtual_env: str | None = None,
+) -> int:
+    hint = venv_hint(virtual_env, root)
+    if hint:
+        print(hint)
     for step in plan_steps(root):
         print(f"==> {step.name}: {' '.join(step.command)}  (in {step.cwd.relative_to(root)})")
         code = runner(step)
@@ -145,7 +172,7 @@ def main(argv: list[str] | None = None) -> int:
         copy_from = find_main_checkout(ROOT)
         if copy_from is None:
             print("--copy-env: could not find a separate main checkout; nothing copied.", file=sys.stderr)
-    return run(ROOT, copy_from=copy_from)
+    return run(ROOT, copy_from=copy_from, virtual_env=os.environ.get("VIRTUAL_ENV"))
 
 
 if __name__ == "__main__":

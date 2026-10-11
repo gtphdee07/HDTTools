@@ -26,10 +26,12 @@ Check the result with `git worktree list` (the new path is on `ticket-<N>`) and 
 
 Then get the session into the worktree: call `EnterWorktree` with the worktree path. If that is unavailable, tell the owner to run `cd <path>` and start `claude` there (or `claude --worktree`).
 
-Finish by printing, as the last thing the owner sees, the script's next command on its own line:
+Finish by printing, as the last thing the owner sees, the prompt the script printed, exactly as it printed it (the command, a blank line, then the handoff line):
 
 ```
 /mattpocock-skills:implement #<N>
+
+Follow docs/agents/session-handoff.md: don't push, don't close the issue, and finish with a STATUS comment on the ticket.
 ```
 
-`/implement` is user-invocation only, so you do not run it. The owner types it, and the directions file tells that session to follow the handoff convention (no push, ticket stays open, `/ticket-finish` last).
+`/implement` is user-invocation only, so you do not run it. The owner pastes the whole prompt as the first message of the new session; the handoff line is what makes that session follow the handoff convention (no push, ticket stays open, `/ticket-finish` last).

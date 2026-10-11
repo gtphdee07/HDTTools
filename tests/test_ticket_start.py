@@ -242,6 +242,29 @@ def test_start_builds_the_worktree_from_mpskills_not_the_checked_out_branch(repo
     assert setups == [worktree]
 
 
+def test_implement_prompt_is_the_command_then_a_blank_line_then_the_handoff_line():
+    assert ticket_start.implement_prompt(87) == (
+        "/mattpocock-skills:implement #87\n"
+        "\n"
+        "Follow docs/agents/session-handoff.md: don't push, don't close the issue, "
+        "and finish with a STATUS comment on the ticket."
+    )
+
+
+def test_directions_include_the_paste_ready_prompt():
+    assert ticket_start.implement_prompt(87) in ticket_start.directions(87)
+
+
+def test_start_prints_the_whole_paste_ready_prompt_with_the_handoff_line(repo, tmp_path):
+    gh = Gh(_issue())
+
+    code, out, _ = _start(repo, gh, tmp_path)
+
+    assert code == 0
+    assert ticket_start.implement_prompt(90) in out
+    assert "session-handoff.md" in out
+
+
 def test_start_assigns_the_ticket_prints_the_implement_line_and_writes_directions(repo, tmp_path):
     gh = Gh(_issue())
 

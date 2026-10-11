@@ -63,14 +63,27 @@ def check_start(*, state, assignees, open_blockers, android, android_in_flight, 
     return reasons
 
 
+HANDOFF_LINE = (
+    "Follow docs/agents/session-handoff.md: don't push, don't close the issue, "
+    "and finish with a STATUS comment on the ticket."
+)
+
+
+def implement_prompt(n: int) -> str:
+    """The text to paste into the implementing session: the command, then the handoff line."""
+    return f"/mattpocock-skills:implement #{n}\n\n{HANDOFF_LINE}"
+
+
 def directions(n: int) -> str:
     return f"""# Directions for ticket #{n}
 
-Run this in the worktree `{worktree_relpath(n)}` (branch `{branch_name(n)}`, cut from `{BASE_BRANCH}`):
+Run this in the worktree `{worktree_relpath(n)}` (branch `{branch_name(n)}`, cut from `{BASE_BRANCH}`), pasting this as the first message:
 
-    /mattpocock-skills:implement #{n}
+```
+{implement_prompt(n)}
+```
 
-Follow docs/agents/session-handoff.md:
+The rules it points to (docs/agents/session-handoff.md):
 
 - Do not push. Do not close the issue.
 - Do not commit `dashboard.svg`, `scripts/dashboard_data/external_status.json` or `.env*`.
@@ -168,7 +181,7 @@ def start(
     notes.parent.mkdir(parents=True, exist_ok=True)
     notes.write_text(directions(n), encoding="utf-8")
     out(f"Directions written to {notes}")
-    out(f"\nNext: work inside {worktree}, then run\n\n    /mattpocock-skills:implement #{n}")
+    out(f"\nNext: open a session inside {worktree} and paste this as your first message:\n\n{implement_prompt(n)}")
     return 0
 
 

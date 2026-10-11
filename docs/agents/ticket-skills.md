@@ -4,11 +4,11 @@ Three skills wrap a ticket's `/mattpocock-skills:implement` run, so setting up a
 
 | Skill | Run where | Does | Script |
 |---|---|---|---|
-| `/ticket-start <N>` | main checkout | Checks the ticket (closed, open blocker, assignee, existing branch or worktree, Android emulator in use), assigns it to the owner, cuts `.claude/worktrees/ticket-<N>` from `MPSkills`, runs `scripts/worktree_setup.py`, writes the directions, prints the `/implement` line | `scripts/ticket_start.py` |
+| `/ticket-start <N>` | main checkout | Checks the ticket (closed, open blocker, assignee, existing branch or worktree, Android emulator in use), assigns it to the owner, cuts `.claude/worktrees/ticket-<N>` from `MPSkills`, runs `scripts/worktree_setup.py`, writes the directions, prints the paste-ready `/implement` prompt (command plus handoff line) | `scripts/ticket_start.py` |
 | `/ticket-finish` | the ticket's worktree, after `/implement` | Confirms the tree is clean and committed, runs the required free suites, maps each acceptance criterion to a test, runs `/code-review`, files follow-ups, posts the `STATUS:` comment, deletes the scratch file | `scripts/ticket_finish.py` |
 | `/ticket-merge <N>` | main checkout | Re-verifies independently (diff, suites, criterion-to-test, mutation spot-check), merges `--no-ff` into `MPSkills`, closes the issue with a criterion-to-test comment, removes the worktree and branch. Never pushes | `scripts/ticket_merge.py` |
 
-A typical ticket: `/ticket-start 42`, start `claude` in the new worktree and type the printed `/mattpocock-skills:implement #42`, then `/ticket-finish`, then back in the main checkout `/ticket-merge 42`. Each skill is `disable-model-invocation: true`: only you can start one.
+A typical ticket: `/ticket-start 42`, start `claude` in the new worktree and paste the printed prompt (`/mattpocock-skills:implement #42` plus the handoff line) as its first message, then `/ticket-finish`, then back in the main checkout `/ticket-merge 42`. Each skill is `disable-model-invocation: true`: only you can start one.
 
 ## Where the skills live, and how to install them
 

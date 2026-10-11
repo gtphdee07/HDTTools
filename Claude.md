@@ -28,6 +28,10 @@ Status between sessions travels as a comment on the ticket (claim it by assignin
 
 A new git worktree has no `.venv` or `node_modules`; run `uv run scripts/worktree_setup.py` first, then the offline suites. See `docs/agents/worktree-setup.md`.
 
+### Ticket skills
+
+`/ticket-start <N>`, `/ticket-finish` and `/ticket-merge <N>` wrap `/mattpocock-skills:implement` for a ticket in its own worktree (user-invoked only; committed in `.claude/skills/`). See `docs/agents/ticket-skills.md`.
+
 ## Environment Management Commands
 - Add a package: `uv add <package_name>`
 - Remove a package: `uv remove <package_name>`

@@ -37,5 +37,8 @@ AuditReports/
 # exact source/version; these are reinstalled from it on demand, not
 # vendored (same treatment as .venv/ above).
 .agents/
-.claude/skills/
+.claude/skills/*
+# ...except this repo's own ticket workflow skills (#87), which are committed
+# and picked up by Claude Code as project skills (docs/agents/ticket-skills.md).
+!.claude/skills/ticket-*/
 junit-*.xml

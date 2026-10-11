@@ -131,12 +131,12 @@ def _remove_worktree_folder(n: int, removed_err: str, *, shell: Shell, root: Pat
     return None if pruned.ok else f"git worktree prune failed: {pruned.err.strip()}"
 
 
-def _uncommitted_files(n: int, removed_err: str, *, shell: Shell, root: Path) -> list[str]:
-    """After a failed `git worktree remove`: the `git status --short` lines when git
-    refused over modified or untracked files, else [] (so another failure keeps its
-    own message)."""
-    if "modified or untracked files" not in removed_err:
-        return []
+def _uncommitted_files(n: int, removed_err: str, *, shell: Shell, root: Path) -> list[str] | None:
+    """After a failed `git worktree remove`: None unless git refused over modified or
+    untracked files (so any other failure keeps its own message), else the
+    `git status --short` lines, which may be empty (e.g. a dirty submodule)."""
+    if "modified or untracked files" not in removed_err.lower():
+        return None
     status = git(shell, worktree_folder(root, n), "status", "--short")
     return status.out.splitlines() if status.ok else []
 
@@ -168,11 +168,13 @@ def close(
     out(f"Closed #{n}.")
 
     removed = git(shell, root, "worktree", "remove", worktree_relpath(n))
-    if not removed.ok and (pending := _uncommitted_files(n, removed.err, shell=shell, root=root)):
+    uncommitted = None if removed.ok else _uncommitted_files(n, removed.err, shell=shell, root=root)
+    if uncommitted is not None:
+        listing = "".join(f"\n  {line}" for line in uncommitted) or "\n  (git status listed none; check the worktree by hand)"
         out(
-            f"#{n} is closed, but its worktree has files that need a decision, so nothing was removed:\n"
-            + "\n".join(f"  {line}" for line in pending)
-            + f"\nCommit, discard or keep them, then re-run only the removal: `git worktree remove {worktree_relpath(n)}` "
+            f"#{n} is closed, but its worktree has modified or untracked files that need a decision, so nothing was removed:"
+            f"{listing}\n"
+            f"Commit, discard or keep them, then re-run only the removal: `git worktree remove {worktree_relpath(n)}` "
             f"and `git branch -d {branch}`."
         )
         return 1

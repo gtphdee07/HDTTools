@@ -41,7 +41,7 @@ Write the closing comment to your scratchpad: a `| Criterion | Proven by (test f
 uv run scripts/ticket_merge.py close <N> --comment-file <file>
 ```
 
-It comments, closes the issue, removes the worktree and deletes the branch. If the worktree will not go (Windows long paths), follow `docs/agents/worktree-setup.md`.
+It comments, closes the issue, removes the worktree and deletes the branch. If the worktree will not go because of modified or untracked files, `close` lists them and removes nothing: ask the owner to commit, discard or keep them, then re-run only `git worktree remove` and `git branch -d`. For any other refusal, follow `docs/agents/worktree-setup.md`.
 
 ## 5. Push
 

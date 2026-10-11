@@ -334,8 +334,27 @@ def test_a_worktree_with_uncommitted_files_is_reported_by_file_name_not_as_a_lon
 
     assert code == 1
     assert "notes.txt" in out and "feature.txt" in out
-    assert "nothing was removed" in out.lower()
+    assert "nothing was removed" in out.lower() and "commit, discard or keep" in out.lower()
     assert "worktree-setup.md" not in out and "long-path" not in out.lower() and "windows" not in out.lower()
+
+
+def test_a_dirty_refusal_with_nothing_listed_by_status_still_says_nothing_was_removed(repo, tmp_path):
+    _merged(repo)
+    real = Gh()
+    dirty = "fatal: 'x' contains modified or untracked files, use --force to delete it"
+
+    def shell(cmd, cwd=None):
+        cmd = list(cmd)
+        if cmd[:3] == ["git", "worktree", "remove"]:
+            return Result(1, "", dirty)
+        if cmd[:2] == ["git", "status"]:
+            return Result(1, "", "fatal: status failed")
+        return real(cmd, cwd)
+
+    code, out = _run(merge.close, 9, _comment_file(tmp_path), shell=shell, root=repo, windows=True)
+
+    assert code == 1 and "nothing was removed" in out.lower() and "worktree-setup.md" not in out
+    assert (repo / ".claude" / "worktrees" / "ticket-9").exists()
 
 
 @pytest.mark.parametrize("windows", [True, False])

@@ -16,7 +16,9 @@ aborting cleanly on a conflict. `close` posts FILE (a criterion-to-test table)
 with the merge sha, closes the issue, removes the worktree and deletes the
 branch. On Windows, when git cannot delete the worktree because its path is too
 long (deep node_modules), `close` finishes the delete itself with a long-path
-`rmdir`, only for that error and only for ticket N's own worktree folder.
+`rmdir`, only for that error and only for ticket N's own worktree folder. When git
+refuses because the worktree has modified or untracked files, `close` lists them,
+removes nothing and leaves the decision (commit, discard, keep) to the owner.
 Nothing here pushes: that stays the owner's call.
 """
 
@@ -129,6 +131,16 @@ def _remove_worktree_folder(n: int, removed_err: str, *, shell: Shell, root: Pat
     return None if pruned.ok else f"git worktree prune failed: {pruned.err.strip()}"
 
 
+def _uncommitted_files(n: int, removed_err: str, *, shell: Shell, root: Path) -> list[str] | None:
+    """After a failed `git worktree remove`: None unless git refused over modified or
+    untracked files (so any other failure keeps its own message), else the
+    `git status --short` lines, which may be empty (e.g. a dirty submodule)."""
+    if "modified or untracked files" not in removed_err.lower():
+        return None
+    status = git(shell, worktree_folder(root, n), "status", "--short")
+    return status.out.splitlines() if status.ok else []
+
+
 def close(
     n: int,
     comment_file: Path,
@@ -155,7 +167,22 @@ def close(
         return 1
     out(f"Closed #{n}.")
 
+    # Removal failures are handled inline: dirty worktree, long path / other, branch delete.
+    # If more paths accumulate here, consider factoring this out, e.g. one function that
+    # maps git's stderr to a kind (dirty, too long, other) so the matching lives in one
+    # place. The dirty check must stay ahead of the long-path delete, which is recursive
+    # and must never touch a worktree with uncommitted files. See #93.
     removed = git(shell, root, "worktree", "remove", worktree_relpath(n))
+    uncommitted = None if removed.ok else _uncommitted_files(n, removed.err, shell=shell, root=root)
+    if uncommitted is not None:
+        listing = "".join(f"\n  {line}" for line in uncommitted) or "\n  (git status listed none; check the worktree by hand)"
+        out(
+            f"#{n} is closed, but its worktree has modified or untracked files that need a decision, so nothing was removed:"
+            f"{listing}\n"
+            f"Commit, discard or keep them, then re-run only the removal: `git worktree remove {worktree_relpath(n)}` "
+            f"and `git branch -d {branch}`."
+        )
+        return 1
     failure = None if removed.ok else _remove_worktree_folder(
         n, removed.err, shell=shell, root=root, windows=os.name == "nt" if windows is None else windows
     )

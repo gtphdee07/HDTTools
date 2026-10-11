@@ -304,8 +304,7 @@ def test_close_removes_a_worktree_git_cannot_delete_because_its_path_is_too_long
 def test_close_never_force_deletes_a_worktree_git_refused_for_another_reason(repo, tmp_path):
     _merged(repo)
     gh, rmdir_calls = Gh(), []
-    dirty = "fatal: contains modified or untracked files, use --force to delete it"
-    shell = _remove_fails(gh, dirty, rmdir_calls)
+    shell = _remove_fails(gh, "fatal: cannot remove a locked working tree", rmdir_calls)
 
     code, out = _run(merge.close, 9, _comment_file(tmp_path), shell=shell, root=repo, windows=True)
 
@@ -313,6 +312,60 @@ def test_close_never_force_deletes_a_worktree_git_refused_for_another_reason(rep
     assert rmdir_calls == []
     assert (repo / ".claude" / "worktrees" / "ticket-9").exists()
     assert "ticket-9" in _git(repo, "branch", "--list")
+
+
+# --- a worktree git will not remove because files in it need a decision ------
+
+
+def _dirty_close(repo, tmp_path, *, windows):
+    """Closes ticket 9 for real (real git, real worktree) after leaving files in the worktree."""
+    wt = repo / ".claude" / "worktrees" / "ticket-9"
+    (wt / "notes.txt").write_text("scratch\n")  # untracked
+    (wt / "feature.txt").write_text("edited after the commit\n")  # modified
+    _merged(repo)
+    gh = Gh()
+    code, out = _run(merge.close, 9, _comment_file(tmp_path), shell=gh, root=repo, windows=windows)
+    return code, out, gh, wt
+
+
+@pytest.mark.parametrize("windows", [True, False])
+def test_a_worktree_with_uncommitted_files_is_reported_by_file_name_not_as_a_long_path(repo, tmp_path, windows):
+    code, out, gh, wt = _dirty_close(repo, tmp_path, windows=windows)
+
+    assert code == 1
+    assert "notes.txt" in out and "feature.txt" in out
+    assert "nothing was removed" in out.lower() and "commit, discard or keep" in out.lower()
+    assert "worktree-setup.md" not in out and "long-path" not in out.lower() and "windows" not in out.lower()
+
+
+def test_a_dirty_refusal_with_nothing_listed_by_status_still_says_nothing_was_removed(repo, tmp_path):
+    _merged(repo)
+    real = Gh()
+    dirty = "fatal: 'x' contains modified or untracked files, use --force to delete it"
+
+    def shell(cmd, cwd=None):
+        cmd = list(cmd)
+        if cmd[:3] == ["git", "worktree", "remove"]:
+            return Result(1, "", dirty)
+        if cmd[:2] == ["git", "status"]:
+            return Result(1, "", "fatal: status failed")
+        return real(cmd, cwd)
+
+    code, out = _run(merge.close, 9, _comment_file(tmp_path), shell=shell, root=repo, windows=True)
+
+    assert code == 1 and "nothing was removed" in out.lower() and "worktree-setup.md" not in out
+    assert (repo / ".claude" / "worktrees" / "ticket-9").exists()
+
+
+@pytest.mark.parametrize("windows", [True, False])
+def test_a_worktree_with_uncommitted_files_is_left_exactly_as_it_was_and_the_issue_stays_closed(repo, tmp_path, windows):
+    code, out, gh, wt = _dirty_close(repo, tmp_path, windows=windows)
+
+    assert (wt / "notes.txt").read_text() == "scratch\n"
+    assert (wt / "feature.txt").read_text() == "edited after the commit\n"
+    assert "ticket-9" in _git(repo, "branch", "--list")
+    assert str(wt.resolve()).replace("\\", "/") in _git(repo, "worktree", "list").replace("\\", "/")
+    assert len(gh.closed_with()) == 1
 
 
 def test_the_long_path_fallback_runs_only_on_windows(repo, tmp_path):

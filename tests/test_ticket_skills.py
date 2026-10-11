@@ -75,3 +75,11 @@ def test_the_skills_never_tell_the_agent_to_push_or_close_without_the_owner():
     for name in SKILLS:
         text = (ROOT / ".claude" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
         assert "git push" not in text
+
+
+def test_ticket_merge_skill_skips_the_merged_tree_run_unless_the_baseline_moved():
+    text = (ROOT / ".claude" / "skills" / "ticket-merge" / "SKILL.md").read_text(encoding="utf-8")
+
+    assert "scripts/ticket_merge.py baseline" in text
+    assert "--level issue" in text  # the narrowed worktree re-run
+    assert "BASELINE UNCHANGED" in text

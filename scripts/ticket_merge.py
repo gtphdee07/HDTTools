@@ -5,13 +5,16 @@ main checkout, after the skill has re-verified the work independently.
 
 Usage:
     uv run scripts/ticket_merge.py preflight <N> [--allow-status]
+    uv run scripts/ticket_merge.py baseline <N>
     uv run scripts/ticket_merge.py merge <N>
     uv run scripts/ticket_merge.py close <N> --comment-file FILE
 
 `preflight` exits 1 unless this is the main checkout, MPSkills is checked out
 and clean, `ticket-<N>` has commits, and the ticket's latest `STATUS:` comment
 is READY TO MERGE (`--allow-status` accepts PARTIAL/BLOCKED when the owner has
-decided to merge anyway). `merge` makes a `--no-ff` merge commit on MPSkills,
+decided to merge anyway). `baseline` says whether MPSkills has moved since the
+ticket was cut (BASELINE UNCHANGED means the merged tree equals the branch tip, so
+the merged-tree test run can be skipped). `merge` makes a `--no-ff` merge commit on MPSkills,
 aborting cleanly on a conflict. `close` posts FILE (a criterion-to-test table)
 with the merge sha, closes the issue, removes the worktree and deletes the
 branch. On Windows, when git cannot delete the worktree because its path is too
@@ -83,6 +86,37 @@ def preflight(n: int, *, shell: Shell, root: Path, allow_status: bool = False) -
                     "commits were added after it. Re-run /ticket-finish."
                 )
     return reasons
+
+
+def baseline_status(n: int, *, shell: Shell, root: Path) -> tuple[bool, str]:
+    """Whether MPSkills has moved since ticket N was cut, so the merged tree could
+    differ from the branch tip. When it has not, the merge result is exactly the
+    code the branch's tests already ran against, and re-running them on the merged
+    tree repeats that run. Returns (moved, message); anything uncomparable counts
+    as moved, so the safe default is to test."""
+    cut = git(shell, root, "merge-base", BASE_BRANCH, branch_name(n))
+    tip = git(shell, root, "rev-parse", BASE_BRANCH)
+    if not cut.ok or not tip.ok:
+        return True, (
+            f"BASELINE MOVED (could not compare {branch_name(n)} with {BASE_BRANCH}): treat it as moved and "
+            "run the planner on the merged tree after the merge."
+        )
+    cut_sha, tip_sha = cut.out.strip(), tip.out.strip()
+    if cut_sha == tip_sha:
+        return False, (
+            f"BASELINE UNCHANGED: {branch_name(n)} was cut from the current {BASE_BRANCH} tip ({tip_sha[:7]}), so the "
+            "merged tree will be identical to the branch tip. Skip the merged-tree test run; the worktree run covered this code."
+        )
+    count = git(shell, root, "rev-list", "--count", f"{cut_sha}..{BASE_BRANCH}").out.strip() or "?"
+    files = [f for f in git(shell, root, "diff", "--name-only", cut_sha, BASE_BRANCH).out.splitlines() if f]
+    listing = "".join(f"\n  {f}" for f in files[:20]) + (f"\n  ... and {len(files) - 20} more" if len(files) > 20 else "")
+    plural = "commit" if count == "1" else "commits"
+    return True, (
+        f"BASELINE MOVED: {BASE_BRANCH} has {count} {plural} that {branch_name(n)} was not cut from; "
+        f"they changed:{listing or ' (no files)'}\n"
+        "After the merge, run `uv run scripts/test_planner.py --level issue --base HEAD^1` on the merged tree "
+        "and run what it lists."
+    )
 
 
 def merge(n: int, *, shell: Shell, root: Path, out: Callable[[str], None] = print) -> int:
@@ -207,6 +241,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("preflight")
     p.add_argument("ticket", type=int)
     p.add_argument("--allow-status", action="store_true")
+    sub.add_parser("baseline").add_argument("ticket", type=int)
     sub.add_parser("merge").add_argument("ticket", type=int)
     c = sub.add_parser("close")
     c.add_argument("ticket", type=int)
@@ -220,6 +255,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  - {r}")
         print("Ready to merge." if not reasons else f"STOPPED: ticket #{args.ticket} was not merged.")
         return 1 if reasons else 0
+    if args.command == "baseline":
+        print(baseline_status(args.ticket, shell=real_shell, root=root)[1])
+        return 0
     if args.command == "merge":
         return merge(args.ticket, shell=real_shell, root=root)
     return close(args.ticket, args.comment_file, shell=real_shell, root=root)

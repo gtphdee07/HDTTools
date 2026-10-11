@@ -412,3 +412,41 @@ def test_preflight_refuses_commits_added_after_the_status_comment(repo):
     reasons = merge.preflight(9, shell=Gh(comments=(comment,)), root=repo)
 
     assert any("after it" in r and vouched in r for r in reasons)
+
+
+# --- baseline: does the merged tree differ from the branch tip? -------------
+
+
+def test_baseline_unchanged_when_the_branch_was_cut_from_the_current_tip(repo):
+    moved, text = merge.baseline_status(9, shell=Gh(), root=repo)
+
+    assert moved is False
+    assert "BASELINE UNCHANGED" in text and "skip" in text.lower()
+
+
+def test_baseline_moved_names_the_commits_and_files_mpskills_gained_since_the_branch_was_cut(repo):
+    (repo / "other.txt").write_text("other\n")
+    _git(repo, "add", "other.txt")
+    _git(repo, "commit", "-q", "-m", "other")
+
+    moved, text = merge.baseline_status(9, shell=Gh(), root=repo)
+
+    assert moved is True
+    assert "BASELINE MOVED" in text and "1 commit" in text and "other.txt" in text
+    assert "test_planner.py --level issue --base HEAD^1" in text
+
+
+def test_baseline_that_cannot_be_compared_says_to_treat_it_as_moved(repo):
+    moved, text = merge.baseline_status(77, shell=Gh(), root=repo)
+
+    assert moved is True
+    assert "treat" in text.lower() and "moved" in text.lower()
+
+
+def test_baseline_command_prints_the_verdict_and_never_fails(repo, monkeypatch, capsys):
+    monkeypatch.chdir(repo)
+
+    code = merge.main(["baseline", "9"])
+
+    assert code == 0
+    assert "BASELINE UNCHANGED" in capsys.readouterr().out

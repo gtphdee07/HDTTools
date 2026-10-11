@@ -111,6 +111,20 @@ describe('runBundle', () => {
     expect(failure?.message).toContain('SyntaxError');
   });
 
+  it('blames the chunk, not the entry, when the entry imports a broken chunk statically', async () => {
+    const files = {
+      [ENTRY]: `import{lazyValue}from"./Lazy-Def.js";globalThis.__neverRuns = lazyValue;`,
+      [CHUNK]: `export const = ;`,
+    };
+    const bundle = await fetchChunks(ENTRY, files[ENTRY], serve(files));
+    const failure = await runBundle(bundle).then(
+      () => undefined,
+      (e: unknown) => e as Error,
+    );
+    expect(failure?.message).toMatch(/^Could not run chunk .*Lazy-Def\.js/);
+    expect(g.__neverRuns).toBeUndefined();
+  });
+
   it('fails naming the entry script when the entry itself cannot run', async () => {
     const files = { [ENTRY]: `throw new Error("boom in entry");` };
     const bundle = await fetchChunks(ENTRY, files[ENTRY], serve(files));

@@ -24,7 +24,7 @@ export interface RunningBundle {
 // keywords keeps a string like "./README.js" in application text from being taken for a chunk.
 const SPECIFIER = /(?:\bfrom|\bimport)\s*\(?\s*["'`](\.{1,2}\/[\w./-]+\.js)["'`]/g;
 
-const describe = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
+const describeError = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
 
 // Vitest's module runner would transform a file fetched from the site (and a plain `new Function` has no import
 // callback inside its vm context), so reach Node's own dynamic import through a script that asks for the default loader.
@@ -44,7 +44,7 @@ export async function fetchChunks(entryUrl: string, entryText: string, fetchText
       try {
         files.set(chunkUrl, await fetchText(chunkUrl));
       } catch (e) {
-        throw new Error(`Could not fetch chunk ${chunkUrl}: ${describe(e)}`, { cause: e });
+        throw new Error(`Could not fetch chunk ${chunkUrl}: ${describeError(e)}`, { cause: e });
       }
       pending.push(chunkUrl);
     }
@@ -52,7 +52,7 @@ export async function fetchChunks(entryUrl: string, entryText: string, fetchText
   return { entryUrl, files };
 }
 
-// Writes the bundle to a temp directory and imports the entry (which starts the app) and then every chunk, so
+// Writes the bundle to a temp directory and imports every chunk and then the entry (which starts the app), so
 // a chunk the entry only reaches later (a lazy import) still has to load. A failure names the file it came from.
 export async function runBundle({ entryUrl, files }: Bundle): Promise<RunningBundle> {
   const dir = await mkdtemp(join(tmpdir(), 'hdt-bundle-'));
@@ -65,11 +65,13 @@ export async function runBundle({ entryUrl, files }: Bundle): Promise<RunningBun
       await mkdir(dirname(pathOf(url)), { recursive: true });
       await writeFile(pathOf(url), text);
     }
-    for (const url of [entryUrl, ...[...files.keys()].filter((u) => u !== entryUrl)]) {
+    // Chunks first, entry last: a chunk the entry imports statically would otherwise fail as the entry's import and
+    // be blamed on the entry. (A chunk that imports the entry back still starts the app from here, as in a browser.)
+    for (const url of [...files.keys()].reverse()) {
       try {
         await nativeImport(pathToFileURL(pathOf(url)).href);
       } catch (e) {
-        throw new Error(`Could not run ${url === entryUrl ? 'entry script' : 'chunk'} ${url}: ${describe(e)}`, { cause: e });
+        throw new Error(`Could not run ${url === entryUrl ? 'entry script' : 'chunk'} ${url}: ${describeError(e)}`, { cause: e });
       }
     }
   } catch (e) {

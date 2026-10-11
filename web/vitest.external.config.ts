@@ -5,7 +5,7 @@ import { defineConfig, loadEnv } from 'vite'
 // EXTERNAL_SURFACES (comma-separated, set by test-external.ps1) narrows the run to
 // tests whose name carries a "[surface]" tag; unset runs every external test.
 //
-// The Pages-site test evaluates the live site's JS bundle inside its worker, so it runs as its own
+// The Pages-site test runs the live site's JS bundle (entry script and chunks) inside its worker, so it runs as its own
 // project with only the public Supabase variables: the test-account credentials (WEB_EXTERNAL_*) must
 // never be in a worker that runs fetched code. Every other external test, including any new one,
 // stays in the default project.

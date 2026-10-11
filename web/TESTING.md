@@ -64,7 +64,8 @@ collected by `npm test`, never create a user or send mail, never print a
 secret, and the Pages file only issues GETs and never signs in.
 
 **Credential scope (security audit, 2026-10-05).** The Pages journey runs
-the live site's JS bundle with `(0, eval)(bundle)` inside its test worker, and
+the live site's JS bundle inside its test worker (the entry script and the chunks it
+imports, imported as real ES modules by `bundleLoader.ts`), and
 vitest gives a worker the project's `test.env`. So `vitest.external.config.ts`
 runs the Pages test as its own `pages-site` project with only the
 `VITE_SUPABASE_` variables; every other external test (including any new one)
@@ -73,7 +74,7 @@ test-account credentials. The Pages test also scrubs any inherited
 `WEB_EXTERNAL_*` variable from its `process.env`, and refuses to fetch a script
 that the shell names on another origin. `externalGuards.test.ts` checks the
 config split and both safeguards. This is defence in depth, not a sandbox:
-`jsdom` and `eval` are not a security boundary, so a compromised deployed site
+`jsdom` and an in-process module import are not a security boundary, so a compromised deployed site
 could still run code as the developer; the fix is that the test-account password
 is no longer in that process.
 
@@ -134,7 +135,7 @@ this surface stale.
 | Reachable and authenticated | The URL returns 200 over HTML with the app shell (`<div id="root">`, the RigCheck title). **Authentication does not apply**: the site is public and read-only, so there is nothing to sign in to. |
 | Response shape | The shell names one module script and one stylesheet; the bundle is real JavaScript (not an HTML fallback) of plausible size, the stylesheet is CSS, `/logo.png` is a PNG. The bundle names exactly one Supabase host, equal to the configured project's host (so not `undefined`, a placeholder or a second project), and contains the configured publishable key and no `sb_secret_` key or `service_role` JWT. |
 | Error contract | Unknown paths (`/no/such/page`, `/history/deep/link`) return the app shell with 200, identical to `/`, not a Cloudflare error page. |
-| Full journey | Loads the shell, runs the live production bundle in jsdom, clicks the header's "Sign in", and sees the email and password fields, with no "Accounts unavailable" card (what a build without the Supabase variables shows). It never submits the form. |
+| Full journey | Loads the shell, runs the live production bundle (a code-split build: entry script plus the chunks it imports, as ES modules) in jsdom, clicks the header's "Sign in", and sees the email and password fields, with no "Accounts unavailable" card (what a build without the Supabase variables shows). It never submits the form. |
 
 Not covered, by design: a stale page that still points at a deleted hashed
 asset (`/assets/nope.js`) gets the shell back with a 200 instead of a 404,

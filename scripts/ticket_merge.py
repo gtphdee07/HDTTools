@@ -16,7 +16,9 @@ aborting cleanly on a conflict. `close` posts FILE (a criterion-to-test table)
 with the merge sha, closes the issue, removes the worktree and deletes the
 branch. On Windows, when git cannot delete the worktree because its path is too
 long (deep node_modules), `close` finishes the delete itself with a long-path
-`rmdir`, only for that error and only for ticket N's own worktree folder.
+`rmdir`, only for that error and only for ticket N's own worktree folder. When git
+refuses because the worktree has modified or untracked files, `close` lists them,
+removes nothing and leaves the decision (commit, discard, keep) to the owner.
 Nothing here pushes: that stays the owner's call.
 """
 
@@ -129,6 +131,16 @@ def _remove_worktree_folder(n: int, removed_err: str, *, shell: Shell, root: Pat
     return None if pruned.ok else f"git worktree prune failed: {pruned.err.strip()}"
 
 
+def _uncommitted_files(n: int, removed_err: str, *, shell: Shell, root: Path) -> list[str]:
+    """After a failed `git worktree remove`: the `git status --short` lines when git
+    refused over modified or untracked files, else [] (so another failure keeps its
+    own message)."""
+    if "modified or untracked files" not in removed_err:
+        return []
+    status = git(shell, worktree_folder(root, n), "status", "--short")
+    return status.out.splitlines() if status.ok else []
+
+
 def close(
     n: int,
     comment_file: Path,
@@ -156,6 +168,14 @@ def close(
     out(f"Closed #{n}.")
 
     removed = git(shell, root, "worktree", "remove", worktree_relpath(n))
+    if not removed.ok and (pending := _uncommitted_files(n, removed.err, shell=shell, root=root)):
+        out(
+            f"#{n} is closed, but its worktree has files that need a decision, so nothing was removed:\n"
+            + "\n".join(f"  {line}" for line in pending)
+            + f"\nCommit, discard or keep them, then re-run only the removal: `git worktree remove {worktree_relpath(n)}` "
+            f"and `git branch -d {branch}`."
+        )
+        return 1
     failure = None if removed.ok else _remove_worktree_folder(
         n, removed.err, shell=shell, root=root, windows=os.name == "nt" if windows is None else windows
     )

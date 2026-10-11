@@ -50,21 +50,33 @@ RevenueCat call (`src/revenuecat.ts`) times out at 10s
 
 **Idempotency.** `client_request_id` is an optional, client-generated id,
 stable across retries of the same logical scan attempt (the Android app
-generates one UUID per user-initiated tap). When present, it's used as the
-RevenueCat `Idempotency-Key` for both the spend and refund, so a retry
-after a lost/timed-out response spends the credit at most once — verified
-hands-on against the real deployed Worker and real RevenueCat (two
-identical scans with the same `client_request_id` moved the balance by
-exactly 1). Omitting it falls back to a fresh random key per request, the
-original behavior, so any already-shipped app build stays compatible.
-**Known accepted gap**: this protects the RevenueCat credit balance, but
-not Claude's own per-call cost — `extractFields` still runs on every
-request, since this Worker is deliberately stateless (see "No database"
-below) and doesn't cache extraction results. A retry after a lost response
-can still trigger a second, real, billed Claude call; the residual cost is
-small and rare (~$0.01, only on a lost/retried response) and was an
-explicit tradeoff against adding real state (e.g. Workers KV) purely to
-close it.
+generates one UUID per user-initiated tap), at most 128 characters of
+letters, digits, `-`, `_`, `.` or `:` (anything else is a `400`). The
+RevenueCat `Idempotency-Key` is never the raw id: the Worker takes a SHA-256
+of the verified account id, document type, media type, a hash of the image
+and the id (`src/idempotencyKey.ts`), so one id sent with a different image,
+document type or account is a separate charge, and the refund's key (that
+hash plus `-refund`) can't equal any other request's spend key. A retry of
+the same request after a lost/timed-out response still spends the credit at
+most once — verified hands-on against the real deployed Worker and real
+RevenueCat (two identical scans with the same `client_request_id` moved the
+balance by exactly 1). Omitting the id falls back to a fresh random one per
+request, the original behavior, so any already-shipped app build stays
+compatible.
+**Known gap (follow-up ticket)**: the key protects the credit balance, but
+the Worker is deliberately stateless (see "No database" below) and
+RevenueCat tells it nothing about a replayed key, so resending the exact
+same request (same account, type, image and id) is answered as paid and
+re-runs Claude each time. A direct API caller with one credit can use that
+to buy repeated billed extractions of one image, and if a repeat's
+extraction fails, the refund credits back a scan that was delivered. The
+mirror case also holds: if the first attempt's extraction fails and is
+refunded, an honest retry replays the Spend and is extracted at no net
+credit. The
+shipped clients send a fresh id per tap, so only a hostile direct caller
+reaches it. Closing it needs a server-side record of completed scans
+(Workers KV, or a single-use scan token); that decision is tracked in
+#96 rather than made here.
 
 ## Testing
 
@@ -87,7 +99,8 @@ refunds the same user exactly once, a failed refund attempt doesn't
 crash the request, a `spendCredit` rejection (what a real timeout
 eventually produces) maps to a clean `billing_error` instead of a hang,
 and two calls sharing one `client_request_id` reuse the same idempotency
-key.
+key, while a different image, document type or account under that id gets
+its own.
 
 What these tests *don't* cover: the real Anthropic SDK call shape, the real
 RevenueCat API response shape (only the request side is asserted — the

@@ -3,6 +3,7 @@
 // Anthropic SDK or a network call to RevenueCat — see scan.test.ts.
 import { DOC_TYPE_CONFIG } from "./docTypes.ts";
 import { json } from "./http.ts";
+import { scanIdempotencyKey } from "./idempotencyKey.ts";
 import type { ScanRequest } from "./request.ts";
 import { refundCredit, spendCredit, type TransactionResult } from "./revenuecat.ts";
 import type { Env } from "./types.ts";
@@ -41,9 +42,16 @@ export async function runScan(
 ): Promise<Response> {
   // A client-supplied id (stable across retries of the same logical scan
   // attempt) makes the RevenueCat spend/refund idempotent across a lost or
-  // timed-out response; falling back to a fresh random key when absent
-  // matches today's behavior for any caller that doesn't send one yet.
-  const idempotencyKey = request.client_request_id ?? crypto.randomUUID();
+  // timed-out response; a fresh random id when absent matches today's
+  // behavior for any caller that doesn't send one yet. The id is never the
+  // RevenueCat key itself: the key also binds the account, document type and
+  // image, so one id can't be reused to run many different scans on one
+  // credit (see idempotencyKey.ts).
+  const idempotencyKey = await scanIdempotencyKey(
+    userId,
+    request,
+    request.client_request_id ?? crypto.randomUUID(),
+  );
 
   // Spend the credit before doing anything costly. RevenueCat's 422 on
   // insufficient balance doubles as the entitlement check, so a user with

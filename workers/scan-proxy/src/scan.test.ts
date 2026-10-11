@@ -227,17 +227,21 @@ test("an extractFields timeout is refunded and mapped to extraction_failed like 
   assert.equal(refundCalls, 1);
 });
 
-test("a request with client_request_id uses it as the RevenueCat idempotency key instead of a random one", async () => {
-  let spendKey: string | undefined;
+test("a request with client_request_id gets a stable RevenueCat idempotency key derived from it, never the raw id", async () => {
+  const spendKeys: string[] = [];
   const deps = makeDeps({
     spendCredit: async (_env, _customerId, idempotencyKey) => {
-      spendKey = idempotencyKey;
+      spendKeys.push(idempotencyKey);
       return { ok: true, status: 200, body: {} };
     },
   });
 
   await runScan(env, USER_ID, { ...request, client_request_id: "stable-attempt-1" }, deps);
-  assert.equal(spendKey, "stable-attempt-1");
+  await runScan(env, USER_ID, { ...request, client_request_id: "stable-attempt-1" }, deps);
+  await runScan(env, USER_ID, { ...request, client_request_id: "stable-attempt-3" }, deps);
+  assert.equal(spendKeys[0], spendKeys[1]);
+  assert.notEqual(spendKeys[0], spendKeys[2]);
+  assert.notEqual(spendKeys[0], "stable-attempt-1");
 });
 
 // This is the whole point of Gap B: two calls that represent retries of the
@@ -258,7 +262,8 @@ test("two runScan calls with the same client_request_id use the same idempotency
   await runScan(env, USER_ID, retryRequest, deps);
   await runScan(env, USER_ID, retryRequest, deps);
 
-  assert.deepEqual(spendKeys, ["stable-attempt-2", "stable-attempt-2"]);
+  assert.equal(spendKeys.length, 2);
+  assert.equal(spendKeys[0], spendKeys[1]);
 });
 
 test("a request without client_request_id falls back to a fresh random key each call, unchanged from today", async () => {
@@ -288,4 +293,124 @@ test("trailer_tag and scale_ticket scans use their own doc type's config and ech
     assert.equal(body.doc_type, docType);
     assert.equal(body.fields.toolNameUsed, `record_${docType}`);
   }
+});
+
+// A fake RevenueCat ledger that behaves like the real one for the property
+// these tests need: a Spend or Refund whose Idempotency-Key was already seen
+// is replayed (answered ok, balance untouched), and a Spend with no credit
+// left is a 422. Everything else about RevenueCat is out of scope here.
+function makeLedger(credits: number) {
+  const seen = new Set<string>();
+  const spendKeys: string[] = [];
+  const refundKeys: string[] = [];
+  const ledger = {
+    credits,
+    spendKeys,
+    refundKeys,
+    extractions: 0,
+    spendCredit: (async (_env, _customerId, key) => {
+      spendKeys.push(key);
+      if (seen.has(key)) return { ok: true, status: 200, body: {} };
+      if (ledger.credits < 1) return { ok: false, status: 422, body: {} };
+      seen.add(key);
+      ledger.credits--;
+      return { ok: true, status: 200, body: {} };
+    }) as ScanDeps["spendCredit"],
+    // revenuecat.ts derives the refund's own key by suffixing "-refund".
+    refundCredit: (async (_env, _customerId, key) => {
+      const refundKey = `${key}-refund`;
+      refundKeys.push(refundKey);
+      if (!seen.has(refundKey)) {
+        seen.add(refundKey);
+        ledger.credits++;
+      }
+      return { ok: true, status: 200, body: {} };
+    }) as ScanDeps["refundCredit"],
+  };
+  return ledger;
+}
+
+function countingDeps(ledger: ReturnType<typeof makeLedger>, failOn?: (image: string) => boolean): ScanDeps {
+  return {
+    spendCredit: ledger.spendCredit,
+    refundCredit: ledger.refundCredit,
+    extractFields: async (_apiKey, image) => {
+      ledger.extractions++;
+      if (failOn?.(image)) throw new Error("undecodable image");
+      return { manufacturer: "Ford" };
+    },
+  };
+}
+
+test("one client_request_id with many different images cannot extract more than the credits paid for", async () => {
+  const ledger = makeLedger(1);
+  const deps = countingDeps(ledger);
+
+  const statuses: number[] = [];
+  for (let i = 0; i < 5; i++) {
+    const res = await runScan(
+      env,
+      USER_ID,
+      { ...request, image_base64: `aW1hZ2Ux${i}`, client_request_id: "one-id" },
+      deps,
+    );
+    statuses.push(res.status);
+  }
+
+  assert.deepEqual(statuses, [200, 402, 402, 402, 402]);
+  assert.equal(ledger.extractions, 1, "five images under one id must not buy five extractions for one credit");
+});
+
+test("the same client_request_id is charged separately per account, document type and image", async () => {
+  const ledger = makeLedger(10);
+  const deps = countingDeps(ledger);
+  const base = { ...request, client_request_id: "shared-id" };
+
+  await runScan(env, "user-1", base, deps);
+  await runScan(env, "user-2", base, deps);
+  await runScan(env, "user-1", { ...base, doc_type: "scale_ticket" }, deps);
+  await runScan(env, "user-1", { ...base, image_base64: "b3RoZXI=" }, deps);
+
+  assert.equal(new Set(ledger.spendKeys).size, 4, "each variation is its own RevenueCat charge");
+  assert.equal(ledger.credits, 6);
+});
+
+test("an honest retry of the same request (account, type, image and id) charges once", async () => {
+  const ledger = makeLedger(3);
+  const deps = countingDeps(ledger);
+  const retry = { ...request, client_request_id: "lost-response-1" };
+
+  await runScan(env, USER_ID, retry, deps);
+  await runScan(env, USER_ID, retry, deps);
+
+  assert.equal(ledger.spendKeys[0], ledger.spendKeys[1]);
+  assert.equal(ledger.credits, 2, "the retry replays the Spend, so only one credit is gone");
+});
+
+test("a spend key is a fixed-width hash, so no other request's refund key can equal it", async () => {
+  const ledger = makeLedger(5);
+  const deps = countingDeps(ledger, () => true);
+
+  await runScan(env, USER_ID, { ...request, client_request_id: "X" }, deps);
+  await runScan(env, USER_ID, { ...request, client_request_id: "X-refund" }, deps);
+
+  for (const key of ledger.spendKeys) assert.match(key, /^[0-9a-f]{64}$/);
+  for (const spendKey of ledger.spendKeys) {
+    assert.ok(!ledger.refundKeys.includes(spendKey), "a spend key must never be another request's refund key");
+  }
+  assert.equal(new Set([...ledger.spendKeys, ...ledger.refundKeys]).size, 4);
+});
+
+test("replaying a delivered scan's id with an undecodable image is charged on its own, not a free extraction", async () => {
+  const ledger = makeLedger(2);
+  const deps = countingDeps(ledger, (image) => image === "YmFk");
+
+  const good = await runScan(env, USER_ID, { ...request, client_request_id: "K" }, deps);
+  const replay = await runScan(env, USER_ID, { ...request, image_base64: "YmFk", client_request_id: "K" }, deps);
+
+  assert.equal(good.status, 200);
+  assert.equal(replay.status, 502);
+  assert.equal(ledger.spendKeys.length, 2);
+  assert.notEqual(ledger.spendKeys[0], ledger.spendKeys[1], "the failed replay is its own charge");
+  assert.equal(ledger.credits, 1, "one delivered scan costs one credit; the failed one is charged then refunded");
 });

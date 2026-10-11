@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { type Bundle, fetchChunks, runBundle, type RunningBundle } from './bundleLoader';
 import { readConfig } from './config';
 import { assetUrls, bakedSecretKinds, bakedSupabaseHosts, foreignUrls, hostOf } from './siteShell';
 
@@ -16,6 +17,12 @@ const UNKNOWN_PATHS = ['/no/such/page', '/history/deep/link'];
 const REQUIRED_HERE = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY'] as const;
 
 const get = (url: string) => fetch(url);
+
+const getText = async (url: string) => {
+  const response = await get(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.text();
+};
 
 async function until<T>(probe: () => T | null | undefined, what: string, ms = 10_000): Promise<T> {
   const deadline = Date.now() + ms;
@@ -36,6 +43,11 @@ describe('[pages-site] Deployed Pages site live contract', () => {
   let bundleResponse: Response;
   let bundle: string;
   let assets: ReturnType<typeof assetUrls>;
+  let split: Promise<Bundle> | undefined;
+  let running: RunningBundle | undefined;
+
+  // The entry script plus every chunk it imports, fetched once and only by the tests that need them.
+  const splitBundle = () => (split ??= fetchChunks(assets.scripts[0], bundle, getText));
 
   beforeAll(async () => {
     // The journey runs fetched code in this process. vitest.external.config.ts already keeps the test-account
@@ -52,8 +64,9 @@ describe('[pages-site] Deployed Pages site live contract', () => {
     bundle = await bundleResponse.text();
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     document.body.innerHTML = '';
+    await running?.dispose();
   });
 
   it('serves the app shell with a 200 over HTML', () => {
@@ -84,6 +97,12 @@ describe('[pages-site] Deployed Pages site live contract', () => {
     expect(logo.headers.get('content-type')).toMatch(/^image\/png/);
   });
 
+  it('serves every chunk the entry script imports', async () => {
+    const { files } = await splitBundle();
+    // Chunk URLs come from relative specifiers, so they are same-origin; fetchChunks throws naming any it cannot fetch.
+    expect(files.has(assets.scripts[0])).toBe(true);
+  });
+
   it('has the configured Supabase project host baked into the production bundle', () => {
     const expectedHost = hostOf(cfg.VITE_SUPABASE_URL);
     expect(expectedHost).toMatch(/^[a-z0-9]{20}\.supabase\.co$/);
@@ -91,10 +110,12 @@ describe('[pages-site] Deployed Pages site live contract', () => {
     expect(bakedSupabaseHosts(bundle)).toEqual([expectedHost]);
   });
 
-  it('has the configured publishable key baked in and no secret key', () => {
+  it('has the configured publishable key baked in and no secret key', async () => {
     const baked = bundle.includes(cfg.VITE_SUPABASE_PUBLISHABLE_KEY);
     expect(baked).toBe(true);
-    expect(bakedSecretKinds(bundle)).toEqual([]);
+    // Every shipped file counts, not just the entry script: a code-split build puts library code in chunks.
+    const { files } = await splitBundle();
+    expect(bakedSecretKinds([...files.values()].join('\n'))).toEqual([]);
   });
 
   it.each(UNKNOWN_PATHS)('serves the app shell, not a platform error page, for the unknown path %s', async (path) => {
@@ -113,9 +134,9 @@ describe('[pages-site] Deployed Pages site live contract', () => {
     body.querySelectorAll('script').forEach((s) => s.remove());
     document.body.innerHTML = body.innerHTML;
 
-    // Run the live production bundle as the browser would. The shell loads it as a module, but Vite emits a
-    // single chunk with no import or export statements, so it also runs as a plain script here.
-    (0, eval)(bundle);
+    // Run the live production bundle as the browser would: as ES modules, entry script and chunks. The build is
+    // code-split (it uses import.meta, import() and export), so it cannot be evaluated as a plain script.
+    running = await runBundle(await splitBundle());
 
     const [signIn] = await until(() => (buttonsNamed('Sign in').length > 0 ? buttonsNamed('Sign in') : null), 'the "Sign in" button in the header');
     signIn.click();

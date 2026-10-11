@@ -93,9 +93,12 @@ describe('the Pages site test never runs with the test-account credentials', () 
 
   it('the test scrubs any inherited WEB_EXTERNAL_ variable before evaluating fetched code', () => {
     const scrub = pagesText.indexOf("startsWith('WEB_EXTERNAL_')");
-    const evalAt = pagesText.indexOf('(0, eval)(');
+    const runAt = pagesText.indexOf('runBundle(');
     expect(scrub).toBeGreaterThan(-1);
-    expect(scrub).toBeLessThan(evalAt);
+    expect(runAt).toBeGreaterThan(-1);
+    expect(scrub).toBeLessThan(runAt);
+    // Nothing else may run the fetched code.
+    expect(pagesText).not.toMatch(/\beval\(|new Function\(/);
   });
 
   it('the test refuses fetched script or stylesheet URLs from another origin', () => {

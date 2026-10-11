@@ -27,12 +27,12 @@
       }
     },
     "pages-site": {
-      "commit": "61c2892bc8631ec611923d994723ba55be7197fc",
+      "commit": "49c0d546d2fb6f173299191716664556f68be178",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-05T03:57:04Z",
+      "timestamp": "2026-10-11T03:30:43Z",
       "versions": {
-        "wrangler": "4.147.0"
+        "wrangler": "4.149.0"
       }
     },
     "revenuecat-rest": {
@@ -43,12 +43,21 @@
       "versions": {}
     },
     "supabase-auth": {
-      "commit": "2aa05b680bc0a11a290cc89c723af1501e1196de",
+      "commit": "49c0d546d2fb6f173299191716664556f68be178",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-04T04:32:26Z",
+      "timestamp": "2026-10-11T03:30:43Z",
       "versions": {
-        "@supabase/supabase-js": "2.117.2"
+        "@supabase/supabase-js": "2.117.3"
+      }
+    },
+    "supabase-tables": {
+      "commit": "49c0d546d2fb6f173299191716664556f68be178",
+      "passed": true,
+      "result": "pass",
+      "timestamp": "2026-10-11T03:30:43Z",
+      "versions": {
+        "@supabase/supabase-js": "2.117.3"
       }
     }
   }

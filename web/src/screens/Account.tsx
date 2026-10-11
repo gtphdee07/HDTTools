@@ -42,7 +42,9 @@ export function Account({ onDone }: AccountProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const run = async (action: () => Promise<ActionResult>, success?: string) => {
+  // forgetCredentials: once the action succeeds, drop the typed email and password so they are not
+  // sitting in the form for the next person at a shared browser after a sign out.
+  const run = async (action: () => Promise<ActionResult>, success?: string, forgetCredentials = false) => {
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -50,7 +52,13 @@ export function Account({ onDone }: AccountProps) {
     setBusy(false);
     if (result.error) setError(result.error);
     else if (result.needsConfirmation) setNotice('Check your email to confirm your account, then sign in.');
-    else if (success) setNotice(success);
+    else {
+      if (success) setNotice(success);
+      if (forgetCredentials) {
+        setEmail('');
+        setPassword('');
+      }
+    }
   };
 
   const switchMode = (next: Mode) => {
@@ -70,7 +78,7 @@ export function Account({ onDone }: AccountProps) {
   if (auth.recovering) {
     const submit = (e: FormEvent) => {
       e.preventDefault();
-      void run(() => auth.updatePassword(password), 'Password updated.');
+      void run(() => auth.updatePassword(password), 'Password updated.', true);
     };
     return (
       <Card title="Choose a new password">
@@ -94,7 +102,7 @@ export function Account({ onDone }: AccountProps) {
         <Card title="Your account" subtitle={`Signed in as ${auth.user.email ?? auth.user.id}`}>
           <Feedback error={error} notice={notice} />
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-            <Button variant="secondary" disabled={busy} onClick={() => void run(() => auth.signOut())}>
+            <Button variant="secondary" disabled={busy} onClick={() => void run(() => auth.signOut(), undefined, true)}>
               Sign out
             </Button>
             <Button variant="ghost" onClick={onDone}>
@@ -109,7 +117,7 @@ export function Account({ onDone }: AccountProps) {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (mode === 'signin') void run(() => auth.signIn(email, password));
+    if (mode === 'signin') void run(() => auth.signIn(email, password), undefined, true);
     else if (mode === 'signup') void run(() => auth.signUp(email, password));
     else void run(() => auth.requestPasswordReset(email), 'Check your email for a password reset link.');
   };
@@ -129,7 +137,7 @@ export function Account({ onDone }: AccountProps) {
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} style={inputStyle} />
           </label>
         )}
-        <Feedback error={error} notice={notice} />
+        <Feedback error={error ?? auth.linkProblem} notice={notice} />
         <Button type="submit" disabled={busy} style={{ marginTop: 12 }}>
           {mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
         </Button>

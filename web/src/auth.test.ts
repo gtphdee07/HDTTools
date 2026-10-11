@@ -9,10 +9,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // VITE_SUPABASE_* variable is provably caught offline.
 
 const authSlice = { getSession: vi.fn() };
-const mockCreateClient = vi.fn((_url: string, _key: string) => ({ auth: authSlice }));
+const mockCreateClient = vi.fn((_url: string, _key: string, _options?: unknown) => ({ auth: authSlice }));
 
 vi.mock('@supabase/supabase-js', () => ({
-  createClient: (url: string, key: string) => mockCreateClient(url, key),
+  createClient: (url: string, key: string, options?: unknown) => mockCreateClient(url, key, options),
 }));
 
 const { createSupabaseAuthClient } = await import('./auth');
@@ -50,7 +50,9 @@ describe('createSupabaseAuthClient', () => {
 
     const client = createSupabaseAuthClient();
 
-    expect(mockCreateClient).toHaveBeenCalledWith('https://example.supabase.co', 'sb_publishable_test');
+    expect(mockCreateClient).toHaveBeenCalledWith('https://example.supabase.co', 'sb_publishable_test', {
+      auth: { flowType: 'pkce' },
+    });
     expect(client).toBe(authSlice);
   });
 });

@@ -46,6 +46,8 @@ export interface AuthState {
   accessToken: string | null;
   // True after the user opens a password-reset email link, until they set a new password.
   recovering: boolean;
+  // Set when the page was opened from an email link that could not sign anyone in here (see unusedLinkProblem).
+  linkProblem: string | null;
   signUp(email: string, password: string): Promise<ActionResult>;
   signIn(email: string, password: string): Promise<ActionResult>;
   signOut(): Promise<ActionResult>;
@@ -61,6 +63,7 @@ const SIGNED_OUT: AuthState = {
   user: null,
   accessToken: null,
   recovering: false,
+  linkProblem: null,
   signUp: unavailable,
   signIn: unavailable,
   signOut: unavailable,
@@ -81,21 +84,47 @@ export function createSupabaseAuthClient(): AuthClient | null {
 
 const fail = (error: { message: string } | null): ActionResult => (error ? { error: error.message } : {});
 
+const OTHER_BROWSER_LINK =
+  'That email link was opened in a different browser or device than the one you requested it from, so it could not sign you in here. ' +
+  'If it was a confirmation link, your email is confirmed: sign in with your password. ' +
+  'If it was a password reset link, request a new one from this browser.';
+const DEAD_LINK = 'That email link is invalid, expired or already used, so it did not sign you in. Request a new one.';
+
+// Email links come back as ?code=... (PKCE). Supabase's client exchanges the code for a session and
+// removes it from the URL, but only in the browser that holds the code verifier; anywhere else the
+// code is left in place and nothing happens. Called once the client has finished starting up: any
+// callback still in the URL was not used. Returns what to tell the visitor, and tidies the URL.
+function unusedLinkProblem(): string | null {
+  const url = new URL(window.location.href);
+  const hash = new URLSearchParams(url.hash.slice(1));
+  const unusedCode = url.searchParams.has('code');
+  const deadFragment = hash.has('access_token') || hash.has('error') || hash.has('error_description');
+  if (!unusedCode && !deadFragment) return null;
+  url.searchParams.delete('code');
+  if (deadFragment) url.hash = '';
+  window.history.replaceState(window.history.state, '', url.toString());
+  return unusedCode ? OTHER_BROWSER_LINK : DEAD_LINK;
+}
+
 export function AuthProvider({ client, children }: { client: AuthClient | null; children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [loading, setLoading] = useState(client !== null);
   const [recovering, setRecovering] = useState(false);
+  const [linkProblem, setLinkProblem] = useState<string | null>(null);
 
   useEffect(() => {
     if (!client) return;
     let cancelled = false;
     const { data } = client.onAuthStateChange((event, next) => {
       setSession(next);
+      if (next) setLinkProblem(null);
       if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       if (event === 'SIGNED_OUT') setRecovering(false);
     });
     client.getSession().then(({ data: { session: current } }) => {
       if (cancelled) return;
+      const problem = unusedLinkProblem();
+      if (!current) setLinkProblem(problem);
       setSession((prev) => prev ?? current);
       setLoading(false);
     });
@@ -140,6 +169,7 @@ export function AuthProvider({ client, children }: { client: AuthClient | null; 
             user: session?.user ?? null,
             accessToken: session?.access_token ?? null,
             recovering,
+            linkProblem,
             signUp,
             signIn,
             signOut,
@@ -147,7 +177,7 @@ export function AuthProvider({ client, children }: { client: AuthClient | null; 
             updatePassword,
           }
         : SIGNED_OUT,
-    [client, loading, session, recovering, signUp, signIn, signOut, requestPasswordReset, updatePassword],
+    [client, loading, session, recovering, linkProblem, signUp, signIn, signOut, requestPasswordReset, updatePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

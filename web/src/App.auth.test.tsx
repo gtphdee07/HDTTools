@@ -113,6 +113,77 @@ describe('Web accounts', () => {
     expect(screen.getByTestId('token')).toHaveTextContent('none');
   });
 
+  it('leaves the email and password fields empty after sign out, for the next person at a shared browser', async () => {
+    const fake = makeFakeSupabase();
+    fake.accounts.set('pat@example.com', 'hunter22');
+    const user = renderApp(fake);
+
+    await user.click(headerSignIn());
+    await fillCredentials(user, 'pat@example.com', 'hunter22');
+    await user.click(submitSignIn());
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
+
+    expect(await screen.findByRole('button', { name: 'Create an account' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toHaveValue('');
+    expect(screen.getByLabelText('Password')).toHaveValue('');
+  });
+
+  it('does not keep the new password in the form after a password reset', async () => {
+    const fake = makeFakeSupabase();
+    const user = renderApp(fake);
+    await screen.findByRole('button', { name: 'Sign in' });
+    act(() => fake.emit('PASSWORD_RECOVERY', fake.sessionFor('pat@example.com')));
+    await user.type(await screen.findByLabelText('New password'), 'brand-new-pass');
+    await user.click(screen.getByRole('button', { name: 'Update password' }));
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
+
+    expect(await screen.findByLabelText('Password')).toHaveValue('');
+  });
+
+  it('shows the email and password as typed while still signed out', async () => {
+    const user = renderApp(makeFakeSupabase());
+    await user.click(headerSignIn());
+    await fillCredentials(user, 'pat@example.com', 'hunter22');
+    expect(screen.getByLabelText('Email')).toHaveValue('pat@example.com');
+    expect(screen.getByLabelText('Password')).toHaveValue('hunter22');
+  });
+
+  it('explains a confirmation or recovery link opened in a browser that did not ask for it', async () => {
+    // PKCE keeps a code verifier in the browser that asked; elsewhere the ?code= link signs nobody in.
+    window.history.replaceState(null, '', '/?code=abc123');
+    try {
+      renderApp(makeFakeSupabase());
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(/different browser or device/i);
+      expect(alert).toHaveTextContent(/confirm/i);
+      expect(alert).toHaveTextContent(/request a new/i);
+      expect(screen.getByLabelText('Email')).toBeInTheDocument();
+      expect(window.location.search).toBe('');
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('tells the visitor an expired or fragment-session link did not sign them in, and clears it from the URL', async () => {
+    window.history.replaceState(null, '', '/#error=access_denied&error_code=otp_expired&error_description=expired');
+    try {
+      renderApp(makeFakeSupabase());
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/invalid, expired or already used/i);
+      expect(screen.getByTestId('token')).toHaveTextContent('none');
+      expect(window.location.hash).toBe('');
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('says nothing about links when the page was opened normally', async () => {
+    renderApp(makeFakeSupabase());
+    await screen.findByRole('button', { name: 'Sign in' });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('shows the error when credentials are wrong', async () => {
     const user = renderApp(makeFakeSupabase());
     await user.click(headerSignIn());

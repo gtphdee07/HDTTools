@@ -44,7 +44,10 @@ export function Account({ onDone }: AccountProps) {
 
   // forgetCredentials: once the action succeeds, drop the typed email and password so they are not
   // sitting in the form for the next person at a shared browser after a sign out.
-  const run = async (action: () => Promise<ActionResult>, success?: string, forgetCredentials = false) => {
+  const run = async (
+    action: () => Promise<ActionResult>,
+    { success, forgetCredentials }: { success?: string; forgetCredentials?: boolean } = {},
+  ) => {
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -78,7 +81,7 @@ export function Account({ onDone }: AccountProps) {
   if (auth.recovering) {
     const submit = (e: FormEvent) => {
       e.preventDefault();
-      void run(() => auth.updatePassword(password), 'Password updated.', true);
+      void run(() => auth.updatePassword(password), { success: 'Password updated.', forgetCredentials: true });
     };
     return (
       <Card title="Choose a new password">
@@ -102,7 +105,7 @@ export function Account({ onDone }: AccountProps) {
         <Card title="Your account" subtitle={`Signed in as ${auth.user.email ?? auth.user.id}`}>
           <Feedback error={error} notice={notice} />
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-            <Button variant="secondary" disabled={busy} onClick={() => void run(() => auth.signOut(), undefined, true)}>
+            <Button variant="secondary" disabled={busy} onClick={() => void run(() => auth.signOut(), { forgetCredentials: true })}>
               Sign out
             </Button>
             <Button variant="ghost" onClick={onDone}>
@@ -117,9 +120,9 @@ export function Account({ onDone }: AccountProps) {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (mode === 'signin') void run(() => auth.signIn(email, password), undefined, true);
+    if (mode === 'signin') void run(() => auth.signIn(email, password), { forgetCredentials: true });
     else if (mode === 'signup') void run(() => auth.signUp(email, password));
-    else void run(() => auth.requestPasswordReset(email), 'Check your email for a password reset link.');
+    else void run(() => auth.requestPasswordReset(email), { success: 'Check your email for a password reset link.' });
   };
 
   const title = mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Reset password';

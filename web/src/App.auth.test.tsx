@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { AuthProvider, useAuth } from './auth';
 import type { AuthClient, AuthSession } from './auth';
@@ -80,6 +80,10 @@ beforeEach(() => {
   sessionStorage.clear();
 });
 
+afterEach(() => {
+  window.history.replaceState(null, '', '/');
+});
+
 describe('Web accounts', () => {
   it('lets a visitor reach the free manual-entry flow without an account', async () => {
     const user = renderApp(makeFakeSupabase());
@@ -115,6 +119,22 @@ describe('Web accounts', () => {
 
   it('leaves the email and password fields empty after sign out, for the next person at a shared browser', async () => {
     const fake = makeFakeSupabase();
+    const user = renderApp(fake);
+
+    // Typed but not submitted, then a session arrives some other way (another tab): the typed
+    // values are still in the form's state when Sign out is pressed.
+    await user.click(headerSignIn());
+    await fillCredentials(user, 'pat@example.com', 'hunter22');
+    act(() => fake.emit('SIGNED_IN', fake.sessionFor('pat@example.com')));
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
+
+    expect(await screen.findByRole('button', { name: 'Create an account' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toHaveValue('');
+    expect(screen.getByLabelText('Password')).toHaveValue('');
+  });
+
+  it('leaves the fields empty after signing in, so a later sign out cannot reveal them', async () => {
+    const fake = makeFakeSupabase();
     fake.accounts.set('pat@example.com', 'hunter22');
     const user = renderApp(fake);
 
@@ -123,8 +143,7 @@ describe('Web accounts', () => {
     await user.click(submitSignIn());
     await user.click(await screen.findByRole('button', { name: 'Sign out' }));
 
-    expect(await screen.findByRole('button', { name: 'Create an account' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Email')).toHaveValue('');
+    expect(await screen.findByLabelText('Email')).toHaveValue('');
     expect(screen.getByLabelText('Password')).toHaveValue('');
   });
 
@@ -151,31 +170,31 @@ describe('Web accounts', () => {
   it('explains a confirmation or recovery link opened in a browser that did not ask for it', async () => {
     // PKCE keeps a code verifier in the browser that asked; elsewhere the ?code= link signs nobody in.
     window.history.replaceState(null, '', '/?code=abc123');
-    try {
-      renderApp(makeFakeSupabase());
+    renderApp(makeFakeSupabase());
 
-      const alert = await screen.findByRole('alert');
-      expect(alert).toHaveTextContent(/different browser or device/i);
-      expect(alert).toHaveTextContent(/confirm/i);
-      expect(alert).toHaveTextContent(/request a new/i);
-      expect(screen.getByLabelText('Email')).toBeInTheDocument();
-      expect(window.location.search).toBe('');
-    } finally {
-      window.history.replaceState(null, '', '/');
-    }
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/different browser or device/i);
+    expect(alert).toHaveTextContent(/confirm/i);
+    expect(alert).toHaveTextContent(/request a new/i);
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(window.location.search).toBe('');
   });
 
-  it('tells the visitor an expired or fragment-session link did not sign them in, and clears it from the URL', async () => {
-    window.history.replaceState(null, '', '/#error=access_denied&error_code=otp_expired&error_description=expired');
-    try {
-      renderApp(makeFakeSupabase());
+  it('tells the visitor an error redirect in the query string did not sign them in', async () => {
+    window.history.replaceState(null, '', '/?error=access_denied&error_code=otp_expired&error_description=expired');
+    renderApp(makeFakeSupabase());
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(/invalid, expired or already used/i);
-      expect(screen.getByTestId('token')).toHaveTextContent('none');
-      expect(window.location.hash).toBe('');
-    } finally {
-      window.history.replaceState(null, '', '/');
-    }
+    expect(await screen.findByRole('alert')).toHaveTextContent(/invalid, expired or already used/i);
+    expect(window.location.search).toBe('');
+  });
+
+  it('tells the visitor an expired link in the URL fragment did not sign them in', async () => {
+    window.history.replaceState(null, '', '/#error=access_denied&error_code=otp_expired&error_description=expired');
+    renderApp(makeFakeSupabase());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/invalid, expired or already used/i);
+    expect(screen.getByTestId('token')).toHaveTextContent('none');
+    expect(window.location.hash).toBe('');
   });
 
   it('says nothing about links when the page was opened normally', async () => {

@@ -46,7 +46,7 @@ export interface AuthState {
   accessToken: string | null;
   // True after the user opens a password-reset email link, until they set a new password.
   recovering: boolean;
-  // Set when the page was opened from an email link that could not sign anyone in here (see unusedLinkProblem).
+  // Set when the page was opened from an email link that could not sign anyone in here (see takeUnusedLinkProblem).
   linkProblem: string | null;
   signUp(email: string, password: string): Promise<ActionResult>;
   signIn(email: string, password: string): Promise<ActionResult>;
@@ -84,26 +84,29 @@ export function createSupabaseAuthClient(): AuthClient | null {
 
 const fail = (error: { message: string } | null): ActionResult => (error ? { error: error.message } : {});
 
-const OTHER_BROWSER_LINK =
-  'That email link was opened in a different browser or device than the one you requested it from, so it could not sign you in here. ' +
-  'If it was a confirmation link, your email is confirmed: sign in with your password. ' +
+const UNUSED_CODE_LINK =
+  'That email link could not sign you in here. It was opened in a different browser or device than the one you requested it from, or it has expired or already been used. ' +
+  'If it was a confirmation link, your email may already be confirmed: try signing in with your password. ' +
   'If it was a password reset link, request a new one from this browser.';
 const DEAD_LINK = 'That email link is invalid, expired or already used, so it did not sign you in. Request a new one.';
+const CALLBACK_PARAMS = ['access_token', 'error', 'error_description'];
 
 // Email links come back as ?code=... (PKCE). Supabase's client exchanges the code for a session and
-// removes it from the URL, but only in the browser that holds the code verifier; anywhere else the
-// code is left in place and nothing happens. Called once the client has finished starting up: any
-// callback still in the URL was not used. Returns what to tell the visitor, and tidies the URL.
-function unusedLinkProblem(): string | null {
+// removes it from the URL, but only in the browser that holds the code verifier (and while the code
+// is still good); otherwise the code is left in place and nothing happens. Called once the client has
+// finished starting up: any callback still in the URL was not used. Returns what to tell the visitor,
+// and tidies the URL.
+function takeUnusedLinkProblem(): string | null {
   const url = new URL(window.location.href);
-  const hash = new URLSearchParams(url.hash.slice(1));
+  const fragment = new URLSearchParams(url.hash.slice(1));
   const unusedCode = url.searchParams.has('code');
-  const deadFragment = hash.has('access_token') || hash.has('error') || hash.has('error_description');
-  if (!unusedCode && !deadFragment) return null;
-  url.searchParams.delete('code');
-  if (deadFragment) url.hash = '';
+  const deadInFragment = CALLBACK_PARAMS.some((p) => fragment.has(p));
+  const deadInQuery = CALLBACK_PARAMS.some((p) => url.searchParams.has(p));
+  if (!unusedCode && !deadInFragment && !deadInQuery) return null;
+  for (const p of ['code', 'error_code', ...CALLBACK_PARAMS]) url.searchParams.delete(p);
+  if (deadInFragment) url.hash = '';
   window.history.replaceState(window.history.state, '', url.toString());
-  return unusedCode ? OTHER_BROWSER_LINK : DEAD_LINK;
+  return deadInFragment || deadInQuery ? DEAD_LINK : UNUSED_CODE_LINK;
 }
 
 export function AuthProvider({ client, children }: { client: AuthClient | null; children: ReactNode }) {
@@ -123,7 +126,7 @@ export function AuthProvider({ client, children }: { client: AuthClient | null; 
     });
     client.getSession().then(({ data: { session: current } }) => {
       if (cancelled) return;
-      const problem = unusedLinkProblem();
+      const problem = takeUnusedLinkProblem();
       if (!current) setLinkProblem(problem);
       setSession((prev) => prev ?? current);
       setLoading(false);

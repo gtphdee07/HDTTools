@@ -65,8 +65,13 @@ def check_start(*, state, assignees, open_blockers, android, android_in_flight, 
 
 HANDOFF_LINE = (
     "Follow docs/agents/session-handoff.md: don't push, don't close the issue, "
-    "and finish with a STATUS comment on the ticket."
+    "and finish with a STATUS comment on the ticket. "
+    "Ask the owner before each live External suite run."
 )
+
+# `--copy-env` brings the gitignored web/.env.local (free test-account credentials) into the worktree,
+# which the live External suites need; they still run only when the owner approves each run.
+SETUP_ARGS = ["run", "scripts/worktree_setup.py", "--copy-env"]
 
 
 def implement_prompt(n: int) -> str:
@@ -87,6 +92,7 @@ The rules it points to (docs/agents/session-handoff.md):
 
 - Do not push. Do not close the issue.
 - Do not commit `dashboard.svg`, `scripts/dashboard_data/external_status.json` or `.env*`.
+- `web/.env.local` was copied in for the live External suites. Run one only after the owner approves it, each time; never print the file.
 - The ticket is already assigned to the owner: that is the claim.
 - Finish with `/ticket-finish`, which posts the `STATUS:` comment on the ticket and removes this file.
 """
@@ -124,7 +130,7 @@ def _already_exists(shell: Shell, root: Path, n: int) -> list[str]:
 
 def _run_setup(worktree: Path) -> int:
     # Streams its output (npm ci takes minutes), so it bypasses the capturing Shell.
-    return subprocess.run([shutil.which("uv") or "uv", "run", "scripts/worktree_setup.py"], cwd=worktree).returncode
+    return subprocess.run([shutil.which("uv") or "uv", *SETUP_ARGS], cwd=worktree).returncode
 
 
 def start(

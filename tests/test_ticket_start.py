@@ -247,8 +247,14 @@ def test_implement_prompt_is_the_command_then_a_blank_line_then_the_handoff_line
         "/mattpocock-skills:implement #87\n"
         "\n"
         "Follow docs/agents/session-handoff.md: don't push, don't close the issue, "
-        "and finish with a STATUS comment on the ticket."
+        "and finish with a STATUS comment on the ticket. "
+        "Ask the owner before each live External suite run."
     )
+
+
+def test_setup_copies_the_local_only_env_file_into_the_new_worktree():
+    # web/.env.local is gitignored, so a worktree never has it; the live External suites need it.
+    assert "--copy-env" in ticket_start.SETUP_ARGS
 
 
 def test_directions_include_the_paste_ready_prompt():

@@ -35,6 +35,7 @@ Follow-up tickets filed: <#N title; or "none">
 - `READY TO MERGE` means every acceptance criterion is met by an automated test.
 - `PARTIAL` or `BLOCKED` names the exact criterion or assumption and the evidence, and what was completed. Do not weaken a criterion to make a ticket pass; a mistaken criterion is reported here for the owner.
 - Never include secret values. Say where a secret lives, not what it is.
+- A ticket's worktree has `web/.env.local` copied in by `/ticket-start`. Ask the owner before each live External suite run (free ones included); paid suites need an owner-set budget. If a live run is not approved, post `STATUS: PARTIAL` and name the run that was skipped.
 
 ## Rules that stay in force
 

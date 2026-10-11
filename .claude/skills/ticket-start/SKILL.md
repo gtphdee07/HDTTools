@@ -12,7 +12,7 @@ Start ticket $ARGUMENTS (a number, with or without `#`). Run this from the **mai
 uv run scripts/ticket_start.py <N>
 ```
 
-It reads the ticket and stops, having changed nothing, when the ticket is closed, has an open blocker (native dependency or `## Blocked by`), has an assignee, already has a `ticket-<N>` branch or worktree, or (Android) another assigned open Android ticket holds the single emulator. Otherwise it assigns the ticket to the owner, cuts `.claude/worktrees/ticket-<N>` from `MPSkills`, runs `scripts/worktree_setup.py` inside it, and writes the directions to `%TEMP%\hdttools-status\ticket-<N>.md`.
+It reads the ticket and stops, having changed nothing, when the ticket is closed, has an open blocker (native dependency or `## Blocked by`), has an assignee, already has a `ticket-<N>` branch or worktree, or (Android) another assigned open Android ticket holds the single emulator. Otherwise it assigns the ticket to the owner, cuts `.claude/worktrees/ticket-<N>` from `MPSkills`, runs `scripts/worktree_setup.py --copy-env` inside it (so the gitignored `web/.env.local` comes along), and writes the directions to `%TEMP%\hdttools-status\ticket-<N>.md`.
 
 It guesses Android from the title or an `android/` path in the body. If it guessed wrong, re-run with `--android` or `--not-android`.
 
@@ -31,7 +31,7 @@ Finish by printing, as the last thing the owner sees, the prompt the script prin
 ```
 /mattpocock-skills:implement #<N>
 
-Follow docs/agents/session-handoff.md: don't push, don't close the issue, and finish with a STATUS comment on the ticket.
+Follow docs/agents/session-handoff.md: don't push, don't close the issue, and finish with a STATUS comment on the ticket. Ask the owner before each live External suite run.
 ```
 
 `/implement` is user-invocation only, so you do not run it. The owner pastes the whole prompt as the first message of the new session; the handoff line is what makes that session follow the handoff convention (no push, ticket stays open, `/ticket-finish` last).

@@ -4,7 +4,7 @@ Three skills wrap a ticket's `/mattpocock-skills:implement` run, so setting up a
 
 | Skill | Run where | Does | Script |
 |---|---|---|---|
-| `/ticket-start <N>` | main checkout | Checks the ticket (closed, open blocker, assignee, existing branch or worktree, Android emulator in use), assigns it to the owner, cuts `.claude/worktrees/ticket-<N>` from `MPSkills`, runs `scripts/worktree_setup.py`, writes the directions, prints the paste-ready `/implement` prompt (command plus handoff line) | `scripts/ticket_start.py` |
+| `/ticket-start <N>` | main checkout | Checks the ticket (closed, open blocker, assignee, existing branch or worktree, Android emulator in use), assigns it to the owner, cuts `.claude/worktrees/ticket-<N>` from `MPSkills`, runs `scripts/worktree_setup.py --copy-env`, writes the directions, prints the paste-ready `/implement` prompt (command plus handoff line) | `scripts/ticket_start.py` |
 | `/ticket-finish` | the ticket's worktree, after `/implement` | Confirms the tree is clean and committed, runs the required free suites, maps each acceptance criterion to a test, runs `/code-review`, files follow-ups, posts the `STATUS:` comment, deletes the scratch file | `scripts/ticket_finish.py` |
 | `/ticket-merge <N>` | main checkout | Re-verifies independently (diff, the targeted tests the planner lists at `--level issue`, criterion-to-test, mutation spot-check; the merged tree is re-tested only when `ticket_merge.py baseline` says `MPSkills` moved since the ticket was cut), merges `--no-ff` into `MPSkills`, closes the issue with a criterion-to-test comment, removes the worktree and branch. Never pushes | `scripts/ticket_merge.py` |
 

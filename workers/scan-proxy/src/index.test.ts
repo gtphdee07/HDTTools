@@ -5,6 +5,7 @@
 // at this layer), so these tests are also the only place the real
 // dependency-injection wiring - defaultScanDeps, the lazy claude.ts import -
 // gets exercised at all; every scan.test.ts case uses fake deps instead.
+import "./requireInstall.ts";
 import assert from "node:assert/strict";
 import test, { beforeEach } from "node:test";
 import { jwksUrl } from "./accountTokenContract.ts";

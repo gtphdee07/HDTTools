@@ -4,7 +4,7 @@ How to make a brand-new git worktree test-ready on a machine that is already set
 
 ## Why it is needed
 
-A new worktree contains only tracked files. Everything gitignored is missing, so tests that pass in the main checkout fail in the worktree, often confusingly. The Scan Proxy returning 502 when its install is missing is one example (reported in #83).
+A new worktree contains only tracked files. Everything gitignored is missing, so tests that pass in the main checkout fail in the worktree, often confusingly. The Scan Proxy returning 502 when its install is missing was one example (reported in #83); its tests now stop with the install command instead (#82).
 
 ## The step
 

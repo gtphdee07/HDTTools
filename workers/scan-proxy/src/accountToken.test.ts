@@ -1,6 +1,7 @@
 // Account-token verification, tested at the Worker's HTTP boundary (worker.fetch)
 // with RevenueCat, Anthropic and Supabase's JWKS endpoint all faked behind one
 // mocked global fetch. A locally generated ES256 key pair stands in for Supabase's.
+import "./requireInstall.ts";
 import assert from "node:assert/strict";
 import test, { beforeEach, type TestContext } from "node:test";
 import {

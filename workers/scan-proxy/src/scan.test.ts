@@ -1,6 +1,7 @@
 // Unit tests for the money-critical control flow in scan.ts, using fake
-// deps — no real Anthropic SDK or network call involved, so these run with
-// nothing installed beyond Node itself.
+// deps — no real Anthropic SDK or network call involved. Still needs the proxy's
+// `npm install` (requireInstall.ts stops with the fix when it is missing).
+import "./requireInstall.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { ScanRequest } from "./request.ts";

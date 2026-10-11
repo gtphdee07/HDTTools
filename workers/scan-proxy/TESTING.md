@@ -25,6 +25,20 @@ time-cadence tiers" section for why that's now one axis, not two.
 that deploys. A command check (`tests/test_context_test_commands.py`, #52)
 confirms this.
 
+### Missing install (#82)
+
+Every top-level `src/*.test.ts` starts with `import "./requireInstall.ts";`.
+If `npm install` was never run here (a fresh git worktree has no
+`node_modules`), the file fails at load with the missing package and the
+command to run (`npm --prefix workers/scan-proxy install`), instead of the
+misleading "expected 200, got 502" the lazily loaded Claude SDK used to
+produce. The guard is test-only; the shipped Worker does not import it, so
+a genuine Claude failure still refunds and returns 502. The Python wrapper
+tests (`tests/test_context_test_commands.py`) check first and fail with the
+same message; `tests/test_scan_proxy_install_guard.py` proves it against a
+copy of the proxy with no `node_modules`. A new top-level test file must
+also import the guard first (that test enforces it).
+
 ### Release run (#62)
 
 `.\release.ps1` is the one command for a Worker deploy: it runs the
@@ -297,6 +311,12 @@ validates a real token against.
 - **an unknown route returns the same generic 404**.
 - **malformed JSON body returns 400 bad_request, not a 500**.
 - **valid JSON that fails parseScanRequest returns 400 with that specific message, not swallowed** — proves `index.ts` passes `parseScanRequest`'s actual error message through rather than replacing it with something generic.
+
+### `installGuard.test.ts` — `installGuard.ts`, the missing-install check every top-level test file imports first (#82)
+
+- `[sanity]` **reports every runtime dependency the resolver cannot find**, **reports nothing when all resolve**, and **only reports the ones that fail** — the pure `missingDependencies` with an injected resolver.
+- `[sanity]` **the message names the missing package and the exact install command** — `npm --prefix workers/scan-proxy install`.
+- `[sanity]` **with the real install present, the real dependencies all resolve** — pins the default (package.json `dependencies`) so a renamed dependency is noticed.
 
 ### `weekly/scan.weekly.test.ts` — real network, against the live deployed Worker (`npm run test:weekly` only)
 

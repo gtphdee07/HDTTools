@@ -18,7 +18,7 @@ It guesses Android from the title or an `android/` path in the body. If it guess
 
 ## 2. If it stopped
 
-Report each reason to the owner in a sentence and end. Do not work around a stop: no manual assigning, no `git worktree add`, no `--force`. A blocker or assignee is the owner's call.
+Report each reason to the owner in a sentence and end. Blockers, assignees and a busy emulator are the owner's calls; the owner re-runs the skill once they are cleared.
 
 ## 3. If it succeeded
 

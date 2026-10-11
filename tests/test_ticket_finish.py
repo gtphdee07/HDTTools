@@ -380,3 +380,35 @@ def test_pushed_is_yes_only_when_the_remote_branch_holds_head(worktree, tmp_path
     _git(worktree, "add", "more.txt")
     _git(worktree, "commit", "-q", "-m", "more")
     assert finish.is_pushed(common.real_shell, worktree) is False
+
+
+def test_post_ready_is_refused_when_the_branch_has_no_commits(worktree, tmp_path):
+    _git(worktree, "reset", "-q", "--hard", "MPSkills")
+    gh = Gh()
+
+    code, out = _post(worktree, gh, _report(tmp_path), tmp_path)
+
+    assert code == 1 and "no commits" in out.lower()
+    assert gh.comments == []
+
+
+def test_post_ready_is_refused_when_a_forbidden_file_is_committed(worktree, tmp_path):
+    (worktree / "dashboard.svg").write_text("<svg/>")
+    _git(worktree, "add", "dashboard.svg")
+    _git(worktree, "commit", "-q", "-m", "oops")
+    gh = Gh()
+
+    code, out = _post(worktree, gh, _report(tmp_path), tmp_path)
+
+    assert code == 1 and "dashboard.svg" in out
+    assert gh.comments == []
+
+
+def test_a_suite_result_written_as_text_is_refused_not_read_as_true(worktree, tmp_path):
+    report = _report(tmp_path, suites=[{"command": "uv run pytest", "passed": "false", "summary": "3 failed"}])
+    gh = Gh()
+
+    code, out = _post(worktree, gh, report, tmp_path)
+
+    assert code == 1 and "uv run pytest" in out and "true or false" in out
+    assert gh.comments == []

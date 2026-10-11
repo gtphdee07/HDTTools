@@ -290,3 +290,19 @@ def test_unknown_ticket_is_a_clear_error(repo, tmp_path):
     code = ticket_start.start(90, shell=gh, root=repo, temp=tmp_path, out=lines.append, setup=lambda wt: 0)
 
     assert code == 1 and "#90" in "\n".join(lines)
+
+
+def test_a_failed_worktree_add_rolls_the_claim_back(repo, tmp_path):
+    gh = Gh(_issue())
+
+    def shell(cmd, cwd=None):
+        if list(cmd)[:3] == ["git", "worktree", "add"]:
+            return Result(128, "", "fatal: boom")
+        return gh(cmd, cwd)
+
+    lines = []
+    code = ticket_start.start(90, shell=shell, root=repo, temp=tmp_path, out=lines.append, setup=lambda wt: 0)
+
+    assert code == 1 and "rolled back" in "\n".join(lines)
+    assert ["gh", "issue", "edit", "90", "--add-assignee", "@me"] in gh.calls
+    assert ["gh", "issue", "edit", "90", "--remove-assignee", "@me"] in gh.calls

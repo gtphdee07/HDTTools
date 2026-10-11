@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Callable
@@ -28,36 +29,32 @@ from typing import Callable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ticket_common import (  # noqa: E402
-    BASE_BRANCH, Shell, branch_name, gh_issue, main_checkout, real_shell, worktree_relpath,
+    BASE_BRANCH, Shell, branch_name, gh_issue, git, main_checkout, real_shell, worktree_relpath,
 )
 
 
-def _git(shell: Shell, root: Path, *cmd: str):
-    return shell(["git", *cmd], root)
-
-
-def latest_status(comments: list[dict]) -> str | None:
-    """The first line of the newest comment that starts with `STATUS:`."""
+def latest_status_comment(comments: list[dict]) -> str | None:
+    """The newest comment that starts with `STATUS:`."""
     for c in reversed(comments):
         body = (c.get("body") or "").lstrip()
         if body.startswith("STATUS:"):
-            return body.splitlines()[0].strip()
+            return body
     return None
 
 
 def preflight(n: int, *, shell: Shell, root: Path, allow_status: bool = False) -> list[str]:
     reasons = []
-    top = _git(shell, root, "rev-parse", "--show-toplevel").out.strip()
+    top = git(shell, root, "rev-parse", "--show-toplevel").out.strip()
     main = main_checkout(shell, root)
     if main is None or not top or Path(top).resolve() != main.resolve():
         reasons.append("Not the main checkout; run this from the repository's main checkout, not from a worktree.")
-    current = _git(shell, root, "branch", "--show-current").out.strip()
+    current = git(shell, root, "branch", "--show-current").out.strip()
     if current != BASE_BRANCH:
         reasons.append(f"{BASE_BRANCH} must be checked out here (found {current or 'a detached HEAD'}).")
-    if _git(shell, root, "status", "--porcelain").out.strip():
+    if git(shell, root, "status", "--porcelain").out.strip():
         reasons.append("The main checkout has uncommitted changes.")
 
-    ahead = _git(shell, root, "rev-list", "--count", f"{BASE_BRANCH}..{branch_name(n)}")
+    ahead = git(shell, root, "rev-list", "--count", f"{BASE_BRANCH}..{branch_name(n)}")
     if not ahead.ok or not ahead.out.strip().isdigit() or int(ahead.out) == 0:
         reasons.append(f"Branch {branch_name(n)} is missing or has no commits ahead of {BASE_BRANCH}.")
 
@@ -65,11 +62,20 @@ def preflight(n: int, *, shell: Shell, root: Path, allow_status: bool = False) -
     if issue is None:
         reasons.append(f"Could not read ticket #{n} with gh.")
     else:
-        status = latest_status(issue.get("comments", []))
-        if status is None:
+        comment = latest_status_comment(issue.get("comments", []))
+        if comment is None:
             reasons.append(f"Ticket #{n} has no STATUS: comment; run /ticket-finish in its worktree first.")
-        elif status != "STATUS: READY TO MERGE" and not allow_status:
-            reasons.append(f"The latest status is `{status}`, not READY TO MERGE.")
+        else:
+            status = comment.splitlines()[0].strip()
+            if status != "STATUS: READY TO MERGE" and not allow_status:
+                reasons.append(f"The latest status is `{status}`, not READY TO MERGE.")
+            reported = re.search(rf"`{re.escape(branch_name(n))}` at `([0-9a-f]+)`", comment)
+            tip = git(shell, root, "rev-parse", branch_name(n)).out.strip()
+            if reported and tip and not tip.startswith(reported.group(1)):
+                reasons.append(
+                    f"{branch_name(n)} is at {tip[:7]} but the STATUS comment vouches for {reported.group(1)}; "
+                    "commits were added after it. Re-run /ticket-finish."
+                )
     return reasons
 
 
@@ -77,19 +83,19 @@ def merge(n: int, *, shell: Shell, root: Path, out: Callable[[str], None] = prin
     issue = gh_issue(shell, root, n, "number,title") or {}
     title = issue.get("title") or f"ticket {n}"
     message = f"Merge #{n} {title} ({branch_name(n)})"
-    result = _git(shell, root, "merge", "--no-ff", "-m", message, branch_name(n))
+    result = git(shell, root, "merge", "--no-ff", "-m", message, branch_name(n))
     if not result.ok:
-        _git(shell, root, "merge", "--abort")
+        git(shell, root, "merge", "--abort")
         out(f"Merge conflict merging {branch_name(n)} into {BASE_BRANCH}; the merge was aborted and nothing changed.")
         out(result.out.strip() or result.err.strip())
         return 1
-    out(f"Merged {branch_name(n)} into {BASE_BRANCH} at {_git(shell, root, 'rev-parse', '--short', 'HEAD').out.strip()} (not pushed).")
+    out(f"Merged {branch_name(n)} into {BASE_BRANCH} at {git(shell, root, 'rev-parse', '--short', 'HEAD').out.strip()} (not pushed).")
     return 0
 
 
 def close(n: int, comment_file: Path, *, shell: Shell, root: Path, out: Callable[[str], None] = print) -> int:
     branch = branch_name(n)
-    if not _git(shell, root, "merge-base", "--is-ancestor", branch, BASE_BRANCH).ok:
+    if not git(shell, root, "merge-base", "--is-ancestor", branch, BASE_BRANCH).ok:
         out(f"{branch} is not merged into {BASE_BRANCH}; run the merge step first. Nothing was closed.")
         return 1
     body = Path(comment_file).read_text(encoding="utf-8")
@@ -97,7 +103,7 @@ def close(n: int, comment_file: Path, *, shell: Shell, root: Path, out: Callable
         out("The comment needs a criterion-to-test table (| Criterion | Proven by |); nothing was closed.")
         return 1
 
-    sha = _git(shell, root, "rev-parse", "--short", BASE_BRANCH).out.strip()
+    sha = git(shell, root, "rev-parse", "--short", BASE_BRANCH).out.strip()
     comment = f"Merged into {BASE_BRANCH} at {sha} (`--no-ff`); not pushed.\n\n{body.strip()}\n"
     closed = shell(["gh", "issue", "close", str(n), "--comment", comment], root)
     if not closed.ok:
@@ -105,7 +111,7 @@ def close(n: int, comment_file: Path, *, shell: Shell, root: Path, out: Callable
         return 1
     out(f"Closed #{n}.")
 
-    removed = _git(shell, root, "worktree", "remove", worktree_relpath(n))
+    removed = git(shell, root, "worktree", "remove", worktree_relpath(n))
     if not removed.ok:
         out(
             f"#{n} is closed, but the worktree was not removed: {removed.err.strip()}\n"
@@ -113,7 +119,7 @@ def close(n: int, comment_file: Path, *, shell: Shell, root: Path, out: Callable
             f"`git worktree prune` and `git branch -d {branch}`."
         )
         return 1
-    deleted = _git(shell, root, "branch", "-d", branch)
+    deleted = git(shell, root, "branch", "-d", branch)
     if not deleted.ok:
         out(f"Worktree removed, but `git branch -d {branch}` failed: {deleted.err.strip()}")
         return 1

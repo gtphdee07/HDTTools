@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -109,7 +110,8 @@ def _already_exists(shell: Shell, root: Path, n: int) -> list[str]:
 
 
 def _run_setup(worktree: Path) -> int:
-    return subprocess.run(["uv", "run", "scripts/worktree_setup.py"], cwd=worktree).returncode
+    # Streams its output (npm ci takes minutes), so it bypasses the capturing Shell.
+    return subprocess.run([shutil.which("uv") or "uv", "run", "scripts/worktree_setup.py"], cwd=worktree).returncode
 
 
 def start(
@@ -151,7 +153,8 @@ def start(
     rel = worktree_relpath(n)
     added = shell(["git", "worktree", "add", rel, "-b", branch_name(n), BASE_BRANCH], root)
     if not added.ok:
-        out(f"git worktree add failed: {added.err.strip()}\n#{n} stays assigned; unassign it if you abandon it.")
+        shell(["gh", "issue", "edit", str(n), "--remove-assignee", "@me"], root)
+        out(f"git worktree add failed: {added.err.strip()}\nThe assignment on #{n} was rolled back.")
         return 1
     worktree = root / rel
     out(f"Created {rel} on {branch_name(n)} from {BASE_BRANCH}.")

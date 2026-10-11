@@ -36,7 +36,7 @@ from typing import Callable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ticket_common import (  # noqa: E402
-    BASE_BRANCH, Shell, gh_issue, real_shell, scratch_path, ticket_from_branch,
+    BASE_BRANCH, Shell, gh_issue, git_out, real_shell, scratch_path, ticket_from_branch,
 )
 
 STATUSES = ("READY TO MERGE", "PARTIAL", "BLOCKED")
@@ -65,13 +65,17 @@ def forbidden_paths(paths) -> list[str]:
     return bad
 
 
-def refusals(status, *, tree_clean, suites, rows, criteria, not_done="") -> list[str]:
+def _proven(rows) -> dict[str, str]:
+    return {r["criterion"].strip(): r.get("proven_by", "").strip() for r in rows}
+
+
+def refusals(status, *, tree_clean, suites, rows, criteria, not_done="", branch_problems=()) -> list[str]:
     if status not in STATUSES:
         return [f"Unknown status {status!r}; use one of: {', '.join(STATUSES)}."]
     if status != "READY TO MERGE":
         return [] if not_done.strip() else [f"{status} must say what is not done and why (not_done)."]
 
-    reasons = []
+    reasons = list(branch_problems)
     if not tree_clean:
         reasons.append("The working tree is dirty (uncommitted changes); commit or discard them first.")
     if not suites:
@@ -79,7 +83,7 @@ def refusals(status, *, tree_clean, suites, rows, criteria, not_done="") -> list
     reasons.extend(f"Required suite failed: `{s.command}`" + (f" ({s.summary})" if s.summary else "") for s in suites if not s.passed)
     if not criteria:
         reasons.append("The ticket lists no acceptance criteria, so nothing can be proven.")
-    proven = {r["criterion"].strip(): r.get("proven_by", "").strip() for r in rows}
+    proven = _proven(rows)
     reasons.extend(f"No test named for criterion: {c}" for c in criteria if not proven.get(c.strip()))
     return reasons
 
@@ -89,7 +93,7 @@ def _cell(text: str) -> str:
 
 
 def render_comment(*, status, branch, sha, worktree, pushed, criteria, rows, suites, review, not_done, owner_actions, followups) -> str:
-    proven = {r["criterion"].strip(): r.get("proven_by", "").strip() for r in rows}
+    proven = _proven(rows)
     table = [f"| {_cell(c)} | {_cell(proven.get(c.strip()) or 'NOT PROVEN')} |" for c in criteria]
     ran = "; ".join(
         f"`{s.command}`: {'PASS' if s.passed else 'FAIL'}" + (f" - {s.summary}" if s.summary else "") for s in suites
@@ -115,12 +119,8 @@ def render_comment(*, status, branch, sha, worktree, pushed, criteria, rows, sui
     )
 
 
-def _out(shell: Shell, root: Path, *cmd: str) -> str:
-    return shell(["git", *cmd], root).out.strip()
-
-
 def is_pushed(shell: Shell, root: Path) -> bool:
-    branch = _out(shell, root, "branch", "--show-current")
+    branch = git_out(shell, root, "branch", "--show-current")
     remote = f"refs/remotes/origin/{branch}"
     if not branch or not shell(["git", "rev-parse", "--verify", "--quiet", remote], root).ok:
         return False
@@ -128,19 +128,19 @@ def is_pushed(shell: Shell, root: Path) -> bool:
 
 
 def preflight(shell: Shell, root: Path) -> tuple[list[str], dict]:
-    branch = _out(shell, root, "branch", "--show-current")
-    ahead_text = _out(shell, root, "rev-list", "--count", f"{BASE_BRANCH}..HEAD")
+    branch = git_out(shell, root, "branch", "--show-current")
+    ahead_text = git_out(shell, root, "rev-list", "--count", f"{BASE_BRANCH}..HEAD")
     ahead = int(ahead_text) if ahead_text.isdigit() else 0
-    info = {"branch": branch, "ahead": ahead, "sha": _out(shell, root, "rev-parse", "--short", "HEAD")}
+    info = {"branch": branch, "ahead": ahead, "sha": git_out(shell, root, "rev-parse", "--short", "HEAD")}
 
     reasons = []
     if ticket_from_branch(branch) is None:
         reasons.append(f"Branch {branch!r} is not a ticket-<N> branch; run this inside the ticket's worktree.")
-    if _out(shell, root, "status", "--porcelain"):
+    if git_out(shell, root, "status", "--porcelain"):
         reasons.append("The working tree has uncommitted changes (git status is not clean).")
     if ahead == 0:
         reasons.append(f"The branch has no commits ahead of {BASE_BRANCH}; /implement committed nothing.")
-    changed = _out(shell, root, "diff", "--name-only", f"{BASE_BRANCH}...HEAD").splitlines()
+    changed = git_out(shell, root, "diff", "--name-only", f"{BASE_BRANCH}...HEAD").splitlines()
     reasons.extend(f"Committed file a feature branch must not carry: {p}" for p in forbidden_paths(changed))
     return reasons, info
 
@@ -154,7 +154,7 @@ def post(
     out: Callable[[str], None] = print,
     dry_run: bool = False,
 ) -> int:
-    branch = _out(shell, root, "branch", "--show-current")
+    branch = git_out(shell, root, "branch", "--show-current")
     n = ticket_from_branch(branch)
     if n is None:
         out(f"Branch {branch!r} is not a ticket-<N> branch; run this inside the ticket's worktree.")
@@ -168,11 +168,19 @@ def post(
     status = report.get("status", "")
     criteria = parse_criteria(issue.get("body") or "")
     rows = report.get("criteria", [])
-    suites = [SuiteResult(s["command"], bool(s["passed"]), s.get("summary", "")) for s in report.get("suites", [])]
-    tree_clean = not _out(shell, root, "status", "--porcelain")
+    raw_suites = report.get("suites", [])
+    unclear = [s.get("command", "?") for s in raw_suites if not isinstance(s.get("passed"), bool)]
+    if unclear:
+        out(f"REFUSED: `passed` must be true or false (not text) for: {', '.join(unclear)}. Nothing was posted.")
+        return 1
+    suites = [SuiteResult(s["command"], s["passed"], s.get("summary", "")) for s in raw_suites]
+    tree_clean = not git_out(shell, root, "status", "--porcelain")
 
+    # The tree check is refusals' own; the rest of preflight (commits, forbidden files) guards READY too.
+    branch_problems = [r for r in preflight(shell, root)[0] if "uncommitted" not in r]
     problems = refusals(
-        status, tree_clean=tree_clean, suites=suites, rows=rows, criteria=criteria, not_done=report.get("not_done", "")
+        status, tree_clean=tree_clean, suites=suites, rows=rows, criteria=criteria,
+        not_done=report.get("not_done", ""), branch_problems=branch_problems,
     )
     if problems:
         out(f"REFUSED to post STATUS: {status}. Nothing was posted.")
@@ -184,8 +192,8 @@ def post(
     comment = render_comment(
         status=status,
         branch=branch,
-        sha=_out(shell, root, "rev-parse", "--short", "HEAD"),
-        worktree=_out(shell, root, "rev-parse", "--show-toplevel"),
+        sha=git_out(shell, root, "rev-parse", "--short", "HEAD"),
+        worktree=git_out(shell, root, "rev-parse", "--show-toplevel"),
         pushed=is_pushed(shell, root),
         criteria=criteria,
         rows=rows,
@@ -233,7 +241,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  - {r}")
         return 1 if reasons else 0
     if args.command == "criteria":
-        n = ticket_from_branch(_out(real_shell, root, "branch", "--show-current"))
+        n = ticket_from_branch(git_out(real_shell, root, "branch", "--show-current"))
         issue = gh_issue(real_shell, root, n, "number,body") if n else None
         if issue is None:
             print("Run this inside a ticket-<N> worktree with gh available.", file=sys.stderr)

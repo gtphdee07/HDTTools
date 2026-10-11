@@ -253,3 +253,18 @@ def test_a_worktree_that_will_not_go_is_reported_with_the_issue_already_closed(r
 
     assert code == 1 and "worktree-setup.md" in out
     assert len(real.closed_with()) == 1
+
+
+def test_preflight_refuses_commits_added_after_the_status_comment(repo):
+    wt = repo / ".claude" / "worktrees" / "ticket-9"
+    vouched = _git(wt, "rev-parse", "--short", "HEAD")
+    comment = f"STATUS: READY TO MERGE\n\nBranch: `ticket-9` at `{vouched}` (worktree: `w`; pushed: no)"
+    assert merge.preflight(9, shell=Gh(comments=(comment,)), root=repo) == []
+
+    (wt / "late.txt").write_text("late\n")
+    _git(wt, "add", "late.txt")
+    _git(wt, "commit", "-q", "-m", "late")
+
+    reasons = merge.preflight(9, shell=Gh(comments=(comment,)), root=repo)
+
+    assert any("after it" in r and vouched in r for r in reasons)

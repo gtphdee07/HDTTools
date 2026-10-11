@@ -16,7 +16,7 @@ Exit 0 means the tree is clean, the branch has commits, and no forbidden file (`
 
 ## 2. Run the required suites
 
-`uv run scripts/test_planner.py --base MPSkills --level issue`, then `--level session`, name what the branch's commits require (the default base is HEAD, which sees nothing once committed) (rules: `docs/test-audit/rules.md`). Run every **free** suite they list, plus the typecheck/lint/build the surface's `TESTING.md` names. Record each command, pass or fail, and the counts.
+Run `uv run scripts/test_planner.py --base MPSkills --level issue`, then `--level session`; they name what the branch's commits require (rules: `docs/test-audit/rules.md`). `--base MPSkills` matters: the default base, HEAD, sees nothing once work is committed. Run every **free** suite they list, plus the typecheck/lint/build the surface's `TESTING.md` names. Record each command, pass or fail, and the counts.
 
 Paid or live suites (`action: confirm` in the plan) run only when the owner has set a budget in this session; otherwise list them under "Not done" with the cost. A failing suite is a result, not something to retry away: find out whether the change broke it.
 

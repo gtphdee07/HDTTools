@@ -3,7 +3,8 @@ ticket_finish.py and ticket_merge.py back the /ticket-start, /ticket-finish
 and /ticket-merge skills (docs/agents/ticket-skills.md).
 
 Every script talks to git and gh through a `Shell` so its decision logic can
-be tested with a fake one; `real_shell` is the only place a process starts.
+be tested with a fake one; `real_shell` is the only place a captured process
+starts (ticket_start.py also streams the long setup run directly).
 """
 
 from __future__ import annotations
@@ -39,6 +40,14 @@ def real_shell(cmd: Sequence[str], cwd: Path | None = None) -> Result:
     exe = shutil.which(cmd[0]) or cmd[0]
     p = subprocess.run([exe, *cmd[1:]], cwd=cwd, capture_output=True, text=True, encoding="utf-8")
     return Result(p.returncode, p.stdout, p.stderr)
+
+
+def git(shell: Shell, root: Path, *cmd: str) -> Result:
+    return shell(["git", *cmd], root)
+
+
+def git_out(shell: Shell, root: Path, *cmd: str) -> str:
+    return git(shell, root, *cmd).out.strip()
 
 
 def branch_name(n: int) -> str:

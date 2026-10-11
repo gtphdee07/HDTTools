@@ -3,7 +3,12 @@
 # cells, then stages it so the README graphic is committed with the change.
 # Runs no tests and contacts no registry. Never blocks a commit: on any
 # failure it warns and lets the commit continue.
+# Skipped on ticket-<N> branches: a feature branch must not carry a regenerated
+# dashboard.svg (docs/agents/session-handoff.md); the merge owner regenerates it.
 # Enable once per clone: git config core.hooksPath .githooks
+case "$(git branch --show-current)" in
+  ticket-*) exit 0 ;;
+esac
 if uv run scripts/generate_dashboard.py --from-snapshot >/dev/null 2>&1; then
   git add dashboard.svg
 else

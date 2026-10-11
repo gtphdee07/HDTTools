@@ -8,7 +8,16 @@ Only stale surfaces in the platform's dependency chain run. Fresh ones are
 left alone, `--skip` records `skipped` (which never advances freshness), a
 stale surface with no test tagged `[surface]` is recorded as a fail rather
 than a false pass, and each run surface is recorded pass or fail. The test
-command receives the surfaces to run in EXTERNAL_SURFACES (comma-separated).
+command receives the surfaces to run in EXTERNAL_SURFACES (comma-separated)
+and a path in EXTERNAL_RESULTS_FILE to write its JUnit XML to.
+
+Each surface is decided from its own tagged tests in that file, not from the
+run's single exit code: it passes only if none of its tests failed and at
+least one passed, so one surface's failure never marks another failed and a
+surface with nothing run is not a pass. The exit code decides every surface
+only when there is no per-test data (the runner wrote nothing usable), or
+when it is non-zero yet no tagged test failed (a failure nobody can be blamed
+for, e.g. a suite that would not load).
 
 A surface with a declared `max_paid_calls` in the manifest is gated by
 scripts/paid_call_budget.py: the owner is asked to confirm before it runs
@@ -31,6 +40,9 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
+import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -45,7 +57,9 @@ TAG_FORMATS = {
 }
 
 
-def execute_plan(verdicts, *, skip, has_tests, run_tests, record, out=print, paid_calls=None, budget=None) -> int:
+def execute_plan(
+    verdicts, *, skip, has_tests, run_tests, record, out=print, paid_calls=None, budget=None, read_results=None
+) -> int:
     for v in verdicts:
         reasons = f": {'; '.join(v.reasons)}" if v.reasons else ""
         out(f"{v.surface} - {v.state}{reasons}")
@@ -91,12 +105,82 @@ def execute_plan(verdicts, *, skip, has_tests, run_tests, record, out=print, pai
         return 1
 
     code = run_tests([v.surface for v in to_run])
-    outcome = "pass" if code == 0 else "fail"
+    results = read_results([v.surface for v in to_run]) if read_results else None
+    if results is not None and code != 0 and not any(c.failed for c in results.values()):
+        out("The run failed but no tagged test did; recording every surface as failed.")
+        results = None
+    all_passed = True
     for v in to_run:
+        outcome = decide_outcome(code, None if results is None else results.get(v.surface), per_test=results is not None)
+        if results is not None and outcome == "fail" and v.surface not in results:
+            out(f"No tests tagged [{v.surface}] ran; recording fail.")
         record(v.surface, outcome, v.versions)
-    if (untested or len(to_run) < len(runnable)) and code == 0:
+        all_passed = all_passed and outcome == "pass"
+    if code == 0 and (untested or len(to_run) < len(runnable) or not all_passed):
         return 1
     return code
+
+
+def decide_outcome(code: int, counts: Counts | None, *, per_test: bool) -> str:
+    """A surface's own tests decide it when the run produced per-test data: it
+    passes only if none failed and at least one passed (a surface with nothing
+    run is not a pass). Without per-test data the whole run's exit code decides."""
+    if not per_test:
+        return "pass" if code == 0 else "fail"
+    return "pass" if counts is not None and counts.failed == 0 and counts.passed > 0 else "fail"
+
+
+@dataclass(frozen=True)
+class Counts:
+    passed: int = 0
+    failed: int = 0
+    skipped: int = 0
+
+
+def surface_results(xml_text: str, surfaces: list[str], tag=TAG_FORMATS["bracket"]) -> dict[str, Counts] | None:
+    """Per-surface test counts from a runner's JUnit XML (vitest, node --test and
+    pytest all write it). A testcase belongs to a surface when its name, or any
+    enclosing suite's, carries the surface's tag, or when it has a `surface`
+    property naming it (how the pytest plugin tags marker-style tests). None when
+    the XML is unusable or holds no testcase at all, so the caller falls back to
+    the exit code."""
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return None
+    totals: dict[str, list[int]] = {}
+    seen = 0
+
+    def walk(node, names):
+        nonlocal seen
+        for child in node:
+            if child.tag == "testsuite":
+                walk(child, [*names, child.get("name", "")])
+            elif child.tag == "testcase":
+                seen += 1
+                text = " ".join([*names, child.get("classname", ""), child.get("name", "")])
+                props = {p.get("value") for p in child.iter("property") if p.get("name") == "surface"}
+                kind = (
+                    1 if child.find("failure") is not None or child.find("error") is not None
+                    else 2 if child.find("skipped") is not None
+                    else 0
+                )
+                for s in surfaces:
+                    if tag(s) in text or s in props:
+                        totals.setdefault(s, [0, 0, 0])[kind] += 1
+
+    walk(root, [root.get("name", "")] if root.tag == "testsuite" else [])
+    if not seen:
+        return None
+    return {s: Counts(*t) for s, t in totals.items()}
+
+
+def read_results_file(path: Path, surfaces: list[str], tag=TAG_FORMATS["bracket"]) -> dict[str, Counts] | None:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    return surface_results(text, surfaces, tag)
 
 
 def tagged_in(tests_dir: Path, glob: str = "*.external.test.ts", tag=TAG_FORMATS["bracket"]):
@@ -152,22 +236,27 @@ def main(argv: list[str] | None = None) -> int:
     paid_calls = paid_calls_for(manifest, only)
     budget = budget_for(paid_calls, args.max_paid_calls)
 
-    def run_tests(surfaces: list[str]) -> int:
-        exe = shutil.which(command[0]) or command[0]
-        env = {**os.environ, "EXTERNAL_SURFACES": ",".join(surfaces)}
-        return subprocess.run([exe, *command[1:]], cwd=args.cwd, env=env).returncode
+    tag = TAG_FORMATS[args.tag_style]
+    with tempfile.TemporaryDirectory(prefix="hdttools-external-") as tmp:
+        results_file = Path(tmp) / "results.xml"
 
-    return execute_plan(
-        verdicts,
-        skip=args.skip,
-        has_tests=tagged_in(args.tests_dir, args.test_glob, TAG_FORMATS[args.tag_style]),
-        run_tests=run_tests,
-        record=lambda surface, outcome, versions: record_external_result.record_surface(
-            surface, outcome, versions=versions
-        ),
-        paid_calls=paid_calls,
-        budget=budget,
-    )
+        def run_tests(surfaces: list[str]) -> int:
+            exe = shutil.which(command[0]) or command[0]
+            env = {**os.environ, "EXTERNAL_SURFACES": ",".join(surfaces), "EXTERNAL_RESULTS_FILE": str(results_file)}
+            return subprocess.run([exe, *command[1:]], cwd=args.cwd, env=env).returncode
+
+        return execute_plan(
+            verdicts,
+            skip=args.skip,
+            has_tests=tagged_in(args.tests_dir, args.test_glob, tag),
+            run_tests=run_tests,
+            record=lambda surface, outcome, versions: record_external_result.record_surface(
+                surface, outcome, versions=versions
+            ),
+            paid_calls=paid_calls,
+            budget=budget,
+            read_results=lambda surfaces: read_results_file(results_file, surfaces, tag),
+        )
 
 
 if __name__ == "__main__":

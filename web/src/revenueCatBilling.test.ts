@@ -73,6 +73,42 @@ describe('RevenueCat billing client', () => {
     expect(fake.purchases.changeUser).toHaveBeenCalledWith('user-2');
   });
 
+  it('configures the SDK exactly once when two identify calls overlap', async () => {
+    const fake = makeFakeSdk();
+    let releaseLoad: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      releaseLoad = resolve;
+    });
+    const client = createRevenueCatBillingClient(CONFIG, async () => {
+      await gate;
+      return fake.sdk;
+    });
+    // Neither call is awaited before the other starts - like StrictMode's double effect.
+    const first = client.identify('user-1');
+    const second = client.identify('user-1');
+    releaseLoad();
+    await Promise.all([first, second]);
+    expect(fake.configure).toHaveBeenCalledTimes(1);
+  });
+
+  it('ends on the latest account when overlapping identify calls name different accounts', async () => {
+    const fake = makeFakeSdk();
+    let releaseLoad: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      releaseLoad = resolve;
+    });
+    const client = createRevenueCatBillingClient(CONFIG, async () => {
+      await gate;
+      return fake.sdk;
+    });
+    const first = client.identify('user-1');
+    const second = client.identify('user-2');
+    releaseLoad();
+    await Promise.all([first, second]);
+    expect(fake.configure).toHaveBeenCalledTimes(1);
+    expect(fake.purchases.changeUser).toHaveBeenLastCalledWith('user-2');
+  });
+
   it('offers the lifetime package of the configured offering as Pro', async () => {
     const client = clientFor(makeFakeSdk());
     await client.identify('user-1');

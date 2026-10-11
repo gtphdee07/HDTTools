@@ -213,10 +213,12 @@ check_public_key() {
 }
 
 # ask_public_key KEY "Prompt": ask until check_public_key accepts the value.
+# The input is hidden: a secret sk_ key pasted by mistake must not be echoed
+# before it is rejected.
 ask_public_key() {
   local key="$1" prompt="$2"
   while true; do
-    ask "$key" "$prompt"
+    ask_secret "$key" "$prompt (input is hidden)"
     if check_public_key "${!key}"; then return 0; fi
   done
 }

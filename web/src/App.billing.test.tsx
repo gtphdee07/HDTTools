@@ -26,26 +26,64 @@ function makeSignedInAuth(session: AuthSession | null = SESSION) {
   } as unknown as AuthClient;
 }
 
+const SAM: AuthSession = { access_token: 'token-sam', user: { id: 'acct-sam', email: 'sam@example.com' } };
+
+// An auth client the test can drive from outside: it starts signed in as Pat and
+// `emit` signs the app in as someone else, or out (null).
+function makeDrivableAuth() {
+  let listener: ((event: string, session: AuthSession | null) => void) | null = null;
+  const client = {
+    getSession: vi.fn(async () => ({ data: { session: SESSION }, error: null })),
+    onAuthStateChange: vi.fn((cb: (event: string, session: AuthSession | null) => void) => {
+      listener = cb;
+      return { data: { subscription: { unsubscribe: () => {} } } };
+    }),
+    signUp: vi.fn(),
+    signInWithPassword: vi.fn(),
+    signOut: vi.fn(),
+    resetPasswordForEmail: vi.fn(),
+    updateUser: vi.fn(),
+  } as unknown as AuthClient;
+  return {
+    client,
+    emit: (session: AuthSession | null) => act(() => listener?.(session ? 'SIGNED_IN' : 'SIGNED_OUT', session)),
+  };
+}
+
 const STARTER_SCANS = 5;
 
-function makeFakeBilling() {
-  let isPro = false;
-  let scanBalance = 0;
+// With `lazyModal`, purchasePro returns before the SDK has opened the modal (it
+// loads in the background), so no history entry exists until `openModal()`.
+function makeFakeBilling({ lazyModal = false }: { lazyModal?: boolean } = {}) {
+  // RevenueCat keeps status per customer; the purchase lands on whoever started it.
+  const proAccounts = new Set<string>();
+  let currentAccount: string | null = null;
+  let purchaser: string | null = null;
   let finish: ((outcome: PurchaseOutcome) => void) | null = null;
   let fail: ((error: Error) => void) | null = null;
   let detachBack: (() => void) | null = null;
 
+  const openModal = () => {
+    window.history.pushState({ checkoutOpen: true }, '');
+    const onBack = () => finishWith('cancelled');
+    window.addEventListener('popstate', onBack);
+    detachBack = () => window.removeEventListener('popstate', onBack);
+  };
+
   const client = {
-    identify: vi.fn(async () => {}),
+    identify: vi.fn(async (accountId: string) => {
+      currentAccount = accountId;
+    }),
     getProOffer: vi.fn(async () => ({ price: '$9.99' })),
-    getStatus: vi.fn(async () => ({ isPro, scanBalance })),
+    getStatus: vi.fn(async () => {
+      const isPro = currentAccount !== null && proAccounts.has(currentAccount);
+      return { isPro, scanBalance: isPro ? STARTER_SCANS : 0 };
+    }),
     purchasePro: vi.fn(
       () =>
         new Promise<PurchaseOutcome>((resolve, reject) => {
-          window.history.pushState({ checkoutOpen: true }, '');
-          const onBack = () => finishWith('cancelled');
-          window.addEventListener('popstate', onBack);
-          detachBack = () => window.removeEventListener('popstate', onBack);
+          purchaser = currentAccount;
+          if (!lazyModal) openModal();
           finish = resolve;
           fail = reject;
         }),
@@ -57,10 +95,10 @@ function makeFakeBilling() {
   };
   return {
     client: client as unknown as BillingClient & typeof client,
+    openModal,
     // the buyer completes payment in the checkout
     completePayment: () => {
-      isPro = true;
-      scanBalance = STARTER_SCANS;
+      if (purchaser) proAccounts.add(purchaser);
       finishWith('purchased');
     },
     // the payment provider reports a failure
@@ -98,7 +136,7 @@ describe('Buy Pro on Web', () => {
     await openAccount(user);
 
     expect(await screen.findByText('Free plan')).toBeInTheDocument();
-    expect(screen.getByText(/scan credits: 0/i)).toBeInTheDocument();
+    expect(screen.getByText(/Scan Credits: 0/)).toBeInTheDocument();
     expect(screen.getByText(/\$9\.99/)).toBeInTheDocument();
     expect(screen.getByText(/not certified DOT weights/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Buy Pro' })).toBeEnabled();
@@ -117,7 +155,7 @@ describe('Buy Pro on Web', () => {
     act(() => billing.completePayment());
 
     expect(await screen.findByText('Pro plan')).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(`scan credits: ${STARTER_SCANS}`, 'i'))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Scan Credits: ${STARTER_SCANS}`))).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Close checkout' })).not.toBeInTheDocument();
   });
@@ -170,6 +208,77 @@ describe('Buy Pro on Web', () => {
     expect(await screen.findByText('Pro plan')).toBeInTheDocument();
   });
 
+  it('does not hand the Pro of a checkout that settles late to the account that signed in afterwards', async () => {
+    const billing = makeFakeBilling();
+    const auth = makeDrivableAuth();
+    const user = renderApp(billing, auth.client);
+    await openAccount(user);
+
+    await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+    auth.emit(SAM);
+    expect(await screen.findByText('Signed in as sam@example.com')).toBeInTheDocument();
+    expect(await screen.findByText('Free plan')).toBeInTheDocument();
+
+    await act(async () => billing.completePayment());
+
+    expect(screen.getByText('Free plan')).toBeInTheDocument();
+    expect(screen.getByText(/Scan Credits: 0/)).toBeInTheDocument();
+    expect(screen.queryByText(/pro is unlocked/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Buy Pro' })).toBeInTheDocument();
+  });
+
+  it('does not let a checkout that settles after sign-out change the next account that signs in', async () => {
+    const billing = makeFakeBilling();
+    const auth = makeDrivableAuth();
+    const user = renderApp(billing, auth.client);
+    await openAccount(user);
+
+    await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+    auth.emit(null);
+    await act(async () => billing.completePayment());
+    auth.emit(SAM);
+
+    expect(await screen.findByText('Signed in as sam@example.com')).toBeInTheDocument();
+    expect(await screen.findByText('Free plan')).toBeInTheDocument();
+    expect(screen.getByText(/Scan Credits: 0/)).toBeInTheDocument();
+    expect(screen.queryByText(/pro is unlocked/i)).not.toBeInTheDocument();
+  });
+
+  it('does not show another account the error or the cancel notice of an earlier checkout', async () => {
+    const billing = makeFakeBilling();
+    const auth = makeDrivableAuth();
+    const user = renderApp(billing, auth.client);
+    await openAccount(user);
+
+    await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+    auth.emit(SAM);
+    expect(await screen.findByText('Free plan')).toBeInTheDocument();
+    await act(async () => billing.failPayment('Your card was declined.'));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('does not navigate away when Close checkout is pressed before the SDK has opened the modal, and closes it once it has', async () => {
+    const billing = makeFakeBilling({ lazyModal: true });
+    const user = renderApp(billing);
+    await openAccount(user);
+    const lengthBefore = window.history.length;
+    const back = vi.spyOn(window.history, 'back');
+
+    await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+    await user.click(screen.getByRole('button', { name: 'Close checkout' }));
+    expect(back).not.toHaveBeenCalled();
+    expect(window.history.length).toBe(lengthBefore);
+    expect(screen.getByRole('button', { name: 'Close checkout' })).toBeInTheDocument();
+
+    act(() => billing.openModal());
+    await user.click(screen.getByRole('button', { name: 'Close checkout' }));
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole('status')).toHaveTextContent(/not charged/i);
+    expect(screen.queryByRole('button', { name: 'Close checkout' })).not.toBeInTheDocument();
+    back.mockRestore();
+  });
+
   it('does not start a second checkout while one is open', async () => {
     const billing = makeFakeBilling();
     const user = renderApp(billing);
@@ -200,7 +309,7 @@ describe('Buy Pro on Web', () => {
     await openAccount(user);
 
     expect(await screen.findByText('Pro plan')).toBeInTheDocument();
-    expect(screen.getByText(/scan credits: 12/i)).toBeInTheDocument();
+    expect(screen.getByText(/Scan Credits: 12/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
   });
 

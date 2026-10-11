@@ -82,9 +82,15 @@ export function BillingProvider({ client, children }: { client: BillingClient | 
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const checkoutOpenRef = useRef(false);
+  // The account signed in right now, readable from a checkout that settles later.
+  const accountRef = useRef<string | null>(null);
+  // Where the history stood when the open checkout began, to tell whether the
+  // modal has pushed its own entry yet.
+  const checkoutHistoryRef = useRef<{ length: number; state: unknown } | null>(null);
 
   // Each signed-in account gets its own plan, balance and offer; signing out clears them.
   useEffect(() => {
+    accountRef.current = userId;
     setIsPro(false);
     setScanBalance(null);
     setProOffer(null);
@@ -118,21 +124,29 @@ export function BillingProvider({ client, children }: { client: BillingClient | 
   const buyPro = useCallback(async () => {
     if (!client || checkoutOpenRef.current) return;
     checkoutOpenRef.current = true;
+    checkoutHistoryRef.current = { length: window.history.length, state: window.history.state };
     setCheckoutOpen(true);
     setError(null);
     setNotice(null);
+
+    // The outcome belongs to the account that started the checkout; if someone
+    // else is signed in (or nobody) by the time it settles, it must not touch them.
+    const buyer = accountRef.current;
+    const stillBuyer = () => accountRef.current === buyer;
 
     let outcome: PurchaseOutcome;
     try {
       outcome = await client.purchasePro();
     } catch (err) {
-      setError(message(err, 'The purchase could not be completed. You were not charged.'));
+      if (stillBuyer()) setError(message(err, 'The purchase could not be completed. You were not charged.'));
       return;
     } finally {
       checkoutOpenRef.current = false;
+      checkoutHistoryRef.current = null;
       setCheckoutOpen(false);
     }
 
+    if (!stillBuyer()) return;
     if (outcome === 'cancelled') {
       setNotice('Checkout closed. You were not charged.');
       return;
@@ -143,15 +157,20 @@ export function BillingProvider({ client, children }: { client: BillingClient | 
     setNotice('Thank you! Pro is unlocked.');
     try {
       const status = await client.getStatus();
-      setScanBalance(status.scanBalance);
+      if (stillBuyer()) setScanBalance(status.scanBalance);
     } catch {
-      setError('Your purchase went through, but we could not refresh your scan balance. Reload to see it.');
+      if (stillBuyer()) setError('Your purchase went through, but we could not refresh your scan balance. Reload to see it.');
     }
   }, [client]);
 
   // The RevenueCat modal has no close control of its own (purchases-js #973),
-  // and cancels only on browser Back, so ours goes Back too.
-  const closeCheckout = useCallback(() => window.history.back(), []);
+  // and cancels only on browser Back, so ours goes Back too - but only once the
+  // modal has pushed its history entry; before that, Back would leave the page.
+  const closeCheckout = useCallback(() => {
+    const start = checkoutHistoryRef.current;
+    if (!start) return;
+    if (window.history.length > start.length || window.history.state !== start.state) window.history.back();
+  }, []);
 
   const value = useMemo<BillingState>(
     () =>

@@ -42,6 +42,7 @@ import subprocess
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -111,23 +112,18 @@ def execute_plan(
         results = None
     all_passed = True
     for v in to_run:
-        outcome = decide_outcome(code, None if results is None else results.get(v.surface), per_test=results is not None)
-        if results is not None and outcome == "fail" and v.surface not in results:
-            out(f"No tests tagged [{v.surface}] ran; recording fail.")
+        if results is None:
+            outcome = "pass" if code == 0 else "fail"
+        else:
+            counts = results.get(v.surface, Counts())
+            outcome = "pass" if counts.passed > 0 and counts.failed == 0 else "fail"
+            if counts.passed + counts.failed == 0:
+                out(f"No tests tagged [{v.surface}] ran; recording fail.")
         record(v.surface, outcome, v.versions)
         all_passed = all_passed and outcome == "pass"
     if code == 0 and (untested or len(to_run) < len(runnable) or not all_passed):
         return 1
     return code
-
-
-def decide_outcome(code: int, counts: Counts | None, *, per_test: bool) -> str:
-    """A surface's own tests decide it when the run produced per-test data: it
-    passes only if none failed and at least one passed (a surface with nothing
-    run is not a pass). Without per-test data the whole run's exit code decides."""
-    if not per_test:
-        return "pass" if code == 0 else "fail"
-    return "pass" if counts is not None and counts.failed == 0 and counts.passed > 0 else "fail"
 
 
 @dataclass(frozen=True)
@@ -148,7 +144,7 @@ def surface_results(xml_text: str, surfaces: list[str], tag=TAG_FORMATS["bracket
         root = ET.fromstring(xml_text)
     except ET.ParseError:
         return None
-    totals: dict[str, list[int]] = {}
+    totals: dict[str, Counter] = {}
     seen = 0
 
     def walk(node, names):
@@ -160,19 +156,20 @@ def surface_results(xml_text: str, surfaces: list[str], tag=TAG_FORMATS["bracket
                 seen += 1
                 text = " ".join([*names, child.get("classname", ""), child.get("name", "")])
                 props = {p.get("value") for p in child.iter("property") if p.get("name") == "surface"}
-                kind = (
-                    1 if child.find("failure") is not None or child.find("error") is not None
-                    else 2 if child.find("skipped") is not None
-                    else 0
-                )
+                if child.find("failure") is not None or child.find("error") is not None:
+                    kind = "failed"
+                elif child.find("skipped") is not None:
+                    kind = "skipped"
+                else:
+                    kind = "passed"
                 for s in surfaces:
                     if tag(s) in text or s in props:
-                        totals.setdefault(s, [0, 0, 0])[kind] += 1
+                        totals.setdefault(s, Counter())[kind] += 1
 
     walk(root, [root.get("name", "")] if root.tag == "testsuite" else [])
     if not seen:
         return None
-    return {s: Counts(*t) for s, t in totals.items()}
+    return {s: Counts(**c) for s, c in totals.items()}
 
 
 def read_results_file(path: Path, surfaces: list[str], tag=TAG_FORMATS["bracket"]) -> dict[str, Counts] | None:

@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
     hookTimeout: 30_000,
   }
   const resultsFile = process.env.EXTERNAL_RESULTS_FILE
-  const envFor =(prefixes: string[]) => loadEnv(mode, process.cwd(), prefixes)
+  const envFor = (prefixes: string[]) => loadEnv(mode, process.cwd(), prefixes)
 
   return {
     test: {

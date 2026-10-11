@@ -295,14 +295,15 @@ JUNIT = """<?xml version="1.0"?>
 </testsuites>
 """
 
+# The shape `node --test --test-reporter=junit` really writes: top-level tests are bare testcases
+# under <testsuites>, a describe() is a <testsuite> named for it, and tests the name pattern
+# filtered out are absent.
 NODE_JUNIT = """<?xml version="1.0"?>
 <testsuites>
-  <testsuite name="file">
-    <testsuite name="[anthropic] suite">
-      <testcase name="a real scan" classname="test"/>
-      <testcase name="a bad key" classname="test"><error message="x"/></testcase>
-    </testsuite>
-    <testcase name="[revenuecat-rest] balance" classname="test"/>
+  <testcase name="[anthropic] good one" classname="test"/>
+  <testcase name="[anthropic] bad one" classname="test" failure="x"><failure message="x"/></testcase>
+  <testsuite name="[revenuecat-rest] group" tests="1">
+    <testcase name="inner" classname="test"/>
   </testsuite>
 </testsuites>
 """
@@ -321,6 +322,12 @@ def test_surface_results_counts_each_tagged_testcase_by_its_own_outcome():
 def test_surface_results_reads_a_tag_from_an_enclosing_suite_name():
     got = ew.surface_results(NODE_JUNIT, ["anthropic", "revenuecat-rest"], ew.TAG_FORMATS["bracket"])
     assert got == {"anthropic": counts(passed=1, failed=1), "revenuecat-rest": counts(passed=1)}
+
+
+def test_a_test_tagged_with_two_surfaces_counts_for_both():
+    xml = '<testsuites><testcase name="[a] [b] shared"><failure/></testcase></testsuites>'
+    got = ew.surface_results(xml, ["a", "b"], ew.TAG_FORMATS["bracket"])
+    assert got == {"a": counts(failed=1), "b": counts(failed=1)}
 
 
 def test_surface_results_reads_a_pytest_surface_property_for_the_marker_style():

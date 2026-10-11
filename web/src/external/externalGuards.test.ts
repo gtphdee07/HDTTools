@@ -83,7 +83,7 @@ describe('the wrapper can read each surface\'s own results', () => {
 });
 
 describe('the Pages site test never runs with the test-account credentials', () => {
-  type Project ={ test?: { name?: string; include?: string[]; exclude?: string[]; env?: Record<string, string> } };
+  type Project = { test?: { name?: string; include?: string[]; exclude?: string[]; env?: Record<string, string> } };
   const resolved = (externalConfig as unknown as (env: { mode: string; command: string }) => { test?: { projects?: Project[] } })({
     mode: 'test',
     command: 'serve',

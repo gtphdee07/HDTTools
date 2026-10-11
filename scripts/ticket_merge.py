@@ -167,6 +167,11 @@ def close(
         return 1
     out(f"Closed #{n}.")
 
+    # Removal failures are handled inline: dirty worktree, long path / other, branch delete.
+    # If more paths accumulate here, consider factoring this out, e.g. one function that
+    # maps git's stderr to a kind (dirty, too long, other) so the matching lives in one
+    # place. The dirty check must stay ahead of the long-path delete, which is recursive
+    # and must never touch a worktree with uncommitted files. See #93.
     removed = git(shell, root, "worktree", "remove", worktree_relpath(n))
     uncommitted = None if removed.ok else _uncommitted_files(n, removed.err, shell=shell, root=root)
     if uncommitted is not None:

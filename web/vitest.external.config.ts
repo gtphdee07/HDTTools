@@ -18,10 +18,13 @@ export default defineConfig(({ mode }) => {
     testTimeout: 30_000,
     hookTimeout: 30_000,
   }
+  const resultsFile = process.env.EXTERNAL_RESULTS_FILE
   const envFor = (prefixes: string[]) => loadEnv(mode, process.cwd(), prefixes)
 
   return {
     test: {
+      // The wrapper sets EXTERNAL_RESULTS_FILE so it can record each surface from its own tests (ADR-0008).
+      reporters: resultsFile ? ['default', ['junit', { outputFile: resultsFile }]] : ['default'],
       projects: [
         {
           test: {

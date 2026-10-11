@@ -48,7 +48,11 @@ gitignored `web/.env.local` and a missing one fails the run, never skips
 it. Normally run through `web/test-external.ps1`, which runs only the
 surfaces `scripts/external_freshness.py` reports stale and records each
 result with `scripts/record_external_result.py` (`-Skip` records
-`skipped`, which leaves the surface stale). Add a surface by adding
+`skipped`, which leaves the surface stale). Each surface is recorded from
+its own `[surface]` tests, not the run's exit code (#89): the wrapper sets
+`EXTERNAL_RESULTS_FILE` and `vitest.external.config.ts` then also writes
+JUnit XML there; a surface passes only if none of its tests failed and at
+least one passed. Add a surface by adding
 `scripts/external_manifest/surfaces/<name>.json` and a
 `<name>.external.test.ts` whose describe title carries `[<name>]`.
 

@@ -87,6 +87,20 @@ succeeds without the key, so a key-less default run (which deselects
 `external` entirely before setup) is unaffected. `-Skip` records `skipped`
 without ever invoking pytest.
 
+Each surface's recorded result comes from its own tagged tests, not the run's
+single exit code (#89): the wrapper gives every runner an
+`EXTERNAL_RESULTS_FILE` to write JUnit XML to (pytest here, through
+`scripts/external_surface_plugin.py`, which adds each marked test's surface as
+a `surface` property; vitest and `node --test` on the TS platforms), and
+`external_wrapper.surface_results` counts passed/failed/skipped per surface.
+A surface passes only if none of its tests failed and at least one passed;
+with no per-test data, or a non-zero exit nobody's tests account for, the
+exit code decides every surface as before. Covered by `test_external_wrapper.py`
+(decision logic on fake results) and `test_external_surface_results.py` (the
+pytest side, against a throwaway pytest run). Android's `test-weekly.ps1` does
+not use this wrapper (it records the legacy platform+suite entry the gate
+ignores), so it is unaffected.
+
 Depths covered: reachable and authenticated
 (`test_a_bad_key_is_rejected_with_a_real_auth_error` — a wrong key raises
 `anthropic.AuthenticationError`, free); error contract

@@ -359,7 +359,9 @@ The `revenuecat-rest` surface (boundary file `src/revenuecat.ts`) has its own
 suite in `src/external/revenuecatRest.external.test.ts`, every test tagged
 `[revenuecat-rest]`. Run it with `.\test-external.ps1` (only runs when the
 surface is stale per `scripts/external_freshness.py`; records pass/fail per
-surface) or `npm run test:external`. Needs `REVENUECAT_SECRET_KEY` (a v2 key
+surface; each surface is recorded from its own `[surface]` tests, via the
+JUnit file `src/external/run.ts` writes to `EXTERNAL_RESULTS_FILE`, not the
+run's exit code - #89) or `npm run test:external`. Needs `REVENUECAT_SECRET_KEY` (a v2 key
 with Customer information read and write); a missing key fails the run, and
 `.\test-external.ps1 -Skip` records `skipped` and leaves the surface stale.
 A 401/403 names the call and the missing permission.

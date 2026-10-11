@@ -59,6 +59,29 @@ describe('external test files never create users, send mail or print secrets', (
   });
 });
 
+describe('the wrapper can read each surface\'s own results', () => {
+  type Reporting = { test?: { reporters?: (string | [string, { outputFile?: string }])[] } };
+  const resolve = (resultsFile: string | undefined) => {
+    const before = process.env.EXTERNAL_RESULTS_FILE;
+    if (resultsFile === undefined) delete process.env.EXTERNAL_RESULTS_FILE;
+    else process.env.EXTERNAL_RESULTS_FILE = resultsFile;
+    try {
+      return (externalConfig as unknown as (env: { mode: string; command: string }) => Reporting)({ mode: 'test', command: 'serve' });
+    } finally {
+      if (before === undefined) delete process.env.EXTERNAL_RESULTS_FILE;
+      else process.env.EXTERNAL_RESULTS_FILE = before;
+    }
+  };
+
+  it('writes JUnit XML to EXTERNAL_RESULTS_FILE, keeping the console report', () => {
+    expect(resolve('/tmp/results.xml').test?.reporters).toEqual(['default', ['junit', { outputFile: '/tmp/results.xml' }]]);
+  });
+
+  it('writes no file when the variable is unset', () => {
+    expect(resolve(undefined).test?.reporters).toEqual(['default']);
+  });
+});
+
 describe('the Pages site test never runs with the test-account credentials', () => {
   type Project = { test?: { name?: string; include?: string[]; exclude?: string[]; env?: Record<string, string> } };
   const resolved = (externalConfig as unknown as (env: { mode: string; command: string }) => { test?: { projects?: Project[] } })({

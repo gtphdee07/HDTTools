@@ -183,6 +183,11 @@ function PlanSection() {
           </div>
         )}
         <Feedback error={billing.error} notice={billing.notice} />
+        {billing.loadFailed && !billing.loading && (
+          <Button variant="secondary" onClick={billing.reload} style={{ marginTop: 12 }}>
+            Try again
+          </Button>
+        )}
       </Card>
       {!billing.isPro && (planKnown || billing.loading) && <ProPaywall />}
     </>

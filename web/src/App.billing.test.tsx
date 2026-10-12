@@ -302,6 +302,132 @@ describe('Buy Pro on Web', () => {
     expect(screen.getByRole('button', { name: 'Buy Pro' })).toBeEnabled();
   });
 
+  describe('when the plan fails to load', () => {
+    it('shows the error with a Try again action and no paywall', async () => {
+      const billing = makeFakeBilling();
+      billing.client.getStatus.mockRejectedValueOnce(new Error('RevenueCat is unreachable.'));
+      const user = renderApp(billing);
+      await openAccount(user);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('RevenueCat is unreachable.');
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
+      expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
+      expect(screen.queryByText('Free plan')).not.toBeInTheDocument();
+    });
+
+    it('reloads the plan, balance and offer on Try again and shows the Free plan with the paywall', async () => {
+      const billing = makeFakeBilling();
+      billing.client.getStatus.mockRejectedValueOnce(new Error('RevenueCat is unreachable.'));
+      const user = renderApp(billing);
+      await openAccount(user);
+
+      await user.click(await screen.findByRole('button', { name: 'Try again' }));
+
+      expect(await screen.findByText('Free plan')).toBeInTheDocument();
+      expect(screen.getByText(/Scan Credit balance: 0/)).toBeInTheDocument();
+      expect(screen.getByText(/\$9\.99/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Buy Pro' })).toBeEnabled();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+      expect(billing.client.getStatus).toHaveBeenCalledTimes(2);
+      expect(billing.client.getProOffer).toHaveBeenCalledTimes(2);
+      expect(billing.client.identify).toHaveBeenCalledTimes(2);
+    });
+
+    it('shows the Pro plan without a paywall when the retry finds a Pro customer', async () => {
+      const billing = makeFakeBilling();
+      billing.client.getStatus.mockRejectedValueOnce(new Error('RevenueCat is unreachable.'));
+      billing.client.getStatus.mockResolvedValueOnce({ isPro: true, scanBalance: 12 });
+      const user = renderApp(billing);
+      await openAccount(user);
+
+      await user.click(await screen.findByRole('button', { name: 'Try again' }));
+
+      expect(await screen.findByText('Pro plan')).toBeInTheDocument();
+      expect(screen.getByText(/Scan Credit balance: 12/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
+    });
+
+    it('shows the error again, with Try again still offered, when the retry fails too', async () => {
+      const billing = makeFakeBilling();
+      billing.client.getStatus.mockRejectedValueOnce(new Error('First failure.'));
+      billing.client.getStatus.mockRejectedValueOnce(new Error('Second failure.'));
+      const user = renderApp(billing);
+      await openAccount(user);
+
+      await user.click(await screen.findByRole('button', { name: 'Try again' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Second failure.');
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
+      expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+      expect(await screen.findByText('Free plan')).toBeInTheDocument();
+    });
+
+    it('recovers from a failed offer or identify call the same way', async () => {
+      const billing = makeFakeBilling();
+      billing.client.identify.mockRejectedValueOnce(new Error('Could not identify.'));
+      const user = renderApp(billing);
+      await openAccount(user);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Could not identify.');
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+      expect(await screen.findByText('Free plan')).toBeInTheDocument();
+      expect(billing.client.identify).toHaveBeenLastCalledWith('acct-pat');
+    });
+
+    it('never starts a checkout when Try again is used', async () => {
+      const billing = makeFakeBilling();
+      billing.client.getStatus.mockRejectedValueOnce(new Error('First failure.'));
+      billing.client.getStatus.mockRejectedValueOnce(new Error('Second failure.'));
+      const user = renderApp(billing);
+      await openAccount(user);
+
+      await user.click(await screen.findByRole('button', { name: 'Try again' }));
+      await screen.findByText('Second failure.');
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+      await screen.findByText('Free plan');
+
+      expect(billing.client.purchasePro).not.toHaveBeenCalled();
+      expect(screen.queryByRole('button', { name: 'Close checkout' })).not.toBeInTheDocument();
+    });
+
+    it('does not apply a retry that settles after another account signed in', async () => {
+      const billing = makeFakeBilling();
+      const auth = makeDrivableAuth();
+      // Pat's first load fails; Pat's retry then hangs until the test settles it with a Pro answer.
+      let settlePat: (status: { isPro: boolean; scanBalance: number }) => void = () => {};
+      billing.client.getStatus.mockRejectedValueOnce(new Error('First failure.'));
+      billing.client.getStatus.mockReturnValueOnce(new Promise((resolve) => (settlePat = resolve)));
+      const user = renderApp(billing, auth.client);
+      await openAccount(user);
+      await user.click(await screen.findByRole('button', { name: 'Try again' }));
+      expect(await screen.findByText('Loading your plan...')).toBeInTheDocument();
+
+      auth.emit(SAM);
+      expect(await screen.findByText('Signed in as sam@example.com')).toBeInTheDocument();
+      expect(await screen.findByText('Free plan')).toBeInTheDocument();
+      await act(async () => settlePat({ isPro: true, scanBalance: 99 }));
+
+      expect(screen.getByText('Free plan')).toBeInTheDocument();
+      expect(screen.queryByText('Pro plan')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Scan Credit balance: 99/)).not.toBeInTheDocument();
+    });
+
+    it('does not offer Try again for a failed purchase, only for a failed load', async () => {
+      const billing = makeFakeBilling();
+      const user = renderApp(billing);
+      await openAccount(user);
+
+      await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+      act(() => billing.failPayment('Your card was declined.'));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Your card was declined.');
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    });
+  });
+
   it('shows Pro straight away for a customer who already bought it', async () => {
     const billing = makeFakeBilling();
     billing.client.getStatus.mockResolvedValue({ isPro: true, scanBalance: 12 });

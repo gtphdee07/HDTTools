@@ -248,7 +248,7 @@ def test_implement_prompt_is_the_command_then_a_blank_line_then_the_handoff_line
         "\n"
         "Follow docs/agents/session-handoff.md: don't push, don't close the issue, "
         "and finish with a STATUS comment on the ticket. "
-        "Ask the owner before each live External suite run."
+        "Run a live External suite only if an acceptance criterion names one, and only after the owner approves that run; the merge step covers the rest."
     )
 
 

@@ -66,7 +66,7 @@ def check_start(*, state, assignees, open_blockers, android, android_in_flight, 
 HANDOFF_LINE = (
     "Follow docs/agents/session-handoff.md: don't push, don't close the issue, "
     "and finish with a STATUS comment on the ticket. "
-    "Ask the owner before each live External suite run."
+    "Run a live External suite only if an acceptance criterion names one, and only after the owner approves that run; the merge step covers the rest."
 )
 
 # `--copy-env` brings the gitignored web/.env.local (free test-account credentials) into the worktree,
@@ -92,7 +92,7 @@ The rules it points to (docs/agents/session-handoff.md):
 
 - Do not push. Do not close the issue.
 - Do not commit `dashboard.svg`, `scripts/dashboard_data/external_status.json` or `.env*`.
-- `web/.env.local` was copied in for the live External suites. Run one only after the owner approves it, each time; never print the file.
+- `web/.env.local` was copied in for the live External suites. Run one only if an acceptance criterion names it, after the owner approves that run; never print the file.
 - The ticket is already assigned to the owner: that is the claim.
 - Finish with `/ticket-finish`, which posts the `STATUS:` comment on the ticket and removes this file.
 """

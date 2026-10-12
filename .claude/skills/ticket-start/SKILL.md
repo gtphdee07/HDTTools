@@ -31,7 +31,7 @@ Finish by printing, as the last thing the owner sees, the prompt the script prin
 ```
 /mattpocock-skills:implement #<N>
 
-Follow docs/agents/session-handoff.md: don't push, don't close the issue, and finish with a STATUS comment on the ticket. Ask the owner before each live External suite run.
+Follow docs/agents/session-handoff.md: don't push, don't close the issue, and finish with a STATUS comment on the ticket. Run a live External suite only if an acceptance criterion names one, and only after the owner approves that run; the merge step covers the rest.
 ```
 
 `/implement` is user-invocation only, so you do not run it. The owner pastes the whole prompt as the first message of the new session; the handoff line is what makes that session follow the handoff convention (no push, ticket stays open, `/ticket-finish` last).

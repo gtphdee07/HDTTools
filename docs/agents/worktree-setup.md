@@ -44,7 +44,7 @@ None of these makes a live or paid call, and none needs `web/.env.local`. (`uv r
 | `android/local.properties` (Android SDK path) | The Gradle command checks in `tests/test_context_test_commands.py`. They need this file **or** the `ANDROID_HOME`/`ANDROID_SDK_ROOT` environment variable; with neither, they skip rather than fail (`uv run pytest -rs` shows which). On a machine with the variable set, as the primary one has, they run in a new worktree with nothing copied. | optional |
 | `workers/scan-proxy/.dev.vars` | Also gitignored, but no test reads it. Only `wrangler dev` would. | not needed |
 
-`/ticket-start` already runs setup with `--copy-env`, so a ticket's worktree has `web/.env.local` when the main checkout does. That does not authorise a live run: ask the owner before each one. For a worktree made some other way, create the file as `docs/BUILD_AND_DEPLOY.md` section 3 describes, or copy the main checkout's with:
+`/ticket-start` already runs setup with `--copy-env`, so a ticket's worktree has `web/.env.local` when the main checkout does. That does not authorise a live run: run one only if an acceptance criterion names it, and ask the owner first. For a worktree made some other way, create the file as `docs/BUILD_AND_DEPLOY.md` section 3 describes, or copy the main checkout's with:
 
 ```
 uv run scripts/worktree_setup.py --copy-env

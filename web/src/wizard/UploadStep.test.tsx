@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { MODULES } from '../mockData';
+import type { ScanAccess } from '../scanAccess';
 import { UploadStep } from './UploadStep';
 
 const TRUCK_MODULE = MODULES[1];
@@ -12,6 +13,9 @@ function baseProps(overrides: Partial<Parameters<typeof UploadStep>[0]> = {}) {
     module: TRUCK_MODULE,
     file: null,
     error: null,
+    scanAccess: { kind: 'ready', balance: 3 } as ScanAccess,
+    onGoAccount: vi.fn(),
+    onRetryScanAccess: vi.fn(),
     onFileSelected: vi.fn(),
     onExtract: vi.fn(),
     onSkip: vi.fn(),
@@ -58,6 +62,31 @@ describe('UploadStep', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Extract Data' }));
 
     expect(onExtract).toHaveBeenCalled();
+  });
+
+  it('says how many scans are left when the visitor can scan', () => {
+    render(<UploadStep {...baseProps({ scanAccess: { kind: 'ready', balance: 1 } })} />);
+    expect(screen.getByText('1 scan left. Each scan uses 1.')).toBeInTheDocument();
+  });
+
+  it('offers the way past the obstacle instead of Extract Data when the visitor cannot scan', async () => {
+    const onGoAccount = vi.fn();
+    const file = new File(['x'], 'truck.jpg', { type: 'image/jpeg' });
+    render(<UploadStep {...baseProps({ file, onGoAccount, scanAccess: { kind: 'upgrade' } })} />);
+
+    expect(screen.queryByRole('button', { name: 'Extract Data' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Upgrade to Pro' }));
+
+    expect(onGoAccount).toHaveBeenCalled();
+  });
+
+  it('offers Try again when the plan would not load', async () => {
+    const onRetryScanAccess = vi.fn();
+    render(<UploadStep {...baseProps({ onRetryScanAccess, scanAccess: { kind: 'load-failed' } })} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(onRetryScanAccess).toHaveBeenCalled();
   });
 
   it('calls onSkip when "I don\'t have this image" is clicked, for a non-scale module', async () => {

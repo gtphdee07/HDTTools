@@ -40,6 +40,13 @@ access token — see **Auth** below). Any `app_user_id` in the body is ignored.
   request (spending never happened, so nothing to refund)
 - `400` `bad_request` — malformed request
 
+**CORS.** The Web app calls this endpoint from the browser, from another
+origin. `OPTIONS /v1/scan` is answered `204` without authentication, and every
+response (errors included, so the page can read them) carries
+`Access-Control-Allow-Origin: *`. Any origin is fine because the account token
+is a bearer header the browser never attaches by itself (no cookies); the token,
+not the origin, is what authorises a scan. Android is unaffected.
+
 **Timeouts.** Both outbound calls are bounded so a hung upstream returns a
 clean error instead of tying up the Worker until Cloudflare's platform
 execution limit kills it: the Anthropic call (`src/claude.ts`) times out at

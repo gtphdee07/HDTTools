@@ -151,3 +151,60 @@ test("an over-long or unusable client_request_id returns a clear 400 and never r
   }
   assert.equal(mocks.revenuecatCalls(), 0, "a rejected request must not spend a credit");
 });
+
+// The Web app calls this Worker from the browser, from another origin. The
+// token is a bearer header (no cookies), so any origin may call; the token
+// is what authorises.
+
+test("a CORS preflight for POST /v1/scan is answered without auth or any outbound call", async (t) => {
+  const mocks = mockExternalApis(t, {});
+  const res = await worker.fetch(
+    new Request("https://example.com/v1/scan", {
+      method: "OPTIONS",
+      headers: {
+        Origin: "https://rigcheck-web.pages.dev",
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "authorization,content-type",
+      },
+    }),
+    env,
+  );
+  assert.equal(res.status, 204);
+  assert.equal(res.headers.get("Access-Control-Allow-Origin"), "*");
+  assert.match(res.headers.get("Access-Control-Allow-Methods") ?? "", /POST/);
+  const allowed = (res.headers.get("Access-Control-Allow-Headers") ?? "").toLowerCase();
+  assert.match(allowed, /authorization/);
+  assert.match(allowed, /content-type/);
+  assert.equal(mocks.revenuecatCalls(), 0);
+});
+
+test("successful and failed responses all carry the CORS header so the browser can read them", async (t) => {
+  mockExternalApis(t, {
+    id: "msg_test",
+    type: "message",
+    role: "assistant",
+    model: "claude-sonnet-5",
+    content: [{ type: "tool_use", id: "toolu_1", name: "record_truck_tag", input: { manufacturer: "Ford" } }],
+    stop_reason: "tool_use",
+    stop_sequence: null,
+    usage: { input_tokens: 1, output_tokens: 1 },
+  });
+  const ok = await worker.fetch(postScan(validBody), env);
+  assert.equal(ok.status, 200);
+  assert.equal(ok.headers.get("Access-Control-Allow-Origin"), "*");
+
+  const unauthorized = await worker.fetch(
+    new Request("https://example.com/v1/scan", { method: "POST", body: JSON.stringify(validBody) }),
+    env,
+  );
+  assert.equal(unauthorized.status, 401);
+  assert.equal(unauthorized.headers.get("Access-Control-Allow-Origin"), "*");
+
+  const bad = await worker.fetch(postScan("{not json"), env);
+  assert.equal(bad.status, 400);
+  assert.equal(bad.headers.get("Access-Control-Allow-Origin"), "*");
+
+  const missing = await worker.fetch(new Request("https://example.com/nope", { method: "GET" }), env);
+  assert.equal(missing.status, 404);
+  assert.equal(missing.headers.get("Access-Control-Allow-Origin"), "*");
+});

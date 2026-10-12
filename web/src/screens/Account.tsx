@@ -32,9 +32,11 @@ const linkStyle: React.CSSProperties = {
 
 interface AccountProps {
   onDone: () => void;
+  // The label for the way out, which leads back to wherever the visitor came from.
+  doneLabel?: string;
 }
 
-export function Account({ onDone }: AccountProps) {
+export function Account({ onDone, doneLabel = 'Back to Dashboard' }: AccountProps) {
   const auth = useAuth();
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
@@ -110,7 +112,7 @@ export function Account({ onDone }: AccountProps) {
               Sign out
             </Button>
             <Button variant="ghost" onClick={onDone}>
-              Back to Dashboard
+              {doneLabel}
             </Button>
           </div>
         </Card>

@@ -1,7 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { HistoryEntry, RecentRig, Screen, WizardState } from './types';
 import { MODULES } from './mockData';
 import { extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
+import type { ScanContext } from './api';
+import { ScanError } from './scanError';
+import { ScanAttempts } from './scanAttempts';
+import { useScanAccess } from './scanAccess';
+import { useBilling } from './billing';
 import { createBreakdown } from './breakdown';
 import type { CreateBreakdownResult } from './breakdown';
 import { useGarage } from './garage';
@@ -61,20 +66,43 @@ function App() {
     setDisclaimerAcknowledged(true);
   };
 
-  const { recovering, linkProblem } = useAuth();
+  const { recovering, linkProblem, accessToken } = useAuth();
+  const billing = useBilling();
+  const scanAccess = useScanAccess();
+  const scanAttempts = useRef(new ScanAttempts());
+  // True while the Account screen was opened from a scan prompt in the wizard, so it can lead back to the check.
+  const [accountFromWizard, setAccountFromWizard] = useState(false);
   // A password-reset email link lands the visitor here; take them straight to the new-password form.
   // An email link that could not sign them in goes to the same screen, which says why.
   useEffect(() => {
     if (recovering || linkProblem) setScreen('account');
   }, [recovering, linkProblem]);
 
-  const goHome = () => setScreen('home');
-  const goHistory = () => setScreen('history');
-  const goAccount = () => setScreen('account');
+  const goHome = () => {
+    setAccountFromWizard(false);
+    setScreen('home');
+  };
+  const goHistory = () => {
+    setAccountFromWizard(false);
+    setScreen('history');
+  };
+  const goAccount = () => {
+    setAccountFromWizard(false);
+    setScreen('account');
+  };
+  const goAccountFromWizard = () => {
+    setAccountFromWizard(true);
+    setScreen('account');
+  };
+  const backToWizard = () => {
+    setAccountFromWizard(false);
+    setScreen('wizard');
+  };
 
   const startWizard = () => {
     refreshGarage();
     setGarageNotice(null);
+    setAccountFromWizard(false);
     setScreen('wizard');
     setCheckResult(null);
     setWizard(EMPTY_WIZARD);
@@ -99,6 +127,17 @@ function App() {
   const step = wizard.step;
   const currentModule = step >= 1 && step <= 3 ? MODULES[step as 1 | 2 | 3] : null;
 
+  // One scan through the shared Scan service, which spends a Scan Credit before reading the photo and
+  // refunds it if nothing is read. Whatever the outcome, the balance on screen is read again.
+  const scan = async <T,>(file: File, call: (file: File, context: ScanContext) => Promise<T>): Promise<T> => {
+    if (!accessToken) throw new ScanError('unauthorized', 'Sign in to scan.');
+    try {
+      return await scanAttempts.current.run(file, (clientRequestId) => call(file, { accessToken, clientRequestId }));
+    } finally {
+      void billing.refreshScanBalance();
+    }
+  };
+
   const extractCurrent = async () => {
     if (!wizard.pendingFile || !currentModule) return;
     const moduleKey = currentModule.key;
@@ -107,10 +146,10 @@ function App() {
     try {
       const extracted =
         moduleKey === 'truck'
-          ? await extractTruckTag(file)
+          ? await scan(file, extractTruckTag)
           : moduleKey === 'trailer'
-            ? await extractTrailerTag(file)
-            : await extractScaleTicket(file);
+            ? await scan(file, extractTrailerTag)
+            : await scan(file, extractScaleTicket);
       setWizard((w) => ({ ...w, [moduleKey]: extracted, subStep: 'review', pendingFile: null }));
     } catch (err) {
       setWizard((w) => ({
@@ -136,7 +175,7 @@ function App() {
   // its reading onto the existing standalone_weight_lb field rather than
   // introducing a new one.
   const scanStandaloneTicket = async (file: File) => {
-    const extracted = await extractScaleTicket(file);
+    const extracted = await scan(file, extractScaleTicket);
     const standalone =
       extracted.steer_axle_lb != null && extracted.drive_axle_lb != null
         ? extracted.steer_axle_lb + extracted.drive_axle_lb
@@ -228,7 +267,8 @@ function App() {
           <Dashboard recentRigs={recentRigs} history={history} onStartWizard={startWizard} onGoHistory={goHistory} />
         )}
         {screen === 'history' && <History history={history} recentRigs={recentRigs} />}
-        {screen === 'account' && <Account onDone={goHome} />}
+        {screen === 'account' &&
+          (accountFromWizard ? <Account onDone={backToWizard} doneLabel="Back to your check" /> : <Account onDone={goHome} />)}
 
         {isWizard && (
           <div>
@@ -250,6 +290,9 @@ function App() {
                 module={currentModule}
                 file={wizard.pendingFile}
                 error={wizard.uploadError}
+                scanAccess={scanAccess}
+                onGoAccount={goAccountFromWizard}
+                onRetryScanAccess={billing.reload}
                 onFileSelected={onFileSelected}
                 onExtract={extractCurrent}
                 onSkip={skipCurrent}
@@ -272,6 +315,9 @@ function App() {
                       pinWeightPct: wizard.pinWeightPct,
                       onPinWeightPctChange: updatePinWeightPct,
                       onScanStandaloneTicket: scanStandaloneTicket,
+                      scanAccess,
+                      onGoAccount: goAccountFromWizard,
+                      onRetryScanAccess: billing.reload,
                     }
                   : {})}
               />

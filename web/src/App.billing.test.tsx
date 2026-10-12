@@ -468,6 +468,7 @@ describe('Buy Pro on Web', () => {
     it('ignores a reload while the starter scans are awaited', async () => {
       const billing = makeFakeBilling({ lateGrant: true });
       const probe = renderProbe(billing);
+      await waitFor(() => expect(billing.client.getStatus).toHaveBeenCalled());
       await screen.findByText(/probe: idle/);
       act(() => void probe.current?.buyPro());
       act(() => billing.completePayment());

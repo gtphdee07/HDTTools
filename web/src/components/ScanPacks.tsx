@@ -3,12 +3,12 @@ import { Button } from '../design-system/Button';
 import { Card } from '../design-system/Card';
 import { NOT_CERTIFIED_STATEMENT } from '../notCertified';
 
-// Where a signed-in user tops up their Scan Credit balance. A pack adds scans only: it never changes
-// the plan, so the Garage and History limits stay as they were.
+// Where a Pro user tops up their Scan Credit balance (a Free user buys Pro first, so this renders nothing
+// for them). A pack adds scans only: it never changes the plan, so the Garage and History limits stay as they were.
 export function ScanPacks() {
   const billing = useBilling();
   const { scanPacks, loading, checkoutOpen, scansUpdating, isPro } = billing;
-  if (scanPacks.length === 0) return null;
+  if (!isPro || scanPacks.length === 0) return null;
 
   const busy = loading || checkoutOpen || scansUpdating;
   return (
@@ -25,10 +25,8 @@ export function ScanPacks() {
           </div>
         ))}
       </div>
-      {/* A Free user also sees this on the Pro paywall; a Pro user sees it only here. */}
-      {isPro && (
-        <div style={{ fontSize: 13, color: 'var(--fg-2)', marginTop: 10 }}>{NOT_CERTIFIED_STATEMENT}</div>
-      )}
+      {/* A Pro user never sees the Pro paywall, where this statement otherwise lives. */}
+      <div style={{ fontSize: 13, color: 'var(--fg-2)', marginTop: 10 }}>{NOT_CERTIFIED_STATEMENT}</div>
     </Card>
   );
 }

@@ -17,3 +17,11 @@ Decided 2026-10-02 (wayfinder ticket [#10](https://github.com/gtphdee07/HDTTools
 - **Cheaper on Web**: rejected. It confuses shared accounts and may conflict with store policy.
 - **Lock dollar figures now**: rejected. Cost data is still unmeasured, and pricing blind was the original reason for deferral.
 - **Margin multiples of 3x and 10x**: 3x leaves fixed payment fees able to eat small packs; 10x risks prices that feel high for a few-times-a-year app.
+
+## Amendment 2026-10-12: scan packs are for Pro users only
+
+The decision above did not say who may buy a pack, and two places in the spec disagreed (story 31 "As a Pro user, I want to buy additional scans in packs"; story 36 "As a user with insufficient scans ... an easy way to buy a pack"). The Android paywall, which predates the Free/Pro model, listed every package in the offering to any signed-in user, and the Web "Buy more scans" card (#25) was first built the same way. Neither was a decision; the owner has now made it:
+
+- **A pack is sold only to a Pro user, on every platform.** A Free user is offered Pro, not packs; after buying Pro they see the packs. This keeps "Free: zero scans" true, because the scan service checks only the Scan Credit balance, so a Free user holding scans could otherwise scan without Pro.
+- **Enforced in the apps, not the Worker.** RevenueCat cannot limit a product to entitlement holders, and the Worker still charges on the balance alone. The remaining gap (a Free account that somehow holds scans, for example from before this rule) is accepted; checking the `pro` entitlement per scan in the Worker was considered and deferred (an extra RevenueCat read per scan).
+- Web implements this (#25). Android follows in a separate ticket.

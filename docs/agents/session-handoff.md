@@ -40,5 +40,5 @@ Follow-up tickets filed: <#N title; or "none">
 ## Rules that stay in force
 
 - Sessions do not push and do not close the ticket. Whoever merges verifies (re-runs the suites, traces each criterion to a test, spot-checks by mutation), merges into `MPSkills`, commits, closes the ticket with a comment, and asks before any push.
-- Do not commit `.env*`, `scripts/dashboard_data/external_status.json`, or a regenerated `dashboard.svg` from a feature branch.
+- Do not commit `.env*` (except `web/.env.production`, which holds only public `VITE_*` values and is committed by design), `scripts/dashboard_data/external_status.json`, or a regenerated `dashboard.svg` from a feature branch.
 - Android tickets share one emulator, so run them one at a time.

@@ -176,6 +176,11 @@ def test_comment_marks_an_unproven_criterion_and_a_failed_suite():
         ("scripts/dashboard_data/external_status.json", True),
         ("web/.env.local", True),
         (".env", True),
+        ("web/.env.production.local", True),
+        ("android/.env.production", True),
+        # the one tracked env file: public VITE_* values only, committed by design (docs/BUILD_AND_DEPLOY.md)
+        ("web/.env.production", False),
+        ("web\.env.production", False),
         ("scripts/ticket_start.py", False),
         ("docs/environment.md", False),
     ],

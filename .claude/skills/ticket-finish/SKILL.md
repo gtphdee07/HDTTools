@@ -12,7 +12,7 @@ Finish the ticket this worktree (`ticket-<N>`) was cut for. Run it **inside the 
 uv run scripts/ticket_finish.py preflight
 ```
 
-Exit 0 means the tree is clean, the branch has commits, and no forbidden file (`dashboard.svg`, `external_status.json`, `.env*`) is committed. Fix what it names (commit, or remove the file from the branch) and re-run until it is green.
+Exit 0 means the tree is clean, the branch has commits, and no forbidden file (`dashboard.svg`, `external_status.json`, `.env*` other than the public `web/.env.production`) is committed. Fix what it names (commit, or remove the file from the branch) and re-run until it is green.
 
 ## 2. Run the required suites
 

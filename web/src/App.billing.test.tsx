@@ -365,7 +365,7 @@ describe('Buy Pro on Web', () => {
       expect(await screen.findByText('Free plan')).toBeInTheDocument();
     });
 
-    it('recovers from a failed offer or identify call the same way', async () => {
+    it('recovers from a failed identify call the same way', async () => {
       const billing = makeFakeBilling();
       billing.client.identify.mockRejectedValueOnce(new Error('Could not identify.'));
       const user = renderApp(billing);
@@ -375,6 +375,18 @@ describe('Buy Pro on Web', () => {
       await user.click(screen.getByRole('button', { name: 'Try again' }));
       expect(await screen.findByText('Free plan')).toBeInTheDocument();
       expect(billing.client.identify).toHaveBeenLastCalledWith('acct-pat');
+    });
+
+    it('recovers from a failed offer call the same way', async () => {
+      const billing = makeFakeBilling();
+      billing.client.getProOffer.mockRejectedValueOnce(new Error('Could not load the offer.'));
+      const user = renderApp(billing);
+      await openAccount(user);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Could not load the offer.');
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+      expect(await screen.findByText('Free plan')).toBeInTheDocument();
+      expect(screen.getByText(/\$9\.99/)).toBeInTheDocument();
     });
 
     it('never starts a checkout when Try again is used', async () => {

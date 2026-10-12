@@ -56,10 +56,18 @@ def parse_criteria(body: str) -> list[str]:
     return [c.strip() for c in re.findall(r"^\s*-\s*\[[ xX]\]\s*(.+?)\s*$", m.group(1), re.MULTILINE)]
 
 
+# The one env file that is committed on purpose: public client config (VITE_* values that ship in the
+# browser bundle). Every other `.env*` file may hold credentials and stays out of a feature branch.
+TRACKED_ENV_FILES = ("web/.env.production",)
+
+
 def forbidden_paths(paths) -> list[str]:
     bad = []
     for p in paths:
-        name = PurePosixPath(p.replace("\\", "/")).name
+        posix = p.replace("\\", "/")
+        name = PurePosixPath(posix).name
+        if posix in TRACKED_ENV_FILES:
+            continue
         if name in ("dashboard.svg", "external_status.json") or name.startswith(".env"):
             bad.append(p)
     return bad

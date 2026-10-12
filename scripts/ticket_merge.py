@@ -159,7 +159,9 @@ def _remove_worktree_folder(n: int, removed_err: str, *, shell: Shell, root: Pat
         return removed_err.strip()
     target = worktree_folder(root, n)
     shell(long_path_remove_command(target), root)
-    if target.exists():
+    # An empty folder left behind is only a locked directory entry (an open session's working
+    # directory): git no longer sees a worktree there, so prune and carry on; close() reports it.
+    if target.exists() and any(target.iterdir()):
         return f"{target} is still there after the long-path delete (something may be holding it open; close it and retry)."
     pruned = git(shell, root, "worktree", "prune")
     return None if pruned.ok else f"git worktree prune failed: {pruned.err.strip()}"
@@ -231,6 +233,14 @@ def close(
     if not deleted.ok:
         out(f"Worktree removed, but `git branch -d {branch}` failed: {deleted.err.strip()}")
         return 1
+    leftover = worktree_folder(root, n)
+    if leftover.exists():
+        out(
+            f"Deleted {branch} and pruned its worktree, but the empty folder {worktree_relpath(n)} is still on disk: "
+            "an open session or terminal is probably sitting in it. Once that is closed, delete it with "
+            f'`rmdir "{leftover}"`. Nothing was pushed; ask the owner before any push.'
+        )
+        return 0
     out(f"Removed {worktree_relpath(n)} and deleted {branch}. Nothing was pushed; ask the owner before any push.")
     return 0
 

@@ -262,8 +262,9 @@ def test_a_worktree_that_will_not_go_is_reported_with_the_issue_already_closed(r
 TOO_LONG = "error: failed to delete 'X/.claude/worktrees/ticket-9': Filename too long"
 
 
-def _remove_fails(real, message, rmdir_calls, *, simulate_rmdir=True):
-    """A shell where `git worktree remove` fails with `message`; records any long-path rmdir."""
+def _remove_fails(real, message, rmdir_calls, *, simulate_rmdir=True, keep_empty_folder=False):
+    """A shell where `git worktree remove` fails with `message`; records any long-path rmdir.
+    keep_empty_folder: the delete empties the folder but cannot remove it (an open session holds it)."""
 
     def shell(cmd, cwd=None):
         cmd = list(cmd)
@@ -272,7 +273,12 @@ def _remove_fails(real, message, rmdir_calls, *, simulate_rmdir=True):
         if cmd[:2] == ["cmd", "/c"]:
             rmdir_calls.append(cmd)
             if simulate_rmdir:  # what the real `rmdir /s /q` would do to the folder
-                shutil.rmtree(cmd[-1].removeprefix("\\\\?\\"), ignore_errors=True)
+                folder = Path(cmd[-1].removeprefix("\\\\?\\"))
+                if keep_empty_folder:
+                    for child in folder.iterdir():
+                        shutil.rmtree(child, ignore_errors=True) if child.is_dir() else child.unlink()
+                else:
+                    shutil.rmtree(folder, ignore_errors=True)
             return Result(0)
         return real(cmd, cwd)
 
@@ -388,6 +394,22 @@ def test_a_long_path_delete_that_leaves_the_folder_behind_is_reported_not_hidden
     code, out = _run(merge.close, 9, _comment_file(tmp_path), shell=shell, root=repo, windows=True)
 
     assert code == 1 and "still there" in out.lower()
+    assert len(gh.closed_with()) == 1
+
+
+def test_a_folder_held_open_after_the_long_path_delete_is_pruned_and_the_branch_deleted(repo, tmp_path):
+    _merged(repo)
+    gh, rmdir_calls = Gh(), []
+    shell = _remove_fails(gh, TOO_LONG, rmdir_calls, keep_empty_folder=True)
+
+    code, out = _run(merge.close, 9, _comment_file(tmp_path), shell=shell, root=repo, windows=True)
+
+    folder = repo / ".claude" / "worktrees" / "ticket-9"
+    assert code == 0
+    assert folder.is_dir() and not any(folder.iterdir())
+    assert "ticket-9" not in _git(repo, "branch", "--list")
+    assert "ticket-9" not in _git(repo, "worktree", "list")
+    assert "rmdir" in out and "ticket-9" in out
     assert len(gh.closed_with()) == 1
 
 

@@ -12,7 +12,7 @@ Merge ticket $ARGUMENTS (a number, with or without `#`). Run this from the **mai
 uv run scripts/ticket_merge.py preflight <N>
 ```
 
-It stops unless this is the main checkout on a clean `MPSkills`, `ticket-<N>` has commits, and the ticket's newest `STATUS:` comment is `READY TO MERGE`. Report a stop and end. Merge past a `PARTIAL` or `BLOCKED` only when the owner says so in this session, then pass `--allow-status`.
+It stops unless this is the main checkout on a clean `MPSkills`, `ticket-<N>` has commits, and the ticket's newest `STATUS:` comment is `READY TO MERGE`. Report a stop and end. Merge past a `PARTIAL` or `BLOCKED` only when the owner says so in this session, then run `preflight <N> --allow-status`. Only `preflight` takes that flag; `merge` does not look at the status again.
 
 ## 2. Verify independently
 
@@ -43,7 +43,7 @@ Write the closing comment to your scratchpad: a `| Criterion | Proven by (test f
 uv run scripts/ticket_merge.py close <N> --comment-file <file>
 ```
 
-It comments, closes the issue, removes the worktree and deletes the branch. If the worktree will not go because of modified or untracked files, `close` lists them and removes nothing: ask the owner to commit, discard or keep them, then re-run only `git worktree remove` and `git branch -d`. For any other refusal, follow `docs/agents/worktree-setup.md`.
+It comments, closes the issue, removes the worktree and deletes the branch. If the worktree will not go because of modified or untracked files, `close` lists them and removes nothing: ask the owner to commit, discard or keep them, then re-run only `git worktree remove` and `git branch -d`. If the owner's own session is still open in the worktree, Windows keeps the empty folder: `close` still prunes the worktree and deletes the branch, and prints the `rmdir` to run once that session is closed. For any other refusal, follow `docs/agents/worktree-setup.md`.
 
 ## 5. Push
 

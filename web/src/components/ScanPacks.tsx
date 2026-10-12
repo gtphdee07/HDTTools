@@ -1,6 +1,7 @@
 import { useBilling } from '../billing';
 import { Button } from '../design-system/Button';
 import { Card } from '../design-system/Card';
+import { NOT_CERTIFIED_STATEMENT } from '../notCertified';
 
 // Where a signed-in user tops up their Scan Credit balance. A pack adds scans only: it never changes
 // the plan, so the Garage and History limits stay as they were.
@@ -26,9 +27,7 @@ export function ScanPacks() {
       </div>
       {/* A Free user also sees this on the Pro paywall; a Pro user sees it only here. */}
       {isPro && (
-        <div style={{ fontSize: 13, color: 'var(--fg-2)', marginTop: 10 }}>
-          RigCheck is an educational tool. Its results are estimates, not certified DOT weights.
-        </div>
+        <div style={{ fontSize: 13, color: 'var(--fg-2)', marginTop: 10 }}>{NOT_CERTIFIED_STATEMENT}</div>
       )}
     </Card>
   );

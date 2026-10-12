@@ -839,6 +839,16 @@ describe('Buy scan packs on Web', () => {
     expect(screen.getByText(/add scans only/i)).toBeInTheDocument();
   });
 
+  it('still states that results are not certified DOT weights to a Pro buyer, who sees no Pro paywall', async () => {
+    const billing = makeFakeBilling();
+    const user = renderApp(billing);
+    await openAccount(user);
+    await becomePro(user, billing);
+
+    await buyPackButton('10 scans');
+    expect(screen.getByText(/not certified DOT weights/i)).toBeInTheDocument();
+  });
+
   it('adds the pack\'s scans to the balance, and the balance shown is the one RevenueCat reports', async () => {
     const billing = makeFakeBilling();
     const user = renderApp(billing);

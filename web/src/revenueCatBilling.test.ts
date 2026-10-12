@@ -26,18 +26,22 @@ const CONFIG: BillingConfig = {
 function makeFakeSdk(overrides: { entitlements?: Record<string, unknown>; balance?: number } = {}) {
   const lifetime = {
     identifier: '$rc_lifetime',
-    webBillingProduct: { title: 'RigCheck Pro', currentPrice: { formattedPrice: '$9.99' } },
+    webBillingProduct: { title: 'RigCheck Pro', productType: 'non_consumable', currentPrice: { formattedPrice: '$9.99' } },
   };
   const packPackage = {
     identifier: 'scan_pack',
-    webBillingProduct: { title: 'Scan pack', currentPrice: { formattedPrice: '$2.99' } },
+    webBillingProduct: { title: 'Scan pack', productType: 'consumable', currentPrice: { formattedPrice: '$2.99' } },
   };
   const bigPackPackage = {
     identifier: 'scan_pack_big',
-    webBillingProduct: { title: 'Big scan pack', currentPrice: { formattedPrice: '$9.99' } },
+    webBillingProduct: { title: 'Big scan pack', productType: 'consumable', currentPrice: { formattedPrice: '$9.99' } },
+  };
+  const monthly = {
+    identifier: '$rc_monthly',
+    webBillingProduct: { title: 'Monthly', productType: 'subscription', currentPrice: { formattedPrice: '$1.99' } },
   };
   const androidOnly = { identifier: 'android_only', webBillingProduct: null };
-  const offering = { identifier: 'web', lifetime, availablePackages: [androidOnly, packPackage, bigPackPackage, lifetime] };
+  const offering = { identifier: 'web', lifetime, availablePackages: [androidOnly, packPackage, bigPackPackage, monthly, lifetime] };
 
   const purchases = {
     getOfferings: vi.fn(
@@ -58,6 +62,7 @@ function makeFakeSdk(overrides: { entitlements?: Record<string, unknown>; balanc
     Purchases: { configure },
     PurchasesError: FakePurchasesError,
     ErrorCode: { UserCancelledError: USER_CANCELLED },
+    ProductType: { Consumable: 'consumable' },
   } as unknown as RevenueCatModule;
   return { sdk, purchases, configure, lifetime, packPackage, bigPackPackage };
 }
@@ -184,7 +189,7 @@ describe('RevenueCat billing client', () => {
 });
 
 describe('RevenueCat billing client: scan packs', () => {
-  it('lists every web-purchasable package other than Pro as a scan pack', async () => {
+  it('lists every web-purchasable consumable package as a scan pack, and nothing else in the offering', async () => {
     const client = clientFor(makeFakeSdk());
     await client.identify('user-1');
     expect(await client.getScanPacks()).toEqual([
@@ -203,7 +208,7 @@ describe('RevenueCat billing client: scan packs', () => {
     const client = clientFor(makeFakeSdk(), { ...CONFIG, proPackageId: 'scan_pack' });
     await client.identify('user-1');
     const ids = (await client.getScanPacks()).map((p) => p.id);
-    expect(ids).toEqual(['scan_pack_big', '$rc_lifetime']);
+    expect(ids).toEqual(['scan_pack_big']);
   });
 
   it('lists no packs when the offering has none that can be bought on the web', async () => {

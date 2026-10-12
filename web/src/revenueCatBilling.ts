@@ -3,7 +3,7 @@ import type { BillingClient, BillingStatus, ProOffer, PurchaseOutcome, ScanPack 
 // RevenueCat's SDK is large, so it is loaded only when an account is first
 // identified - the free, account-less calculator never downloads it.
 type SdkModule = typeof import('@revenuecat/purchases-js');
-export type RevenueCatModule = Pick<SdkModule, 'Purchases' | 'PurchasesError' | 'ErrorCode'>;
+export type RevenueCatModule = Pick<SdkModule, 'Purchases' | 'PurchasesError' | 'ErrorCode' | 'ProductType'>;
 type Sdk = ReturnType<SdkModule['Purchases']['configure']>;
 type SdkPackage = Awaited<ReturnType<Sdk['getOfferings']>>['all'][string]['availablePackages'][number];
 
@@ -131,16 +131,16 @@ export function createRevenueCatBillingClient(
       const offering = await loadOffering();
       const proId = config.proPackageId ?? offering?.lifetime?.identifier ?? null;
       const wanted = config.scanPackPackageIds;
-      const packs = (offering?.availablePackages ?? []).filter(
-        // Packages not backed by Web Billing (for example Android's) cannot be bought here.
-        (p) => p.webBillingProduct && p.identifier !== proId && (!wanted || wanted.includes(p.identifier)),
-      );
-      scanPacks = new Map(packs.map((p) => [p.identifier, p]));
-      return packs.map((p) => ({
-        id: p.identifier,
-        title: p.webBillingProduct!.title,
-        price: p.webBillingProduct!.currentPrice.formattedPrice,
-      }));
+      const packs = (offering?.availablePackages ?? []).flatMap((pkg) => {
+        const product = pkg.webBillingProduct;
+        // Packages not backed by Web Billing (for example Android's) cannot be bought here, and a
+        // pack is a consumable: anything else in the offering (a subscription, Pro) is not one.
+        if (!product || !module || product.productType !== module.ProductType.Consumable) return [];
+        if (pkg.identifier === proId || (wanted && !wanted.includes(pkg.identifier))) return [];
+        return [{ pkg, pack: { id: pkg.identifier, title: product.title, price: product.currentPrice.formattedPrice } }];
+      });
+      scanPacks = new Map(packs.map(({ pkg }) => [pkg.identifier, pkg]));
+      return packs.map(({ pack }) => pack);
     },
 
     async purchasePro(): Promise<PurchaseOutcome> {

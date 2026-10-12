@@ -74,8 +74,9 @@ export interface BillingState {
   // Loads the plan, balance and offer again. Never starts a checkout.
   reload(): void;
   // Reads the Scan Credit balance again, for after a scan spent or refunded one. A failed read leaves the
-  // balance as it was.
-  refreshScanBalance(): Promise<void>;
+  // balance as it was. `known` is a balance the Scan service just reported (none left), shown straight away
+  // so it holds even if the read fails.
+  refreshScanBalance(known?: number): Promise<void>;
   // Dismisses an open checkout; the same path as the browser Back button.
   closeCheckout(): void;
 }
@@ -222,9 +223,10 @@ export function BillingProvider({
     void loadPlan(accountId);
   }, [loadPlan, scansUpdating]);
 
-  const refreshScanBalance = useCallback(async () => {
+  const refreshScanBalance = useCallback(async (known?: number) => {
     const accountId = accountRef.current;
     if (!client || !accountId) return;
+    if (known !== undefined) setScanBalance(known);
     try {
       const status = await client.getStatus();
       if (accountRef.current === accountId) setScanBalance(status.scanBalance);

@@ -119,6 +119,38 @@ describe('a Pro user with scans', () => {
     expect(world.requests).toHaveLength(1);
   });
 
+  it('still gets the way to buy more when the balance cannot be read again after the service said none left', async () => {
+    const world = makeWorld({ balance: 2 });
+    const user = renderApp({ world });
+    await startNewRig(user);
+    await screen.findByText(/2 scans left/);
+    world.setBalance(0);
+    world.billing.getStatus = vi.fn().mockRejectedValue(new Error('offline'));
+
+    await chooseAndExtract(user);
+
+    expect(await screen.findByRole('button', { name: 'Buy more scans' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Extract Data' })).not.toBeInTheDocument();
+  });
+
+  it('says plainly when a failed scan could not be refunded automatically, and a retry is not charged again', async () => {
+    const world = makeWorld({ balance: 3 });
+    world.queueExtraction('fail-no-refund');
+    const user = renderApp({ world });
+    await startNewRig(user);
+    await screen.findByText(/3 scans left/);
+
+    await chooseAndExtract(user);
+    expect(await screen.findByText(/contact support/i)).toBeInTheDocument();
+    expect(world.balance()).toBe(2);
+
+    await user.click(screen.getByRole('button', { name: 'Extract Data' }));
+    expect(await screen.findByText('Check the numbers')).toBeInTheDocument();
+
+    expect(world.requests[1].clientRequestId).toBe(world.requests[0].clientRequestId);
+    expect(world.balance()).toBe(2);
+  });
+
   it('scans a tow-vehicle-only ticket for one scan too', async () => {
     const world = makeWorld({ balance: 3 });
     world.queueExtraction({ fields: { manufacturer: 'Ford' } }, { fields: { steer_axle_lb: 5000, drive_axle_lb: 1000 } });

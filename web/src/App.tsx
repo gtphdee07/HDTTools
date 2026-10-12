@@ -132,9 +132,14 @@ function App() {
   const scan = async <T,>(file: File, call: (file: File, context: ScanContext) => Promise<T>): Promise<T> => {
     if (!accessToken) throw new ScanError('unauthorized', 'Sign in to scan.');
     try {
-      return await scanAttempts.current.run(file, (clientRequestId) => call(file, { accessToken, clientRequestId }));
-    } finally {
+      const fields = await scanAttempts.current.run(file, (clientRequestId) => call(file, { accessToken, clientRequestId }));
       void billing.refreshScanBalance();
+      return fields;
+    } catch (err) {
+      // The service saying none are left is believed even if reading the balance back fails.
+      const noneLeft = err instanceof ScanError && err.code === 'insufficient_credits';
+      void billing.refreshScanBalance(noneLeft ? 0 : undefined);
+      throw err;
     }
   };
 
@@ -267,8 +272,12 @@ function App() {
           <Dashboard recentRigs={recentRigs} history={history} onStartWizard={startWizard} onGoHistory={goHistory} />
         )}
         {screen === 'history' && <History history={history} recentRigs={recentRigs} />}
-        {screen === 'account' &&
-          (accountFromWizard ? <Account onDone={backToWizard} doneLabel="Back to your check" /> : <Account onDone={goHome} />)}
+        {screen === 'account' && (
+          <Account
+            onDone={accountFromWizard ? backToWizard : goHome}
+            doneLabel={accountFromWizard ? 'Back to your check' : undefined}
+          />
+        )}
 
         {isWizard && (
           <div>

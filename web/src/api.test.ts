@@ -144,6 +144,16 @@ describe('what the user is told when a scan does not deliver', () => {
       message: /refunded/i,
     },
     {
+      // The service charged, could not read the photo and could not refund. The same request id on the retry
+      // is not charged again, so the id is kept.
+      name: 'an extraction that failed and could not be refunded',
+      status: 502,
+      body: { ok: false, code: 'extraction_failed_no_refund', message: 'x' },
+      code: 'extraction_failed_no_refund',
+      lostResponse: true,
+      message: /contact support/i,
+    },
+    {
       name: 'the payment service being unreachable',
       status: 502,
       body: { ok: false, code: 'billing_error', message: 'x' },

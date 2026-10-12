@@ -19,7 +19,10 @@ const isSupported = (type: string): type is SupportedType => (SUPPORTED_TYPES as
 function toBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).slice(String(reader.result).indexOf(',') + 1));
+    reader.onload = () => {
+      const dataUrl = String(reader.result);
+      resolve(dataUrl.slice(dataUrl.indexOf(',') + 1));
+    };
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(blob);
   });

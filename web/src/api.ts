@@ -19,6 +19,8 @@ const MESSAGES = {
   auth_unavailable: "We couldn't verify your account just now, so nothing was scanned and you were not charged. Try again in a moment.",
   extraction_failed:
     "We couldn't read that photo, and your scan was refunded. Try a clearer photo, or type the numbers in yourself.",
+  extraction_failed_no_refund:
+    "We couldn't read that photo, and we couldn't refund your scan automatically. Trying this photo again will not charge you again. If it keeps happening, contact support.",
   billing_error: "We couldn't reach the payment service, so nothing was scanned and you were not charged. Try again in a moment.",
 } as const;
 
@@ -69,7 +71,8 @@ async function scan<T>(docType: DocType, file: File, context: ScanContext): Prom
   const code = typeof body?.code === 'string' ? body.code : null;
   if (code && Object.hasOwn(MESSAGES, code)) {
     const named = code as keyof typeof MESSAGES;
-    throw new ScanError(named, MESSAGES[named]);
+    // A retry of an unrefunded failure carries the same request id, which the service charges only once.
+    throw new ScanError(named, MESSAGES[named], named === 'extraction_failed_no_refund');
   }
   if (code === 'bad_request') {
     const detail = typeof body?.message === 'string' ? ` (${body.message})` : '';

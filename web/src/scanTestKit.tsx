@@ -35,7 +35,8 @@ interface ScanRequestSeen {
   clientRequestId: string | undefined;
 }
 
-type Extraction = { fields: Record<string, unknown> } | 'fail';
+// 'fail' is an extraction that failed and was refunded; 'fail-no-refund' one whose refund failed too.
+type Extraction = { fields: Record<string, unknown> } | 'fail' | 'fail-no-refund';
 
 export interface FakeWorld {
   billing: BillingClient;
@@ -78,6 +79,7 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
       chargedKeys.add(key);
     }
     const extraction = queue.shift() ?? { fields: { manufacturer: 'Ford' } };
+    if (extraction === 'fail-no-refund') return answer(502, { ok: false, code: 'extraction_failed_no_refund' });
     if (extraction === 'fail') {
       current += 1;
       return answer(502, { ok: false, code: 'extraction_failed' });

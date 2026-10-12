@@ -5,6 +5,8 @@ import App from './App';
 import { AuthProvider } from './auth';
 import type { AuthClient, AuthSession } from './auth';
 import { BillingProvider, useBilling } from './billing';
+import { GarageFullError, GarageProvider } from './garage';
+import type { GarageBackend } from './garage';
 import type { BillingState } from './billing';
 import type { BillingClient, PurchaseOutcome, ScanRecheck } from './billing';
 
@@ -53,16 +55,27 @@ function makeDrivableAuth() {
 
 const STARTER_SCANS = 5;
 
+// The packs on sale: how many scans each adds is RevenueCat's configuration, which the app only
+// sees as a larger balance after a purchase.
+const PACKS = [
+  { id: 'pack_10', title: '10 scans', price: '$2.99', scans: 10 },
+  { id: 'pack_30', title: '30 scans', price: '$6.99', scans: 30 },
+];
+
 // With `lazyModal`, purchasePro returns before the SDK has opened the modal (it
 // loads in the background), so no history entry exists until `openModal()`.
 // With `lateGrant`, RevenueCat has the purchase but has not yet granted the starter
-// scans: the balance stays 0 until the test calls `grantScans()`.
+// scans (or a pack's scans): the balance does not move until the test calls `grantScans()`.
 function makeFakeBilling({ lazyModal = false, lateGrant = false }: { lazyModal?: boolean; lateGrant?: boolean } = {}) {
   // RevenueCat keeps status per customer; the purchase lands on whoever started it.
   const proAccounts = new Set<string>();
   const grantedAccounts = new Set<string>();
+  // scans bought in packs, per customer, on top of the starter bundle
+  const packScans = new Map<string, number>();
   let currentAccount: string | null = null;
   let purchaser: string | null = null;
+  let purchasing: { kind: 'pro' } | { kind: 'pack'; scans: number } = { kind: 'pro' };
+  let pendingPackScans = 0;
   let finish: ((outcome: PurchaseOutcome) => void) | null = null;
   let fail: ((error: Error) => void) | null = null;
   let detachBack: (() => void) | null = null;
@@ -82,18 +95,25 @@ function makeFakeBilling({ lazyModal = false, lateGrant = false }: { lazyModal?:
     getStatus: vi.fn(async () => {
       const isPro = currentAccount !== null && proAccounts.has(currentAccount);
       const granted = currentAccount !== null && grantedAccounts.has(currentAccount);
-      return { isPro, scanBalance: isPro && granted ? STARTER_SCANS : 0 };
+      const starter = isPro && granted ? STARTER_SCANS : 0;
+      return { isPro, scanBalance: starter + (currentAccount !== null ? (packScans.get(currentAccount) ?? 0) : 0) };
     }),
-    purchasePro: vi.fn(
-      () =>
-        new Promise<PurchaseOutcome>((resolve, reject) => {
-          purchaser = currentAccount;
-          if (!lazyModal) openModal();
-          finish = resolve;
-          fail = reject;
-        }),
-    ),
+    getScanPacks: vi.fn(async () => PACKS.map(({ id, title, price }) => ({ id, title, price }))),
+    purchasePro: vi.fn(() => startCheckout({ kind: 'pro' })),
+    purchaseScanPack: vi.fn((packId: string) => {
+      const pack = PACKS.find((p) => p.id === packId);
+      if (!pack) return Promise.reject(new Error('unknown pack'));
+      return startCheckout({ kind: 'pack', scans: pack.scans });
+    }),
   };
+  const startCheckout = (what: typeof purchasing) =>
+    new Promise<PurchaseOutcome>((resolve, reject) => {
+      purchaser = currentAccount;
+      purchasing = what;
+      if (!lazyModal) openModal();
+      finish = resolve;
+      fail = reject;
+    });
   const finishWith = (outcome: PurchaseOutcome) => {
     detachBack?.();
     finish?.(outcome);
@@ -104,14 +124,23 @@ function makeFakeBilling({ lazyModal = false, lateGrant = false }: { lazyModal?:
     // the buyer completes payment in the checkout
     completePayment: () => {
       if (purchaser) {
-        proAccounts.add(purchaser);
-        if (!lateGrant) grantedAccounts.add(purchaser);
+        if (purchasing.kind === 'pro') {
+          proAccounts.add(purchaser);
+          if (!lateGrant) grantedAccounts.add(purchaser);
+        } else if (lateGrant) {
+          pendingPackScans += purchasing.scans;
+        } else {
+          packScans.set(purchaser, (packScans.get(purchaser) ?? 0) + purchasing.scans);
+        }
       }
       finishWith('purchased');
     },
-    // RevenueCat grants the starter bundle to whoever bought
+    // RevenueCat grants the starter bundle, or the pack's scans, to whoever bought
     grantScans: () => {
-      if (purchaser) grantedAccounts.add(purchaser);
+      if (!purchaser) return;
+      grantedAccounts.add(purchaser);
+      if (pendingPackScans > 0) packScans.set(purchaser, (packScans.get(purchaser) ?? 0) + pendingPackScans);
+      pendingPackScans = 0;
     },
     // the payment provider reports a failure
     failPayment: (message: string) => {
@@ -785,5 +814,249 @@ describe('Buy Pro on Web', () => {
     expect(await screen.findByText('Signed in as pat@example.com')).toBeInTheDocument();
     expect(screen.queryByText(/plan$/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Buy scan packs on Web', () => {
+  const buyPackButton = (title: string) => screen.findByRole('button', { name: `Buy ${title}` });
+
+  // Buys Pro first, so the account holds the starter scans before a pack is added.
+  async function becomePro(user: ReturnType<typeof userEvent.setup>, billing: ReturnType<typeof makeFakeBilling>) {
+    await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+    act(() => billing.completePayment());
+    await screen.findByText(new RegExp(`Scan Credit balance: ${STARTER_SCANS}`));
+  }
+
+  it('lists each pack with its price to a signed-in user, saying packs add scans only', async () => {
+    const billing = makeFakeBilling();
+    const user = renderApp(billing);
+    await openAccount(user);
+
+    expect(await buyPackButton('10 scans')).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Buy 30 scans' })).toBeEnabled();
+    expect(screen.getByText(/\$2\.99/)).toBeInTheDocument();
+    expect(screen.getByText(/\$6\.99/)).toBeInTheDocument();
+    expect(screen.getByText(/add scans only/i)).toBeInTheDocument();
+  });
+
+  it('adds the pack\'s scans to the balance, and the balance shown is the one RevenueCat reports', async () => {
+    const billing = makeFakeBilling();
+    const user = renderApp(billing);
+    await openAccount(user);
+    await becomePro(user, billing);
+
+    await user.click(await buyPackButton('30 scans'));
+    expect(billing.client.purchaseScanPack).toHaveBeenCalledWith('pack_30');
+    expect(screen.getByRole('button', { name: 'Close checkout' })).toBeInTheDocument();
+    act(() => billing.completePayment());
+
+    const reported = (await billing.client.getStatus()).scanBalance;
+    expect(reported).toBe(STARTER_SCANS + 30);
+    expect(await screen.findByText(new RegExp(`Scan Credit balance: ${reported}\\b`))).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Close checkout' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('can be bought again and again, each purchase adding its own scans', async () => {
+    const billing = makeFakeBilling();
+    const user = renderApp(billing);
+    await openAccount(user);
+
+    await user.click(await buyPackButton('10 scans'));
+    act(() => billing.completePayment());
+    await screen.findByText(/Scan Credit balance: 10\b/);
+    await user.click(await buyPackButton('10 scans'));
+    act(() => billing.completePayment());
+
+    expect(await screen.findByText(/Scan Credit balance: 20\b/)).toBeInTheDocument();
+  });
+
+  it('leaves a Free user on the Free plan, with Pro still for sale, after buying a pack', async () => {
+    const billing = makeFakeBilling();
+    const user = renderApp(billing);
+    await openAccount(user);
+
+    await user.click(await buyPackButton('10 scans'));
+    act(() => billing.completePayment());
+
+    expect(await screen.findByText(/Scan Credit balance: 10\b/)).toBeInTheDocument();
+    expect(screen.getByText('Free plan')).toBeInTheDocument();
+    expect(screen.queryByText('Pro plan')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Buy Pro' })).toBeEnabled();
+    expect(billing.client.purchasePro).not.toHaveBeenCalled();
+  });
+
+  it('keeps a full Free Garage full after a pack is bought: packs add scans, never caps', async () => {
+    const billing = makeFakeBilling();
+    const garage = {
+      list: vi.fn(async () => []),
+      addRig: vi.fn(async () => {
+        throw new GarageFullError(5);
+      }),
+      updateRig: vi.fn(async () => {}),
+    } satisfies GarageBackend;
+    const view = render(
+      <AuthProvider client={makeSignedInAuth()}>
+        <BillingProvider client={billing.client} scanRecheck={RECHECK}>
+          <GarageProvider backend={garage}>
+            <App />
+          </GarageProvider>
+        </BillingProvider>
+      </AuthProvider>,
+    );
+    const user = userEvent.setup();
+    await openAccount(user);
+    await user.click(await buyPackButton('30 scans'));
+    act(() => billing.completePayment());
+    await screen.findByText(/Scan Credit balance: 30\b/);
+    expect(screen.getByText('Free plan')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Back to Dashboard' }));
+    await user.click(screen.getAllByRole('button', { name: 'Start New Check' })[0]);
+    await user.type(screen.getByPlaceholderText('e.g. Big Blue'), 'Rig Six');
+    await user.click(screen.getByRole('button', { name: 'Start New Rig' }));
+    await user.click(screen.getByRole('button', { name: "I don't have this image" }));
+    await user.click(screen.getByRole('button', { name: 'Next: Trailer Tag' }));
+    await user.click(screen.getByRole('button', { name: "I don't have this image" }));
+    await user.click(screen.getByRole('button', { name: 'Next: Scale Ticket' }));
+    await user.click(screen.getByRole('button', { name: 'No Image / Enter Weight Manually' }));
+    await user.click(screen.getByRole('button', { name: 'See My Results' }));
+    await user.click(await screen.findByRole('button', { name: 'I Understand — Continue' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/garage is full/i);
+    expect(garage.addRig).toHaveBeenCalledTimes(1);
+    view.unmount();
+  });
+
+  it('closes cleanly from the visible close control, charges nothing, and allows a fresh retry', async () => {
+    const billing = makeFakeBilling();
+    const user = renderApp(billing);
+    await openAccount(user);
+
+    await user.click(await buyPackButton('10 scans'));
+    await user.click(screen.getByRole('button', { name: 'Close checkout' }));
+
+    expect(await screen.findByText(/checkout closed/i)).toBeInTheDocument();
+    expect(screen.getByText(/Scan Credit balance: 0\b/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Close checkout' })).not.toBeInTheDocument();
+
+    await user.click(await buyPackButton('10 scans'));
+    expect(billing.client.purchaseScanPack).toHaveBeenCalledTimes(2);
+    act(() => billing.completePayment());
+    expect(await screen.findByText(/Scan Credit balance: 10\b/)).toBeInTheDocument();
+  });
+
+  it('closes cleanly from the browser Back button and allows a fresh retry', async () => {
+    const billing = makeFakeBilling();
+    const user = renderApp(billing);
+    await openAccount(user);
+
+    await user.click(await buyPackButton('10 scans'));
+    act(() => window.history.back());
+
+    expect(await screen.findByText(/checkout closed/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Close checkout' })).not.toBeInTheDocument();
+    expect(await buyPackButton('10 scans')).toBeEnabled();
+  });
+
+  it('shows an updating state while the pack\'s scans are granted late, then the new balance', async () => {
+    const billing = makeFakeBilling({ lateGrant: true });
+    const user = renderApp(billing);
+    await openAccount(user);
+
+    await user.click(await buyPackButton('10 scans'));
+    act(() => billing.completePayment());
+    await screen.findByText(/updating your scans/i);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    await act(async () => {
+      await wait(RECHECK.intervalMs * 3);
+      billing.grantScans();
+    });
+
+    expect(await screen.findByText(/Scan Credit balance: 10\b/)).toBeInTheDocument();
+    expect(screen.queryByText(/updating your scans/i)).not.toBeInTheDocument();
+  });
+
+  it('tells the buyer scans may take a minute, with no error, when the grant never arrives in the window', async () => {
+    const billing = makeFakeBilling({ lateGrant: true });
+    const user = renderApp(billing);
+    await openAccount(user);
+
+    await user.click(await buyPackButton('10 scans'));
+    act(() => billing.completePayment());
+
+    expect(await screen.findByText(/may take a minute to appear/i, undefined, { timeout: 2000 })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText(/Scan Credit balance: 0\b/)).toBeInTheDocument();
+  });
+
+  it('shows the error and leaves the balance alone when the payment fails, then lets the buyer try again', async () => {
+    const billing = makeFakeBilling();
+    const user = renderApp(billing);
+    await openAccount(user);
+
+    await user.click(await buyPackButton('10 scans'));
+    act(() => billing.failPayment('Your card was declined.'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your card was declined.');
+    expect(screen.getByText(/Scan Credit balance: 0\b/)).toBeInTheDocument();
+    expect(await buyPackButton('10 scans')).toBeEnabled();
+  });
+
+  it('does not start a second checkout while one is open', async () => {
+    const billing = makeFakeBilling();
+    const user = renderApp(billing);
+    await openAccount(user);
+
+    await user.click(await buyPackButton('10 scans'));
+
+    expect(screen.getByRole('button', { name: 'Buy 30 scans' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Buy Pro' })).toBeDisabled();
+    expect(billing.client.purchaseScanPack).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers no packs when none are on sale', async () => {
+    const billing = makeFakeBilling();
+    billing.client.getScanPacks.mockResolvedValue([]);
+    const user = renderApp(billing);
+    await openAccount(user);
+
+    expect(await screen.findByText('Free plan')).toBeInTheDocument();
+    expect(screen.queryByText(/add scans only/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Buy \d+ scans/ })).not.toBeInTheDocument();
+  });
+
+  it('offers no packs to a visitor who is not signed in', async () => {
+    const billing = makeFakeBilling();
+    const user = renderApp(billing, makeSignedInAuth(null));
+    await user.click(await screen.findByRole('button', { name: 'Sign in' }));
+
+    expect(screen.queryByRole('button', { name: /^Buy \d+ scans/ })).not.toBeInTheDocument();
+    expect(billing.client.getScanPacks).not.toHaveBeenCalled();
+  });
+
+  it('shows no packs when purchases are not set up on this site', async () => {
+    const user = renderApp(null);
+    await openAccount(user);
+
+    expect(await screen.findByText('Signed in as pat@example.com')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Buy \d+ scans/ })).not.toBeInTheDocument();
+  });
+
+  it('does not show another account the packs, notice or error of an earlier account\'s checkout', async () => {
+    const billing = makeFakeBilling();
+    const auth = makeDrivableAuth();
+    const user = renderApp(billing, auth.client);
+    await openAccount(user);
+    await user.click(await buyPackButton('10 scans'));
+
+    await auth.emit(SAM);
+    act(() => billing.failPayment('Your card was declined.'));
+
+    expect(await screen.findByText('Signed in as sam@example.com')).toBeInTheDocument();
+    await screen.findByText('Free plan');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText(/Scan Credit balance: 0\b/)).toBeInTheDocument();
   });
 });

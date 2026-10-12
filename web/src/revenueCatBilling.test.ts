@@ -20,6 +20,7 @@ const CONFIG: BillingConfig = {
   offeringId: 'web',
   proEntitlementId: 'pro',
   proPackageId: null,
+  scanPackPackageIds: null,
 };
 
 function makeFakeSdk(overrides: { entitlements?: Record<string, unknown>; balance?: number } = {}) {
@@ -31,8 +32,12 @@ function makeFakeSdk(overrides: { entitlements?: Record<string, unknown>; balanc
     identifier: 'scan_pack',
     webBillingProduct: { title: 'Scan pack', currentPrice: { formattedPrice: '$2.99' } },
   };
+  const bigPackPackage = {
+    identifier: 'scan_pack_big',
+    webBillingProduct: { title: 'Big scan pack', currentPrice: { formattedPrice: '$9.99' } },
+  };
   const androidOnly = { identifier: 'android_only', webBillingProduct: null };
-  const offering = { identifier: 'web', lifetime, availablePackages: [androidOnly, packPackage, lifetime] };
+  const offering = { identifier: 'web', lifetime, availablePackages: [androidOnly, packPackage, bigPackPackage, lifetime] };
 
   const purchases = {
     getOfferings: vi.fn(
@@ -54,7 +59,7 @@ function makeFakeSdk(overrides: { entitlements?: Record<string, unknown>; balanc
     PurchasesError: FakePurchasesError,
     ErrorCode: { UserCancelledError: USER_CANCELLED },
   } as unknown as RevenueCatModule;
-  return { sdk, purchases, configure, lifetime };
+  return { sdk, purchases, configure, lifetime, packPackage, bigPackPackage };
 }
 
 const clientFor = (fake: ReturnType<typeof makeFakeSdk>, config: BillingConfig = CONFIG) =>
@@ -178,6 +183,83 @@ describe('RevenueCat billing client', () => {
   });
 });
 
+describe('RevenueCat billing client: scan packs', () => {
+  it('lists every web-purchasable package other than Pro as a scan pack', async () => {
+    const client = clientFor(makeFakeSdk());
+    await client.identify('user-1');
+    expect(await client.getScanPacks()).toEqual([
+      { id: 'scan_pack', title: 'Scan pack', price: '$2.99' },
+      { id: 'scan_pack_big', title: 'Big scan pack', price: '$9.99' },
+    ]);
+  });
+
+  it('lists only the configured packages when scan pack ids are set', async () => {
+    const client = clientFor(makeFakeSdk(), { ...CONFIG, scanPackPackageIds: ['scan_pack_big'] });
+    await client.identify('user-1');
+    expect(await client.getScanPacks()).toEqual([{ id: 'scan_pack_big', title: 'Big scan pack', price: '$9.99' }]);
+  });
+
+  it('never lists the configured Pro package as a scan pack', async () => {
+    const client = clientFor(makeFakeSdk(), { ...CONFIG, proPackageId: 'scan_pack' });
+    await client.identify('user-1');
+    const ids = (await client.getScanPacks()).map((p) => p.id);
+    expect(ids).toEqual(['scan_pack_big', '$rc_lifetime']);
+  });
+
+  it('lists no packs when the offering has none that can be bought on the web', async () => {
+    const fake = makeFakeSdk();
+    fake.purchases.getOfferings.mockResolvedValue({ all: {}, current: null });
+    const client = clientFor(fake);
+    await client.identify('user-1');
+    expect(await client.getScanPacks()).toEqual([]);
+  });
+
+  it('purchases the chosen pack in the modal placement (no inline target)', async () => {
+    const fake = makeFakeSdk();
+    const client = clientFor(fake);
+    await client.identify('user-1');
+    await client.getScanPacks();
+    expect(await client.purchaseScanPack('scan_pack_big')).toBe('purchased');
+    expect(fake.purchases.purchase).toHaveBeenCalledWith({ rcPackage: fake.bigPackPackage });
+  });
+
+  it('treats the SDK cancel error on a pack purchase as a cancelled outcome', async () => {
+    const fake = makeFakeSdk();
+    fake.purchases.purchase.mockRejectedValue(new FakePurchasesError(USER_CANCELLED));
+    const client = clientFor(fake);
+    await client.identify('user-1');
+    await client.getScanPacks();
+    expect(await client.purchaseScanPack('scan_pack')).toBe('cancelled');
+  });
+
+  it('rethrows any other pack purchase error', async () => {
+    const fake = makeFakeSdk();
+    fake.purchases.purchase.mockRejectedValue(new FakePurchasesError(99, 'card declined'));
+    const client = clientFor(fake);
+    await client.identify('user-1');
+    await client.getScanPacks();
+    await expect(client.purchaseScanPack('scan_pack')).rejects.toThrow('card declined');
+  });
+
+  it('refuses to purchase a pack that is not on offer', async () => {
+    const fake = makeFakeSdk();
+    const client = clientFor(fake);
+    await client.identify('user-1');
+    await client.getScanPacks();
+    await expect(client.purchaseScanPack('nope')).rejects.toThrow(/not available/i);
+    expect(fake.purchases.purchase).not.toHaveBeenCalled();
+  });
+
+  it('forgets the packs when a different account is identified', async () => {
+    const fake = makeFakeSdk();
+    const client = clientFor(fake);
+    await client.identify('user-1');
+    await client.getScanPacks();
+    await client.identify('user-2');
+    await expect(client.purchaseScanPack('scan_pack')).rejects.toThrow(/not available/i);
+  });
+});
+
 describe('readBillingConfig', () => {
   it('needs both the public API key and the offering id', () => {
     expect(readBillingConfig({})).toBeNull();
@@ -188,7 +270,7 @@ describe('readBillingConfig', () => {
   it('defaults the Pro entitlement to "pro" and lets the package id be unset', () => {
     expect(
       readBillingConfig({ VITE_REVENUECAT_WEB_PUBLIC_API_KEY: 'k', VITE_REVENUECAT_WEB_OFFERING_ID: 'o' }),
-    ).toEqual({ apiKey: 'k', offeringId: 'o', proEntitlementId: 'pro', proPackageId: null });
+    ).toEqual({ apiKey: 'k', offeringId: 'o', proEntitlementId: 'pro', proPackageId: null, scanPackPackageIds: null });
   });
 
   it('reads the optional entitlement and package overrides', () => {
@@ -198,7 +280,14 @@ describe('readBillingConfig', () => {
         VITE_REVENUECAT_WEB_OFFERING_ID: 'o',
         VITE_REVENUECAT_PRO_ENTITLEMENT_ID: 'rigcheck_pro',
         VITE_REVENUECAT_PRO_PACKAGE_ID: 'lifetime',
+        VITE_REVENUECAT_SCAN_PACK_PACKAGE_IDS: ' pack_a, pack_b ,',
       }),
-    ).toEqual({ apiKey: 'k', offeringId: 'o', proEntitlementId: 'rigcheck_pro', proPackageId: 'lifetime' });
+    ).toEqual({
+      apiKey: 'k',
+      offeringId: 'o',
+      proEntitlementId: 'rigcheck_pro',
+      proPackageId: 'lifetime',
+      scanPackPackageIds: ['pack_a', 'pack_b'],
+    });
   });
 });

@@ -38,8 +38,12 @@ export interface BillingState {
   proOffer: ProOffer | null;
   checkoutOpen: boolean;
   error: string | null;
+  // True when loading the plan, balance and offer failed (not when a purchase failed).
+  loadFailed: boolean;
   notice: string | null;
   buyPro(): Promise<void>;
+  // Loads the plan, balance and offer again. Never starts a checkout.
+  reload(): void;
   // Dismisses an open checkout; the same path as the browser Back button.
   closeCheckout(): void;
 }
@@ -52,8 +56,10 @@ const UNAVAILABLE: BillingState = {
   proOffer: null,
   checkoutOpen: false,
   error: null,
+  loadFailed: false,
   notice: null,
   buyPro: async () => {},
+  reload: () => {},
   closeCheckout: () => {},
 };
 
@@ -80,13 +86,47 @@ export function BillingProvider({ client, children }: { client: BillingClient | 
   const [proOffer, setProOffer] = useState<ProOffer | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const checkoutOpenRef = useRef(false);
+  // Counts plan loads; only the newest may write its result, so a slow load that was
+  // retried over, or belongs to an account that has since left, is dropped.
+  const loadRunRef = useRef(0);
   // The account signed in right now, readable from a checkout that settles later.
   const accountRef = useRef<string | null>(null);
   // Where the history stood when the open checkout began, to tell whether the
   // modal has pushed its own entry yet.
   const checkoutHistoryRef = useRef<{ length: number; state: unknown } | null>(null);
+
+  const loadPlan = useCallback(
+    async (accountId: string) => {
+      if (!client) return;
+      const run = ++loadRunRef.current;
+      const current = () => loadRunRef.current === run;
+      setLoading(true);
+      setError(null);
+      setLoadFailed(false);
+      try {
+        await client.identify(accountId);
+        const [offer, status] = await Promise.all([client.getProOffer(), client.getStatus()]);
+        if (!current()) return;
+        setProOffer(offer);
+        setIsPro(status.isPro);
+        setScanBalance(status.scanBalance);
+      } catch (err) {
+        if (!current()) return;
+        setError(message(err, 'Could not load your purchase details. Try again later.'));
+        setLoadFailed(true);
+      } finally {
+        if (current()) setLoading(false);
+      }
+    },
+    [client],
+  );
+
+  const dropPendingLoads = useCallback(() => {
+    loadRunRef.current++;
+  }, []);
 
   // Each signed-in account gets its own plan, balance and offer; signing out clears them.
   useEffect(() => {
@@ -95,31 +135,21 @@ export function BillingProvider({ client, children }: { client: BillingClient | 
     setScanBalance(null);
     setProOffer(null);
     setError(null);
+    setLoadFailed(false);
     setNotice(null);
     if (!client || !userId) {
       setLoading(false);
       return;
     }
-    let cancelled = false;
-    setLoading(true);
-    (async () => {
-      try {
-        await client.identify(userId);
-        const [offer, status] = await Promise.all([client.getProOffer(), client.getStatus()]);
-        if (cancelled) return;
-        setProOffer(offer);
-        setIsPro(status.isPro);
-        setScanBalance(status.scanBalance);
-      } catch (err) {
-        if (!cancelled) setError(message(err, 'Could not load your purchase details. Try again later.'));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [client, userId]);
+    void loadPlan(userId);
+    return dropPendingLoads;
+  }, [client, userId, loadPlan, dropPendingLoads]);
+
+  const reload = useCallback(() => {
+    const accountId = accountRef.current;
+    if (!accountId || checkoutOpenRef.current) return;
+    void loadPlan(accountId);
+  }, [loadPlan]);
 
   const buyPro = useCallback(async () => {
     if (!client || checkoutOpenRef.current) return;
@@ -175,9 +205,9 @@ export function BillingProvider({ client, children }: { client: BillingClient | 
   const value = useMemo<BillingState>(
     () =>
       client
-        ? { available: true, loading, isPro, scanBalance, proOffer, checkoutOpen, error, notice, buyPro, closeCheckout }
+        ? { available: true, loading, isPro, scanBalance, proOffer, checkoutOpen, error, loadFailed, notice, buyPro, reload, closeCheckout }
         : UNAVAILABLE,
-    [client, loading, isPro, scanBalance, proOffer, checkoutOpen, error, notice, buyPro, closeCheckout],
+    [client, loading, isPro, scanBalance, proOffer, checkoutOpen, error, loadFailed, notice, buyPro, reload, closeCheckout],
   );
 
   return (

@@ -21,7 +21,8 @@ const MESSAGES = {
     "We couldn't read that photo, and your scan was refunded. Try a clearer photo, or type the numbers in yourself.",
   extraction_failed_no_refund:
     "We couldn't read that photo, and we couldn't refund your scan automatically. Trying this photo again will not charge you again. If it keeps happening, contact support.",
-  billing_error: "We couldn't reach the payment service, so nothing was scanned and you were not charged. Try again in a moment.",
+  billing_error:
+    "We couldn't confirm your scan balance with the payment service, so nothing was scanned. You may not have been charged. Try again in a moment; a retry is not charged twice.",
 } as const;
 
 const NO_ANSWER = "We didn't get a usable answer from the scan service. Try again; a retry is not charged twice.";
@@ -71,8 +72,9 @@ async function scan<T>(docType: DocType, file: File, context: ScanContext): Prom
   const code = typeof body?.code === 'string' ? body.code : null;
   if (code && Object.hasOwn(MESSAGES, code)) {
     const named = code as keyof typeof MESSAGES;
-    // A retry of an unrefunded failure carries the same request id, which the service charges only once.
-    throw new ScanError(named, MESSAGES[named], named === 'extraction_failed_no_refund');
+    // A retry of an unrefunded failure, or of a balance check that gave no answer (the payment service may
+    // have applied the charge before it timed out), carries the same request id, which is charged only once.
+    throw new ScanError(named, MESSAGES[named], named === 'extraction_failed_no_refund' || named === 'billing_error');
   }
   if (code === 'bad_request') {
     const detail = typeof body?.message === 'string' ? ` (${body.message})` : '';

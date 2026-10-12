@@ -154,12 +154,14 @@ describe('what the user is told when a scan does not deliver', () => {
       message: /contact support/i,
     },
     {
-      name: 'the payment service being unreachable',
+      // The Worker answers this when the spend call threw or timed out, which can happen after the payment
+      // service applied the charge. So the message must not promise "not charged", and the id is kept.
+      name: 'the payment service giving no answer',
       status: 502,
       body: { ok: false, code: 'billing_error', message: 'x' },
       code: 'billing_error',
-      lostResponse: false,
-      message: /not charged/i,
+      lostResponse: true,
+      message: /may not have been charged.*not charged twice/i,
     },
     {
       name: 'a request the service rejects',

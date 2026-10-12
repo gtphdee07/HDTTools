@@ -61,7 +61,7 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
 
   const answer = (status: number, body: unknown) => ({ ok: status < 300, status, json: async () => body });
 
-  const process = (init: RequestInit) => {
+  const handleRequest = (init: RequestInit) => {
     const headers = init.headers as Record<string, string>;
     const body = JSON.parse(String(init.body));
     requests.push({
@@ -89,7 +89,7 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
 
   const fetchFake = vi.fn(async (url: string, init: RequestInit) => {
     if (url !== `${SERVICE_URL}/v1/scan`) throw new Error(`unexpected request to ${url}`);
-    const response = process(init);
+    const response = handleRequest(init);
     if (loseNext) {
       loseNext = false;
       throw new TypeError('Failed to fetch');

@@ -1,9 +1,9 @@
-import type { BillingClient, BillingStatus, ProOffer, PurchaseOutcome } from './billing';
+import type { BillingClient, BillingStatus, ProOffer, PurchaseOutcome, ScanPack } from './billing';
 
 // RevenueCat's SDK is large, so it is loaded only when an account is first
 // identified - the free, account-less calculator never downloads it.
 type SdkModule = typeof import('@revenuecat/purchases-js');
-export type RevenueCatModule = Pick<SdkModule, 'Purchases' | 'PurchasesError' | 'ErrorCode'>;
+export type RevenueCatModule = Pick<SdkModule, 'Purchases' | 'PurchasesError' | 'ErrorCode' | 'ProductType'>;
 type Sdk = ReturnType<SdkModule['Purchases']['configure']>;
 type SdkPackage = Awaited<ReturnType<Sdk['getOfferings']>>['all'][string]['availablePackages'][number];
 
@@ -17,6 +17,8 @@ export interface BillingConfig {
   proEntitlementId: string;
   // null means "the offering's lifetime package"
   proPackageId: string | null;
+  // null means "every other package in the offering that can be bought on the web"
+  scanPackPackageIds: string[] | null;
 }
 
 // Null when the public API key or offering id is missing: the site then runs
@@ -30,7 +32,14 @@ export function readBillingConfig(env: Record<string, string | undefined>): Bill
     offeringId,
     proEntitlementId: env.VITE_REVENUECAT_PRO_ENTITLEMENT_ID || DEFAULT_PRO_ENTITLEMENT_ID,
     proPackageId: env.VITE_REVENUECAT_PRO_PACKAGE_ID || null,
+    scanPackPackageIds: readIdList(env.VITE_REVENUECAT_SCAN_PACK_PACKAGE_IDS),
   };
+}
+
+// A comma-separated list of ids; null when unset or empty.
+function readIdList(value: string | undefined): string[] | null {
+  const ids = (value ?? '').split(',').map((id) => id.trim()).filter(Boolean);
+  return ids.length > 0 ? ids : null;
 }
 
 export function createRevenueCatBillingClient(
@@ -41,6 +50,7 @@ export function createRevenueCatBillingClient(
   let sdk: Sdk | null = null;
   let currentUserId: string | null = null;
   let proPackage: SdkPackage | null = null;
+  let scanPacks = new Map<string, SdkPackage>();
 
   const requireSdk = (): Sdk => {
     if (!sdk) throw new Error('Purchases are not available until an account is signed in.');
@@ -59,10 +69,30 @@ export function createRevenueCatBillingClient(
     }
     currentUserId = accountId;
     proPackage = null;
+    scanPacks = new Map();
   };
   // Identify calls can overlap (React StrictMode, a quick sign-out and sign-in),
   // and the lazy SDK load is awaited, so they run one at a time, in call order.
   let identifyQueue: Promise<void> = Promise.resolve();
+
+  const loadOffering = async () => {
+    const offerings = await requireSdk().getOfferings();
+    return offerings.all[config.offeringId] ?? offerings.current;
+  };
+
+  // Opens the modal checkout for a package; a user closing it is an outcome, not an error.
+  const purchase = async (rcPackage: SdkPackage): Promise<PurchaseOutcome> => {
+    const purchases = requireSdk();
+    try {
+      // Modal placement: no htmlTarget. The inline placement does not render
+      // and cannot be cancelled (purchases-js #1095).
+      await purchases.purchase({ rcPackage });
+      return 'purchased';
+    } catch (err) {
+      if (module && err instanceof module.PurchasesError && err.errorCode === module.ErrorCode.UserCancelledError) return 'cancelled';
+      throw err;
+    }
+  };
 
   return {
     identify(accountId) {
@@ -72,8 +102,7 @@ export function createRevenueCatBillingClient(
     },
 
     async getProOffer(): Promise<ProOffer | null> {
-      const offerings = await requireSdk().getOfferings();
-      const offering = offerings.all[config.offeringId] ?? offerings.current;
+      const offering = await loadOffering();
       const pkg = config.proPackageId
         ? offering?.availablePackages.find((p) => p.identifier === config.proPackageId)
         : offering?.lifetime;
@@ -98,18 +127,31 @@ export function createRevenueCatBillingClient(
       };
     },
 
+    async getScanPacks(): Promise<ScanPack[]> {
+      const offering = await loadOffering();
+      const proId = config.proPackageId ?? offering?.lifetime?.identifier ?? null;
+      const wanted = config.scanPackPackageIds;
+      const packs = (offering?.availablePackages ?? []).flatMap((pkg) => {
+        const product = pkg.webBillingProduct;
+        // Packages not backed by Web Billing (for example Android's) cannot be bought here, and a
+        // pack is a consumable: anything else in the offering (a subscription, Pro) is not one.
+        if (!product || !module || product.productType !== module.ProductType.Consumable) return [];
+        if (pkg.identifier === proId || (wanted && !wanted.includes(pkg.identifier))) return [];
+        return [{ pkg, pack: { id: pkg.identifier, title: product.title, price: product.currentPrice.formattedPrice } }];
+      });
+      scanPacks = new Map(packs.map(({ pkg }) => [pkg.identifier, pkg]));
+      return packs.map(({ pack }) => pack);
+    },
+
     async purchasePro(): Promise<PurchaseOutcome> {
-      const purchases = requireSdk();
-      if (!proPackage || !module) throw new Error('Pro is not available to buy right now.');
-      try {
-        // Modal placement: no htmlTarget. The inline placement does not render
-        // and cannot be cancelled (purchases-js #1095).
-        await purchases.purchase({ rcPackage: proPackage });
-        return 'purchased';
-      } catch (err) {
-        if (err instanceof module.PurchasesError && err.errorCode === module.ErrorCode.UserCancelledError) return 'cancelled';
-        throw err;
-      }
+      if (!proPackage) throw new Error('Pro is not available to buy right now.');
+      return purchase(proPackage);
+    },
+
+    async purchaseScanPack(packId): Promise<PurchaseOutcome> {
+      const pack = scanPacks.get(packId);
+      if (!pack) throw new Error('That scan pack is not available to buy right now.');
+      return purchase(pack);
     },
   };
 }

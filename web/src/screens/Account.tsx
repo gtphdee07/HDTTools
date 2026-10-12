@@ -4,6 +4,7 @@ import { useAuth } from '../auth';
 import type { ActionResult } from '../auth';
 import { useBilling } from '../billing';
 import { ProPaywall } from '../components/ProPaywall';
+import { ScanPacks } from '../components/ScanPacks';
 import { Button } from '../design-system/Button';
 import { Card } from '../design-system/Card';
 
@@ -196,6 +197,7 @@ function PlanSection() {
         )}
       </Card>
       {!billing.isPro && (planKnown || billing.loading) && <ProPaywall />}
+      {planKnown && <ScanPacks />}
     </>
   );
 }

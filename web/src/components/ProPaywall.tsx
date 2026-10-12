@@ -1,6 +1,7 @@
 import { useBilling } from '../billing';
 import { Button } from '../design-system/Button';
 import { Card } from '../design-system/Card';
+import { NOT_CERTIFIED_STATEMENT } from '../notCertified';
 
 // What a signed-in Free user sees on their account: what Pro is, its price, the
 // not-certified statement (the Disclaimer gate before results is separate and unchanged), and Buy.
@@ -20,9 +21,7 @@ export function ProPaywall() {
       ) : (
         !loading && <div style={{ fontSize: 13, marginTop: 10 }}>Pro is not available to buy right now.</div>
       )}
-      <div style={{ fontSize: 13, color: 'var(--fg-2)', marginTop: 10 }}>
-        RigCheck is an educational tool. Its results are estimates, not certified DOT weights.
-      </div>
+      <div style={{ fontSize: 13, color: 'var(--fg-2)', marginTop: 10 }}>{NOT_CERTIFIED_STATEMENT}</div>
       {proOffer && (
         <Button disabled={loading || checkoutOpen} onClick={() => void billing.buyPro()} style={{ marginTop: 14 }}>
           Buy Pro

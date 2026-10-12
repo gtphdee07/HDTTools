@@ -5,7 +5,7 @@ import App from './App';
 import { AuthProvider } from './auth';
 import type { AuthClient, AuthSession } from './auth';
 import { BillingProvider } from './billing';
-import type { BillingClient, PurchaseOutcome } from './billing';
+import type { BillingClient, PurchaseOutcome, ScanRecheck } from './billing';
 
 // Interaction tests for buying Pro: the real screens against a fake auth
 // client and a fake billing client. The fake billing client behaves like the
@@ -54,9 +54,12 @@ const STARTER_SCANS = 5;
 
 // With `lazyModal`, purchasePro returns before the SDK has opened the modal (it
 // loads in the background), so no history entry exists until `openModal()`.
-function makeFakeBilling({ lazyModal = false }: { lazyModal?: boolean } = {}) {
+// With `lateGrant`, RevenueCat has the purchase but has not yet granted the starter
+// scans: the balance stays 0 until the test calls `grantScans()`.
+function makeFakeBilling({ lazyModal = false, lateGrant = false }: { lazyModal?: boolean; lateGrant?: boolean } = {}) {
   // RevenueCat keeps status per customer; the purchase lands on whoever started it.
   const proAccounts = new Set<string>();
+  const grantedAccounts = new Set<string>();
   let currentAccount: string | null = null;
   let purchaser: string | null = null;
   let finish: ((outcome: PurchaseOutcome) => void) | null = null;
@@ -77,7 +80,8 @@ function makeFakeBilling({ lazyModal = false }: { lazyModal?: boolean } = {}) {
     getProOffer: vi.fn(async () => ({ price: '$9.99' })),
     getStatus: vi.fn(async () => {
       const isPro = currentAccount !== null && proAccounts.has(currentAccount);
-      return { isPro, scanBalance: isPro ? STARTER_SCANS : 0 };
+      const granted = currentAccount !== null && grantedAccounts.has(currentAccount);
+      return { isPro, scanBalance: isPro && granted ? STARTER_SCANS : 0 };
     }),
     purchasePro: vi.fn(
       () =>
@@ -98,8 +102,15 @@ function makeFakeBilling({ lazyModal = false }: { lazyModal?: boolean } = {}) {
     openModal,
     // the buyer completes payment in the checkout
     completePayment: () => {
-      if (purchaser) proAccounts.add(purchaser);
+      if (purchaser) {
+        proAccounts.add(purchaser);
+        if (!lateGrant) grantedAccounts.add(purchaser);
+      }
       finishWith('purchased');
+    },
+    // RevenueCat grants the starter bundle to whoever bought
+    grantScans: () => {
+      if (purchaser) grantedAccounts.add(purchaser);
     },
     // the payment provider reports a failure
     failPayment: (message: string) => {
@@ -109,15 +120,24 @@ function makeFakeBilling({ lazyModal = false }: { lazyModal?: boolean } = {}) {
   };
 }
 
-function renderApp(billing: ReturnType<typeof makeFakeBilling> | null, auth: AuthClient | null = makeSignedInAuth()) {
-  render(
+// A short recheck window keeps the late-grant tests quick: 10 rechecks, 10ms apart.
+const RECHECK: ScanRecheck = { intervalMs: 10, windowMs: 100 };
+const RECHECKS_IN_WINDOW = RECHECK.windowMs / RECHECK.intervalMs;
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function renderApp(
+  billing: ReturnType<typeof makeFakeBilling> | null,
+  auth: AuthClient | null = makeSignedInAuth(),
+  scanRecheck: ScanRecheck = RECHECK,
+) {
+  const view = render(
     <AuthProvider client={auth}>
-      <BillingProvider client={billing?.client ?? null}>
+      <BillingProvider client={billing?.client ?? null} scanRecheck={scanRecheck}>
         <App />
       </BillingProvider>
     </AuthProvider>,
   );
-  return userEvent.setup();
+  return Object.assign(userEvent.setup(), { unmount: view.unmount });
 }
 
 async function openAccount(user: ReturnType<typeof userEvent.setup>) {
@@ -155,7 +175,8 @@ describe('Buy Pro on Web', () => {
     act(() => billing.completePayment());
 
     expect(await screen.findByText('Pro plan')).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(`Scan Credit balance: ${STARTER_SCANS}`))).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(`Scan Credit balance: ${STARTER_SCANS}`))).toBeInTheDocument();
+    expect(screen.queryByText(/updating your scans/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Close checkout' })).not.toBeInTheDocument();
   });
@@ -171,6 +192,146 @@ describe('Buy Pro on Web', () => {
 
     expect(await screen.findByText('Pro plan')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
+  });
+
+  describe('when the starter scans arrive after the purchase', () => {
+    // Buys Pro with the grant held back, and waits until the Account shows the waiting state.
+    async function buyWithLateGrant(billing: ReturnType<typeof makeFakeBilling>, auth?: AuthClient) {
+      const user = renderApp(billing, auth);
+      await openAccount(user);
+      await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+      act(() => billing.completePayment());
+      await screen.findByText(/updating your scans/i);
+      return user;
+    }
+
+    it('shows an updating state while it waits, with the user on Pro, then the balance once the grant lands', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      await buyWithLateGrant(billing);
+
+      expect(screen.getByText('Pro plan')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+      await act(async () => {
+        await wait(RECHECK.intervalMs * 3);
+        billing.grantScans();
+      });
+
+      expect(await screen.findByText(new RegExp(`Scan Credit balance: ${STARTER_SCANS}`))).toBeInTheDocument();
+      expect(screen.queryByText(/updating your scans/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/may take a minute/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Pro plan')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('stops rechecking once the balance has changed', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      await buyWithLateGrant(billing);
+      act(() => billing.grantScans());
+      await screen.findByText(new RegExp(`Scan Credit balance: ${STARTER_SCANS}`));
+      const calls = billing.client.getStatus.mock.calls.length;
+
+      await act(async () => wait(RECHECK.windowMs * 2));
+
+      expect(billing.client.getStatus).toHaveBeenCalledTimes(calls);
+    });
+
+    it('tells the user scans may take a minute, with no error and still on Pro, when the grant never arrives in the window', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      await buyWithLateGrant(billing);
+
+      expect(await screen.findByText(/may take a minute to appear/i, undefined, { timeout: 2000 })).toBeInTheDocument();
+
+      expect(screen.queryByText(/updating your scans/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByText('Pro plan')).toBeInTheDocument();
+      expect(screen.getByText(/Scan Credit balance: 0/)).toBeInTheDocument();
+    });
+
+    it('never rechecks after the window ends', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      await buyWithLateGrant(billing);
+      await screen.findByText(/may take a minute to appear/i, undefined, { timeout: 2000 });
+      // one load when the Account opened, then the first check and each recheck in the window
+      expect(billing.client.getStatus).toHaveBeenCalledTimes(1 + 1 + RECHECKS_IN_WINDOW);
+
+      await act(async () => wait(RECHECK.windowMs * 2));
+
+      expect(billing.client.getStatus).toHaveBeenCalledTimes(1 + 1 + RECHECKS_IN_WINDOW);
+    });
+
+    it('keeps rechecking through a failed check and shows no error when a later one finds the grant', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      const user = renderApp(billing);
+      await openAccount(user);
+      await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+      billing.client.getStatus.mockRejectedValueOnce(new Error('RevenueCat is unreachable.'));
+      act(() => billing.completePayment());
+      await screen.findByText(/updating your scans/i);
+      act(() => billing.grantScans());
+
+      expect(await screen.findByText(new RegExp(`Scan Credit balance: ${STARTER_SCANS}`))).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('asks the user to reload when every check in the window failed', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      const user = renderApp(billing);
+      await openAccount(user);
+      await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+      billing.client.getStatus.mockRejectedValue(new Error('RevenueCat is unreachable.'));
+      act(() => billing.completePayment());
+
+      expect(await screen.findByRole('alert', undefined, { timeout: 2000 })).toHaveTextContent(/could not refresh your scan balance/i);
+      expect(screen.queryByText(/updating your scans/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Pro plan')).toBeInTheDocument();
+    });
+
+    it('stops rechecking when the user signs out', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      const auth = makeDrivableAuth();
+      await buyWithLateGrant(billing, auth.client);
+
+      auth.emit(null);
+      await act(async () => wait(RECHECK.intervalMs));
+      const calls = billing.client.getStatus.mock.calls.length;
+      await act(async () => wait(RECHECK.windowMs * 2));
+
+      expect(billing.client.getStatus).toHaveBeenCalledTimes(calls);
+      expect(screen.queryByText(/updating your scans/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/may take a minute/i)).not.toBeInTheDocument();
+    });
+
+    it('stops rechecking for the buyer when another account signs in, and does not touch that account', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      const auth = makeDrivableAuth();
+      await buyWithLateGrant(billing, auth.client);
+
+      auth.emit(SAM);
+      expect(await screen.findByText('Signed in as sam@example.com')).toBeInTheDocument();
+      expect(await screen.findByText('Free plan')).toBeInTheDocument();
+      const calls = billing.client.getStatus.mock.calls.length;
+      await act(async () => wait(RECHECK.windowMs * 2));
+
+      expect(billing.client.getStatus).toHaveBeenCalledTimes(calls);
+      expect(screen.getByText('Free plan')).toBeInTheDocument();
+      expect(screen.getByText(/Scan Credit balance: 0/)).toBeInTheDocument();
+      expect(screen.queryByText(/updating your scans/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/may take a minute/i)).not.toBeInTheDocument();
+    });
+
+    it('stops rechecking when the app goes away', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      const user = await buyWithLateGrant(billing);
+
+      user.unmount();
+      await wait(RECHECK.intervalMs);
+      const calls = billing.client.getStatus.mock.calls.length;
+      await wait(RECHECK.windowMs * 2);
+
+      expect(billing.client.getStatus).toHaveBeenCalledTimes(calls);
+    });
   });
 
   it('closes cleanly from the visible close control and allows a fresh retry', async () => {

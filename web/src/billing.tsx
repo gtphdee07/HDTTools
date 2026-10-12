@@ -16,6 +16,17 @@ export interface BillingStatus {
 
 export type PurchaseOutcome = 'purchased' | 'cancelled';
 
+// How long, and how often, the Scan Credit balance is rechecked after a purchase while
+// RevenueCat's server-side grant of the starter bundle has not shown up yet.
+export interface ScanRecheck {
+  intervalMs: number;
+  // The first check is immediate; rechecks continue until this much time has passed.
+  windowMs: number;
+}
+
+// A tuning value: the real grant delay is best observed in the sandbox purchase (#11).
+const DEFAULT_SCAN_RECHECK: ScanRecheck = { intervalMs: 2000, windowMs: 30000 };
+
 // The slice of RevenueCat this app uses - kept narrow so tests can fake it.
 // A user cancelling checkout is a 'cancelled' outcome; any other failure rejects.
 export interface BillingClient {
@@ -35,6 +46,8 @@ export interface BillingState {
   isPro: boolean;
   // Scan Credit balance; null until first loaded.
   scanBalance: number | null;
+  // True while the balance is being rechecked after a purchase, waiting for the starter scans.
+  scansUpdating: boolean;
   proOffer: ProOffer | null;
   checkoutOpen: boolean;
   error: string | null;
@@ -53,6 +66,7 @@ const UNAVAILABLE: BillingState = {
   loading: false,
   isPro: false,
   scanBalance: null,
+  scansUpdating: false,
   proOffer: null,
   checkoutOpen: false,
   error: null,
@@ -76,13 +90,33 @@ export function createRevenueCatClientFromEnv(): BillingClient | null {
 
 const message = (err: unknown, fallback: string) => (err instanceof Error && err.message ? err.message : fallback);
 
-export function BillingProvider({ client, children }: { client: BillingClient | null; children: ReactNode }) {
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+export function BillingProvider({
+  client,
+  scanRecheck = DEFAULT_SCAN_RECHECK,
+  children,
+}: {
+  client: BillingClient | null;
+  scanRecheck?: ScanRecheck;
+  children: ReactNode;
+}) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
+  const { intervalMs, windowMs } = scanRecheck;
 
   const [loading, setLoading] = useState(false);
   const [isPro, setIsPro] = useState(false);
-  const [scanBalance, setScanBalance] = useState<number | null>(null);
+  const [scanBalance, setScanBalanceState] = useState<number | null>(null);
+  const [scansUpdating, setScansUpdating] = useState(false);
+  // The balance on screen, readable from a purchase that settles later.
+  const scanBalanceRef = useRef<number | null>(null);
+  const setScanBalance = useCallback((balance: number | null) => {
+    scanBalanceRef.current = balance;
+    setScanBalanceState(balance);
+  }, []);
+  // Counts post-purchase rechecks; bumping it cancels the one running.
+  const recheckRunRef = useRef(0);
   const [proOffer, setProOffer] = useState<ProOffer | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,11 +155,12 @@ export function BillingProvider({ client, children }: { client: BillingClient | 
         if (current()) setLoading(false);
       }
     },
-    [client],
+    [client, setScanBalance],
   );
 
   const dropPendingLoads = useCallback(() => {
     loadRunRef.current++;
+    recheckRunRef.current++;
   }, []);
 
   // Each signed-in account gets its own plan, balance and offer; signing out clears them.
@@ -133,6 +168,7 @@ export function BillingProvider({ client, children }: { client: BillingClient | 
     accountRef.current = userId;
     setIsPro(false);
     setScanBalance(null);
+    setScansUpdating(false);
     setProOffer(null);
     setError(null);
     setLoadFailed(false);
@@ -143,7 +179,7 @@ export function BillingProvider({ client, children }: { client: BillingClient | 
     }
     void loadPlan(userId);
     return dropPendingLoads;
-  }, [client, userId, loadPlan, dropPendingLoads]);
+  }, [client, userId, loadPlan, dropPendingLoads, setScanBalance]);
 
   const reload = useCallback(() => {
     const accountId = accountRef.current;
@@ -185,13 +221,39 @@ export function BillingProvider({ client, children }: { client: BillingClient | 
     // can lag behind it, so the refresh below must not flip them back to Free.
     setIsPro(true);
     setNotice('Thank you! Pro is unlocked.');
+
+    // RevenueCat grants the starter scans server-side, so the balance can lag the
+    // purchase: recheck it for a bounded window until it differs from before.
+    const before = scanBalanceRef.current ?? 0;
+    const run = ++recheckRunRef.current;
+    const current = () => recheckRunRef.current === run && stillBuyer();
+    const rechecks = Math.floor(windowMs / intervalMs);
+    let lastCheckFailed = false;
+    setScansUpdating(true);
     try {
-      const status = await client.getStatus();
-      if (stillBuyer()) setScanBalance(status.scanBalance);
-    } catch {
-      if (stillBuyer()) setError('Your purchase went through, but we could not refresh your scan balance. Reload to see it.');
+      for (let attempt = 0; ; attempt++) {
+        if (attempt > 0) {
+          await sleep(intervalMs);
+          if (!current()) return;
+        }
+        try {
+          const status = await client.getStatus();
+          if (!current()) return;
+          lastCheckFailed = false;
+          setScanBalance(status.scanBalance);
+          if (status.scanBalance !== before) return;
+        } catch {
+          if (!current()) return;
+          lastCheckFailed = true;
+        }
+        if (attempt >= rechecks) break;
+      }
+      if (lastCheckFailed) setError('Your purchase went through, but we could not refresh your scan balance. Reload to see it.');
+      else setNotice('Pro is unlocked. Your scans may take a minute to appear.');
+    } finally {
+      if (current()) setScansUpdating(false);
     }
-  }, [client]);
+  }, [client, intervalMs, windowMs, setScanBalance]);
 
   // The RevenueCat modal has no close control of its own (purchases-js #973),
   // and cancels only on browser Back, so ours goes Back too - but only once the
@@ -205,9 +267,9 @@ export function BillingProvider({ client, children }: { client: BillingClient | 
   const value = useMemo<BillingState>(
     () =>
       client
-        ? { available: true, loading, isPro, scanBalance, proOffer, checkoutOpen, error, loadFailed, notice, buyPro, reload, closeCheckout }
+        ? { available: true, loading, isPro, scanBalance, scansUpdating, proOffer, checkoutOpen, error, loadFailed, notice, buyPro, reload, closeCheckout }
         : UNAVAILABLE,
-    [client, loading, isPro, scanBalance, proOffer, checkoutOpen, error, loadFailed, notice, buyPro, reload, closeCheckout],
+    [client, loading, isPro, scanBalance, scansUpdating, proOffer, checkoutOpen, error, loadFailed, notice, buyPro, reload, closeCheckout],
   );
 
   return (

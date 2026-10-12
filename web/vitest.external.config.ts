@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => {
             name: 'external',
             include: ['src/**/*.external.test.ts'],
             exclude: ['src/**/pagesSite.external.test.ts'],
-            env: envFor(['VITE_SUPABASE_', 'WEB_EXTERNAL_']),
+            env: envFor(['VITE_SUPABASE_', 'VITE_REVENUECAT_', 'WEB_EXTERNAL_']),
           },
         },
         {

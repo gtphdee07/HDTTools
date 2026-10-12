@@ -6,7 +6,7 @@ root `TESTING.md`. Written 2026-08-21, the same day the harness itself
 suite this package has ever had. See `ARCHIVE_TESTING.md` and
 `ARCHIVE_WEB_STREAMLIT.md` (repo root) for the narrative history.
 
-`npm test` (`vitest run`) — currently 344 tests, all passing (count last
+`npm test` (`vitest run`) — currently 353 tests, all passing (count last
 confirmed 2026-10-12; a fuller refresh of this document is #64).
 `npm run build` (`tsc -b && vite build`) typechecks `src/**`, test files
 included, since `tsconfig.app.json`'s `include` is just `["src"]`.
@@ -42,7 +42,7 @@ call: every network call is faked (`api.test.ts` fakes `fetch`; the scan tests i
 ## External suite (ADR-0008)
 
 `npm run test:external` runs `src/external/*.external.test.ts` against the
-live providers via `vitest.external.config.ts`. Three surfaces today, each
+live providers via `vitest.external.config.ts`. Four surfaces today, each
 tagged `[surface]` in its describe title; credentials come from the
 gitignored `web/.env.local` and a missing one fails the run, never skips
 it. Normally run through `web/test-external.ps1`, which runs only the
@@ -61,11 +61,13 @@ least one passed. Add a surface by adding
 | `supabase-auth` | `supabaseAuth.external.test.ts` | 0 |
 | `pages-site` | `pagesSite.external.test.ts` | 0 |
 | `supabase-tables` | `supabaseTables.external.test.ts` | 0 |
+| `revenuecat-web-billing` | `revenueCatWebBilling.external.test.ts` | 0 |
 
 All are free, so the wrapper runs them without a confirmation prompt.
 `externalGuards.test.ts` (in `npm test`) statically guards every file: never
-collected by `npm test`, never create a user or send mail, never print a
-secret, and the Pages file only issues GETs and never signs in.
+collected by `npm test`, never create a user or send mail, never start a
+purchase, never print a secret, and the Pages file only issues GETs and never
+signs in.
 
 **Credential scope (security audit, 2026-10-05).** The Pages journey runs
 the live site's JS bundle inside its test worker (the entry script and the chunks it
@@ -112,6 +114,40 @@ The offline counterpart is `src/garageSchema.test.ts` (in `npm test`): it runs
 the same migration on a real Postgres (PGlite) as the `authenticated` role and
 checks row-level security, grants, the cap and idempotency. It cannot run two
 transactions at once, which is why the concurrent-add check lives here.
+
+### `revenuecat-web-billing` (#85)
+
+Real calls to RevenueCat Web Billing through the real `@revenuecat/purchases-js`
+SDK, reads only. Boundary files are `web/src/revenueCatBilling.ts` (the adapter
+over the SDK) and `web/src/billing.tsx` (builds the client and drives it); pins
+are `web/package.json` and `web/package-lock.json`; the watched registry
+package is `@revenuecat/purchases-js`. Needs `VITE_REVENUECAT_WEB_PUBLIC_API_KEY`
+and `VITE_REVENUECAT_WEB_OFFERING_ID` (the same values the site is built with,
+public by design) and the `WEB_EXTERNAL_TEST_*` account in `web/.env.local`. The
+account's Supabase user id is the RevenueCat app user id, as on the site. **The
+RevenueCat dashboard must be configured first** (`scripts/wizard_web_revenuecat_dashboard.sh`):
+the offering with a lifetime package backed by a Web Billing product, the `pro`
+entitlement, and the `SCAN` virtual currency. A missing piece fails the run with
+a message naming it.
+
+No purchase is ever made (0 paid calls; `externalGuards.test.ts` rejects any
+`purchase` call in an external file): a sandbox purchase stays the human
+checklist in #11. The test account may or may not be Pro, so the tests check
+shapes and agreement between the client and the raw SDK, never `isPro`'s value.
+Unlike the other suites, the "unknown user" case is not an error here:
+RevenueCat creates a customer on first sight, so an unseen app user id is a free
+customer with no scans, and the test uses one fixed id
+(`external-suite-no-purchases`) so it creates a single customer, not one per run.
+
+| ADR-0008 depth | Covered by |
+|---|---|
+| Reachable and authenticated | The Web public API key is accepted and `getOfferings` returns the configured offering. |
+| Response shape | The offering has a lifetime package (`$rc_lifetime`) backed by a non-consumable Web Billing product with a formatted price; every package has an identifier, and every Web Billing product a title, a known product type and a price. Customer info has an `entitlements.active` map; the `SCAN` virtual currency exists with an integer balance of 0 or more. These are the exact fields `getProOffer`, `getScanPacks` and `getStatus` read. |
+| Error contract | A well-formed key the server never issued is rejected with `InvalidCredentialsError`. An app user with no purchases is a free customer with a zero balance, not an error. (A malformed key or user id is rejected by the SDK locally, so it says nothing about the server.) |
+| Full journey | Identifies the test account through the real `createRevenueCatBillingClient`, reads the Pro offer, status and scan packs, checks the client agrees with the raw SDK about the `pro` entitlement, then switches the same instance to another user and gets a free customer with no scans. |
+
+**Review of existing external tests against the four depths:** none existed for
+this surface, so all four were filled.
 
 ### `pages-site` (#42)
 

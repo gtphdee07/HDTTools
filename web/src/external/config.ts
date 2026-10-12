@@ -8,7 +8,10 @@ export const REQUIRED = [
 // A second, separate test account, for checking that one account cannot reach another's data.
 export const SECOND_ACCOUNT = ['WEB_EXTERNAL_TEST_NOCREDITS_EMAIL', 'WEB_EXTERNAL_TEST_NOCREDITS_PASSWORD'] as const;
 
-export type ConfigName = (typeof REQUIRED)[number] | (typeof SECOND_ACCOUNT)[number];
+// The RevenueCat Web Billing public API key and offering id: the same two variables the site is built with.
+export const REVENUECAT = ['VITE_REVENUECAT_WEB_PUBLIC_API_KEY', 'VITE_REVENUECAT_WEB_OFFERING_ID'] as const;
+
+export type ConfigName = (typeof REQUIRED)[number] | (typeof SECOND_ACCOUNT)[number] | (typeof REVENUECAT)[number];
 export type ExternalConfig = Record<(typeof REQUIRED)[number], string>;
 
 // A missing credential must fail the run, never skip it. The message names variables only, never values.

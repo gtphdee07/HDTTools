@@ -32,7 +32,7 @@ describe('npm test never collects external tests', () => {
   });
 });
 
-describe('external test files never create users, send mail or print secrets', () => {
+describe('external test files never create users, send mail, buy anything or print secrets', () => {
   const files = Object.entries(externalFiles);
   const calls = (text: string, method: string) => [...text.matchAll(new RegExp(String.raw`\.${method}\(([^)]*)\)`, 'g'))];
 
@@ -52,10 +52,16 @@ describe('external test files never create users, send mail or print secrets', (
 
   it.each(files)('%s: never logs, and never puts the password or key on a line that outputs', (_name, text) => {
     expect(text).not.toMatch(/console\.|process\.stdout|\.log\(/);
-    const sensitive = text.split('\n').filter((l) => /PASSWORD|PUBLISHABLE_KEY/.test(l) && !l.includes('REQUIRED'));
+    const sensitive = text
+      .split('\n')
+      .filter((l) => /PASSWORD|PUBLISHABLE_KEY|PUBLIC_API_KEY/.test(l) && !/REQUIRED|REVENUECAT\b/.test(l));
     for (const line of sensitive) {
       expect(line).not.toMatch(/expect\(|Error\(|toBe\(|toEqual\(|toThrow|message/);
     }
+  });
+
+  it.each(files)('%s: never starts a purchase (a sandbox purchase stays the human checklist in #11)', (_name, text) => {
+    expect(text).not.toMatch(/\.purchase\w*\(|\bpurchase(Pro|ScanPack)\(/);
   });
 });
 

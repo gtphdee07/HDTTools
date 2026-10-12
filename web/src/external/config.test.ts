@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { REQUIRED, readConfig } from './config';
+import { REQUIRED, REVENUECAT, readConfig } from './config';
 
 const full = {
   VITE_SUPABASE_URL: 'https://example-url.invalid',
@@ -31,6 +31,15 @@ describe('readConfig', () => {
     expect(readConfig(env, subset)).toEqual(env);
     expect(() => readConfig({ VITE_SUPABASE_URL: 'https://a.invalid' }, subset)).toThrow('VITE_SUPABASE_PUBLISHABLE_KEY');
     expect(() => readConfig({ VITE_SUPABASE_URL: 'https://a.invalid' }, subset)).not.toThrow('WEB_EXTERNAL_TEST_EMAIL');
+  });
+
+  it('reads the RevenueCat Web Billing variables on request, and names whichever is missing', () => {
+    const env = { VITE_REVENUECAT_WEB_PUBLIC_API_KEY: 'rcb_sb_key', VITE_REVENUECAT_WEB_OFFERING_ID: 'web' };
+    expect(readConfig(env, REVENUECAT)).toEqual(env);
+    expect(() => readConfig({ ...env, VITE_REVENUECAT_WEB_OFFERING_ID: undefined }, REVENUECAT)).toThrow(
+      'VITE_REVENUECAT_WEB_OFFERING_ID',
+    );
+    expect(() => readConfig({}, REVENUECAT)).toThrow('VITE_REVENUECAT_WEB_PUBLIC_API_KEY');
   });
 
   it('never includes a value in the message', () => {

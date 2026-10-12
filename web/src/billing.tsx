@@ -228,7 +228,9 @@ export function BillingProvider({
     const run = ++recheckRunRef.current;
     const current = () => recheckRunRef.current === run && stillBuyer();
     const rechecks = Math.floor(windowMs / intervalMs);
-    let lastCheckFailed = false;
+    // Only a window in which no check got an answer is an error; a stray failure among
+    // answers that all said "not yet" is still just a late grant.
+    let anyCheckSucceeded = false;
     setScansUpdating(true);
     try {
       for (let attempt = 0; ; attempt++) {
@@ -239,16 +241,15 @@ export function BillingProvider({
         try {
           const status = await client.getStatus();
           if (!current()) return;
-          lastCheckFailed = false;
+          anyCheckSucceeded = true;
           setScanBalance(status.scanBalance);
           if (status.scanBalance !== before) return;
         } catch {
           if (!current()) return;
-          lastCheckFailed = true;
         }
         if (attempt >= rechecks) break;
       }
-      if (lastCheckFailed) setError('Your purchase went through, but we could not refresh your scan balance. Reload to see it.');
+      if (!anyCheckSucceeded) setError('Your purchase went through, but we could not refresh your scan balance. Reload to see it.');
       else setNotice('Pro is unlocked. Your scans may take a minute to appear.');
     } finally {
       if (current()) setScansUpdating(false);

@@ -288,6 +288,56 @@ describe('Buy Pro on Web', () => {
       expect(screen.getByText('Pro plan')).toBeInTheDocument();
     });
 
+    it('shows the plain message, not an error, when the last check fails after earlier ones saw no change', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      const user = renderApp(billing);
+      await openAccount(user);
+      await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+      // the first check answers "no change", every later one fails, including the last
+      billing.client.getStatus.mockResolvedValueOnce({ isPro: true, scanBalance: 0 });
+      billing.client.getStatus.mockRejectedValue(new Error('RevenueCat is unreachable.'));
+      act(() => billing.completePayment());
+
+      expect(await screen.findByText(/may take a minute to appear/i, undefined, { timeout: 2000 })).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('keeps the user on Pro while RevenueCat still reports the entitlement as missing', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      const user = renderApp(billing);
+      await openAccount(user);
+      await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+      billing.client.getStatus.mockResolvedValue({ isPro: false, scanBalance: 0 });
+      act(() => billing.completePayment());
+      await screen.findByText(/updating your scans/i);
+      await act(async () => wait(RECHECK.intervalMs * 3));
+
+      expect(screen.getByText('Pro plan')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Buy Pro' })).not.toBeInTheDocument();
+
+      billing.client.getStatus.mockResolvedValue({ isPro: true, scanBalance: STARTER_SCANS });
+      expect(await screen.findByText(new RegExp(`Scan Credit balance: ${STARTER_SCANS}`))).toBeInTheDocument();
+      expect(screen.getByText('Pro plan')).toBeInTheDocument();
+    });
+
+    it('compares against the balance the user already had, not against zero', async () => {
+      const billing = makeFakeBilling();
+      billing.client.getStatus.mockResolvedValue({ isPro: false, scanBalance: 3 });
+      const user = renderApp(billing);
+      await openAccount(user);
+      expect(await screen.findByText(/Scan Credit balance: 3/)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Buy Pro' }));
+      act(() => billing.completePayment());
+
+      // an unchanged 3 is not a grant, so it keeps waiting
+      await screen.findByText(/updating your scans/i);
+      await act(async () => wait(RECHECK.intervalMs * 3));
+      expect(screen.getByText(/updating your scans/i)).toBeInTheDocument();
+
+      billing.client.getStatus.mockResolvedValue({ isPro: true, scanBalance: 3 + STARTER_SCANS });
+      expect(await screen.findByText(new RegExp(`Scan Credit balance: ${3 + STARTER_SCANS}`))).toBeInTheDocument();
+    });
+
     it('stops rechecking when the user signs out', async () => {
       const billing = makeFakeBilling({ lateGrant: true });
       const auth = makeDrivableAuth();

@@ -1,10 +1,11 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { AuthProvider } from './auth';
 import type { AuthClient, AuthSession } from './auth';
-import { BillingProvider } from './billing';
+import { BillingProvider, useBilling } from './billing';
+import type { BillingState } from './billing';
 import type { BillingClient, PurchaseOutcome, ScanRecheck } from './billing';
 
 // Interaction tests for buying Pro: the real screens against a fake auth
@@ -121,7 +122,7 @@ function makeFakeBilling({ lazyModal = false, lateGrant = false }: { lazyModal?:
 }
 
 // A short recheck window keeps the late-grant tests quick: 10 rechecks, 10ms apart.
-const RECHECK: ScanRecheck = { intervalMs: 10, windowMs: 100 };
+const RECHECK: ScanRecheck = { intervalMs: 10, windowMs: 100, checkTimeoutMs: 50 };
 const RECHECKS_IN_WINDOW = RECHECK.windowMs / RECHECK.intervalMs;
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -338,6 +339,47 @@ describe('Buy Pro on Web', () => {
       expect(await screen.findByText(new RegExp(`Scan Credit balance: ${3 + STARTER_SCANS}`))).toBeInTheDocument();
     });
 
+    it('does not stay on "updating" when a check hangs: the next one still finds the grant', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      const user = renderApp(billing);
+      await openAccount(user);
+      await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+      billing.client.getStatus.mockReturnValueOnce(new Promise(() => {}));
+      act(() => billing.completePayment());
+      await screen.findByText(/updating your scans/i);
+      act(() => billing.grantScans());
+
+      expect(await screen.findByText(new RegExp(`Scan Credit balance: ${STARTER_SCANS}`), undefined, { timeout: 2000 })).toBeInTheDocument();
+      expect(screen.queryByText(/updating your scans/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('ends the waiting state even when every check hangs', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      const user = renderApp(billing);
+      await openAccount(user);
+      await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+      billing.client.getStatus.mockImplementation(() => new Promise(() => {}));
+      act(() => billing.completePayment());
+      await screen.findByText(/updating your scans/i);
+
+      expect(await screen.findByRole('alert', undefined, { timeout: 4000 })).toHaveTextContent(/could not refresh your scan balance/i);
+      expect(screen.queryByText(/updating your scans/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Pro plan')).toBeInTheDocument();
+    });
+
+    it('still ends the window when the interval is zero', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      const user = renderApp(billing, makeSignedInAuth(), { intervalMs: 0, windowMs: 50, checkTimeoutMs: 50 });
+      await openAccount(user);
+      await user.click(await screen.findByRole('button', { name: 'Buy Pro' }));
+      act(() => billing.completePayment());
+
+      expect(await screen.findByText(/may take a minute to appear/i, undefined, { timeout: 2000 })).toBeInTheDocument();
+      // one load, then the first check and at most one recheck per millisecond of the window
+      expect(billing.client.getStatus.mock.calls.length).toBeLessThanOrEqual(1 + 1 + 50);
+    });
+
     it('stops rechecking when the user signs out', async () => {
       const billing = makeFakeBilling({ lateGrant: true });
       const auth = makeDrivableAuth();
@@ -381,6 +423,60 @@ describe('Buy Pro on Web', () => {
       await wait(RECHECK.windowMs * 2);
 
       expect(billing.client.getStatus).toHaveBeenCalledTimes(calls);
+    });
+  });
+
+  describe('a plan load racing the purchase', () => {
+    // Renders only the billing state, so a test can reach calls the Account screen never offers
+    // at that moment (the Buy Pro button is disabled while a plan loads).
+    function renderProbe(billing: ReturnType<typeof makeFakeBilling>) {
+      const probe: { current: BillingState | null } = { current: null };
+      function Probe() {
+        probe.current = useBilling();
+        return (
+          <div>
+            {probe.current.isPro ? 'probe: pro' : 'probe: free'} / {probe.current.loading ? 'probe: loading' : 'probe: idle'}
+          </div>
+        );
+      }
+      render(
+        <AuthProvider client={makeSignedInAuth()}>
+          <BillingProvider client={billing.client} scanRecheck={RECHECK}>
+            <Probe />
+          </BillingProvider>
+        </AuthProvider>,
+      );
+      return probe;
+    }
+
+    it('does not let a plan load that began before the purchase turn the buyer back to Free', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      let settleStale: (status: { isPro: boolean; scanBalance: number }) => void = () => {};
+      billing.client.getStatus.mockReturnValueOnce(new Promise((resolve) => (settleStale = resolve)));
+      const probe = renderProbe(billing);
+      await screen.findByText(/probe: loading/);
+
+      act(() => void probe.current?.buyPro());
+      act(() => billing.completePayment());
+      expect(await screen.findByText(/probe: pro/)).toBeInTheDocument();
+      await act(async () => settleStale({ isPro: false, scanBalance: 0 }));
+
+      expect(screen.getByText(/probe: pro/)).toBeInTheDocument();
+      expect(screen.queryByText(/probe: loading/)).not.toBeInTheDocument();
+    });
+
+    it('ignores a reload while the starter scans are awaited', async () => {
+      const billing = makeFakeBilling({ lateGrant: true });
+      const probe = renderProbe(billing);
+      await screen.findByText(/probe: idle/);
+      act(() => void probe.current?.buyPro());
+      act(() => billing.completePayment());
+      await waitFor(() => expect(probe.current?.scansUpdating).toBe(true));
+      const identifies = billing.client.identify.mock.calls.length;
+
+      act(() => probe.current?.reload());
+
+      expect(billing.client.identify).toHaveBeenCalledTimes(identifies);
     });
   });
 

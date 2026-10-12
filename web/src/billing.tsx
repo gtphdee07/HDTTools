@@ -22,10 +22,12 @@ export interface ScanRecheck {
   intervalMs: number;
   // The first check is immediate; rechecks continue until this much time has passed.
   windowMs: number;
+  // A check that has not answered by then counts as failed, so a hung call cannot hold the window open.
+  checkTimeoutMs: number;
 }
 
 // A tuning value: the real grant delay is best observed in the sandbox purchase (#11).
-const DEFAULT_SCAN_RECHECK: ScanRecheck = { intervalMs: 2000, windowMs: 30000 };
+const DEFAULT_SCAN_RECHECK: ScanRecheck = { intervalMs: 2000, windowMs: 30000, checkTimeoutMs: 8000 };
 
 // The slice of RevenueCat this app uses - kept narrow so tests can fake it.
 // A user cancelling checkout is a 'cancelled' outcome; any other failure rejects.
@@ -92,6 +94,13 @@ const message = (err: unknown, fallback: string) => (err instanceof Error && err
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timed out.')), ms);
+    promise.then(resolve, reject).finally(() => clearTimeout(timer));
+  });
+}
+
 export function BillingProvider({
   client,
   scanRecheck = DEFAULT_SCAN_RECHECK,
@@ -103,7 +112,9 @@ export function BillingProvider({
 }) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const { intervalMs, windowMs } = scanRecheck;
+  // At least 1ms apart, so the number of rechecks in the window is always finite.
+  const intervalMs = Math.max(1, scanRecheck.intervalMs);
+  const { windowMs, checkTimeoutMs } = scanRecheck;
 
   const [loading, setLoading] = useState(false);
   const [isPro, setIsPro] = useState(false);
@@ -183,9 +194,10 @@ export function BillingProvider({
 
   const reload = useCallback(() => {
     const accountId = accountRef.current;
-    if (!accountId || checkoutOpenRef.current) return;
+    // While the starter scans are awaited, a plan load could report RevenueCat's lagging Free status.
+    if (!accountId || checkoutOpenRef.current || scansUpdating) return;
     void loadPlan(accountId);
-  }, [loadPlan]);
+  }, [loadPlan, scansUpdating]);
 
   const buyPro = useCallback(async () => {
     if (!client || checkoutOpenRef.current) return;
@@ -221,6 +233,9 @@ export function BillingProvider({
     // can lag behind it, so the refresh below must not flip them back to Free.
     setIsPro(true);
     setNotice('Thank you! Pro is unlocked.');
+    // A plan load still in flight from before the purchase would report the old, Free state.
+    dropPendingLoads();
+    setLoading(false);
 
     // RevenueCat grants the starter scans server-side, so the balance can lag the
     // purchase: recheck it for a bounded window until it differs from before.
@@ -239,7 +254,7 @@ export function BillingProvider({
           if (!current()) return;
         }
         try {
-          const status = await client.getStatus();
+          const status = await withTimeout(client.getStatus(), checkTimeoutMs);
           if (!current()) return;
           anyCheckSucceeded = true;
           setScanBalance(status.scanBalance);
@@ -254,7 +269,7 @@ export function BillingProvider({
     } finally {
       if (current()) setScansUpdating(false);
     }
-  }, [client, intervalMs, windowMs, setScanBalance]);
+  }, [client, intervalMs, windowMs, checkTimeoutMs, setScanBalance, dropPendingLoads]);
 
   // The RevenueCat modal has no close control of its own (purchases-js #973),
   // and cancels only on browser Back, so ours goes Back too - but only once the

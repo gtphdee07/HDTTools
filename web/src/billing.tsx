@@ -73,6 +73,10 @@ export interface BillingState {
   buyScanPack(packId: string): Promise<void>;
   // Loads the plan, balance and offer again. Never starts a checkout.
   reload(): void;
+  // Reads the Scan Credit balance again, for after a scan spent or refunded one. A failed read leaves the
+  // balance as it was. `known` is a balance the Scan service just reported (none left), shown straight away
+  // so it holds even if the read fails.
+  refreshScanBalance(known?: number): Promise<void>;
   // Dismisses an open checkout; the same path as the browser Back button.
   closeCheckout(): void;
 }
@@ -92,6 +96,7 @@ const UNAVAILABLE: BillingState = {
   buyPro: async () => {},
   buyScanPack: async () => {},
   reload: () => {},
+  refreshScanBalance: async () => {},
   closeCheckout: () => {},
 };
 
@@ -218,6 +223,18 @@ export function BillingProvider({
     void loadPlan(accountId);
   }, [loadPlan, scansUpdating]);
 
+  const refreshScanBalance = useCallback(async (known?: number) => {
+    const accountId = accountRef.current;
+    if (!client || !accountId) return;
+    if (known !== undefined) setScanBalance(known);
+    try {
+      const status = await client.getStatus();
+      if (accountRef.current === accountId) setScanBalance(status.scanBalance);
+    } catch {
+      // The balance on screen stays; the next scan is checked by the Scan service either way.
+    }
+  }, [client, setScanBalance]);
+
   // One checkout at a time, for Pro or a scan pack. The purchase only ever changes what the
   // purchase is for: Pro flips the plan, a pack only moves the Scan Credit balance.
   const checkout = useCallback(async (purchase: () => Promise<PurchaseOutcome>, item: 'pro' | 'pack') => {
@@ -334,10 +351,11 @@ export function BillingProvider({
             buyPro,
             buyScanPack,
             reload,
+            refreshScanBalance,
             closeCheckout,
           }
         : UNAVAILABLE,
-    [client, loading, isPro, scanBalance, scansUpdating, proOffer, scanPacks, checkoutOpen, error, loadFailed, notice, buyPro, buyScanPack, reload, closeCheckout],
+    [client, loading, isPro, scanBalance, scansUpdating, proOffer, scanPacks, checkoutOpen, error, loadFailed, notice, buyPro, buyScanPack, reload, refreshScanBalance, closeCheckout],
   );
 
   return (

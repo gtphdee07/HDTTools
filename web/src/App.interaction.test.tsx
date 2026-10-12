@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import * as api from './api';
 import * as breakdown from './breakdown';
+import { makeWorld, renderApp } from './scanTestKit';
 import type { RecentRig } from './types';
 
 // Interaction tests: App.tsx has no exported handlers to unit-test in
@@ -28,6 +29,11 @@ beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 async function startNewRig(nickname: string) {
@@ -110,10 +116,11 @@ describe('App wizard interactions', () => {
 
   it('an extraction error clears once the user skips instead of retrying', async () => {
     mockedApi.extractTruckTag.mockRejectedValueOnce(new Error('Could not read that tag — blurry photo.'));
-    const { container } = render(<App />);
+    renderApp({ world: makeWorld() });
     const user = await startNewRig('Big Blue');
+    await screen.findByText(/scans left/);
 
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     await user.upload(fileInput, new File(['x'], 'truck.jpg', { type: 'image/jpeg' }));
     await user.click(screen.getByRole('button', { name: 'Extract Data' }));
 
@@ -127,13 +134,14 @@ describe('App wizard interactions', () => {
 
   it('scanning a tow-vehicle-only ticket fills the stand-alone weight field and hides the pin-weight slider', async () => {
     mockedApi.extractScaleTicket.mockResolvedValue({ steer_axle_lb: 5000, drive_axle_lb: 1000 });
-    const { container } = render(<App />);
+    renderApp({ world: makeWorld() });
     const user = await startNewRig('Big Blue');
+    await screen.findByText(/scans left/);
     await user.click(screen.getByRole('button', { name: "I don't have this image" }));
 
     expect(screen.getByRole('slider')).toBeInTheDocument();
 
-    const standaloneInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const standaloneInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     await user.upload(standaloneInput, new File(['x'], 'standalone.jpg', { type: 'image/jpeg' }));
 
     const weightField = await screen.findByLabelText('Stand-alone Weight (lb, optional)');

@@ -2,17 +2,33 @@ import { useRef } from 'react';
 import { Check, Upload } from 'lucide-react';
 import type { ModuleDef } from '../mockData';
 import { Button } from '../design-system/Button';
+import { ScanGate } from '../components/ScanGate';
+import type { ScanAccess } from '../scanAccess';
 
 interface UploadStepProps {
   module: ModuleDef;
   file: File | null;
   error: string | null;
+  // Whether this visitor can scan; when they cannot, the step offers the way past it instead of Extract Data.
+  scanAccess: ScanAccess;
+  onGoAccount: () => void;
+  onRetryScanAccess: () => void;
   onFileSelected: (file: File) => void;
   onExtract: () => void;
   onSkip: () => void;
 }
 
-export function UploadStep({ module, file, error, onFileSelected, onExtract, onSkip }: UploadStepProps) {
+export function UploadStep({
+  module,
+  file,
+  error,
+  scanAccess,
+  onGoAccount,
+  onRetryScanAccess,
+  onFileSelected,
+  onExtract,
+  onSkip,
+}: UploadStepProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const isScale = module.key === 'scale';
 
@@ -80,10 +96,13 @@ export function UploadStep({ module, file, error, onFileSelected, onExtract, onS
         {error && (
           <div style={{ color: 'var(--state-danger)', fontSize: 13, marginBottom: 16 }}>{error}</div>
         )}
+        <ScanGate access={scanAccess} onGoAccount={onGoAccount} onRetry={onRetryScanAccess} />
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Button variant="primary" size="md" onClick={onExtract} disabled={!file}>
-            Extract Data
-          </Button>
+          {scanAccess.kind === 'ready' && (
+            <Button variant="primary" size="md" onClick={onExtract} disabled={!file}>
+              Extract Data
+            </Button>
+          )}
           <Button variant="ghost" size="md" onClick={onSkip}>
             {isScale ? 'No Image / Enter Weight Manually' : "I don't have this image"}
           </Button>

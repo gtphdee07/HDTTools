@@ -1,5 +1,5 @@
 import { verifyAccountToken } from "./auth.ts";
-import { badRequest, json } from "./http.ts";
+import { badRequest, json, preflight, withCors } from "./http.ts";
 import { parseScanRequest } from "./request.ts";
 import { runScan } from "./scan.ts";
 import type { Env } from "./types.ts";
@@ -31,14 +31,22 @@ async function handleScan(request: Request, env: Env): Promise<Response> {
   return runScan(env, auth.userId, parsed);
 }
 
+async function route(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+
+  if (request.method === "OPTIONS" && url.pathname === "/v1/scan") {
+    return preflight();
+  }
+
+  if (request.method === "POST" && url.pathname === "/v1/scan") {
+    return handleScan(request, env);
+  }
+
+  return json({ ok: false, code: "not_found", message: "POST /v1/scan only." }, 404);
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-
-    if (request.method === "POST" && url.pathname === "/v1/scan") {
-      return handleScan(request, env);
-    }
-
-    return json({ ok: false, code: "not_found", message: "POST /v1/scan only." }, 404);
+    return withCors(await route(request, env));
   },
 };

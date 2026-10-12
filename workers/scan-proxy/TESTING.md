@@ -323,6 +323,8 @@ validates a real token against.
 - **malformed JSON body returns 400 bad_request, not a 500**.
 - **valid JSON that fails parseScanRequest returns 400 with that specific message, not swallowed** — proves `index.ts` passes `parseScanRequest`'s actual error message through rather than replacing it with something generic.
 - **an over-long or unusable client_request_id returns a clear 400 and never reaches RevenueCat** (#94) — 129 characters and a space, each a 400 `bad_request` naming the 128 cap, with zero RevenueCat calls.
+- **a CORS preflight for POST /v1/scan is answered without auth or any outbound call** (#26) — `OPTIONS` returns 204 with `Access-Control-Allow-Origin: *`, POST in the allowed methods, `Authorization` and `Content-Type` in the allowed headers, and makes no RevenueCat call.
+- **successful and failed responses all carry the CORS header so the browser can read them** (#26) — the 200, the 401, the 400 and the 404 each carry `Access-Control-Allow-Origin`.
 
 ### `installGuard.test.ts` — `installGuard.ts`, the missing-install check every top-level test file imports first (#82)
 

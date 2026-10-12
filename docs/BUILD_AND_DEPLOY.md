@@ -87,6 +87,7 @@ place listed.
 | `WEB_EXTERNAL_TEST_NOCREDITS_EMAIL`, `WEB_EXTERNAL_TEST_NOCREDITS_PASSWORD` | A second Supabase test user whose RevenueCat customer has no balance | `web/.env.local` | Worker live suites |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` | The Supabase project URL and publishable key. Public by design. | **committed** in `web/.env.production` (the production build needs them baked in; Cloudflare Pages did not pass dashboard variables into the build). Also copy them into `web/.env.local` so local runs and live tests see them. | Web build; live tests |
 | `VITE_REVENUECAT_WEB_PUBLIC_API_KEY`, `VITE_REVENUECAT_WEB_OFFERING_ID` | The RevenueCat **Web Billing** public API key and the offering id the Web paywall reads. Public by design. Without both, the Web app hides purchases (the free calculator is unaffected). Optional: `VITE_REVENUECAT_PRO_ENTITLEMENT_ID` (default `pro`) and `VITE_REVENUECAT_PRO_PACKAGE_ID` (default: the offering's lifetime package) and `VITE_REVENUECAT_SCAN_PACK_PACKAGE_IDS` (default: every other web-purchasable consumable package in the offering). | **committed** in `web/.env.production`, like the Supabase values. Also copy into `web/.env.local` for local runs. | Web build |
+| `VITE_SCAN_SERVICE_URL` | The scan-proxy Worker's address (no path), which the Web app posts scans to. Public by design. Without it the Web app says scanning is unavailable. | **committed** in `web/.env.production`. Also copy into `web/.env.local` to scan from `npm run dev`. | Web build |
 | Supabase URL + publishable key (Android) | same public values | **committed** in `SupabaseAccountBackend.kt` | Android app |
 | `SUPABASE_URL` (Worker) | same public project URL | **committed** in `workers/scan-proxy/wrangler.toml` `[vars]` | Worker |
 | RevenueCat *public* SDK key | The Android SDK key. Public by design. | **committed** in `RigCheckApplication.kt`. **Currently the Test Store key**, see section 8. | Android app |
@@ -315,9 +316,12 @@ Be explicit about these so nobody assumes they work:
 - **Apple sign-in:** #77. Needs a paid Apple Developer account and the iOS app.
 - **No CI.** Nothing runs automatically on push except the Pages and Streamlit
   deploys. The test suites are run by hand.
-- **Web photo scanning:** `web/src/api.ts` still posts to `/api/extract/*`,
-  endpoints that belonged to the retired FastAPI deploy, and Web is not yet
-  calling the shared Worker. I did not verify this against the live site.
+- **Web photo scanning (#26):** `web/src/api.ts` posts to the shared Worker at
+  `VITE_SCAN_SERVICE_URL`. A browser calls the Worker from another origin, so
+  the Worker now answers CORS (any origin; the account token is a bearer header,
+  not a cookie). **Redeploy the Worker (`npm run deploy`) before the Web build
+  that sets that address goes live**, or the browser blocks every scan. Not yet
+  tried against the live Worker.
 - **Android External suite:** #75.
 
 ## 9. Where to read more

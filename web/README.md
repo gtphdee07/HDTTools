@@ -23,8 +23,12 @@ npm install
 npm run dev
 ```
 
-Runs on `http://localhost:5173`. Optionally set `VITE_API_BASE_URL` (e.g. in
-`.env.local`) to point the scan calls at another host; unset means same-origin.
+Runs on `http://localhost:5173`. Photo scanning calls the shared Scan service
+(the `workers/scan-proxy` Worker) at `VITE_SCAN_SERVICE_URL`, which
+`.env.production` sets for the deployed site; put it in `.env.local` to scan
+from `npm run dev`. Unset, the Web app says scanning is unavailable and typing
+the numbers in still works. A scan needs a signed-in Pro account with at least
+one Scan Credit.
 
 
 ## Deploy (Cloudflare Pages)

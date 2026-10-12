@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import type { ModuleDef } from '../mockData';
 import { Button } from '../design-system/Button';
+import { ScanGate } from '../components/ScanGate';
+import type { ScanAccess } from '../scanAccess';
 
 interface ReviewStepProps {
   module: ModuleDef;
@@ -14,6 +16,11 @@ interface ReviewStepProps {
   pinWeightPct?: number;
   onPinWeightPctChange?: (value: number) => void;
   onScanStandaloneTicket?: (file: File) => Promise<void>;
+  // Whether this visitor can scan that ticket; when not, the way past it is shown in place of the button.
+  // Left out, the ticket scan is offered unconditionally.
+  scanAccess?: ScanAccess;
+  onGoAccount?: () => void;
+  onRetryScanAccess?: () => void;
 }
 
 export function ReviewStep({
@@ -25,6 +32,9 @@ export function ReviewStep({
   pinWeightPct,
   onPinWeightPctChange,
   onScanStandaloneTicket,
+  scanAccess,
+  onGoAccount,
+  onRetryScanAccess,
 }: ReviewStepProps) {
   const standaloneInputRef = useRef<HTMLInputElement>(null);
   const [scanningStandalone, setScanningStandalone] = useState(false);
@@ -85,24 +95,31 @@ export function ReviewStep({
             Scan a CAT Scale ticket weighing just your tow vehicle (no trailer
             attached) and we'll fill in the field above for you.
           </p>
-          <input
-            ref={standaloneInputRef}
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const picked = e.target.files?.[0];
-              if (picked) void handleStandaloneFile(picked);
-            }}
-          />
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => standaloneInputRef.current?.click()}
-            disabled={scanningStandalone}
-          >
-            {scanningStandalone ? 'Reading…' : 'Scan tow-vehicle-only ticket'}
-          </Button>
+          {scanAccess && onGoAccount && onRetryScanAccess && (
+            <ScanGate access={scanAccess} onGoAccount={onGoAccount} onRetry={onRetryScanAccess} />
+          )}
+          {(!scanAccess || scanAccess.kind === 'ready') && (
+            <>
+              <input
+                ref={standaloneInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const picked = e.target.files?.[0];
+                  if (picked) void handleStandaloneFile(picked);
+                }}
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => standaloneInputRef.current?.click()}
+                disabled={scanningStandalone}
+              >
+                {scanningStandalone ? 'Reading…' : 'Scan tow-vehicle-only ticket'}
+              </Button>
+            </>
+          )}
           {standaloneScanError && (
             <div style={{ color: 'var(--state-danger)', fontSize: 12, marginTop: 8 }}>{standaloneScanError}</div>
           )}

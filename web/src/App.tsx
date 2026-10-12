@@ -61,11 +61,12 @@ function App() {
     setDisclaimerAcknowledged(true);
   };
 
-  const { recovering } = useAuth();
+  const { recovering, linkProblem } = useAuth();
   // A password-reset email link lands the visitor here; take them straight to the new-password form.
+  // An email link that could not sign them in goes to the same screen, which says why.
   useEffect(() => {
-    if (recovering) setScreen('account');
-  }, [recovering]);
+    if (recovering || linkProblem) setScreen('account');
+  }, [recovering, linkProblem]);
 
   const goHome = () => setScreen('home');
   const goHistory = () => setScreen('history');

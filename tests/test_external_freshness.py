@@ -383,8 +383,9 @@ def test_revenuecat_web_billing_is_in_the_real_manifest_active_with_the_web_chai
     # No real purchase: a sandbox purchase stays the human checklist in #11.
     assert surface["max_paid_calls"] == 0
     assert surface["platforms"] == ["web"]
-    # The adapter over the SDK, and the module that builds and drives it.
-    assert {"web/src/revenueCatBilling.ts", "web/src/billing.tsx"} <= set(surface["boundary_files"])
+    # The adapter over the SDK. billing.tsx (the React provider) is deliberately not a boundary file:
+    # the live test does not exercise it, and provider edits would otherwise force a re-run.
+    assert surface["boundary_files"] == ["web/src/revenueCatBilling.ts"]
     assert {"web/package.json", "web/package-lock.json"} <= set(surface["dependency_pins"])
     assert {"ecosystem": "npm", "package": "@revenuecat/purchases-js"} in surface["registry_packages"]
     assert "revenuecat-web-billing" in ef.surfaces_for_platform(ef.load_manifest(), "web")

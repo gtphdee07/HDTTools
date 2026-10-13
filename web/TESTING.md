@@ -118,10 +118,12 @@ transactions at once, which is why the concurrent-add check lives here.
 ### `revenuecat-web-billing` (#85)
 
 Real calls to RevenueCat Web Billing through the real `@revenuecat/purchases-js`
-SDK, reads only. Boundary files are `web/src/revenueCatBilling.ts` (the adapter
-over the SDK) and `web/src/billing.tsx` (builds the client and drives it); pins
-are `web/package.json` and `web/package-lock.json`; the watched registry
-package is `@revenuecat/purchases-js`. Needs `VITE_REVENUECAT_WEB_PUBLIC_API_KEY`
+SDK, reads only. The one boundary file is `web/src/revenueCatBilling.ts` (the
+adapter over the SDK); pins are `web/package.json` and `web/package-lock.json`;
+the watched registry package is `@revenuecat/purchases-js`. `web/src/billing.tsx`
+(the React provider and the two-line factory that builds the client) is
+deliberately not a boundary file: the live test does not exercise it, and
+provider edits would otherwise mark the surface stale. Needs `VITE_REVENUECAT_WEB_PUBLIC_API_KEY`
 and `VITE_REVENUECAT_WEB_OFFERING_ID` (the same values the site is built with,
 public by design) and the `WEB_EXTERNAL_TEST_*` account in `web/.env.local`. The
 account's Supabase user id is the RevenueCat app user id, as on the site. **The
@@ -134,7 +136,9 @@ No purchase is ever made (0 paid calls; `externalGuards.test.ts` rejects any
 `purchase` call in an external file): a sandbox purchase stays the human
 checklist in #11. The test account may or may not be Pro, so the tests check
 shapes and agreement between the client and the raw SDK, never `isPro`'s value.
-Unlike the other suites, the "unknown user" case is not an error here:
+**Known gap (#105):** nothing yet proves that an entitlement named exactly `pro`
+exists and is attached to the Pro product, because no fixture user has it; a
+misnamed entitlement would pass these tests. Unlike the other suites, the "unknown user" case is not an error here:
 RevenueCat creates a customer on first sight, so an unseen app user id is a free
 customer with no scans, and the test uses one fixed id
 (`external-suite-no-purchases`) so it creates a single customer, not one per run.
@@ -142,7 +146,7 @@ customer with no scans, and the test uses one fixed id
 | ADR-0008 depth | Covered by |
 |---|---|
 | Reachable and authenticated | The Web public API key is accepted and `getOfferings` returns the configured offering. |
-| Response shape | The offering has a lifetime package (`$rc_lifetime`) backed by a non-consumable Web Billing product with a formatted price; every package has an identifier, and every Web Billing product a title, a known product type and a price. Customer info has an `entitlements.active` map; the `SCAN` virtual currency exists with an integer balance of 0 or more. These are the exact fields `getProOffer`, `getScanPacks` and `getStatus` read. |
+| Response shape | The offering has a lifetime package backed by a non-consumable Web Billing product with a formatted price; every package has an identifier, and every Web Billing product a title, a known product type and a price. Customer info has an `entitlements.active` map; the `SCAN` virtual currency exists with an integer balance of 0 or more. These are the exact fields `getProOffer`, `getScanPacks` and `getStatus` read. |
 | Error contract | A well-formed key the server never issued is rejected with `InvalidCredentialsError`. An app user with no purchases is a free customer with a zero balance, not an error. (A malformed key or user id is rejected by the SDK locally, so it says nothing about the server.) |
 | Full journey | Identifies the test account through the real `createRevenueCatBillingClient`, reads the Pro offer, status and scan packs, checks the client agrees with the raw SDK about the `pro` entitlement, then switches the same instance to another user and gets a free customer with no scans. |
 

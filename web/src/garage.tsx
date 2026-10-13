@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from './auth';
-import { loadRecentRigs, removeRecentRig, saveRecentRig } from './recentRigs';
+import { loadRecentRigs, saveRecentRig } from './recentRigs';
 import type { RecentRig, TrailerTagData, TruckTagData } from './types';
 
 // The Garage: the signed-in user's saved Rigs live in the account (ADR-0005), so every device sees the
@@ -35,6 +35,8 @@ export type SaveRigOutcome = { status: 'saved' } | { status: 'full'; cap: number
 export interface Garage {
   rigs: RecentRig[];
   saveRig(nickname: string, truck: TruckTagData, trailer: TrailerTagData): Promise<SaveRigOutcome>;
+  // Whether Rigs can be deleted: only the signed-in, account Garage can (the browser-only one cannot).
+  canDeleteRig: boolean;
   // True once the Rig is gone from the Garage; false if the delete failed and it is still there.
   deleteRig(rig: RecentRig): Promise<boolean>;
   // Re-reads the account's Rigs, to pick up changes made on another device.
@@ -138,11 +140,7 @@ export function useGarage(): Garage {
 
   const deleteRig = useCallback(
     async (rig: RecentRig): Promise<boolean> => {
-      if (!remote) {
-        setRigs(removeRecentRig(rig.nickname));
-        return true;
-      }
-      if (!rig.id) return false;
+      if (!remote || !rig.id) return false;
       try {
         await remote.deleteRig(rig.id);
       } catch {
@@ -156,5 +154,5 @@ export function useGarage(): Garage {
     [remote, load],
   );
 
-  return { rigs, saveRig, deleteRig, refresh: () => void load() };
+  return { rigs, saveRig, canDeleteRig: remote !== null, deleteRig, refresh: () => void load() };
 }

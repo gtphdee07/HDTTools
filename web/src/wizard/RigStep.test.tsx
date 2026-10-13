@@ -83,6 +83,13 @@ describe('RigStep', () => {
 });
 
 describe('RigStep delete', () => {
+  it('shows no delete control when Rigs cannot be deleted', () => {
+    render(<RigStep {...baseProps({ recentRigs: [rig()], onDeleteRig: undefined })} />);
+
+    expect(screen.getByText('Big Blue')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete Big Blue' })).not.toBeInTheDocument();
+  });
+
   it('asks for confirmation naming the Rig before deleting anything', async () => {
     const onDeleteRig = vi.fn(async () => true);
     render(<RigStep {...baseProps({ recentRigs: [rig()], onDeleteRig })} />);

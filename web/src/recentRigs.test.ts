@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadRecentRigs, removeRecentRig, saveRecentRig } from './recentRigs';
+import { loadRecentRigs, saveRecentRig } from './recentRigs';
 import type { TrailerTagData, TruckTagData } from './types';
 
 const STORAGE_KEY = 'rigcheck:recentRigs';
@@ -84,23 +84,5 @@ describe('saveRecentRig', () => {
     expect(result).toHaveLength(1);
     expect(result[0].nickname).toBe('Big Blue');
     setItemSpy.mockRestore();
-  });
-});
-
-describe('removeRecentRig', () => {
-  it('removes the named rig, keeps the others, and persists the result', () => {
-    saveRecentRig('Big Blue', TRUCK, TRAILER);
-    saveRecentRig('Red Rocket', TRUCK, TRAILER);
-
-    const result = removeRecentRig('big blue');
-
-    expect(result.map((r) => r.nickname)).toEqual(['Red Rocket']);
-    expect(loadRecentRigs().map((r) => r.nickname)).toEqual(['Red Rocket']);
-  });
-
-  it('leaves the list alone when no rig has that nickname', () => {
-    saveRecentRig('Big Blue', TRUCK, TRAILER);
-
-    expect(removeRecentRig('Nobody').map((r) => r.nickname)).toEqual(['Big Blue']);
   });
 });

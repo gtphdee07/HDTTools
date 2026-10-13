@@ -358,8 +358,8 @@ describe('deleting a Rig from the signed-in Garage', () => {
   });
 });
 
-describe('deleting a Rig from the signed-out Garage', () => {
-  it('removes it from the browser’s own list and never touches the account backend', async () => {
+describe('the signed-out Garage', () => {
+  it('offers no way to delete a Rig, and leaves the browser’s own list alone', async () => {
     localStorage.setItem(
       'rigcheck:recentRigs',
       JSON.stringify([
@@ -371,11 +371,10 @@ describe('deleting a Rig from the signed-out Garage', () => {
     const user = renderDevice(backend, null);
     await openRigList(user);
 
-    await deleteRig(user, 'Browser One');
-
-    await waitFor(() => expect(screen.queryByText('Browser One')).not.toBeInTheDocument());
-    const left: RecentRig[] = JSON.parse(localStorage.getItem('rigcheck:recentRigs') ?? '[]');
-    expect(left.map((r) => r.nickname)).toEqual(['Browser Two']);
+    expect(await screen.findByText('Browser One')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Delete / })).not.toBeInTheDocument();
+    const kept: RecentRig[] = JSON.parse(localStorage.getItem('rigcheck:recentRigs') ?? '[]');
+    expect(kept.map((r) => r.nickname)).toEqual(['Browser One', 'Browser Two']);
     expect(backend.deleteRig).not.toHaveBeenCalled();
   });
 });

@@ -8,7 +8,8 @@ interface RigStepProps {
   onSelectExisting: (rig: RecentRig) => void;
   onStartNew: (nickname: string) => void;
   // Resolves true once the Rig is gone, false if it could not be deleted and is still there.
-  onDeleteRig: (rig: RecentRig) => Promise<boolean>;
+  // Absent when Rigs cannot be deleted (a signed-out visitor), and then no delete control is shown.
+  onDeleteRig?: (rig: RecentRig) => Promise<boolean>;
 }
 
 const DOT_COLORS = ['var(--color-teal)', 'var(--color-purple)', 'var(--accent-primary)'];
@@ -31,7 +32,7 @@ export function RigStep({ recentRigs, onSelectExisting, onStartNew, onDeleteRig 
   const confirmDelete = async (rig: RecentRig) => {
     setDeleting(true);
     setDeleteFailed(false);
-    const deleted = await onDeleteRig(rig);
+    const deleted = (await onDeleteRig?.(rig)) ?? false;
     setDeleting(false);
     if (deleted) setConfirming(null);
     else setDeleteFailed(true);
@@ -81,7 +82,7 @@ export function RigStep({ recentRigs, onSelectExisting, onStartNew, onDeleteRig 
                     {subtitle && <div style={{ fontSize: 13, color: 'var(--fg-2)' }}>{subtitle}</div>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {!isConfirming && (
+                    {onDeleteRig && !isConfirming && (
                       <button
                         aria-label={`Delete ${rig.nickname}`}
                         title="Delete this rig"

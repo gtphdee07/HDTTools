@@ -73,6 +73,11 @@ function renderDevice(backend: GarageBackend, auth: AuthClient | null = signedIn
 
 async function finishCheckForNewRig(user: ReturnType<typeof userEvent.setup>, nickname: string) {
   await user.click(screen.getAllByRole('button', { name: 'Start New Check' })[0]);
+  await finishCheckFromRigStep(user, nickname);
+}
+
+// From the Rig list: name a new Rig and run the check through to the results.
+async function finishCheckFromRigStep(user: ReturnType<typeof userEvent.setup>, nickname: string) {
   await user.type(screen.getByPlaceholderText('e.g. Big Blue'), nickname);
   await user.click(screen.getByRole('button', { name: 'Start New Rig' }));
   await user.click(screen.getByRole('button', { name: "I don't have this image" }));
@@ -305,14 +310,7 @@ describe('deleting a Rig from the signed-in Garage', () => {
     await deleteRig(user, 'Rig One');
     await waitFor(() => expect(screen.queryByText('Rig One')).not.toBeInTheDocument());
 
-    await user.type(screen.getByPlaceholderText('e.g. Big Blue'), 'Rig Three');
-    await user.click(screen.getByRole('button', { name: 'Start New Rig' }));
-    await user.click(screen.getByRole('button', { name: "I don't have this image" }));
-    await user.click(screen.getByRole('button', { name: 'Next: Trailer Tag' }));
-    await user.click(screen.getByRole('button', { name: "I don't have this image" }));
-    await user.click(screen.getByRole('button', { name: 'Next: Scale Ticket' }));
-    await user.click(screen.getByRole('button', { name: 'No Image / Enter Weight Manually' }));
-    await user.click(screen.getByRole('button', { name: 'See My Results' }));
+    await finishCheckFromRigStep(user, 'Rig Three');
     await acknowledgeDisclaimer(user);
 
     await waitFor(() => expect([...stored.keys()].sort()).toEqual(['Rig Three', 'Rig Two']));

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -406,5 +406,309 @@ describe('signed-out Garage', () => {
     expect(backend.list).not.toHaveBeenCalled();
     expect(backend.addRig).not.toHaveBeenCalled();
     expect(within(document.body).queryByRole('status')).not.toBeInTheDocument();
+  });
+});
+
+// Rigs a visitor saved in this browser before signing in (#91): offered for import on first
+// sign-in, never forced, and never duplicated by a retry.
+
+const LOCAL_KEY = 'rigcheck:recentRigs';
+
+function seedBrowserRigs(...names: string[]) {
+  localStorage.setItem(
+    LOCAL_KEY,
+    JSON.stringify(
+      names.map((nickname, i) => ({
+        nickname,
+        truck: { manufacturer: `Truck ${nickname}` },
+        trailer: {},
+        lastUsedAt: new Date(Date.UTC(2026, 0, 10 - i)).toISOString(),
+      })),
+    ),
+  );
+}
+
+const browserRigNames = (): string[] =>
+  (JSON.parse(localStorage.getItem(LOCAL_KEY) ?? '[]') as RecentRig[]).map((r) => r.nickname);
+
+// A visitor who is signed out until they sign in with this email (any password).
+function signableClient(email: string): AuthClient {
+  let session: AuthSession | null = null;
+  const listeners = new Set<(event: string, s: AuthSession | null) => void>();
+  const emit = (event: string, s: AuthSession | null) => {
+    session = s;
+    listeners.forEach((l) => l(event, s));
+  };
+  return {
+    getSession: vi.fn(async () => ({ data: { session }, error: null })),
+    onAuthStateChange: vi.fn((cb: (event: string, s: AuthSession | null) => void) => {
+      listeners.add(cb);
+      return { data: { subscription: { unsubscribe: () => listeners.delete(cb) } } };
+    }),
+    signUp: vi.fn(),
+    signInWithPassword: vi.fn(async () => {
+      emit('SIGNED_IN', { access_token: `token-${email}`, user: { id: `id-${email}`, email } });
+      return { data: null, error: null };
+    }),
+    signOut: vi.fn(async () => {
+      emit('SIGNED_OUT', null);
+      return { error: null };
+    }),
+    resetPasswordForEmail: vi.fn(),
+    updateUser: vi.fn(),
+  } as unknown as AuthClient;
+}
+
+async function signInThroughAccount(user: ReturnType<typeof userEvent.setup>, email: string) {
+  await user.click(screen.getAllByRole('button', { name: 'Sign in' })[0]);
+  await user.type(screen.getByLabelText('Email'), email);
+  await user.type(screen.getByLabelText('Password'), 'correct horse');
+  await user.click(screen.getAllByRole('button', { name: 'Sign in' }).at(-1)!);
+}
+
+const importOffer = () => screen.queryByRole('region', { name: 'Import browser Rigs' });
+const clickImport = async (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(await screen.findByRole('button', { name: 'Import to my Garage' }));
+
+describe('importing browser-saved Rigs on first sign-in', () => {
+  it('offers on first sign-in, adds nothing until the user accepts, then adds the Rigs to the account', async () => {
+    seedBrowserRigs('Big Blue', 'Little Red');
+    const { backend, stored } = makeFakeAccountGarage();
+    const user = renderDevice(backend, signableClient('a@example.com'));
+    expect(importOffer()).not.toBeInTheDocument();
+
+    await signInThroughAccount(user, 'a@example.com');
+
+    const offer = await screen.findByRole('region', { name: 'Import browser Rigs' });
+    expect(offer).toHaveTextContent(/2 Rigs/);
+    expect(backend.addRig).not.toHaveBeenCalled();
+
+    await clickImport(user);
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/imported 2 rigs/i);
+    expect([...stored.keys()].sort()).toEqual(['Big Blue', 'Little Red']);
+    expect(stored.get('Big Blue')!.truck).toEqual({ manufacturer: 'Truck Big Blue' });
+    expect(importOffer()).not.toBeInTheDocument();
+  });
+
+  it('sends each Rig under its own idempotency key', async () => {
+    seedBrowserRigs('Big Blue', 'Little Red');
+    const { backend } = makeFakeAccountGarage();
+    const user = renderDevice(backend);
+
+    await clickImport(user);
+    await screen.findByRole('status');
+
+    const keys = backend.addRig.mock.calls.map(([key]) => key);
+    expect(keys).toHaveLength(2);
+    expect(new Set(keys).size).toBe(2);
+  });
+
+  it('leaves the browser’s own Rigs in place after importing them', async () => {
+    seedBrowserRigs('Big Blue', 'Little Red');
+    const { backend } = makeFakeAccountGarage();
+    const user = renderDevice(backend);
+
+    await clickImport(user);
+    await screen.findByRole('status');
+
+    expect(browserRigNames()).toEqual(['Big Blue', 'Little Red']);
+  });
+
+  it('does not import Rigs that would exceed the Free cap, and names the ones left out', async () => {
+    seedBrowserRigs('Rig One', 'Rig Two', 'Rig Three', 'Rig Four');
+    const { backend, stored } = makeFakeAccountGarage();
+    const user = renderDevice(backend);
+
+    await clickImport(user);
+
+    const result = await screen.findByRole('status');
+    expect(result).toHaveTextContent(/imported 2 rigs/i);
+    expect(result).toHaveTextContent(/garage is full/i);
+    expect(result).toHaveTextContent(String(CAP));
+    expect(result).toHaveTextContent('Rig Three');
+    expect(result).toHaveTextContent('Rig Four');
+    expect(result).not.toHaveTextContent('Rig One');
+    expect([...stored.keys()].sort()).toEqual(['Rig One', 'Rig Two']);
+    expect(browserRigNames()).toEqual(['Rig One', 'Rig Two', 'Rig Three', 'Rig Four']);
+  });
+
+  it('counts the Rigs already in the account against the cap', async () => {
+    seedBrowserRigs('Browser One', 'Browser Two');
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Account Rig');
+    const user = renderDevice(backend);
+
+    await clickImport(user);
+
+    const result = await screen.findByRole('status');
+    expect(result).toHaveTextContent(/imported 1 rig\b/i);
+    expect(result).toHaveTextContent('Browser Two');
+    expect([...stored.keys()].sort()).toEqual(['Account Rig', 'Browser One']);
+  });
+
+  it('leaves a Rig already in the account under the same nickname as it is, and says so', async () => {
+    seedBrowserRigs('Big Blue');
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'big blue');
+    const user = renderDevice(backend);
+
+    await clickImport(user);
+
+    const result = await screen.findByRole('status');
+    expect(result).toHaveTextContent(/already in your garage/i);
+    expect(result).toHaveTextContent('Big Blue');
+    expect(backend.addRig).not.toHaveBeenCalled();
+    expect(backend.updateRig).not.toHaveBeenCalled();
+    expect(stored.get('big blue')!.truck).toEqual({});
+  });
+
+  it('keeps the offer open after an interruption, and a retry creates no duplicates', async () => {
+    seedBrowserRigs('Big Blue', 'Little Red');
+    const { backend, stored } = makeFakeAccountGarage();
+    const realAdd = backend.addRig.getMockImplementation()!;
+    // The second Rig's request lands on the server but its reply is lost.
+    backend.addRig.mockImplementationOnce(realAdd);
+    backend.addRig.mockImplementationOnce(async (key, rig) => {
+      await realAdd(key, rig);
+      throw new Error('network down');
+    });
+    backend.addRig.mockImplementation(realAdd);
+    const user = renderDevice(backend);
+
+    await clickImport(user);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/didn.t finish/i);
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/imported/i);
+    expect([...stored.keys()].sort()).toEqual(['Big Blue', 'Little Red']);
+    const littleRedKeys = backend.addRig.mock.calls.filter(([, rig]) => rig.nickname === 'Little Red').map(([key]) => key);
+    expect(littleRedKeys).toHaveLength(2);
+    expect(littleRedKeys[1]).toBe(littleRedKeys[0]);
+  });
+
+  it('stops adding Rigs once the user signs out part-way through', async () => {
+    seedBrowserRigs('Big Blue', 'Little Red', 'Rig Three');
+    const { backend, stored } = makeFakeAccountGarage();
+    const auth = signedInClient('a@example.com');
+    const realAdd = backend.addRig.getMockImplementation()!;
+    backend.addRig.mockImplementationOnce(async (key, rig) => {
+      await realAdd(key, rig);
+      await act(async () => {
+        await auth.signOut();
+      });
+    });
+    backend.addRig.mockImplementation(realAdd);
+    const user = renderDevice(backend, auth);
+
+    await clickImport(user);
+
+    await waitFor(() => expect(backend.addRig).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(backend.addRig).toHaveBeenCalledTimes(1);
+    expect([...stored.keys()]).toEqual(['Big Blue']);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('offers a browser Rig once when two saved nicknames differ only by case or spacing', async () => {
+    localStorage.setItem(
+      LOCAL_KEY,
+      JSON.stringify([
+        { nickname: 'Big Blue', truck: {}, trailer: {}, lastUsedAt: '2026-01-02T00:00:00.000Z' },
+        { nickname: ' big blue ', truck: {}, trailer: {}, lastUsedAt: '2026-01-01T00:00:00.000Z' },
+      ]),
+    );
+    const { backend, stored } = makeFakeAccountGarage();
+    const user = renderDevice(backend);
+
+    expect(await screen.findByRole('region', { name: 'Import browser Rigs' })).toHaveTextContent(/1 Rig\b/);
+    await clickImport(user);
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/imported 1 rig\b/i);
+    expect(backend.addRig).toHaveBeenCalledTimes(1);
+    expect([...stored.keys()]).toEqual(['Big Blue']);
+  });
+
+  it('offers again on the next visit when the import never finished', async () => {
+    seedBrowserRigs('Big Blue');
+    const { backend } = makeFakeAccountGarage();
+    backend.addRig.mockRejectedValueOnce(new Error('network down'));
+    const user = renderDevice(backend);
+    await clickImport(user);
+    await screen.findByRole('alert');
+    document.body.innerHTML = '';
+
+    renderDevice(backend);
+
+    expect(await screen.findByRole('region', { name: 'Import browser Rigs' })).toBeInTheDocument();
+  });
+
+  it('keeps the browser’s Rigs and does not offer again when the user declines', async () => {
+    seedBrowserRigs('Big Blue');
+    const { backend, stored } = makeFakeAccountGarage();
+    const user = renderDevice(backend);
+
+    await user.click(await screen.findByRole('button', { name: 'No thanks' }));
+
+    expect(importOffer()).not.toBeInTheDocument();
+    expect(browserRigNames()).toEqual(['Big Blue']);
+    document.body.innerHTML = '';
+    renderDevice(backend);
+    await waitFor(() => expect(backend.list).toHaveBeenCalledTimes(2));
+    expect(importOffer()).not.toBeInTheDocument();
+    expect(backend.addRig).not.toHaveBeenCalled();
+    expect(stored.size).toBe(0);
+  });
+
+  it('does not offer again after an import, even on a later visit', async () => {
+    seedBrowserRigs('Big Blue');
+    const { backend } = makeFakeAccountGarage();
+    const user = renderDevice(backend);
+    await clickImport(user);
+    await screen.findByRole('status');
+    document.body.innerHTML = '';
+    backend.list.mockClear();
+
+    renderDevice(backend);
+
+    await waitFor(() => expect(backend.list).toHaveBeenCalled());
+    expect(importOffer()).not.toBeInTheDocument();
+  });
+
+  it('makes its own offer to a different account on the same browser', async () => {
+    seedBrowserRigs('Big Blue');
+    const { backend } = makeFakeAccountGarage();
+    const first = renderDevice(backend, signedInClient('a@example.com'));
+    await first.click(await screen.findByRole('button', { name: 'No thanks' }));
+    document.body.innerHTML = '';
+
+    renderDevice(backend, signedInClient('b@example.com'));
+
+    expect(await screen.findByRole('region', { name: 'Import browser Rigs' })).toBeInTheDocument();
+  });
+
+  it('makes no offer when the browser holds no Rigs, or when signed out', async () => {
+    const { backend } = makeFakeAccountGarage();
+    renderDevice(backend);
+    await waitFor(() => expect(backend.list).toHaveBeenCalled());
+    expect(importOffer()).not.toBeInTheDocument();
+    document.body.innerHTML = '';
+
+    seedBrowserRigs('Big Blue');
+    renderDevice(backend, null);
+    expect(importOffer()).not.toBeInTheDocument();
+  });
+
+  it('shows the imported Rigs in the Rig list straight away', async () => {
+    seedBrowserRigs('Big Blue');
+    const { backend } = makeFakeAccountGarage();
+    const user = renderDevice(backend);
+
+    await clickImport(user);
+    await screen.findByRole('status');
+    await openRigList(user);
+
+    expect(await screen.findByText('Big Blue')).toBeInTheDocument();
   });
 });

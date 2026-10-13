@@ -11,6 +11,8 @@ import { createBreakdown } from './breakdown';
 import type { CreateBreakdownResult } from './breakdown';
 import { useGarage } from './garage';
 import type { SaveRigOutcome } from './garage';
+import { useRigImport } from './garageImport';
+import { RigImportBanner } from './components/RigImportBanner';
 import { DisclaimerModal } from './components/DisclaimerModal';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -54,6 +56,7 @@ function App() {
   const [screen, setScreen] = useState<Screen>('home');
   const { rigs: recentRigs, saveRig, canDeleteRig, deleteRig, refresh: refreshGarage } = useGarage();
   const [garageNotice, setGarageNotice] = useState<string | null>(null);
+  const rigImport = useRigImport(refreshGarage);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [wizard, setWizard] = useState<WizardState>(EMPTY_WIZARD);
   const [checkResult, setCheckResult] = useState<CreateBreakdownResult | null>(null);
@@ -244,6 +247,7 @@ function App() {
       <Header screen={screen} onGoHome={goHome} onGoHistory={goHistory} onStartWizard={startWizard} onGoAccount={goAccount} />
 
       <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', padding: '36px 32px' }}>
+        <RigImportBanner rigImport={rigImport} />
         {garageNotice && (
           <div
             role="status"

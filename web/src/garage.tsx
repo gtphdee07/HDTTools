@@ -49,6 +49,11 @@ export function GarageProvider({ backend, children }: { backend: GarageBackend |
   return <GarageBackendContext.Provider value={backend}>{children}</GarageBackendContext.Provider>;
 }
 
+// The account Garage store the app was given, whether or not anyone is signed in (null when there is none).
+export function useGarageBackend(): GarageBackend | null {
+  return useContext(GarageBackendContext);
+}
+
 const sameNickname = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 // False if the update failed. The Rig may have been removed on another device since the list was

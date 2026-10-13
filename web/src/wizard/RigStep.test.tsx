@@ -19,6 +19,7 @@ function baseProps(overrides: Partial<Parameters<typeof RigStep>[0]> = {}) {
     recentRigs: [],
     onSelectExisting: vi.fn(),
     onStartNew: vi.fn(),
+    onDeleteRig: vi.fn(async () => true),
     ...overrides,
   };
 }
@@ -78,5 +79,63 @@ describe('RigStep', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Start New Rig' }));
 
     expect(onStartNew).toHaveBeenCalledWith('Red Rocket');
+  });
+});
+
+describe('RigStep delete', () => {
+  it('asks for confirmation naming the Rig before deleting anything', async () => {
+    const onDeleteRig = vi.fn(async () => true);
+    render(<RigStep {...baseProps({ recentRigs: [rig()], onDeleteRig })} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+
+    expect(screen.getByText(/delete .*Big Blue.*\?/i)).toBeInTheDocument();
+    expect(onDeleteRig).not.toHaveBeenCalled();
+  });
+
+  it('deletes the Rig once the user confirms', async () => {
+    const onDeleteRig = vi.fn(async () => true);
+    const theRig = rig();
+    render(<RigStep {...baseProps({ recentRigs: [theRig], onDeleteRig })} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Yes, delete' }));
+
+    expect(onDeleteRig).toHaveBeenCalledWith(theRig);
+  });
+
+  it('deletes nothing when the user cancels, and does not start a check either', async () => {
+    const onDeleteRig = vi.fn(async () => true);
+    const onSelectExisting = vi.fn();
+    render(<RigStep {...baseProps({ recentRigs: [rig()], onDeleteRig, onSelectExisting })} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(onDeleteRig).not.toHaveBeenCalled();
+    expect(onSelectExisting).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Delete Big Blue' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Yes, delete' })).not.toBeInTheDocument();
+  });
+
+  it('opening the delete control does not select the Rig for a check', async () => {
+    const onSelectExisting = vi.fn();
+    render(<RigStep {...baseProps({ recentRigs: [rig()], onSelectExisting })} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Yes, delete' }));
+
+    expect(onSelectExisting).not.toHaveBeenCalled();
+  });
+
+  it('shows an error and keeps the Rig when the delete fails', async () => {
+    const onDeleteRig = vi.fn(async () => false);
+    render(<RigStep {...baseProps({ recentRigs: [rig()], onDeleteRig })} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Yes, delete' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn.t delete.*Big Blue/i);
+    expect(screen.getByText('Big Blue')).toBeInTheDocument();
   });
 });

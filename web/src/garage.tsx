@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from './auth';
-import { loadRecentRigs, saveRecentRig } from './recentRigs';
+import { loadRecentRigs, removeRecentRig, saveRecentRig } from './recentRigs';
 import type { RecentRig, TrailerTagData, TruckTagData } from './types';
 
 // The Garage: the signed-in user's saved Rigs live in the account (ADR-0005), so every device sees the
@@ -26,6 +26,8 @@ export interface GarageBackend {
   addRig(idempotencyKey: string, rig: NewRig): Promise<void>;
   // Rewrites an existing Rig (its tags and last-used time). Uses no capacity.
   updateRig(rig: RecentRig & { id: string }): Promise<void>;
+  // Removes a Rig, which frees its slot. Removing one that is already gone succeeds.
+  deleteRig(id: string): Promise<void>;
 }
 
 export type SaveRigOutcome = { status: 'saved' } | { status: 'full'; cap: number | null } | { status: 'failed' };
@@ -33,6 +35,8 @@ export type SaveRigOutcome = { status: 'saved' } | { status: 'full'; cap: number
 export interface Garage {
   rigs: RecentRig[];
   saveRig(nickname: string, truck: TruckTagData, trailer: TrailerTagData): Promise<SaveRigOutcome>;
+  // True once the Rig is gone from the Garage; false if the delete failed and it is still there.
+  deleteRig(rig: RecentRig): Promise<boolean>;
   // Re-reads the account's Rigs, to pick up changes made on another device.
   refresh(): void;
 }
@@ -132,5 +136,25 @@ export function useGarage(): Garage {
     [remote, rigs, load],
   );
 
-  return { rigs, saveRig, refresh: () => void load() };
+  const deleteRig = useCallback(
+    async (rig: RecentRig): Promise<boolean> => {
+      if (!remote) {
+        setRigs(removeRecentRig(rig.nickname));
+        return true;
+      }
+      if (!rig.id) return false;
+      try {
+        await remote.deleteRig(rig.id);
+      } catch {
+        return false;
+      }
+      // Drop it now so the freed slot shows even if the re-read below can't reach the server.
+      setRigs((shown) => shown.filter((r) => r.id !== rig.id));
+      await load();
+      return true;
+    },
+    [remote, load],
+  );
+
+  return { rigs, saveRig, deleteRig, refresh: () => void load() };
 }

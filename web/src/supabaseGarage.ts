@@ -58,5 +58,12 @@ export function createSupabaseGarageBackend(client: SupabaseClient): GarageBacke
       if (error) throw new Error(error.message);
       if (data.length === 0) throw new Error('rig_not_found');
     },
+
+    // A Rig already gone (deleted on another device) is not an error: the Garage is what the caller
+    // wanted it to be, and it re-reads the list afterwards.
+    async deleteRig(id) {
+      const { error } = await client.from('garage_rigs').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+    },
   };
 }

@@ -52,7 +52,7 @@ function garageNoticeFor(nickname: string, outcome: SaveRigOutcome): string | nu
 
 function App() {
   const [screen, setScreen] = useState<Screen>('home');
-  const { rigs: recentRigs, saveRig, refresh: refreshGarage } = useGarage();
+  const { rigs: recentRigs, saveRig, deleteRig, refresh: refreshGarage } = useGarage();
   const [garageNotice, setGarageNotice] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [wizard, setWizard] = useState<WizardState>(EMPTY_WIZARD);
@@ -291,7 +291,12 @@ function App() {
             <StepPills step={step} />
 
             {isRigStep && (
-              <RigStep recentRigs={recentRigs} onSelectExisting={selectExistingRig} onStartNew={startNewRig} />
+              <RigStep
+                recentRigs={recentRigs}
+                onSelectExisting={selectExistingRig}
+                onStartNew={startNewRig}
+                onDeleteRig={deleteRig}
+              />
             )}
 
             {isUploadStep && currentModule && (

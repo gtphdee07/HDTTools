@@ -14,15 +14,25 @@ export function loadRecentRigs(): RecentRig[] {
   }
 }
 
-export function saveRecentRig(nickname: string, truck: TruckTagData, trailer: TrailerTagData): RecentRig[] {
-  const existing = loadRecentRigs().filter((r) => r.nickname.toLowerCase() !== nickname.toLowerCase());
-  const updated: RecentRig = { nickname, truck, trailer, lastUsedAt: new Date().toISOString() };
-  const next = [updated, ...existing].slice(0, MAX_RECENT_RIGS);
+function persist(rigs: RecentRig[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rigs));
   } catch {
     // localStorage unavailable (e.g. private browsing quota) - the in-memory
     // state for this session still works, it just won't persist.
   }
+}
+
+export function saveRecentRig(nickname: string, truck: TruckTagData, trailer: TrailerTagData): RecentRig[] {
+  const existing = loadRecentRigs().filter((r) => r.nickname.toLowerCase() !== nickname.toLowerCase());
+  const updated: RecentRig = { nickname, truck, trailer, lastUsedAt: new Date().toISOString() };
+  const next = [updated, ...existing].slice(0, MAX_RECENT_RIGS);
+  persist(next);
+  return next;
+}
+
+export function removeRecentRig(nickname: string): RecentRig[] {
+  const next = loadRecentRigs().filter((r) => r.nickname.toLowerCase() !== nickname.toLowerCase());
+  persist(next);
   return next;
 }

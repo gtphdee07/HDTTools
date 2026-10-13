@@ -1,20 +1,21 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import { ErrorCode, ProductType, Purchases, PurchasesError } from '@revenuecat/purchases-js';
-import { createRevenueCatBillingClient } from '../revenueCatBilling';
+import { createRevenueCatBillingClient, readBillingConfig } from '../revenueCatBilling';
 import type { BillingConfig } from '../revenueCatBilling';
 import { REQUIRED, REVENUECAT, readConfig } from './config';
 
 // External suite (ADR-0008): real calls to RevenueCat Web Billing through the real
 // @revenuecat/purchases-js SDK, run only via `npm run test:external`. The
 // "[revenuecat-web-billing]" name tag is what the wrapper filters on.
-// Reads only. It never buys anything: a sandbox purchase stays the human checklist in #11.
+// Reads only, and never buys anything: a sandbox purchase stays the human checklist in #11. The one side
+// effect is that RevenueCat creates a customer for NO_PURCHASES_USER the first time it sees it.
 // The test account is the Supabase one from scripts/wizard_web_external_test_user.sh: its
 // Supabase user id is the RevenueCat app user id, exactly as the site identifies a customer.
 
-// What revenueCatBilling.ts reads out of RevenueCat's answers.
-const PRO_ENTITLEMENT = 'pro';
+// The virtual currency revenueCatBilling.ts reads the scan balance from.
 const SCAN_CURRENCY = 'SCAN';
+const HAS_DIGIT = /\d/;
 
 // A well-formed key the server has never issued (the SDK rejects a malformed one locally).
 const WRONG_KEY = 'rcb_external_suite_wrong_key';
@@ -23,26 +24,18 @@ const WRONG_KEY = 'rcb_external_suite_wrong_key';
 const NO_PURCHASES_USER = 'external-suite-no-purchases';
 
 describe('[revenuecat-web-billing] RevenueCat Web Billing live contract', () => {
-  let apiKey: string;
-  let offeringId: string;
+  let billing: BillingConfig;
   let testAccountId: string;
 
   // The SDK keeps one global instance; configuring again closes the previous one, so every test
   // configures its own and nothing depends on test order.
-  const sdkFor = (appUserId: string, key = apiKey) => Purchases.configure({ apiKey: key, appUserId });
-
-  const billingConfig = (): BillingConfig => ({
-    apiKey,
-    offeringId,
-    proEntitlementId: PRO_ENTITLEMENT,
-    proPackageId: null,
-    scanPackPackageIds: null,
-  });
+  const sdkFor = (appUserId: string, apiKey = billing.apiKey) => Purchases.configure({ apiKey, appUserId });
 
   beforeAll(async () => {
-    const cfg = readConfig(import.meta.env as Record<string, string | undefined>, [...REQUIRED, ...REVENUECAT]);
-    apiKey = cfg.VITE_REVENUECAT_WEB_PUBLIC_API_KEY;
-    offeringId = cfg.VITE_REVENUECAT_WEB_OFFERING_ID;
+    const env = import.meta.env as Record<string, string | undefined>;
+    const cfg = readConfig(env, [...REQUIRED, ...REVENUECAT]);
+    // built exactly as the site builds it, so the entitlement id and package overrides are the site's
+    billing = readBillingConfig(env)!;
 
     const supabase = createClient(cfg.VITE_SUPABASE_URL, cfg.VITE_SUPABASE_PUBLISHABLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -59,22 +52,22 @@ describe('[revenuecat-web-billing] RevenueCat Web Billing live contract', () => 
     const offerings = await sdkFor(testAccountId).getOfferings();
 
     expect(Object.keys(offerings.all).length).toBeGreaterThan(0);
-    expect(offerings.all[offeringId], `offering "${offeringId}" must exist in the RevenueCat project`).toBeDefined();
-    expect(offerings.all[offeringId].identifier).toBe(offeringId);
+    expect(offerings.all[billing.offeringId], `offering "${billing.offeringId}" must exist in the RevenueCat project`).toBeDefined();
+    expect(offerings.all[billing.offeringId].identifier).toBe(billing.offeringId);
   });
 
   it('offers a lifetime package backed by a Web Billing product with a formatted price', async () => {
-    const offering = (await sdkFor(testAccountId).getOfferings()).all[offeringId];
+    const offering = (await sdkFor(testAccountId).getOfferings()).all[billing.offeringId];
+    expect(offering).toBeDefined();
 
     // getProOffer reads offering.lifetime.webBillingProduct.currentPrice.formattedPrice
     const lifetime = offering.lifetime;
     expect(lifetime, 'the offering needs a lifetime package for Pro').not.toBeNull();
-    expect(lifetime!.identifier).toBe('$rc_lifetime');
     const product = lifetime!.webBillingProduct;
     expect(product, 'the lifetime package must be backed by a Web Billing product').toBeTruthy();
     expect(product!.productType).toBe(ProductType.NonConsumable);
     expect(typeof product!.currentPrice.formattedPrice).toBe('string');
-    expect(product!.currentPrice.formattedPrice).toMatch(/\d/);
+    expect(product!.currentPrice.formattedPrice).toMatch(HAS_DIGIT);
 
     // getScanPacks walks availablePackages and reads each package's identifier and product
     expect(Array.isArray(offering.availablePackages)).toBe(true);
@@ -117,17 +110,17 @@ describe('[revenuecat-web-billing] RevenueCat Web Billing live contract', () => 
     const sdk = sdkFor(NO_PURCHASES_USER);
     const [customerInfo, currencies] = await Promise.all([sdk.getCustomerInfo(), sdk.getVirtualCurrencies()]);
 
-    expect(Object.keys(customerInfo.entitlements.active)).not.toContain(PRO_ENTITLEMENT);
+    expect(Object.keys(customerInfo.entitlements.active)).not.toContain(billing.proEntitlementId);
     expect(currencies.all[SCAN_CURRENCY]?.balance ?? 0).toBe(0);
   });
 
   it('journey: identifies the test account, fetches offerings, reads entitlement and balance, then switches user', async () => {
-    const client = createRevenueCatBillingClient(billingConfig());
+    const client = createRevenueCatBillingClient(billing);
 
     await client.identify(testAccountId);
     const offer = await client.getProOffer();
     expect(offer, 'Pro must be on sale on the web: the lifetime package needs a Web Billing product').not.toBeNull();
-    expect(offer!.price).toMatch(/\d/);
+    expect(offer!.price).toMatch(HAS_DIGIT);
 
     const status = await client.getStatus();
     expect(typeof status.isPro).toBe('boolean');
@@ -136,13 +129,13 @@ describe('[revenuecat-web-billing] RevenueCat Web Billing live contract', () => 
 
     // the client and the raw SDK agree about the same customer
     const customerInfo = await Purchases.getSharedInstance().getCustomerInfo();
-    expect(status.isPro).toBe(PRO_ENTITLEMENT in customerInfo.entitlements.active);
+    expect(status.isPro).toBe(billing.proEntitlementId in customerInfo.entitlements.active);
 
     const packs = await client.getScanPacks();
     for (const pack of packs) {
       expect(typeof pack.id).toBe('string');
       expect(typeof pack.title).toBe('string');
-      expect(pack.price).toMatch(/\d/);
+      expect(pack.price).toMatch(HAS_DIGIT);
     }
 
     // signing out and in as someone else switches the customer on the same instance

@@ -54,7 +54,7 @@ describe('external test files never create users, send mail, buy anything or pri
     expect(text).not.toMatch(/console\.|process\.stdout|\.log\(/);
     const sensitive = text
       .split('\n')
-      .filter((l) => /PASSWORD|PUBLISHABLE_KEY|PUBLIC_API_KEY/.test(l) && !/REQUIRED|REVENUECAT\b/.test(l));
+      .filter((l) => /PASSWORD|PUBLISHABLE_KEY|PUBLIC_API_KEY/.test(l) && !/REQUIRED|\.\.\.REVENUECAT/.test(l));
     for (const line of sensitive) {
       expect(line).not.toMatch(/expect\(|Error\(|toBe\(|toEqual\(|toThrow|message/);
     }

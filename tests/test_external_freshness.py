@@ -377,6 +377,34 @@ def test_supabase_tables_is_in_the_real_manifest_active_with_the_web_chain():
     assert "supabase-tables" in ef.surfaces_for_platform(ef.load_manifest(), "web")
 
 
+def test_revenuecat_web_billing_is_in_the_real_manifest_active_with_the_web_chain():
+    surface = ef.load_manifest()["surfaces"]["revenuecat-web-billing"]
+    assert surface["status"] == "active"
+    # No real purchase: a sandbox purchase stays the human checklist in #11.
+    assert surface["max_paid_calls"] == 0
+    assert surface["platforms"] == ["web"]
+    # The adapter over the SDK. billing.tsx (the React provider) is deliberately not a boundary file:
+    # the live test does not exercise it, and provider edits would otherwise force a re-run.
+    assert surface["boundary_files"] == ["web/src/revenueCatBilling.ts"]
+    assert {"web/package.json", "web/package-lock.json"} <= set(surface["dependency_pins"])
+    assert {"ecosystem": "npm", "package": "@revenuecat/purchases-js"} in surface["registry_packages"]
+    assert "revenuecat-web-billing" in ef.surfaces_for_platform(ef.load_manifest(), "web")
+
+
+@pytest.mark.parametrize("changed", ["web/src/revenueCatBilling.ts", "web/package.json", "web/package-lock.json"])
+def test_changing_the_billing_adapter_or_the_sdk_pin_makes_revenuecat_web_billing_stale(changed):
+    real = ef.load_manifest()
+    recorded = status_with(passed(), name="revenuecat-web-billing")
+    quiet = FakeRegistry({"@revenuecat/purchases-js": {"1.70.0": "2026-09-01T00:00:00Z", "created": "2020-01-01T00:00:00Z"}})
+
+    fresh = ef.evaluate(real, recorded, FakeGit(), quiet, only=["revenuecat-web-billing"])[0]
+    stale = ef.evaluate(real, recorded, FakeGit(changed=[changed]), quiet, only=["revenuecat-web-billing"])[0]
+
+    assert fresh.state == "fresh"
+    assert stale.state == "stale"
+    assert any(changed in r for r in stale.reasons)
+
+
 _REQUIRED_PROVIDER_SURFACES = {
     "scan-proxy-worker",
     "pages-site",
@@ -389,7 +417,7 @@ _REQUIRED_PROVIDER_SURFACES = {
 
 
 # Surfaces from the list above that have since gained a tagged External test and flipped to active.
-_SURFACES_NOW_ACTIVE = {"pages-site", "supabase-tables"}
+_SURFACES_NOW_ACTIVE = {"pages-site", "supabase-tables", "revenuecat-web-billing"}
 
 
 def test_every_required_provider_surface_is_registered_in_the_real_manifest():

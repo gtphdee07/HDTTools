@@ -287,6 +287,20 @@ describe('deleting a Rig from the signed-in Garage', () => {
     expect(screen.getByText('Rig Two')).toBeInTheDocument();
   });
 
+  it('still shows the freed slot when the list cannot be re-read right after the delete', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One', 'Rig Two');
+    const user = renderDevice(backend);
+    await openRigList(user);
+    await screen.findByText('Rig One');
+    backend.list.mockRejectedValue(new Error('offline'));
+
+    await deleteRig(user, 'Rig One');
+
+    await waitFor(() => expect(screen.queryByText('Rig One')).not.toBeInTheDocument());
+    expect(screen.getByText('Rig Two')).toBeInTheDocument();
+  });
+
   it('is gone on another signed-in device after it refreshes', async () => {
     const { backend, stored } = makeFakeAccountGarage();
     seedRigs(stored, 'Rig One', 'Rig Two');

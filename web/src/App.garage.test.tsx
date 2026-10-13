@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -586,6 +586,48 @@ describe('importing browser-saved Rigs on first sign-in', () => {
     const littleRedKeys = backend.addRig.mock.calls.filter(([, rig]) => rig.nickname === 'Little Red').map(([key]) => key);
     expect(littleRedKeys).toHaveLength(2);
     expect(littleRedKeys[1]).toBe(littleRedKeys[0]);
+  });
+
+  it('stops adding Rigs once the user signs out part-way through', async () => {
+    seedBrowserRigs('Big Blue', 'Little Red', 'Rig Three');
+    const { backend, stored } = makeFakeAccountGarage();
+    const auth = signedInClient('a@example.com');
+    const realAdd = backend.addRig.getMockImplementation()!;
+    backend.addRig.mockImplementationOnce(async (key, rig) => {
+      await realAdd(key, rig);
+      await act(async () => {
+        await auth.signOut();
+      });
+    });
+    backend.addRig.mockImplementation(realAdd);
+    const user = renderDevice(backend, auth);
+
+    await clickImport(user);
+
+    await waitFor(() => expect(backend.addRig).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(backend.addRig).toHaveBeenCalledTimes(1);
+    expect([...stored.keys()]).toEqual(['Big Blue']);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('offers a browser Rig once when two saved nicknames differ only by case or spacing', async () => {
+    localStorage.setItem(
+      LOCAL_KEY,
+      JSON.stringify([
+        { nickname: 'Big Blue', truck: {}, trailer: {}, lastUsedAt: '2026-01-02T00:00:00.000Z' },
+        { nickname: ' big blue ', truck: {}, trailer: {}, lastUsedAt: '2026-01-01T00:00:00.000Z' },
+      ]),
+    );
+    const { backend, stored } = makeFakeAccountGarage();
+    const user = renderDevice(backend);
+
+    expect(await screen.findByRole('region', { name: 'Import browser Rigs' })).toHaveTextContent(/1 Rig\b/);
+    await clickImport(user);
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/imported 1 rig\b/i);
+    expect(backend.addRig).toHaveBeenCalledTimes(1);
+    expect([...stored.keys()]).toEqual(['Big Blue']);
   });
 
   it('offers again on the next visit when the import never finished', async () => {

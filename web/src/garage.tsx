@@ -16,7 +16,7 @@ export class GarageFullError extends Error {
   }
 }
 
-type NewRig =Pick<RecentRig, 'nickname' | 'truck' | 'trailer'>;
+type NewRig = Pick<RecentRig, 'nickname' | 'truck' | 'trailer'>;
 
 // The account's Garage store. Kept narrow so tests can fake it (the real one is supabaseGarage.ts).
 export interface GarageBackend {

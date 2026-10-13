@@ -61,14 +61,31 @@ function wasAnswered(accountId: string): boolean {
   }
 }
 
-// The browser's Rigs that the account could accept, most recently used first.
+// The browser's Rigs that the account could accept, most recently used first. The browser's list is
+// whatever was stored, so skip entries the account would refuse (the table limits a nickname to 80
+// characters) and any whose nickname repeats an earlier one, which the account would see as one Rig.
 function loadBrowserRigs(): RecentRig[] {
-  return loadRecentRigs().filter(
-    (r) => typeof r?.nickname === 'string' && r.nickname.trim().length > 0 && r.nickname.trim().length <= 80,
-  );
+  const seen = new Set<string>();
+  return loadRecentRigs().filter((r) => {
+    if (typeof r?.nickname !== 'string') return false;
+    const slot = nicknameKey(r.nickname);
+    if (slot.length === 0 || slot.length > 80 || seen.has(slot)) return false;
+    seen.add(slot);
+    return true;
+  });
 }
 
-async function importRigs(backend: GarageBackend, rigs: RecentRig[], keys: Keys, persistKeys: () => void): Promise<ImportResult> {
+const nicknameKey = (nickname: string) => nickname.trim().toLowerCase();
+
+// `stillSignedIn` is checked before every add, so signing out (or switching accounts) part-way
+// stops the import instead of carrying on into whichever account is signed in next.
+async function importRigs(
+  backend: GarageBackend,
+  rigs: RecentRig[],
+  keys: Keys,
+  persistKeys: () => void,
+  stillSignedIn: () => boolean,
+): Promise<ImportResult> {
   const result: ImportResult = { imported: [], alreadyThere: [], notFit: [], cap: null, interrupted: false };
   let inAccount: RecentRig[];
   try {
@@ -77,11 +94,12 @@ async function importRigs(backend: GarageBackend, rigs: RecentRig[], keys: Keys,
     return { ...result, interrupted: true };
   }
   for (const rig of rigs) {
-    const slot = rig.nickname.trim().toLowerCase();
+    if (!stillSignedIn()) return { ...result, interrupted: true };
+    const slot = nicknameKey(rig.nickname);
     // A Rig whose add was already tried keeps its key even if it now shows up in the account:
     // that is this import's own earlier add, and the same key makes the server answer it again
     // instead of adding it twice. Any other Rig of that name is the account's own.
-    if (!keys[slot] && inAccount.some((r) => r.nickname.trim().toLowerCase() === slot)) {
+    if (!keys[slot] && inAccount.some((r) => nicknameKey(r.nickname) === slot)) {
       result.alreadyThere.push(rig.nickname);
       continue;
     }
@@ -130,8 +148,9 @@ export function useRigImport(onImported: () => void): RigImport {
     const { rigs } = phase;
     setPhase({ kind: 'importing', rigs });
     const keys = readKeys(accountId);
-    const result = await importRigs(remote, rigs, keys, () => writeStorage(keysKey(accountId), JSON.stringify(keys)));
-    if (current.current !== accountId) return;
+    const stillSignedIn = () => current.current === accountId;
+    const result = await importRigs(remote, rigs, keys, () => writeStorage(keysKey(accountId), JSON.stringify(keys)), stillSignedIn);
+    if (!stillSignedIn()) return;
     if (result.interrupted) {
       setPhase({ kind: 'interrupted', rigs });
     } else {

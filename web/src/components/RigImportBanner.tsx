@@ -36,12 +36,13 @@ export function RigImportBanner({ rigImport }: { rigImport: RigImport }) {
 
   if (phase.kind === 'offer' || phase.kind === 'importing') {
     const importing = phase.kind === 'importing';
+    const one = phase.rigs.length === 1;
     return (
       <section role="region" aria-label="Import browser Rigs" style={banner}>
         <span style={{ flex: 1 }}>
           {importing
             ? 'Importing your Rigs...'
-            : `You have ${rigs(phase.rigs.length)} saved in this browser. Add ${phase.rigs.length === 1 ? 'it' : 'them'} to your Garage so ${phase.rigs.length === 1 ? 'it comes' : 'they come'} with your account? ${phase.rigs.length === 1 ? 'It stays' : 'They stay'} in this browser either way.`}
+            : `You have ${rigs(phase.rigs.length)} saved in this browser. Add ${one ? 'it' : 'them'} to your Garage so ${one ? 'it comes' : 'they come'} with your account? ${one ? 'It stays' : 'They stay'} in this browser either way.`}
         </span>
         {!importing && (
           <>

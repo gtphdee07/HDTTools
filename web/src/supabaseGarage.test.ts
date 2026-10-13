@@ -55,4 +55,24 @@ describe('createSupabaseGarageBackend', () => {
     await expect(attempt).rejects.toThrow('connection reset');
     await expect(attempt).rejects.not.toBeInstanceOf(GarageFullError);
   });
+
+  it('deletes a Rig by its id from the Garage table', async () => {
+    const eq = vi.fn(async () => ({ error: null }));
+    const del = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ delete: del }));
+
+    await createSupabaseGarageBackend({ from } as unknown as SupabaseClient).deleteRig('rig-1');
+
+    expect(from).toHaveBeenCalledWith('garage_rigs');
+    expect(eq).toHaveBeenCalledWith('id', 'rig-1');
+  });
+
+  it('rejects a delete the server refused, so the caller can keep the Rig', async () => {
+    const eq = vi.fn(async () => ({ error: { message: 'connection reset' } }));
+    const from = vi.fn(() => ({ delete: () => ({ eq }) }));
+
+    await expect(
+      createSupabaseGarageBackend({ from } as unknown as SupabaseClient).deleteRig('rig-1'),
+    ).rejects.toThrow('connection reset');
+  });
 });

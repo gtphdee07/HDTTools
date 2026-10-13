@@ -26,6 +26,8 @@ export interface GarageBackend {
   addRig(idempotencyKey: string, rig: NewRig): Promise<void>;
   // Rewrites an existing Rig (its tags and last-used time). Uses no capacity.
   updateRig(rig: RecentRig & { id: string }): Promise<void>;
+  // Removes a Rig, which frees its slot. Removing one that is already gone succeeds.
+  deleteRig(id: string): Promise<void>;
 }
 
 export type SaveRigOutcome = { status: 'saved' } | { status: 'full'; cap: number | null } | { status: 'failed' };
@@ -33,6 +35,10 @@ export type SaveRigOutcome = { status: 'saved' } | { status: 'full'; cap: number
 export interface Garage {
   rigs: RecentRig[];
   saveRig(nickname: string, truck: TruckTagData, trailer: TrailerTagData): Promise<SaveRigOutcome>;
+  // Whether Rigs can be deleted: only the signed-in, account Garage can (the browser-only one cannot).
+  canDeleteRig: boolean;
+  // True once the Rig is gone from the Garage; false if the delete failed and it is still there.
+  deleteRig(rig: RecentRig): Promise<boolean>;
   // Re-reads the account's Rigs, to pick up changes made on another device.
   refresh(): void;
 }
@@ -132,5 +138,21 @@ export function useGarage(): Garage {
     [remote, rigs, load],
   );
 
-  return { rigs, saveRig, refresh: () => void load() };
+  const deleteRig = useCallback(
+    async (rig: RecentRig): Promise<boolean> => {
+      if (!remote || !rig.id) return false;
+      try {
+        await remote.deleteRig(rig.id);
+      } catch {
+        return false;
+      }
+      // Drop it now so the freed slot shows even if the re-read below can't reach the server.
+      setRigs((shown) => shown.filter((r) => r.id !== rig.id));
+      await load();
+      return true;
+    },
+    [remote, load],
+  );
+
+  return { rigs, saveRig, canDeleteRig: remote !== null, deleteRig, refresh: () => void load() };
 }

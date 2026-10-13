@@ -32,6 +32,9 @@ function makeFakeAccountGarage() {
       const current = stored.get(rig.nickname);
       if (current) stored.set(rig.nickname, { ...current, ...rig });
     }),
+    deleteRig: vi.fn(async (id: string) => {
+      for (const [nickname, rig] of stored) if (rig.id === id) stored.delete(nickname);
+    }),
   } satisfies GarageBackend;
   return { backend, stored };
 }
@@ -70,6 +73,11 @@ function renderDevice(backend: GarageBackend, auth: AuthClient | null = signedIn
 
 async function finishCheckForNewRig(user: ReturnType<typeof userEvent.setup>, nickname: string) {
   await user.click(screen.getAllByRole('button', { name: 'Start New Check' })[0]);
+  await finishCheckFromRigStep(user, nickname);
+}
+
+// From the Rig list: name a new Rig and run the check through to the results.
+async function finishCheckFromRigStep(user: ReturnType<typeof userEvent.setup>, nickname: string) {
   await user.type(screen.getByPlaceholderText('e.g. Big Blue'), nickname);
   await user.click(screen.getByRole('button', { name: 'Start New Rig' }));
   await user.click(screen.getByRole('button', { name: "I don't have this image" }));
@@ -247,6 +255,141 @@ describe('signed-in Garage, changed elsewhere', () => {
     await new Promise((r) => setTimeout(r, 20));
     // once as the Rig card, once as the check in Recent Checks
     expect(screen.getAllByText('Big Blue')).toHaveLength(2);
+  });
+});
+
+function seedRigs(stored: Map<string, RecentRig & { key: string }>, ...names: string[]) {
+  for (const name of names) {
+    stored.set(name, { nickname: name, truck: {}, trailer: {}, lastUsedAt: '2026-01-01T00:00:00.000Z', id: `id-${name}`, key: name });
+  }
+}
+
+async function openRigList(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getAllByRole('button', { name: 'Start New Check' })[0]);
+}
+
+async function deleteRig(user: ReturnType<typeof userEvent.setup>, nickname: string) {
+  await user.click(await screen.findByRole('button', { name: `Delete ${nickname}` }));
+  await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+}
+
+describe('deleting a Rig from the signed-in Garage', () => {
+  it('removes the Rig from the account after the user confirms, and from the list', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One', 'Rig Two');
+    const user = renderDevice(backend);
+    await openRigList(user);
+
+    await deleteRig(user, 'Rig One');
+
+    await waitFor(() => expect(screen.queryByText('Rig One')).not.toBeInTheDocument());
+    expect([...stored.keys()]).toEqual(['Rig Two']);
+    expect(screen.getByText('Rig Two')).toBeInTheDocument();
+  });
+
+  it('still shows the freed slot when the list cannot be re-read right after the delete', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One', 'Rig Two');
+    const user = renderDevice(backend);
+    await openRigList(user);
+    await screen.findByText('Rig One');
+    backend.list.mockRejectedValue(new Error('offline'));
+
+    await deleteRig(user, 'Rig One');
+
+    await waitFor(() => expect(screen.queryByText('Rig One')).not.toBeInTheDocument());
+    expect(screen.getByText('Rig Two')).toBeInTheDocument();
+  });
+
+  it('is gone on another signed-in device after it refreshes', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One', 'Rig Two');
+    const phone = renderDevice(backend);
+    await openRigList(phone);
+    await deleteRig(phone, 'Rig One');
+    await waitFor(() => expect(backend.deleteRig).toHaveBeenCalled());
+    document.body.innerHTML = '';
+
+    renderDevice(backend);
+
+    expect(await screen.findByText('Rig Two')).toBeInTheDocument();
+    expect(screen.queryByText('Rig One')).not.toBeInTheDocument();
+  });
+
+  it('lets the user save a new Rig after deleting one from a full Garage', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One', 'Rig Two');
+    const user = renderDevice(backend);
+    await openRigList(user);
+    await deleteRig(user, 'Rig One');
+    await waitFor(() => expect(screen.queryByText('Rig One')).not.toBeInTheDocument());
+
+    await finishCheckFromRigStep(user, 'Rig Three');
+    await acknowledgeDisclaimer(user);
+
+    await waitFor(() => expect([...stored.keys()].sort()).toEqual(['Rig Three', 'Rig Two']));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('deletes nothing when the user cancels the confirmation', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One');
+    const user = renderDevice(backend);
+    await openRigList(user);
+
+    await user.click(await screen.findByRole('button', { name: 'Delete Rig One' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(backend.deleteRig).not.toHaveBeenCalled();
+    expect(screen.getByText('Rig One')).toBeInTheDocument();
+    expect([...stored.keys()]).toEqual(['Rig One']);
+  });
+
+  it('shows an error and keeps the Rig when the delete fails', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One');
+    backend.deleteRig.mockRejectedValue(new Error('network down'));
+    const user = renderDevice(backend);
+    await openRigList(user);
+
+    await deleteRig(user, 'Rig One');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn.t delete.*Rig One/i);
+    expect(screen.getByText('Rig One')).toBeInTheDocument();
+    expect([...stored.keys()]).toEqual(['Rig One']);
+  });
+
+  it('only ever asks the backend to delete the chosen Rig, by id', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One', 'Rig Two');
+    const user = renderDevice(backend);
+    await openRigList(user);
+
+    await deleteRig(user, 'Rig Two');
+
+    await waitFor(() => expect(backend.deleteRig).toHaveBeenCalledTimes(1));
+    expect(backend.deleteRig).toHaveBeenCalledWith('id-Rig Two');
+  });
+});
+
+describe('the signed-out Garage', () => {
+  it('offers no way to delete a Rig, and leaves the browser’s own list alone', async () => {
+    localStorage.setItem(
+      'rigcheck:recentRigs',
+      JSON.stringify([
+        { nickname: 'Browser One', truck: {}, trailer: {}, lastUsedAt: '2026-01-02T00:00:00.000Z' },
+        { nickname: 'Browser Two', truck: {}, trailer: {}, lastUsedAt: '2026-01-01T00:00:00.000Z' },
+      ]),
+    );
+    const { backend } = makeFakeAccountGarage();
+    const user = renderDevice(backend, null);
+    await openRigList(user);
+
+    expect(await screen.findByText('Browser One')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Delete / })).not.toBeInTheDocument();
+    const kept: RecentRig[] = JSON.parse(localStorage.getItem('rigcheck:recentRigs') ?? '[]');
+    expect(kept.map((r) => r.nickname)).toEqual(['Browser One', 'Browser Two']);
+    expect(backend.deleteRig).not.toHaveBeenCalled();
   });
 });
 

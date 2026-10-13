@@ -16,7 +16,7 @@ export class GarageFullError extends Error {
   }
 }
 
-type NewRig = Pick<RecentRig, 'nickname' | 'truck' | 'trailer'>;
+type NewRig =Pick<RecentRig, 'nickname' | 'truck' | 'trailer'>;
 
 // The account's Garage store. Kept narrow so tests can fake it (the real one is supabaseGarage.ts).
 export interface GarageBackend {
@@ -47,6 +47,11 @@ const GarageBackendContext = createContext<GarageBackend | null>(null);
 
 export function GarageProvider({ backend, children }: { backend: GarageBackend | null; children: ReactNode }) {
   return <GarageBackendContext.Provider value={backend}>{children}</GarageBackendContext.Provider>;
+}
+
+// The account Garage store the app was given, whether or not anyone is signed in (null when there is none).
+export function useGarageBackend(): GarageBackend | null {
+  return useContext(GarageBackendContext);
 }
 
 const sameNickname = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();

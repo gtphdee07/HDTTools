@@ -5,7 +5,7 @@ import { Button } from '../design-system/Button';
 import { Badge } from '../design-system/Badge';
 import { RigDeleteButton, RigDeleteConfirm } from '../components/RigDelete';
 import type { DeleteRig } from '../components/RigDelete';
-import { nicknameKey } from '../nickname';
+import { rigLookup } from '../nickname';
 import { VERDICT_BADGE } from '../verdictBadge';
 
 interface DashboardProps {
@@ -23,7 +23,7 @@ export function Dashboard({ recentRigs, history, onStartWizard, onGoHistory, onD
   // Nickname of the Rig card being asked about, being deleted, or that failed to delete.
   const [confirming, setConfirming] = useState<string | null>(null);
   const recentHistory = history.slice(0, 2);
-  const rigByNickname = new Map(recentRigs.map((rig) => [nicknameKey(rig.nickname), rig]));
+  const findRig = rigLookup(recentRigs);
 
   return (
     <div>
@@ -145,7 +145,7 @@ export function Dashboard({ recentRigs, history, onStartWizard, onGoHistory, onD
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18, marginBottom: 40 }}>
         {recentHistory.map((h) => {
-          const rig = rigByNickname.get(nicknameKey(h.rigNickname));
+          const rig = findRig(h.rigNickname);
           const subtitle = rig ? [rig.truck.manufacturer, rig.trailer.manufacturer].filter(Boolean).join(' + ') : undefined;
           const badge = VERDICT_BADGE[h.verdict];
           return (

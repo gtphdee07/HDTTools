@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import type { HistoryEntry, RecentRig } from '../types';
 import { Badge } from '../design-system/Badge';
-import { nicknameKey } from '../nickname';
+import { nicknameKey, rigLookup } from '../nickname';
 import { VERDICT_BADGE } from '../verdictBadge';
 
 interface HistoryProps {
@@ -14,7 +14,7 @@ type Filter = 'all' | 'within' | 'over' | `rig:${string}`;
 
 export function History({ history, recentRigs = [] }: HistoryProps) {
   const [filter, setFilter] = useState<Filter>('all');
-  const rigByNickname = new Map(recentRigs.map((rig) => [nicknameKey(rig.nickname), rig]));
+  const findRig = rigLookup(recentRigs);
   // One pill per rig, however its nickname was spelled in each check (case, surrounding spaces).
   const rigPills = useMemo(() => {
     const byKey = new Map<string, string>();
@@ -95,7 +95,7 @@ export function History({ history, recentRigs = [] }: HistoryProps) {
         </div>
         {filtered.map((h, i) => {
           const badge = VERDICT_BADGE[h.verdict];
-          const rig = rigByNickname.get(nicknameKey(h.rigNickname));
+          const rig = findRig(h.rigNickname);
           const subtitle = rig ? [rig.truck.manufacturer, rig.trailer.manufacturer].filter(Boolean).join(' + ') : '—';
           return (
             <div

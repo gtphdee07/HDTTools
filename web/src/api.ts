@@ -27,6 +27,17 @@ const MESSAGES = {
 
 const NO_ANSWER = "We didn't get a usable answer from the scan service. Try again; a retry is not charged twice.";
 
+// How long the whole exchange with the Scan service may take (sending the photo, waiting, reading the reply)
+// before the request is abandoned. While a scan is in flight the check cannot be left (#103), so without a
+// limit a reply that never comes would lock the user in until the browser gives up, which can take minutes.
+// 60 s: longer than the Worker's own worst case (Anthropic's 20 s ANTHROPIC_TIMEOUT_MS in
+// workers/scan-proxy/src/claude.ts, plus the sign-in key fetch and the balance check), so the app does not
+// give up on a scan the service would have delivered; and the same as Android's 60 s read timeout.
+export const SCAN_TIMEOUT_MS = 60_000;
+
+const TOO_SLOW =
+  'The scan service took too long to answer. Try again; a retry is not charged twice.';
+
 // Set VITE_SCAN_SERVICE_URL at build time to the Scan service's address (the Worker, no trailing path).
 // Read on each call so a build without it fails the scan cleanly rather than at load.
 function scanEndpoint(): string | null {
@@ -47,23 +58,45 @@ async function scan<T>(docType: DocType, file: File, context: ScanContext): Prom
 
   const image = await prepareImage(file);
 
-  let res: Response;
-  try {
-    res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${context.accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        doc_type: docType,
-        image_base64: image.base64,
-        media_type: image.mediaType,
-        client_request_id: context.clientRequestId,
-      }),
-    });
-  } catch {
-    throw new ScanError('network', "We couldn't reach the scan service. Check your connection and try again. A retry is not charged twice.", true);
-  }
+  // The clock starts once the photo is ready and covers the reply body too. Running out of it is a lost
+  // response, the same as a dropped connection: the service may have charged, so the retry keeps the request id.
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new ScanError('timeout', TOO_SLOW, true));
+      controller.abort();
+    }, SCAN_TIMEOUT_MS);
+  });
 
-  const body: ScanBody | null = await res.json().catch(() => null);
+  const exchange = async () => {
+    let res: Response;
+    try {
+      res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${context.accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          doc_type: docType,
+          image_base64: image.base64,
+          media_type: image.mediaType,
+          client_request_id: context.clientRequestId,
+        }),
+        signal: controller.signal,
+      });
+    } catch {
+      throw new ScanError('network', "We couldn't reach the scan service. Check your connection and try again. A retry is not charged twice.", true);
+    }
+    const body: ScanBody | null = await res.json().catch(() => null);
+    return { res, body };
+  };
+
+  let res: Response;
+  let body: ScanBody | null;
+  try {
+    ({ res, body } = await Promise.race([exchange(), timedOut]));
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (res.ok && body?.ok === true && typeof body.fields === 'object' && body.fields !== null) {
     return body.fields as T;

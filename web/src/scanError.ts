@@ -13,6 +13,8 @@ export type ScanErrorCode =
   | 'unavailable'
   // The request got no usable answer: no connection, or a reply that is not the service's.
   | 'network'
+  // The service did not finish answering within the time limit (api.ts); the request was abandoned.
+  | 'timeout'
   | 'unknown';
 
 // A scan that did not deliver fields. `message` is written for the user.

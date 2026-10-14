@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
+import { SCAN_TIMEOUT_MS, extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
 import { ScanError } from './scanError';
 import type { ScanErrorCode } from './scanError';
 
@@ -209,5 +209,102 @@ describe('what the user is told when a scan does not deliver', () => {
     expect(err.code).toBe('network');
     expect(err.lostResponse).toBe(true);
     expect(err.message).toMatch(/connection/i);
+  });
+});
+
+// A scan that never answers must not hold the check for as long as the browser cares to wait. The limit
+// covers the whole exchange, and running out of it is a lost response (the service may have charged), so a
+// retry reuses the request id. Fake timers: nothing here waits for real.
+describe('a scan request that takes too long', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // A fetch that is still waiting, and rejects the way a browser does once its signal aborts.
+  function waitForever() {
+    let signal: AbortSignal | undefined;
+    fetchMock.mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          signal = init.signal ?? undefined;
+          signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+        }),
+    );
+    return () => signal;
+  }
+
+  // The limit's clock starts when the request is sent, after the photo has been read (a real, not faked,
+  // asynchronous step), so time only moves once fetch has been called.
+  async function requestSent() {
+    while (fetchMock.mock.calls.length === 0) await new Promise((resolve) => setImmediate(resolve));
+  }
+
+  // The call's outcome as a value, so a rejection while time advances is not left unhandled.
+  const settle = (call: Promise<unknown>) =>
+    call.then(
+      () => null,
+      (err: unknown) => err,
+    );
+
+  it('aborts a request that never answers once the limit passes, and reports a lost response', async () => {
+    const signal = waitForever();
+    const outcome = settle(extractTruckTag(JPEG(), CONTEXT));
+
+    await requestSent();
+    await vi.advanceTimersByTimeAsync(SCAN_TIMEOUT_MS - 1);
+    expect(signal()?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    const err = (await outcome) as ScanError;
+    expect(err).toBeInstanceOf(ScanError);
+    expect(err.code).toBe('timeout');
+    expect(err.lostResponse).toBe(true);
+    expect(err.message).toMatch(/took too long.*not charged twice/i);
+    expect(signal()?.aborted).toBe(true);
+  });
+
+  it('times out a reply whose body stalls after the headers', async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: () => new Promise(() => {}) });
+    const outcome = settle(extractScaleTicket(JPEG(), CONTEXT));
+
+    await requestSent();
+    await vi.advanceTimersByTimeAsync(SCAN_TIMEOUT_MS);
+
+    const err = (await outcome) as ScanError;
+    expect(err).toBeInstanceOf(ScanError);
+    expect(err.code).toBe('timeout');
+    expect(err.lostResponse).toBe(true);
+  });
+
+  it('leaves a reply that arrives before the limit alone, and stops the clock', async () => {
+    fetchMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(
+            () =>
+              resolve({ ok: true, status: 200, json: async () => ({ ok: true, doc_type: 'truck_tag', fields: { manufacturer: 'Ford' } }) }),
+            SCAN_TIMEOUT_MS - 1,
+          );
+        }),
+    );
+    const outcome = extractTruckTag(JPEG(), CONTEXT);
+
+    await requestSent();
+    await vi.advanceTimersByTimeAsync(SCAN_TIMEOUT_MS - 1);
+
+    await expect(outcome).resolves.toEqual({ manufacturer: 'Ford' });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('gives the abort signal to fetch, so the request can really be cancelled', async () => {
+    answer(200, { ok: true, doc_type: 'truck_tag', fields: {} });
+
+    await extractTruckTag(JPEG(), CONTEXT);
+
+    expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
   });
 });

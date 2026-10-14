@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
 import type { RecentRig } from '../types';
 import { Button } from '../design-system/Button';
+import { RigDeleteButton, RigDeleteConfirm } from '../components/RigDelete';
+import type { DeleteRig } from '../components/RigDelete';
 
 interface RigStepProps {
   recentRigs: RecentRig[];
   onSelectExisting: (rig: RecentRig) => void;
   onStartNew: (nickname: string) => void;
-  // Resolves true once the Rig is gone, false if it could not be deleted and is still there.
   // Absent when Rigs cannot be deleted (a signed-out visitor), and then no delete control is shown.
-  onDeleteRig?: (rig: RecentRig) => Promise<boolean>;
+  onDeleteRig?: DeleteRig;
 }
 
 const DOT_COLORS = ['var(--color-teal)', 'var(--color-purple)', 'var(--accent-primary)'];
@@ -18,25 +18,6 @@ export function RigStep({ recentRigs, onSelectExisting, onStartNew, onDeleteRig 
   const [nickname, setNickname] = useState('');
   // Nickname of the Rig being asked about, being deleted, or that failed to delete.
   const [confirming, setConfirming] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteFailed, setDeleteFailed] = useState(false);
-
-  const askToDelete = (rig: RecentRig) => {
-    setConfirming(rig.nickname);
-    setDeleteFailed(false);
-  };
-  const cancelDelete = () => {
-    setConfirming(null);
-    setDeleteFailed(false);
-  };
-  const confirmDelete = async (rig: RecentRig) => {
-    setDeleting(true);
-    setDeleteFailed(false);
-    const deleted = (await onDeleteRig?.(rig)) ?? false;
-    setDeleting(false);
-    if (deleted) setConfirming(null);
-    else setDeleteFailed(true);
-  };
 
   return (
     <div style={{ maxWidth: 620, margin: '0 auto' }}>
@@ -83,24 +64,7 @@ export function RigStep({ recentRigs, onSelectExisting, onStartNew, onDeleteRig 
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {onDeleteRig && !isConfirming && (
-                      <button
-                        aria-label={`Delete ${rig.nickname}`}
-                        title="Delete this rig"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          askToDelete(rig);
-                        }}
-                        style={{
-                          display: 'flex',
-                          padding: 8,
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--fg-2)',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <Trash2 size={18} aria-hidden="true" />
-                      </button>
+                      <RigDeleteButton rig={rig} onAsk={() => setConfirming(rig.nickname)} />
                     )}
                     <span
                       style={{
@@ -113,24 +77,9 @@ export function RigStep({ recentRigs, onSelectExisting, onStartNew, onDeleteRig 
                     />
                   </div>
                 </div>
-                {isConfirming && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 20px 16px' }}>
-                    <div style={{ fontSize: 14, color: 'var(--fg-1)' }}>
-                      Delete "{rig.nickname}"? This frees its spot in your Garage and can't be undone.
-                    </div>
-                    {deleteFailed && (
-                      <div role="alert" style={{ fontSize: 14, color: 'var(--fg-1)' }}>
-                        We couldn't delete "{rig.nickname}". It's still in your Garage; please try again.
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', gap: 12 }}>
-                      <Button variant="primary" size="sm" disabled={deleting} onClick={() => void confirmDelete(rig)}>
-                        {deleting ? 'Deleting…' : 'Yes, delete'}
-                      </Button>
-                      <Button variant="ghost" size="sm" disabled={deleting} onClick={cancelDelete}>
-                        Cancel
-                      </Button>
-                    </div>
+                {isConfirming && onDeleteRig && (
+                  <div style={{ padding: '0 20px 16px' }}>
+                    <RigDeleteConfirm rig={rig} onDelete={onDeleteRig} onDone={() => setConfirming(null)} />
                   </div>
                 )}
               </div>

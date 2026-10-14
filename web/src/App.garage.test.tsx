@@ -390,6 +390,98 @@ describe('deleting a Rig from the signed-in Garage', () => {
   });
 });
 
+describe('deleting a Rig from the Dashboard cards', () => {
+  it('removes the Rig after the user confirms, from the Dashboard, the account and the wizard’s Rig list', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One', 'Rig Two');
+    const user = renderDevice(backend);
+
+    await deleteRig(user, 'Rig One');
+
+    await waitFor(() => expect(screen.queryByText('Rig One')).not.toBeInTheDocument());
+    expect(screen.getByText('Rig Two')).toBeInTheDocument();
+    expect([...stored.keys()]).toEqual(['Rig Two']);
+    expect(backend.deleteRig).toHaveBeenCalledWith('id-Rig One');
+    await openRigList(user);
+    expect(await screen.findByText('Rig Two')).toBeInTheDocument();
+    expect(screen.queryByText('Rig One')).not.toBeInTheDocument();
+  });
+
+  it('names the Rig in the confirmation, and deletes nothing until the user confirms', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One');
+    const user = renderDevice(backend);
+
+    await user.click(await screen.findByRole('button', { name: 'Delete Rig One' }));
+
+    expect(screen.getByText(/Delete "Rig One"\?/)).toBeInTheDocument();
+    expect(backend.deleteRig).not.toHaveBeenCalled();
+  });
+
+  it('deletes nothing when the user cancels the confirmation', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One');
+    const user = renderDevice(backend);
+
+    await user.click(await screen.findByRole('button', { name: 'Delete Rig One' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(backend.deleteRig).not.toHaveBeenCalled();
+    expect(screen.getByText('Rig One')).toBeInTheDocument();
+    expect(screen.queryByText(/Delete "Rig One"\?/)).not.toBeInTheDocument();
+    expect([...stored.keys()]).toEqual(['Rig One']);
+  });
+
+  it('shows an error and keeps the Rig on the Dashboard when the delete fails', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One');
+    backend.deleteRig.mockRejectedValue(new Error('network down'));
+    const user = renderDevice(backend);
+
+    await deleteRig(user, 'Rig One');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn.t delete.*Rig One/i);
+    expect(screen.getByText('Rig One')).toBeInTheDocument();
+    expect([...stored.keys()]).toEqual(['Rig One']);
+  });
+
+  it('does not start a check when the delete control is used', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One');
+    const user = renderDevice(backend);
+
+    await user.click(await screen.findByRole('button', { name: 'Delete Rig One' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('button', { name: 'Back to Dashboard' })).not.toBeInTheDocument();
+  });
+
+  it('still shows the freed slot when the list cannot be re-read right after the delete', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    seedRigs(stored, 'Rig One', 'Rig Two');
+    const user = renderDevice(backend);
+    await screen.findByText('Rig One');
+    backend.list.mockRejectedValue(new Error('offline'));
+
+    await deleteRig(user, 'Rig One');
+
+    await waitFor(() => expect(screen.queryByText('Rig One')).not.toBeInTheDocument());
+    expect(screen.getByText('Rig Two')).toBeInTheDocument();
+  });
+
+  it('shows no delete control to a signed-out visitor', async () => {
+    const { backend } = makeFakeAccountGarage();
+    localStorage.setItem(
+      'rigcheck:recentRigs',
+      JSON.stringify([{ nickname: 'Browser One', truck: {}, trailer: {}, lastUsedAt: '2026-01-02T00:00:00.000Z' }]),
+    );
+    renderDevice(backend, null);
+
+    expect(await screen.findByText('Browser One')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Delete / })).not.toBeInTheDocument();
+  });
+});
+
 describe('the signed-out Garage', () => {
   it('offers no way to delete a Rig, and leaves the browser’s own list alone', async () => {
     localStorage.setItem(

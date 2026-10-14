@@ -162,6 +162,19 @@ describe('ReviewStep', () => {
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
   });
 
+  it('offers no "Try again" once the user can no longer scan, as when the failed scan used their last scan', async () => {
+    const onScanStandaloneTicket = vi.fn().mockRejectedValue(new Error("Couldn't find a weight on that ticket."));
+    const props = baseProps({ pinWeightPct: 20, onPinWeightPctChange: vi.fn(), onScanStandaloneTicket });
+    const { container, rerender } = render(<ReviewStep {...props} scanAccess={{ kind: 'ready', balance: 1 }} onGoAccount={vi.fn()} onRetryScanAccess={vi.fn()} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await userEvent.upload(input, new File(['x'], 'standalone.jpg', { type: 'image/jpeg' }));
+    expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument();
+
+    rerender(<ReviewStep {...props} scanAccess={{ kind: 'no-scans' }} onGoAccount={vi.fn()} onRetryScanAccess={vi.fn()} />);
+
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+
   it('clears the file input after a pick, so choosing the same photo again fires a change', async () => {
     const onScanStandaloneTicket = vi.fn().mockRejectedValue(new Error('No connection.'));
     const { container } = render(

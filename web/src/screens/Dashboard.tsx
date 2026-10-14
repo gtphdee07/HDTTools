@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { ArrowRight, Plus } from 'lucide-react';
 import type { HistoryEntry, RecentRig } from '../types';
 import { Button } from '../design-system/Button';
 import { Badge } from '../design-system/Badge';
+import { RigDeleteButton, RigDeleteConfirm } from '../components/RigDelete';
+import type { DeleteRig } from '../components/RigDelete';
 import { nicknameKey } from '../nickname';
 import { VERDICT_BADGE } from '../verdictBadge';
 
@@ -10,11 +13,15 @@ interface DashboardProps {
   history: HistoryEntry[];
   onStartWizard: () => void;
   onGoHistory: () => void;
+  // Absent when Rigs cannot be deleted (a signed-out visitor), and then the cards show no delete control.
+  onDeleteRig?: DeleteRig;
 }
 
 const RIG_DOT_COLORS = ['var(--color-teal)', 'var(--color-purple)', 'var(--accent-primary)'];
 
-export function Dashboard({ recentRigs, history, onStartWizard, onGoHistory }: DashboardProps) {
+export function Dashboard({ recentRigs, history, onStartWizard, onGoHistory, onDeleteRig }: DashboardProps) {
+  // Nickname of the Rig card being asked about, being deleted, or that failed to delete.
+  const [confirming, setConfirming] = useState<string | null>(null);
   const recentHistory = history.slice(0, 2);
   const rigByNickname = new Map(recentRigs.map((rig) => [nicknameKey(rig.nickname), rig]));
 
@@ -179,27 +186,29 @@ export function Dashboard({ recentRigs, history, onStartWizard, onGoHistory }: D
         {recentRigs.map((rig, i) => {
           const truckLabel = rig.truck.manufacturer;
           const trailerLabel = rig.trailer.manufacturer;
+          const isConfirming = onDeleteRig !== undefined && confirming === rig.nickname;
           return (
             <div
               key={rig.nickname}
-              onClick={onStartWizard}
+              onClick={isConfirming ? undefined : onStartWizard}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                height: 180,
+                minHeight: 180,
                 boxSizing: 'border-box',
                 padding: 20,
-                border: '1px solid var(--border-subtle)',
+                border: `1px solid ${isConfirming ? 'var(--border-strong)' : 'var(--border-subtle)'}`,
                 borderRadius: 'var(--radius-md)',
                 background: 'var(--surface-card)',
                 boxShadow: 'var(--shadow-sm)',
-                cursor: 'pointer',
+                cursor: isConfirming ? 'default' : 'pointer',
               }}
             >
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'space-between',
                   gap: 8,
                   fontSize: 12,
                   fontWeight: 700,
@@ -208,34 +217,50 @@ export function Dashboard({ recentRigs, history, onStartWizard, onGoHistory }: D
                   color: 'var(--fg-2)',
                 }}
               >
-                <span
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 'var(--radius-pill)',
-                    background: RIG_DOT_COLORS[i % RIG_DOT_COLORS.length],
-                  }}
-                />
-                Rig
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 'var(--radius-pill)',
+                      background: RIG_DOT_COLORS[i % RIG_DOT_COLORS.length],
+                    }}
+                  />
+                  Rig
+                </span>
+                {onDeleteRig && !isConfirming && (
+                  // Pulled into the card's padding so the bin does not make the header row taller.
+                  <span style={{ margin: -8 }}>
+                    <RigDeleteButton rig={rig} onAsk={() => setConfirming(rig.nickname)} />
+                  </span>
+                )}
               </div>
               <div style={{ marginTop: 10, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17 }}>
                 {rig.nickname}
               </div>
-              {truckLabel && <div style={{ fontSize: 13, color: 'var(--fg-2)' }}>Truck: {truckLabel}</div>}
-              {trailerLabel && <div style={{ fontSize: 13, color: 'var(--fg-2)' }}>Trailer: {trailerLabel}</div>}
-              <div
-                style={{
-                  marginTop: 'auto',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontWeight: 700,
-                  fontSize: 14,
-                  color: 'var(--accent-secondary-hover)',
-                }}
-              >
-                Start check <ArrowRight size={16} />
-              </div>
+              {isConfirming && onDeleteRig ? (
+                <div style={{ marginTop: 10 }}>
+                  <RigDeleteConfirm rig={rig} onDelete={onDeleteRig} onDone={() => setConfirming(null)} />
+                </div>
+              ) : (
+                <>
+                  {truckLabel && <div style={{ fontSize: 13, color: 'var(--fg-2)' }}>Truck: {truckLabel}</div>}
+                  {trailerLabel && <div style={{ fontSize: 13, color: 'var(--fg-2)' }}>Trailer: {trailerLabel}</div>}
+                  <div
+                    style={{
+                      marginTop: 'auto',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      color: 'var(--accent-secondary-hover)',
+                    }}
+                  >
+                    Start check <ArrowRight size={16} />
+                  </div>
+                </>
+              )}
             </div>
           );
         })}

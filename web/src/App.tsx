@@ -273,7 +273,13 @@ function App() {
           </div>
         )}
         {screen === 'home' && (
-          <Dashboard recentRigs={recentRigs} history={history} onStartWizard={startWizard} onGoHistory={goHistory} />
+          <Dashboard
+            recentRigs={recentRigs}
+            history={history}
+            onStartWizard={startWizard}
+            onGoHistory={goHistory}
+            onDeleteRig={canDeleteRig ? deleteRig : undefined}
+          />
         )}
         {screen === 'history' && <History history={history} recentRigs={recentRigs} />}
         {screen === 'account' && (

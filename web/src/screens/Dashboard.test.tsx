@@ -79,6 +79,71 @@ describe('Dashboard rig grid', () => {
     expect(onStartWizard).toHaveBeenCalledTimes(1);
   });
 
+  it('shows no delete control on a rig card when Rigs cannot be deleted', () => {
+    render(<Dashboard recentRigs={[rig({ nickname: 'Big Blue' })]} history={[]} onStartWizard={vi.fn()} onGoHistory={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /^Delete / })).not.toBeInTheDocument();
+  });
+
+  it('asks for confirmation naming the rig before deleting anything', async () => {
+    const user = userEvent.setup();
+    const onDeleteRig = vi.fn(async () => true);
+    render(
+      <Dashboard recentRigs={[rig({ nickname: 'Big Blue' })]} history={[]} onStartWizard={vi.fn()} onGoHistory={vi.fn()} onDeleteRig={onDeleteRig} />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+
+    expect(screen.getByText(/Delete "Big Blue"\?/)).toBeInTheDocument();
+    expect(onDeleteRig).not.toHaveBeenCalled();
+  });
+
+  it('deletes the rig once the user confirms', async () => {
+    const user = userEvent.setup();
+    const onDeleteRig = vi.fn(async () => true);
+    const big = rig({ nickname: 'Big Blue' });
+    render(<Dashboard recentRigs={[big]} history={[]} onStartWizard={vi.fn()} onGoHistory={vi.fn()} onDeleteRig={onDeleteRig} />);
+    await user.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+
+    expect(onDeleteRig).toHaveBeenCalledWith(big);
+  });
+
+  it('opening the delete control does not start a check', async () => {
+    const user = userEvent.setup();
+    const onStartWizard = vi.fn();
+    render(
+      <Dashboard recentRigs={[rig({ nickname: 'Big Blue' })]} history={[]} onStartWizard={onStartWizard} onGoHistory={vi.fn()} onDeleteRig={vi.fn(async () => true)} />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(onStartWizard).not.toHaveBeenCalled();
+  });
+
+  it('does not start a check when the card is clicked while the delete question is open', async () => {
+    const user = userEvent.setup();
+    const onStartWizard = vi.fn();
+    render(
+      <Dashboard recentRigs={[rig({ nickname: 'Big Blue' })]} history={[]} onStartWizard={onStartWizard} onGoHistory={vi.fn()} onDeleteRig={vi.fn(async () => true)} />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+    await user.click(screen.getByText('Big Blue'));
+
+    expect(onStartWizard).not.toHaveBeenCalled();
+    expect(screen.getByText(/Delete "Big Blue"\?/)).toBeInTheDocument();
+  });
+
+  it('shows an error and keeps the rig when the delete fails', async () => {
+    const user = userEvent.setup();
+    render(
+      <Dashboard recentRigs={[rig({ nickname: 'Big Blue' })]} history={[]} onStartWizard={vi.fn()} onGoHistory={vi.fn()} onDeleteRig={vi.fn(async () => false)} />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn.t delete.*Big Blue/i);
+    expect(screen.getByText('Big Blue')).toBeInTheDocument();
+  });
+
   it('clicking "New rig" starts the wizard', async () => {
     const user = userEvent.setup();
     const onStartWizard = vi.fn();

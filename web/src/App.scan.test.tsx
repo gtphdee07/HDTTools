@@ -166,6 +166,68 @@ describe('a Pro user with scans', () => {
     expect(world.requests.map((r) => r.docType)).toEqual(['truck_tag', 'scale_ticket']);
     expect(world.balance()).toBe(1);
   });
+
+  describe('when a tow-vehicle-only ticket scan does not deliver', () => {
+    async function reachTruckReview(world: ReturnType<typeof makeWorld>) {
+      const user = renderApp({ world });
+      await startNewRig(user);
+      await screen.findByText(/3 scans left/);
+      await chooseAndExtract(user);
+      await screen.findByText('Check the numbers');
+      return user;
+    }
+    const standaloneWeight = () => screen.getByLabelText('Stand-alone Weight (lb, optional)');
+
+    it('is not charged twice when "Try again" follows an answer that never arrived', async () => {
+      const world = makeWorld({ balance: 3 });
+      const ticket = { fields: { steer_axle_lb: 5000, drive_axle_lb: 1000 } };
+      // The lost request still consumes an answer on the service's side, so the retry gets a second one.
+      world.queueExtraction({ fields: { manufacturer: 'Ford' } }, ticket, ticket);
+      const user = await reachTruckReview(world);
+      world.loseNextResponse();
+
+      await user.upload(fileInput(), photo('standalone.jpg'));
+      expect(await screen.findByText(/check your connection/i)).toBeInTheDocument();
+      expect(world.balance()).toBe(1);
+
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+
+      await waitFor(() => expect(standaloneWeight()).toHaveValue(6000));
+      expect(world.requests).toHaveLength(3);
+      expect(world.requests[2].clientRequestId).toBeTruthy();
+      expect(world.requests[2].clientRequestId).toBe(world.requests[1].clientRequestId);
+      expect(world.balance()).toBe(1);
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    });
+
+    it('retries a refunded failure without picking the photo again', async () => {
+      const world = makeWorld({ balance: 3 });
+      world.queueExtraction({ fields: { manufacturer: 'Ford' } }, 'fail', { fields: { gross_weight_lb: 7000 } });
+      const user = await reachTruckReview(world);
+
+      await user.upload(fileInput(), photo('standalone.jpg'));
+      expect(await screen.findByText(/your scan was refunded/i)).toBeInTheDocument();
+      expect(world.balance()).toBe(2);
+
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+
+      await waitFor(() => expect(standaloneWeight()).toHaveValue(7000));
+      expect(world.balance()).toBe(1);
+    });
+
+    it('uses a new request id when a different photo is picked after the failure', async () => {
+      const world = makeWorld({ balance: 3 });
+      const user = await reachTruckReview(world);
+      world.loseNextResponse();
+      await user.upload(fileInput(), photo('first.jpg'));
+      await screen.findByText(/check your connection/i);
+
+      await user.upload(fileInput(), photo('second.jpg'));
+
+      await waitFor(() => expect(world.requests).toHaveLength(3));
+      expect(world.requests[2].clientRequestId).not.toBe(world.requests[1].clientRequestId);
+    });
+  });
 });
 
 describe('a Pro user with no scans', () => {

@@ -39,6 +39,9 @@ export function ReviewStep({
   const standaloneInputRef = useRef<HTMLInputElement>(null);
   const [scanningStandalone, setScanningStandalone] = useState(false);
   const [standaloneScanError, setStandaloneScanError] = useState<string | null>(null);
+  // The photo of a ticket scan that did not deliver, kept so "Try again" re-runs it with the same File
+  // (and so the same request id: a retry after a lost response is then charged once).
+  const [failedTicket, setFailedTicket] = useState<File | null>(null);
 
   const showStandaloneTicketScan = module.key === 'truck' && onScanStandaloneTicket;
   const standaloneWeightKnown = Boolean(data.standalone_weight_lb);
@@ -47,9 +50,11 @@ export function ReviewStep({
     if (!onScanStandaloneTicket) return;
     setScanningStandalone(true);
     setStandaloneScanError(null);
+    setFailedTicket(null);
     try {
       await onScanStandaloneTicket(file);
     } catch (err) {
+      setFailedTicket(file);
       setStandaloneScanError(err instanceof Error ? err.message : 'Could not read that photo — try again.');
     } finally {
       setScanningStandalone(false);
@@ -107,6 +112,8 @@ export function ReviewStep({
                 style={{ display: 'none' }}
                 onChange={(e) => {
                   const picked = e.target.files?.[0];
+                  // Reset so picking the same photo again still fires a change.
+                  e.target.value = '';
                   if (picked) void handleStandaloneFile(picked);
                 }}
               />
@@ -122,6 +129,13 @@ export function ReviewStep({
           )}
           {standaloneScanError && (
             <div style={{ color: 'var(--state-danger)', fontSize: 12, marginTop: 8 }}>{standaloneScanError}</div>
+          )}
+          {failedTicket && !scanningStandalone && (!scanAccess || scanAccess.kind === 'ready') && (
+            <div style={{ marginTop: 8 }}>
+              <Button variant="secondary" size="sm" onClick={() => void handleStandaloneFile(failedTicket)}>
+                Try again
+              </Button>
+            </div>
           )}
 
           {!standaloneWeightKnown && pinWeightPct !== undefined && onPinWeightPctChange && (

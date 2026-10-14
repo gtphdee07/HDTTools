@@ -119,6 +119,19 @@ describe('Dashboard rig grid', () => {
     expect(onStartWizard).not.toHaveBeenCalled();
   });
 
+  it('does not start a check when the card is clicked while the delete question is open', async () => {
+    const user = userEvent.setup();
+    const onStartWizard = vi.fn();
+    render(
+      <Dashboard recentRigs={[rig({ nickname: 'Big Blue' })]} history={[]} onStartWizard={onStartWizard} onGoHistory={vi.fn()} onDeleteRig={vi.fn(async () => true)} />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+    await user.click(screen.getByText('Big Blue'));
+
+    expect(onStartWizard).not.toHaveBeenCalled();
+    expect(screen.getByText(/Delete "Big Blue"\?/)).toBeInTheDocument();
+  });
+
   it('shows an error and keeps the rig when the delete fails', async () => {
     const user = userEvent.setup();
     render(

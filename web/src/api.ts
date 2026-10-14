@@ -27,16 +27,18 @@ const MESSAGES = {
 
 const NO_ANSWER = "We didn't get a usable answer from the scan service. Try again; a retry is not charged twice.";
 
-// How long the whole exchange with the Scan service may take (sending the photo, waiting, reading the reply)
-// before the request is abandoned. While a scan is in flight the check cannot be left (#103), so without a
-// limit a reply that never comes would lock the user in until the browser gives up, which can take minutes.
-// 60 s: longer than the Worker's own worst case (Anthropic's 20 s ANTHROPIC_TIMEOUT_MS in
-// workers/scan-proxy/src/claude.ts, plus the sign-in key fetch and the balance check), so the app does not
-// give up on a scan the service would have delivered; and the same as Android's 60 s read timeout.
-export const SCAN_TIMEOUT_MS = 60_000;
+const NO_CONNECTION = "We couldn't reach the scan service. Check your connection and try again. A retry is not charged twice.";
+const TOO_SLOW = 'The scan service took too long to answer. Try again; a retry is not charged twice.';
 
-const TOO_SLOW =
-  'The scan service took too long to answer. Try again; a retry is not charged twice.';
+// How long the whole exchange (sending the photo, waiting, reading the reply) may take before it is abandoned.
+// While a scan is in flight the check cannot be left (#103), so without a limit a reply that never comes would
+// lock the user in until the browser gives up, which can take minutes.
+// 90 s, because it must outlast the Worker's own worst case or the app gives up on a scan the service would
+// have delivered. That case is not just Anthropic's 20 s ANTHROPIC_TIMEOUT_MS: the Anthropic SDK retries a
+// timed-out call twice (maxRetries is not set in workers/scan-proxy/src/claude.ts), so about 3 x 20 s plus
+// backoff, after the 5 s sign-in key fetch and the 10 s credit spend, and 10 s more for a refund: about 87 s.
+// Android's 60 s read timeout is shorter than that too.
+export const SCAN_TIMEOUT_MS = 90_000;
 
 // Set VITE_SCAN_SERVICE_URL at build time to the Scan service's address (the Worker, no trailing path).
 // Read on each call so a build without it fails the scan cleanly rather than at load.
@@ -84,7 +86,7 @@ async function scan<T>(docType: DocType, file: File, context: ScanContext): Prom
         signal: controller.signal,
       });
     } catch {
-      throw new ScanError('network', "We couldn't reach the scan service. Check your connection and try again. A retry is not charged twice.", true);
+      throw new ScanError('network', NO_CONNECTION, true);
     }
     const body: ScanBody | null = await res.json().catch(() => null);
     return { res, body };

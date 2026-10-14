@@ -213,7 +213,10 @@ function App() {
         ? extracted.steer_axle_lb + extracted.drive_axle_lb
         : extracted.gross_weight_lb;
     if (standalone == null) {
-      throw new Error("Couldn't find a weight on that ticket — try a clearer photo, or enter it manually.");
+      // The service delivered, so this Scan was charged (see Scan Proxy's CONTEXT.md); a retry is a new one.
+      throw new Error(
+        "We read the ticket but couldn't find a weight. That Scan was used, and trying again uses another. You can also type the weight in.",
+      );
     }
     setWizard((w) => ({ ...w, truck: { ...w.truck, standalone_weight_lb: standalone } }));
   };

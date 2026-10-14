@@ -118,6 +118,13 @@ describe('Dashboard recent checks', () => {
     expect(screen.queryByText(/2026-08-19/)).not.toBeInTheDocument();
   });
 
+  it('finds the rig of a check whose nickname differs only by case or surrounding spaces', () => {
+    const history: HistoryEntry[] = [{ id: '1', date: '2026-08-21', rigNickname: ' big blue ', verdict: 'pass' }];
+    render(<Dashboard recentRigs={[rig({ nickname: 'Big Blue' })]} history={history} onStartWizard={vi.fn()} onGoHistory={vi.fn()} />);
+
+    expect(screen.getByText(/2026-08-21.*Ford \+ Forest River/)).toBeInTheDocument();
+  });
+
   it('omits the subtitle join when the rig is no longer in recentRigs', () => {
     const history: HistoryEntry[] = [{ id: '1', date: '2026-08-21', rigNickname: 'Gone Rig', verdict: 'pass' }];
     render(<Dashboard recentRigs={[]} history={history} onStartWizard={vi.fn()} onGoHistory={vi.fn()} />);

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from './auth';
 import { GarageFullError, useGarageBackend } from './garage';
 import type { GarageBackend } from './garage';
+import { nicknameKey } from './nickname';
 import { loadRecentRigs } from './recentRigs';
 import type { RecentRig } from './types';
 
@@ -74,8 +75,6 @@ function loadBrowserRigs(): RecentRig[] {
     return true;
   });
 }
-
-const nicknameKey = (nickname: string) => nickname.trim().toLowerCase();
 
 // `stillSignedIn` is checked before every add, so signing out (or switching accounts) part-way
 // stops the import instead of carrying on into whichever account is signed in next.

@@ -104,6 +104,30 @@ describe('History filters', () => {
     expect(screen.queryByText('2026-08-24')).not.toBeInTheDocument();
   });
 
+  it('treats nicknames that differ only by case or surrounding spaces as one rig pill, covering all their entries', async () => {
+    const user = userEvent.setup();
+    const history = [
+      entry('pass', { id: '1', date: '2026-08-21', rigNickname: 'Big Blue' }),
+      entry('fail', { id: '2', date: '2026-08-22', rigNickname: ' big blue ' }),
+      entry('pass', { id: '3', date: '2026-08-23', rigNickname: 'Red Rocket' }),
+    ];
+    render(<History history={history} />);
+
+    expect(screen.getAllByRole('button', { name: /big blue/i })).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Big Blue' }));
+
+    expect(screen.getByText('2026-08-21')).toBeInTheDocument();
+    expect(screen.getByText('2026-08-22')).toBeInTheDocument();
+    expect(screen.queryByText('2026-08-23')).not.toBeInTheDocument();
+  });
+
+  it('shows the truck and trailer of a rig whose nickname differs only by case or spaces', () => {
+    const rig = { nickname: 'Big Blue', truck: { manufacturer: 'Ford' }, trailer: { manufacturer: 'Forest River' }, lastUsedAt: '2026-08-21T00:00:00Z' };
+    render(<History history={[entry('pass', { rigNickname: 'big blue ' })]} recentRigs={[rig]} />);
+
+    expect(screen.getByText('Ford + Forest River')).toBeInTheDocument();
+  });
+
   it('shows the empty state when the active filter matches nothing', async () => {
     const user = userEvent.setup();
     render(<History history={[entry('fail', { id: '1', rigNickname: 'Red Rocket' })]} />);

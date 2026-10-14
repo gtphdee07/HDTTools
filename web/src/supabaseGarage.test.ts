@@ -30,6 +30,26 @@ describe('createSupabaseGarageBackend', () => {
     });
   });
 
+  it('sends the nickname without its surrounding spaces', async () => {
+    const { client, rpc } = fakeClient({ error: null });
+
+    await createSupabaseGarageBackend(client).addRig('key-1', { nickname: ' truck a ', truck: {}, trailer: {} });
+
+    expect(rpc).toHaveBeenCalledWith('add_rig', expect.objectContaining({ p_nickname: 'truck a' }));
+  });
+
+  it('lists a Rig under its trimmed nickname', async () => {
+    const order = vi.fn(async () => ({
+      data: [{ id: 'r1', nickname: ' Truck A ', truck: {}, trailer: {}, last_used_at: '2026-10-01T00:00:00Z' }],
+      error: null,
+    }));
+    const from = vi.fn(() => ({ select: () => ({ order }) }));
+
+    const rigs = await createSupabaseGarageBackend({ from } as unknown as SupabaseClient).list();
+
+    expect(rigs.map((r) => r.nickname)).toEqual(['Truck A']);
+  });
+
   it('turns the server\u2019s garage_full error into a GarageFullError carrying the cap', async () => {
     const { client } = fakeClient({ error: { message: 'garage_full', details: '5' } });
 

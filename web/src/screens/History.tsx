@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import type { HistoryEntry, RecentRig } from '../types';
 import { Badge } from '../design-system/Badge';
+import { nicknameKey } from '../nickname';
 import { VERDICT_BADGE } from '../verdictBadge';
 
 interface HistoryProps {
@@ -13,17 +14,22 @@ type Filter = 'all' | 'within' | 'over' | `rig:${string}`;
 
 export function History({ history, recentRigs = [] }: HistoryProps) {
   const [filter, setFilter] = useState<Filter>('all');
-  const rigByNickname = new Map(recentRigs.map((rig) => [rig.nickname, rig]));
-  const rigNicknames = useMemo(
-    () => Array.from(new Set(history.map((h) => h.rigNickname))),
-    [history],
-  );
+  const rigByNickname = new Map(recentRigs.map((rig) => [nicknameKey(rig.nickname), rig]));
+  // One pill per rig, however its nickname was spelled in each check (case, surrounding spaces).
+  const rigPills = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const h of history) {
+      const key = nicknameKey(h.rigNickname);
+      if (!byKey.has(key)) byKey.set(key, h.rigNickname.trim());
+    }
+    return Array.from(byKey, ([key, label]) => ({ key, label }));
+  }, [history]);
 
   const filtered = history.filter((h) => {
     if (filter === 'all') return true;
     if (filter === 'within') return h.verdict === 'pass';
     if (filter === 'over') return h.verdict === 'fail';
-    return h.rigNickname === filter.slice(4);
+    return nicknameKey(h.rigNickname) === filter.slice(4);
   });
 
   const pillStyle = (active: boolean): React.CSSProperties => ({
@@ -52,9 +58,9 @@ export function History({ history, recentRigs = [] }: HistoryProps) {
         <button style={pillStyle(filter === 'all')} onClick={() => setFilter('all')}>
           All rigs
         </button>
-        {rigNicknames.map((nickname) => (
-          <button key={nickname} style={pillStyle(filter === `rig:${nickname}`)} onClick={() => setFilter(`rig:${nickname}`)}>
-            {nickname}
+        {rigPills.map(({ key, label }) => (
+          <button key={key} style={pillStyle(filter === `rig:${key}`)} onClick={() => setFilter(`rig:${key}`)}>
+            {label}
           </button>
         ))}
         <button style={pillStyle(filter === 'within')} onClick={() => setFilter('within')}>
@@ -89,7 +95,7 @@ export function History({ history, recentRigs = [] }: HistoryProps) {
         </div>
         {filtered.map((h, i) => {
           const badge = VERDICT_BADGE[h.verdict];
-          const rig = rigByNickname.get(h.rigNickname);
+          const rig = rigByNickname.get(nicknameKey(h.rigNickname));
           const subtitle = rig ? [rig.truck.manufacturer, rig.trailer.manufacturer].filter(Boolean).join(' + ') : '—';
           return (
             <div

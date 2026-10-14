@@ -2,6 +2,7 @@ import { ArrowRight, Plus } from 'lucide-react';
 import type { HistoryEntry, RecentRig } from '../types';
 import { Button } from '../design-system/Button';
 import { Badge } from '../design-system/Badge';
+import { nicknameKey } from '../nickname';
 import { VERDICT_BADGE } from '../verdictBadge';
 
 interface DashboardProps {
@@ -15,7 +16,7 @@ const RIG_DOT_COLORS = ['var(--color-teal)', 'var(--color-purple)', 'var(--accen
 
 export function Dashboard({ recentRigs, history, onStartWizard, onGoHistory }: DashboardProps) {
   const recentHistory = history.slice(0, 2);
-  const rigByNickname = new Map(recentRigs.map((rig) => [rig.nickname, rig]));
+  const rigByNickname = new Map(recentRigs.map((rig) => [nicknameKey(rig.nickname), rig]));
 
   return (
     <div>
@@ -137,7 +138,7 @@ export function Dashboard({ recentRigs, history, onStartWizard, onGoHistory }: D
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18, marginBottom: 40 }}>
         {recentHistory.map((h) => {
-          const rig = rigByNickname.get(h.rigNickname);
+          const rig = rigByNickname.get(nicknameKey(h.rigNickname));
           const subtitle = rig ? [rig.truck.manufacturer, rig.trailer.manufacturer].filter(Boolean).join(' + ') : undefined;
           const badge = VERDICT_BADGE[h.verdict];
           return (

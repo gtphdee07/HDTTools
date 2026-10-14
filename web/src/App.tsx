@@ -73,6 +73,12 @@ function App() {
   const billing = useBilling();
   const scanAccess = useScanAccess();
   const scanAttempts = useRef(new ScanAttempts());
+  // Which check is current: a new one every time a check starts. A scan notes it when it starts and drops
+  // its result if the check has changed by the time the answer comes back.
+  const currentCheck = useRef(0);
+  // How many scans are waiting on the service. While there is one, the check cannot be left or restarted.
+  const [scansInFlight, setScansInFlight] = useState(0);
+  const scanning = scansInFlight > 0;
   // True while the Account screen was opened from a scan prompt in the wizard, so it can lead back to the check.
   const [accountFromWizard, setAccountFromWizard] = useState(false);
   // A password-reset email link lands the visitor here; take them straight to the new-password form.
@@ -108,6 +114,7 @@ function App() {
     setAccountFromWizard(false);
     setScreen('wizard');
     setCheckResult(null);
+    currentCheck.current += 1;
     setWizard(EMPTY_WIZARD);
   };
   const restart = startWizard;
@@ -134,6 +141,7 @@ function App() {
   // refunds it if nothing is read. Whatever the outcome, the balance on screen is read again.
   const scan = async <T,>(file: File, call: (file: File, context: ScanContext) => Promise<T>): Promise<T> => {
     if (!accessToken) throw new ScanError('unauthorized', 'Sign in to scan.');
+    setScansInFlight((n) => n + 1);
     try {
       const fields = await scanAttempts.current.run(file, (clientRequestId) => call(file, { accessToken, clientRequestId }));
       void billing.refreshScanBalance();
@@ -143,6 +151,8 @@ function App() {
       const noneLeft = err instanceof ScanError && err.code === 'insufficient_credits';
       void billing.refreshScanBalance(noneLeft ? 0 : undefined);
       throw err;
+    } finally {
+      setScansInFlight((n) => n - 1);
     }
   };
 
@@ -150,6 +160,7 @@ function App() {
     if (!wizard.pendingFile || !currentModule) return;
     const moduleKey = currentModule.key;
     const file = wizard.pendingFile;
+    const check = currentCheck.current;
     setWizard((w) => ({ ...w, subStep: 'processing' }));
     try {
       const extracted =
@@ -158,8 +169,11 @@ function App() {
           : moduleKey === 'trailer'
             ? await scan(file, extractTrailerTag)
             : await scan(file, extractScaleTicket);
+      // The scan was paid for, but the check it was for is gone: the new one is left as it is.
+      if (check !== currentCheck.current) return;
       setWizard((w) => ({ ...w, [moduleKey]: extracted, subStep: 'review', pendingFile: null }));
     } catch (err) {
+      if (check !== currentCheck.current) return;
       setWizard((w) => ({
         ...w,
         subStep: 'error',
@@ -183,7 +197,17 @@ function App() {
   // its reading onto the existing standalone_weight_lb field rather than
   // introducing a new one.
   const scanStandaloneTicket = async (file: File) => {
-    const extracted = await scan(file, extractScaleTicket);
+    const check = currentCheck.current;
+    let extracted;
+    try {
+      extracted = await scan(file, extractScaleTicket);
+    } catch (err) {
+      // A failure for a check that is gone is not the new check's to show.
+      if (check !== currentCheck.current) return;
+      throw err;
+    }
+    // Returning quietly for a check that is gone is safe: the Truck review step that asked is unmounted with it.
+    if (check !== currentCheck.current) return;
     const standalone =
       extracted.steer_axle_lb != null && extracted.drive_axle_lb != null
         ? extracted.steer_axle_lb + extracted.drive_axle_lb
@@ -244,7 +268,14 @@ function App() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-page)', fontFamily: 'var(--font-body)', color: 'var(--fg-1)', paddingBottom: 80 }}>
-      <Header screen={screen} onGoHome={goHome} onGoHistory={goHistory} onStartWizard={startWizard} onGoAccount={goAccount} />
+      <Header
+        screen={screen}
+        onGoHome={goHome}
+        onGoHistory={goHistory}
+        onStartWizard={startWizard}
+        onGoAccount={goAccount}
+        locked={scanning}
+      />
 
       <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', padding: '36px 32px' }}>
         <RigImportBanner rigImport={rigImport} />
@@ -293,10 +324,25 @@ function App() {
           <div>
             <button
               onClick={goHome}
-              style={{ background: 'none', border: 'none', color: 'var(--fg-2)', fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14 }}
+              disabled={scanning}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--fg-2)',
+                fontSize: 13,
+                cursor: scanning ? 'not-allowed' : 'pointer',
+                opacity: scanning ? 0.5 : 1,
+                padding: 0,
+                marginBottom: scanning ? 6 : 14,
+              }}
             >
               &larr; Back to Dashboard
             </button>
+            {scanning && (
+              <div role="status" style={{ color: 'var(--fg-2)', fontSize: 13, marginBottom: 14 }}>
+                Reading your photo&hellip; you can leave this check once it's done.
+              </div>
+            )}
 
             <StepPills step={step} />
 
@@ -363,7 +409,7 @@ function App() {
         )}
       </div>
 
-      <Footer onGoHome={goHome} onGoHistory={goHistory} />
+      <Footer onGoHome={goHome} onGoHistory={goHistory} locked={scanning} />
     </div>
   );
 }

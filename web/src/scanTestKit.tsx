@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import App from './App';
@@ -50,6 +50,9 @@ export interface FakeWorld {
   loseNextResponse(): void;
   // The balance changes behind the app's back, as another device spending would.
   setBalance(balance: number): void;
+  // The next request is charged and processed, but its answer is held until the returned function is called,
+  // so a scan stays in flight for as long as a test needs it to.
+  holdNextResponse(): () => void;
 }
 
 export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; balance?: number } = {}): FakeWorld {
@@ -58,6 +61,7 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
   const queue: Extraction[] = [];
   const requests: ScanRequestSeen[] = [];
   let loseNext = false;
+  let holdNext: Promise<void> | null = null;
 
   const answer = (status: number, body: unknown) => ({ ok: status < 300, status, json: async () => body });
 
@@ -90,6 +94,11 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
   const fetchFake = vi.fn(async (url: string, init: RequestInit) => {
     if (url !== `${SERVICE_URL}/v1/scan`) throw new Error(`unexpected request to ${url}`);
     const response = handleRequest(init);
+    if (holdNext) {
+      const held = holdNext;
+      holdNext = null;
+      await held;
+    }
     if (loseNext) {
       loseNext = false;
       throw new TypeError('Failed to fetch');
@@ -118,6 +127,13 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
     setBalance: (next) => {
       current = next;
     },
+    holdNextResponse: () => {
+      let release = () => {};
+      holdNext = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return release;
+    },
   };
 }
 
@@ -132,4 +148,28 @@ export function renderApp({ world, session = PAT }: { world: FakeWorld | null; s
     </AuthProvider>,
   );
   return userEvent.setup();
+}
+
+type User = ReturnType<typeof userEvent.setup>;
+
+export const photo = (name = 'truck.jpg') => new File([`pixels of ${name}`], name, { type: 'image/jpeg' });
+export const fileInput = () => document.querySelector('input[type="file"]') as HTMLInputElement;
+
+export async function startNewRig(user: User, nickname = 'Big Blue') {
+  await user.click(screen.getAllByRole('button', { name: 'Start New Check' })[0]);
+  await user.type(screen.getByPlaceholderText('e.g. Big Blue'), nickname);
+  await user.click(screen.getByRole('button', { name: 'Start New Rig' }));
+}
+
+export async function chooseAndExtract(user: User, file = photo()) {
+  await user.upload(fileInput(), file);
+  await user.click(screen.getByRole('button', { name: 'Extract Data' }));
+}
+
+// Renders the app signed in and starts a check on the Truck Tag photo step, with the balance read (3 scans).
+export async function reachTruckUpload(world: FakeWorld) {
+  const user = renderApp({ world });
+  await startNewRig(user);
+  await screen.findByText(/3 scans left/);
+  return user;
 }

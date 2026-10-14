@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { makeWorld, renderApp } from './scanTestKit';
+import { chooseAndExtract, fileInput, makeWorld, photo, reachTruckUpload } from './scanTestKit';
+import type { FakeWorld } from './scanTestKit';
 
 // A scan spends a Scan Credit, so its answer must land in the check that asked for it. While a scan is in
 // flight the user cannot leave or restart the check, and, as a backstop, a result that comes back for a
@@ -13,34 +13,10 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-type User = ReturnType<typeof userEvent.setup>;
-type World = ReturnType<typeof makeWorld>;
-
-const photo = (name = 'truck.jpg') => new File([`pixels of ${name}`], name, { type: 'image/jpeg' });
-const fileInput = () => document.querySelector('input[type="file"]') as HTMLInputElement;
 const standaloneWeight = () => screen.getByLabelText('Stand-alone Weight (lb, optional)');
 
-async function startNewRig(user: User, nickname = 'Big Blue') {
-  await user.click(screen.getAllByRole('button', { name: 'Start New Check' })[0]);
-  await user.type(screen.getByPlaceholderText('e.g. Big Blue'), nickname);
-  await user.click(screen.getByRole('button', { name: 'Start New Rig' }));
-}
-
-async function chooseAndExtract(user: User, file = photo()) {
-  await user.upload(fileInput(), file);
-  await user.click(screen.getByRole('button', { name: 'Extract Data' }));
-}
-
-// On the Truck Tag upload step of a new check, balance read.
-async function reachTruckUpload(world: World) {
-  const user = renderApp({ world });
-  await startNewRig(user);
-  await screen.findByText(/3 scans left/);
-  return user;
-}
-
 // On the Truck review step, with nothing in flight.
-async function reachTruckReview(world: World) {
+async function reachTruckReview(world: FakeWorld) {
   const user = await reachTruckUpload(world);
   await chooseAndExtract(user);
   await screen.findByText('Check the numbers');
@@ -107,6 +83,8 @@ describe('while a scan of the Truck Tag photo is in flight', () => {
     await chooseAndExtract(user);
 
     for (const control of leavingControls()) await user.click(control);
+    // The logo leads home too.
+    await user.click(screen.getByAltText('Wandering Trails, Wagging Tails'));
     expect(screen.getByText(/Reading Truck Compliance Label/)).toBeInTheDocument();
 
     release();

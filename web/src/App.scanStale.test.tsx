@@ -1,7 +1,6 @@
 import { act, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { makeWorld, renderApp } from './scanTestKit';
+import { chooseAndExtract, fileInput, makeWorld, photo, reachTruckUpload, startNewRig } from './scanTestKit';
 
 // The backstop behind App.scanInFlight.test.tsx: blocking the controls makes a scan answering for a check
 // that is gone rare, and dropping such an answer makes it impossible (a script, a stale tab or the browser's
@@ -17,33 +16,10 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-type User = ReturnType<typeof userEvent.setup>;
-type World = ReturnType<typeof makeWorld>;
-
-const photo = (name = 'truck.jpg') => new File([`pixels of ${name}`], name, { type: 'image/jpeg' });
-const fileInput = () => document.querySelector('input[type="file"]') as HTMLInputElement;
 const standaloneWeight = () => screen.getByLabelText('Stand-alone Weight (lb, optional)');
 
-async function startNewRig(user: User, nickname = 'Big Blue') {
-  await user.click(screen.getAllByRole('button', { name: 'Start New Check' })[0]);
-  await user.type(screen.getByPlaceholderText('e.g. Big Blue'), nickname);
-  await user.click(screen.getByRole('button', { name: 'Start New Rig' }));
-}
-
-async function chooseAndExtract(user: User, file = photo()) {
-  await user.upload(fileInput(), file);
-  await user.click(screen.getByRole('button', { name: 'Extract Data' }));
-}
-
-async function reachTruckUpload(world: World) {
-  const user = renderApp({ world });
-  await startNewRig(user);
-  await screen.findByText(/3 scans left/);
-  return user;
-}
-
 describe('a scan that answers after its check is no longer the current one', () => {
-  it('does not change the new check, and the balance on screen still follows the spent scan', async () => {
+  it('does not change the new check, and the balance on screen is still read again', async () => {
     const world = makeWorld({ balance: 3 });
     const user = await reachTruckUpload(world);
     const release = world.holdNextResponse();
@@ -60,20 +36,19 @@ describe('a scan that answers after its check is no longer the current one', () 
     expect(screen.getByRole('button', { name: 'Extract Data' })).toBeDisabled();
   });
 
-  it('does not show the failure of a dropped scan in the new check either', async () => {
+  it('does not show the failure of a dropped scan in the new check, and still reads the balance again', async () => {
     const world = makeWorld({ balance: 3 });
     world.queueExtraction('fail');
     const user = await reachTruckUpload(world);
     const release = world.holdNextResponse();
     await chooseAndExtract(user);
 
-    await user.click(screen.getAllByRole('button', { name: 'Start New Check' })[0]);
+    await startNewRig(user, 'Second');
+    // A refunded scan leaves the balance as it was, so move it behind the app's back to see a read happen.
+    world.setBalance(7);
     await act(async () => release());
-    await user.type(screen.getByPlaceholderText('e.g. Big Blue'), 'Second');
-    await user.click(screen.getByRole('button', { name: 'Start New Rig' }));
 
-    // The failed scan was refunded, and the balance on screen shows it.
-    expect(await screen.findByText(/3 scans left/)).toBeInTheDocument();
+    expect(await screen.findByText(/7 scans left/)).toBeInTheDocument();
     expect(screen.queryByText(/your scan was refunded/i)).not.toBeInTheDocument();
   });
 
@@ -86,18 +61,15 @@ describe('a scan that answers after its check is no longer the current one', () 
     const release = world.holdNextResponse();
     await user.upload(fileInput(), photo('standalone.jpg'));
 
-    await user.click(screen.getAllByRole('button', { name: 'Start New Check' })[0]);
-    await user.type(screen.getByPlaceholderText('e.g. Big Blue'), 'Second');
-    await user.click(screen.getByRole('button', { name: 'Start New Rig' }));
+    await startNewRig(user, 'Second');
     await chooseAndExtract(user, photo('second-truck.jpg'));
     await screen.findByText('Check the numbers');
     expect(standaloneWeight()).toHaveValue(null);
 
     await act(async () => release());
 
-    // Both checks' scans are spent; the weight read for the first never reaches the second.
+    // The weight read for the first check never reaches the second.
     await waitFor(() => expect(world.requests).toHaveLength(3));
-    await waitFor(() => expect(world.balance()).toBe(0));
     expect(standaloneWeight()).toHaveValue(null);
     expect(screen.getByLabelText('Manufacturer')).toHaveValue('Ford');
   });

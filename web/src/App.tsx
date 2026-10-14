@@ -206,6 +206,7 @@ function App() {
       if (check !== currentCheck.current) return;
       throw err;
     }
+    // Returning quietly for a check that is gone is safe: the Truck review step that asked is unmounted with it.
     if (check !== currentCheck.current) return;
     const standalone =
       extracted.steer_axle_lb != null && extracted.drive_axle_lb != null

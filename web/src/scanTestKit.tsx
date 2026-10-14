@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import App from './App';
@@ -148,4 +148,28 @@ export function renderApp({ world, session = PAT }: { world: FakeWorld | null; s
     </AuthProvider>,
   );
   return userEvent.setup();
+}
+
+type User = ReturnType<typeof userEvent.setup>;
+
+export const photo = (name = 'truck.jpg') => new File([`pixels of ${name}`], name, { type: 'image/jpeg' });
+export const fileInput = () => document.querySelector('input[type="file"]') as HTMLInputElement;
+
+export async function startNewRig(user: User, nickname = 'Big Blue') {
+  await user.click(screen.getAllByRole('button', { name: 'Start New Check' })[0]);
+  await user.type(screen.getByPlaceholderText('e.g. Big Blue'), nickname);
+  await user.click(screen.getByRole('button', { name: 'Start New Rig' }));
+}
+
+export async function chooseAndExtract(user: User, file = photo()) {
+  await user.upload(fileInput(), file);
+  await user.click(screen.getByRole('button', { name: 'Extract Data' }));
+}
+
+// Renders the app signed in and starts a check on the Truck Tag photo step, with the balance read (3 scans).
+export async function reachTruckUpload(world: FakeWorld) {
+  const user = renderApp({ world });
+  await startNewRig(user);
+  await screen.findByText(/3 scans left/);
+  return user;
 }

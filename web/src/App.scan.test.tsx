@@ -215,6 +215,23 @@ describe('a Pro user with scans', () => {
       expect(world.balance()).toBe(1);
     });
 
+    it('retries a failure that could not be refunded with the same request id, charged once', async () => {
+      const world = makeWorld({ balance: 3 });
+      const ticket = { fields: { gross_weight_lb: 7000 } };
+      world.queueExtraction({ fields: { manufacturer: 'Ford' } }, 'fail-no-refund', ticket);
+      const user = await reachTruckReview(world);
+
+      await user.upload(fileInput(), photo('standalone.jpg'));
+      expect(await screen.findByText(/contact support/i)).toBeInTheDocument();
+      expect(world.balance()).toBe(1);
+
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+
+      await waitFor(() => expect(standaloneWeight()).toHaveValue(7000));
+      expect(world.requests[2].clientRequestId).toBe(world.requests[1].clientRequestId);
+      expect(world.balance()).toBe(1);
+    });
+
     it('uses a new request id when a different photo is picked after the failure', async () => {
       const world = makeWorld({ balance: 3 });
       const user = await reachTruckReview(world);

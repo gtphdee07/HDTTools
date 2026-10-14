@@ -45,6 +45,7 @@ export function ReviewStep({
 
   const showStandaloneTicketScan = module.key === 'truck' && onScanStandaloneTicket;
   const standaloneWeightKnown = Boolean(data.standalone_weight_lb);
+  const canScanTicket = !scanAccess || scanAccess.kind === 'ready';
 
   const handleStandaloneFile = async (file: File) => {
     if (!onScanStandaloneTicket) return;
@@ -103,7 +104,7 @@ export function ReviewStep({
           {scanAccess && onGoAccount && onRetryScanAccess && (
             <ScanGate access={scanAccess} onGoAccount={onGoAccount} onRetry={onRetryScanAccess} />
           )}
-          {(!scanAccess || scanAccess.kind === 'ready') && (
+          {canScanTicket && (
             <>
               <input
                 ref={standaloneInputRef}
@@ -130,7 +131,7 @@ export function ReviewStep({
           {standaloneScanError && (
             <div style={{ color: 'var(--state-danger)', fontSize: 12, marginTop: 8 }}>{standaloneScanError}</div>
           )}
-          {failedTicket && !scanningStandalone && (!scanAccess || scanAccess.kind === 'ready') && (
+          {failedTicket && !scanningStandalone && canScanTicket && (
             <div style={{ marginTop: 8 }}>
               <Button variant="secondary" size="sm" onClick={() => void handleStandaloneFile(failedTicket)}>
                 Try again

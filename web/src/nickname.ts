@@ -7,3 +7,9 @@
 export const nicknameKey = (nickname: string): string => nickname.trim().toLowerCase();
 
 export const sameNickname = (a: string, b: string): boolean => nicknameKey(a) === nicknameKey(b);
+
+// Finds the Rig a past check belongs to, by the check's `rigNickname`. Returns undefined when that Rig is gone.
+export function rigLookup<R extends { nickname: string }>(rigs: R[]): (nickname: string) => R | undefined {
+  const byKey = new Map(rigs.map((rig) => [nicknameKey(rig.nickname), rig]));
+  return (nickname) => byKey.get(nicknameKey(nickname));
+}

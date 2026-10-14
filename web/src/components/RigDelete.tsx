@@ -61,7 +61,7 @@ export function RigDeleteConfirm({ rig, onDelete, onDone }: { rig: RecentRig; on
           We couldn't delete "{rig.nickname}". It's still in your Garage; please try again.
         </div>
       )}
-      <div style={{ display: 'flex', gap: 12 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         <Button variant="primary" size="sm" disabled={deleting} onClick={() => void confirm()}>
           {deleting ? 'Deleting…' : 'Yes, delete'}
         </Button>

@@ -86,3 +86,60 @@ describe('saveRecentRig', () => {
     setItemSpy.mockRestore();
   });
 });
+
+describe('nickname rule (trim and ignore case, as the account Garage does)', () => {
+  it('saves " truck a " over an existing "Truck A" instead of adding another', () => {
+    saveRecentRig('Truck A', TRUCK, TRAILER);
+    const updatedTruck: TruckTagData = { manufacturer: 'Ram' };
+
+    const result = saveRecentRig(' truck a ', updatedTruck, TRAILER);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].truck).toEqual(updatedTruck);
+    expect(loadRecentRigs()).toHaveLength(1);
+  });
+
+  it('keeps the existing Rig’s spelling when a save refreshes it, as the account Garage does', () => {
+    saveRecentRig('Truck A', TRUCK, TRAILER);
+
+    const result = saveRecentRig(' truck a ', TRUCK, TRAILER);
+
+    expect(result.map((r) => r.nickname)).toEqual(['Truck A']);
+  });
+
+  it('stores the nickname without its surrounding spaces', () => {
+    const result = saveRecentRig('  Truck A ', TRUCK, TRAILER);
+
+    expect(result[0].nickname).toBe('Truck A');
+  });
+
+  it('matches a Rig saved earlier with an untrimmed name', () => {
+    const old = [{ nickname: 'Truck A  ', truck: TRUCK, trailer: TRAILER, lastUsedAt: '2026-08-21T00:00:00.000Z' }];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(old));
+
+    const result = saveRecentRig('truck a', { manufacturer: 'Ram' }, TRAILER);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].truck).toEqual({ manufacturer: 'Ram' });
+  });
+
+  it('still loads a Rig saved with an untrimmed name, shown without the stray spaces', () => {
+    const old = [{ nickname: '  Truck A ', truck: TRUCK, trailer: TRAILER, lastUsedAt: '2026-08-21T00:00:00.000Z' }];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(old));
+
+    expect(loadRecentRigs().map((r) => r.nickname)).toEqual(['Truck A']);
+  });
+
+  it('lists once a Rig that earlier saves stored twice under spellings of the same name', () => {
+    const old = [
+      { nickname: 'Truck A', truck: { manufacturer: 'Ram' }, trailer: TRAILER, lastUsedAt: '2026-08-22T00:00:00.000Z' },
+      { nickname: 'truck a ', truck: TRUCK, trailer: TRAILER, lastUsedAt: '2026-08-21T00:00:00.000Z' },
+    ];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(old));
+
+    const loaded = loadRecentRigs();
+
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0].truck).toEqual({ manufacturer: 'Ram' });
+  });
+});

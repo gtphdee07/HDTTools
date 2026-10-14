@@ -17,7 +17,7 @@ interface GarageRow {
 
 const toRig = (row: GarageRow): RecentRig => ({
   id: row.id,
-  nickname: row.nickname,
+  nickname: row.nickname.trim(),
   truck: row.truck,
   trailer: row.trailer,
   lastUsedAt: row.last_used_at,
@@ -37,7 +37,7 @@ export function createSupabaseGarageBackend(client: SupabaseClient): GarageBacke
     async addRig(idempotencyKey, rig) {
       const { error } = await client.rpc('add_rig', {
         p_idempotency_key: idempotencyKey,
-        p_nickname: rig.nickname,
+        p_nickname: rig.nickname.trim(),
         p_truck: rig.truck,
         p_trailer: rig.trailer,
       });

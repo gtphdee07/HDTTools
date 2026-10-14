@@ -216,6 +216,24 @@ describe('signed-in Garage', () => {
   });
 });
 
+describe('signed-in Garage, nickname rule', () => {
+  it('refreshes the existing Rig when a new check is named with a different case, instead of adding another', async () => {
+    const { backend, stored } = makeFakeAccountGarage();
+    stored.set('Truck A', { nickname: 'Truck A', truck: {}, trailer: {}, lastUsedAt: '2026-01-01T00:00:00.000Z', id: 'r1', key: 'k' });
+    const user = renderDevice(backend);
+    await user.click(screen.getAllByRole('button', { name: 'Start New Check' })[0]);
+    await screen.findByText('Truck A');
+
+    await finishCheckFromRigStep(user, '  truck a ');
+    await acknowledgeDisclaimer(user);
+
+    await waitFor(() => expect(backend.updateRig).toHaveBeenCalledTimes(1));
+    expect(backend.updateRig).toHaveBeenCalledWith(expect.objectContaining({ id: 'r1', nickname: 'Truck A' }));
+    expect(backend.addRig).not.toHaveBeenCalled();
+    expect([...stored.keys()]).toEqual(['Truck A']);
+  });
+});
+
 describe('signed-in Garage, changed elsewhere', () => {
   it('adds the Rig instead of failing when the one it meant to update was removed on another device', async () => {
     const { backend, stored } = makeFakeAccountGarage();

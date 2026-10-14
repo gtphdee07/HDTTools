@@ -259,6 +259,18 @@ describe('capacity-free changes to an existing rig', () => {
     expect(stored.rows[0].truck.manufacturer).toBe('Ram');
   });
 
+  it('treats "Truck A" and " truck a " as one Rig, refreshing it and keeping the trimmed name', async () => {
+    await clearGarage();
+    await addRig(ALICE, 'a-1', 'Truck A', { manufacturer: 'Ford' });
+
+    await addRig(ALICE, 'a-2', ' truck a ', { manufacturer: 'Ram' });
+
+    const stored = await asUser(ALICE, () => db.query<{ nickname: string; truck: { manufacturer: string } }>('select nickname, truck from public.garage_rigs'));
+    expect(stored.rows).toHaveLength(1);
+    expect(stored.rows[0].nickname).toBe('Truck A');
+    expect(stored.rows[0].truck.manufacturer).toBe('Ram');
+  });
+
   it('refuses a rename onto a nickname the account already uses', async () => {
     await clearGarage();
     await addRig(ALICE, 'a-1', 'Rig A');

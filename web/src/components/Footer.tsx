@@ -1,9 +1,20 @@
 interface FooterProps {
   onGoHome: () => void;
   onGoHistory: () => void;
+  // True while a paid scan is in flight: the check cannot be left until it answers.
+  locked?: boolean;
 }
 
-export function Footer({ onGoHome, onGoHistory }: FooterProps) {
+export function Footer({ onGoHome, onGoHistory, locked = false }: FooterProps) {
+  const linkStyle = {
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    color: 'var(--fg-1)',
+    fontWeight: 500,
+    cursor: locked ? 'not-allowed' : 'pointer',
+    opacity: locked ? 0.5 : 1,
+  } as const;
   return (
     <footer
       style={{
@@ -27,16 +38,10 @@ export function Footer({ onGoHome, onGoHistory }: FooterProps) {
             RigCheck
           </span>
           <nav style={{ display: 'flex', alignItems: 'center', gap: 24, fontSize: 14 }}>
-            <button
-              onClick={onGoHome}
-              style={{ background: 'none', border: 'none', padding: 0, color: 'var(--fg-1)', fontWeight: 500, cursor: 'pointer' }}
-            >
+            <button onClick={onGoHome} disabled={locked} style={linkStyle}>
               Dashboard
             </button>
-            <button
-              onClick={onGoHistory}
-              style={{ background: 'none', border: 'none', padding: 0, color: 'var(--fg-1)', fontWeight: 500, cursor: 'pointer' }}
-            >
+            <button onClick={onGoHistory} disabled={locked} style={linkStyle}>
               History
             </button>
           </nav>

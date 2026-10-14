@@ -50,6 +50,9 @@ export interface FakeWorld {
   loseNextResponse(): void;
   // The balance changes behind the app's back, as another device spending would.
   setBalance(balance: number): void;
+  // The next request is charged and processed, but its answer is held until the returned function is called,
+  // so a scan stays in flight for as long as a test needs it to.
+  holdNextResponse(): () => void;
 }
 
 export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; balance?: number } = {}): FakeWorld {
@@ -58,6 +61,7 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
   const queue: Extraction[] = [];
   const requests: ScanRequestSeen[] = [];
   let loseNext = false;
+  let holdNext: Promise<void> | null = null;
 
   const answer = (status: number, body: unknown) => ({ ok: status < 300, status, json: async () => body });
 
@@ -90,6 +94,11 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
   const fetchFake = vi.fn(async (url: string, init: RequestInit) => {
     if (url !== `${SERVICE_URL}/v1/scan`) throw new Error(`unexpected request to ${url}`);
     const response = handleRequest(init);
+    if (holdNext) {
+      const held = holdNext;
+      holdNext = null;
+      await held;
+    }
     if (loseNext) {
       loseNext = false;
       throw new TypeError('Failed to fetch');
@@ -117,6 +126,13 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
     },
     setBalance: (next) => {
       current = next;
+    },
+    holdNextResponse: () => {
+      let release = () => {};
+      holdNext = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return release;
     },
   };
 }

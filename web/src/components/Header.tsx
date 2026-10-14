@@ -8,10 +8,16 @@ interface HeaderProps {
   onGoHistory: () => void;
   onStartWizard: () => void;
   onGoAccount: () => void;
+  // True while a paid scan is in flight: the check cannot be left or restarted until it answers.
+  locked?: boolean;
 }
 
-export function Header({ screen, onGoHome, onGoHistory, onStartWizard, onGoAccount }: HeaderProps) {
+export function Header({ screen, onGoHome, onGoHistory, onStartWizard, onGoAccount, locked = false }: HeaderProps) {
   const { user } = useAuth();
+  const navButtonLock = {
+    cursor: locked ? 'not-allowed' : 'pointer',
+    opacity: locked ? 0.5 : 1,
+  } as const;
   return (
     <div
       style={{
@@ -36,8 +42,8 @@ export function Header({ screen, onGoHome, onGoHistory, onStartWizard, onGoAccou
         <img
           src="/logo.png"
           alt="Wandering Trails, Wagging Tails"
-          style={{ height: 52, width: 'auto', objectFit: 'contain', cursor: 'pointer' }}
-          onClick={onGoHome}
+          style={{ height: 52, width: 'auto', objectFit: 'contain', cursor: locked ? 'default' : 'pointer' }}
+          onClick={locked ? undefined : onGoHome}
         />
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
           <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 19, color: 'var(--fg-1)' }}>
@@ -49,6 +55,7 @@ export function Header({ screen, onGoHome, onGoHistory, onStartWizard, onGoAccou
         <nav style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
             onClick={onGoHome}
+            disabled={locked}
             style={{
               background: screen === 'home' ? 'var(--color-tint-purple)' : 'none',
               border: 'none',
@@ -57,7 +64,7 @@ export function Header({ screen, onGoHome, onGoHistory, onStartWizard, onGoAccou
               fontWeight: 700,
               fontSize: 14,
               color: screen === 'home' ? 'var(--color-purple-deep)' : 'var(--fg-1)',
-              cursor: 'pointer',
+              ...navButtonLock,
               padding: '10px 18px',
             }}
           >
@@ -65,6 +72,7 @@ export function Header({ screen, onGoHome, onGoHistory, onStartWizard, onGoAccou
           </button>
           <button
             onClick={onGoHistory}
+            disabled={locked}
             style={{
               background: screen === 'history' ? 'var(--color-tint-purple)' : 'none',
               border: 'none',
@@ -73,7 +81,7 @@ export function Header({ screen, onGoHome, onGoHistory, onStartWizard, onGoAccou
               fontWeight: 700,
               fontSize: 14,
               color: screen === 'history' ? 'var(--color-purple-deep)' : 'var(--fg-1)',
-              cursor: 'pointer',
+              ...navButtonLock,
               padding: '10px 18px',
             }}
           >
@@ -81,6 +89,7 @@ export function Header({ screen, onGoHome, onGoHistory, onStartWizard, onGoAccou
           </button>
           <button
             onClick={onGoAccount}
+            disabled={locked}
             style={{
               background: screen === 'account' ? 'var(--color-tint-purple)' : 'none',
               border: 'none',
@@ -89,14 +98,14 @@ export function Header({ screen, onGoHome, onGoHistory, onStartWizard, onGoAccou
               fontWeight: 700,
               fontSize: 14,
               color: screen === 'account' ? 'var(--color-purple-deep)' : 'var(--fg-1)',
-              cursor: 'pointer',
+              ...navButtonLock,
               padding: '10px 18px',
             }}
           >
             {user ? 'Account' : 'Sign in'}
           </button>
         </nav>
-        <Button variant="primary" size="sm" onClick={onStartWizard}>
+        <Button variant="primary" size="sm" onClick={onStartWizard} disabled={locked}>
           Start New Check
         </Button>
       </div>

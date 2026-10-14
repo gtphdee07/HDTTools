@@ -99,6 +99,14 @@ describe('nickname rule (trim and ignore case, as the account Garage does)', () 
     expect(loadRecentRigs()).toHaveLength(1);
   });
 
+  it('keeps the existing Rig’s spelling when a save refreshes it, as the account Garage does', () => {
+    saveRecentRig('Truck A', TRUCK, TRAILER);
+
+    const result = saveRecentRig(' truck a ', TRUCK, TRAILER);
+
+    expect(result.map((r) => r.nickname)).toEqual(['Truck A']);
+  });
+
   it('stores the nickname without its surrounding spaces', () => {
     const result = saveRecentRig('  Truck A ', TRUCK, TRAILER);
 

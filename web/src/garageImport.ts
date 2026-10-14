@@ -32,7 +32,7 @@ type ImportPhase =
 const answeredKey = (accountId: string) => `rigcheck:garageImportAnswered:${accountId}`;
 const keysKey = (accountId: string) => `rigcheck:garageImportKeys:${accountId}`;
 
-// Keyed by lower-cased nickname. A key exists once a Rig's add has been tried, and stays until the
+// Keyed by nicknameKey (trimmed, lower-cased). A key exists once a Rig's add has been tried, and stays until the
 // import finishes, so a retry of an interrupted import sends the same key and cannot add it twice.
 type Keys = Record<string, string>;
 
@@ -64,16 +64,10 @@ function wasAnswered(accountId: string): boolean {
 
 // The browser's Rigs that the account could accept, most recently used first. The browser's list is
 // whatever was stored, so skip entries the account would refuse (the table limits a nickname to 80
-// characters) and any whose nickname repeats an earlier one, which the account would see as one Rig.
+// characters). loadRecentRigs has already trimmed the names and dropped repeats of one nickname,
+// which the account would see as one Rig.
 function loadBrowserRigs(): RecentRig[] {
-  const seen = new Set<string>();
-  return loadRecentRigs().filter((r) => {
-    if (typeof r?.nickname !== 'string') return false;
-    const slot = nicknameKey(r.nickname);
-    if (slot.length === 0 || slot.length > 80 || seen.has(slot)) return false;
-    seen.add(slot);
-    return true;
-  });
+  return loadRecentRigs().filter((r) => r.nickname.length > 0 && r.nickname.length <= 80);
 }
 
 // `stillSignedIn` is checked before every add, so signing out (or switching accounts) part-way

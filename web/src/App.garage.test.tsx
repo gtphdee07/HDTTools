@@ -228,6 +228,7 @@ describe('signed-in Garage, nickname rule', () => {
     await acknowledgeDisclaimer(user);
 
     await waitFor(() => expect(backend.updateRig).toHaveBeenCalledTimes(1));
+    expect(backend.updateRig).toHaveBeenCalledWith(expect.objectContaining({ id: 'r1', nickname: 'Truck A' }));
     expect(backend.addRig).not.toHaveBeenCalled();
     expect([...stored.keys()]).toEqual(['Truck A']);
   });

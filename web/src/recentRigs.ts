@@ -33,9 +33,12 @@ export function loadRecentRigs(): RecentRig[] {
 }
 
 export function saveRecentRig(nickname: string, truck: TruckTagData, trailer: TrailerTagData): RecentRig[] {
-  const existing = loadRecentRigs().filter((r) => !sameNickname(r.nickname, nickname));
-  const updated: RecentRig = { nickname: nickname.trim(), truck, trailer, lastUsedAt: new Date().toISOString() };
-  const next = [updated, ...existing].slice(0, MAX_RECENT_RIGS);
+  const stored = loadRecentRigs();
+  const others = stored.filter((r) => !sameNickname(r.nickname, nickname));
+  // A refreshed Rig keeps the spelling it was first saved under, as add_rig does in the account.
+  const name = stored.find((r) => sameNickname(r.nickname, nickname))?.nickname ?? nickname.trim();
+  const updated: RecentRig = { nickname: name, truck, trailer, lastUsedAt: new Date().toISOString() };
+  const next = [updated, ...others].slice(0, MAX_RECENT_RIGS);
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {

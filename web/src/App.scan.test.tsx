@@ -167,6 +167,33 @@ describe('a Pro user with scans', () => {
     expect(world.balance()).toBe(1);
   });
 
+  it('says the scan was used, and that trying again costs another, when the ticket has no weight on it', async () => {
+    const world = makeWorld({ balance: 3 });
+    // The service answers, so the scan is charged; the answer just has no weight in it.
+    world.queueExtraction({ fields: { manufacturer: 'Ford' } }, { fields: {} }, { fields: { gross_weight_lb: 7000 } });
+    const user = renderApp({ world });
+    await startNewRig(user);
+    await screen.findByText(/3 scans left/);
+    await chooseAndExtract(user);
+    await screen.findByText('Check the numbers');
+    const before = world.balance();
+
+    await user.upload(fileInput(), photo('blank-ticket.jpg'));
+
+    const message = await screen.findByText(/couldn't find a weight/i);
+    expect(message).toHaveTextContent(/that scan was used/i);
+    expect(message).toHaveTextContent(/trying again uses another/i);
+    expect(message).toHaveTextContent(/type the weight in/i);
+    expect(world.balance()).toBe(before - 1);
+
+    // The message is true: Try again is a new request that spends another scan.
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(screen.getByLabelText('Stand-alone Weight (lb, optional)')).toHaveValue(7000));
+    expect(world.requests).toHaveLength(3);
+    expect(world.requests[2].clientRequestId).not.toBe(world.requests[1].clientRequestId);
+    expect(world.balance()).toBe(before - 2);
+  });
+
   describe('when a tow-vehicle-only ticket scan does not deliver', () => {
     async function reachTruckReview(world: ReturnType<typeof makeWorld>) {
       const user = renderApp({ world });

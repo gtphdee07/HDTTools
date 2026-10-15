@@ -6,7 +6,7 @@ Cloudflare claims are cited to the primary page and marked **Confirmed**, **Indi
 
 ## Recommendation (short)
 
-**Build it, small, after the owner settles the `workers.dev` question with a 15-minute throwaway test.** One limiter, keyed on the verified account id, checked after token verification and before the body is read, returning `429 rate_limited`. Roughly one day of work, no dashboard steps, no cost documented.
+**Build it, small. The `workers.dev` question is settled: the throwaway test ran on 2026-10-15 and the binding limits requests on a `workers.dev`-only Worker (see Q1), though loosely.** One limiter, keyed on the verified account id, checked after token verification and before the body is read, returning `429 rate_limited`. Roughly one day of work, no dashboard steps, no cost documented.
 
 It bounds how fast one funded account can repeat `POST /v1/scan` (so it bounds how fast an abuser can burn the Anthropic budget). It does **not** replace the #97 spend cap, and it does not close the #96 replay gap (a replay inside the limit still runs a billed extraction). The dashboard WAF rule is not a workable substitute here. Details and the comparison table are in Q8.
 
@@ -15,13 +15,24 @@ It bounds how fast one funded account can repeat `POST /v1/scan` (so it bounds h
 | Question | Answer | Status |
 | --- | --- | --- |
 | Is the binding stable? | GA since 2025-09-19; the older `unsafe` form keeps working. https://developers.cloudflare.com/changelog/post/2025-09-19-ratelimit-workers-ga/ | Confirmed (facts §1) |
-| Works for a Worker served only from `workers.dev`? | No Cloudflare page says either way. The docs describe it as a Worker-runtime API with no zone or hostname prerequisite (https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/), so it very likely works, but that is inference. | **UNCONFIRMED** |
+| Works for a Worker served only from `workers.dev`? | **Yes, observed 2026-10-15** (see "Test result" below). No Cloudflare page says so; the docs describe it as a Worker-runtime API with no zone or hostname prerequisite (https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/). | Confirmed by test; **UNCONFIRMED** in Cloudflare's docs |
 | Plans that include it | Not stated on the binding page, the Workers pricing or limits pages, or the GA changelog. | **UNCONFIRMED** |
 | Usage charge | None documented. The Worker invocation is billed as a normal Workers request whether or not the limiter rejects it. | **UNCONFIRMED** (no charge listed anywhere) |
 | Limit on namespaces or bindings per Worker | None documented; the docs only say you can configure "multiple rate limiting configurations per Worker". | **UNCONFIRMED** |
 | Visible in the dashboard? | No: "Rate limiting bindings are not currently visible in the Cloudflare dashboard." Use Workers Logs or Analytics Engine to see rejections. | Confirmed |
 
-**Test the owner can run to settle `workers.dev`, plan and charge** (costs nothing beyond a throwaway Worker): deploy a Worker with the stanza from Q7, `limit = 1`, `period = 60`, a unique `namespace_id`, that returns 200 or 429 from `env.RL.limit({ key: "t" })`. Leave `workers_dev` on, no routes. Call its `https://<name>.<subdomain>.workers.dev/` twice within a few seconds. A 200 then a 429 settles that it works on `workers.dev` on the account's current plan; the deploy succeeding settles that the plan includes it. Check Billing > Billable usage a day later for any rate-limit line item. Delete the Worker afterwards.
+**Test result (run 2026-10-15 with the owner's approval).** A throwaway Worker `rl-throwaway-98` (`limit = 1`, `period = 60`, `namespace_id = "98980001"`, no routes, `workers.dev` only) was deployed to the owner's account on the same `workers.dev` subdomain as the Scan service, called, and deleted (the deployment was checked first and the delete confirmed). Wrangler 4.123.0 accepted the stanza and the deploy succeeded, which settles that the account's current plan can use the binding (the plan itself was not checked in the dashboard). Calls were answered by Cloudflare location `MCI`.
+
+| Calls (all to one key, as fast as `curl` ran them) | Result |
+| --- | --- |
+| Key `t`, calls 1 and 2 | 200, 200 (the second was **not** limited) |
+| Key `u`, call 1 | 200 |
+| Empty key, calls 1 and 2 | 200, 200 (inconclusive for the empty-key question, given the line above) |
+| Fresh key, 12 calls in a row | 200, 200, 200, 429, 429, 429, 200, 429, 429, 429, 429, 429 |
+
+What it shows: 429s do appear, so the binding works on `workers.dev`. But with `limit = 1` it let 4 of 12 requests through within a few seconds, and the first three passed before the count caught up. That matches "permissive, eventually consistent" and means the limit is a deterrent, not a precise count: at N = 10 expect more than 10 in a burst. It does not change the recommendation. It does mean the limiter cannot be relied on to stop a short burst of parallel requests, only to bound the sustained rate. The empty-key and production window-type questions stay unsettled. No billing line was checked; the invocations were a handful of free-tier requests.
+
+**Test the owner can run to settle `workers.dev`, plan and charge** (costs nothing beyond a throwaway Worker; already run, kept here so it can be repeated): deploy a Worker with the stanza from Q7, `limit = 1`, `period = 60`, a unique `namespace_id`, that returns 200 or 429 from `env.RL.limit({ key: "t" })`. Leave `workers_dev` on, no routes. Call its `https://<name>.<subdomain>.workers.dev/` twice within a few seconds. A 200 then a 429 settles that it works on `workers.dev` on the account's current plan; the deploy succeeding settles that the plan includes it. Check Billing > Billable usage a day later for any rate-limit line item. Delete the Worker afterwards.
 
 ## Q2. Fit for this abuse
 
@@ -118,7 +129,7 @@ Sources: facts §5. Relationship to the other tickets:
 
 ## Effort estimate for building the binding
 
-Size: **about one day** including review (half a day of code and tests, half for docs, the Web change and the owner's smoke checks). Plus about 15 minutes of owner time for the throwaway Worker test in Q1.
+Size: **about one day** including review (half a day of code and tests, half for docs, the Web change and the owner's smoke checks). The throwaway Worker test in Q1 has already been run.
 
 | Area | Files |
 | --- | --- |
@@ -137,9 +148,9 @@ Tests to add (write red first):
 5. A limiter that throws lets the request through (if fail-open is chosen).
 6. Web: a `429` body with `code: "rate_limited"` becomes a `ScanError` with that code, `lostResponse` false and the new message.
 
-Owner steps: run the Q1 throwaway test; approve the deploy; choose N (the draft uses 10 per 60 s); after deploy, watch Workers Logs for rejections, since the dashboard shows none.
+Owner steps: approve the deploy; choose N (the draft uses 10 per 60 s); after deploy, watch Workers Logs for rejections, since the dashboard shows none.
 
-Main risks: `workers.dev` support is unconfirmed (the throwaway test removes this before any build); counting is per location and eventually consistent, so the limit is a deterrent not a guarantee; N too low would throttle a legitimate burst or trip the weekly suite; the binding is invisible in the dashboard; a shared `namespace_id` would silently share counters.
+Main risks: counting is per location and eventually consistent, and the throwaway test showed it admitting 4 of 12 rapid requests at `limit = 1`, so the limit is a deterrent not a guarantee; N too low would throttle a legitimate burst or trip the weekly suite; the binding is invisible in the dashboard; a shared `namespace_id` would silently share counters.
 
 ## Draft implementation ticket
 
@@ -147,7 +158,7 @@ Main risks: `workers.dev` support is unconfirmed (the throwaway test removes thi
 
 **Source.** Follow-up to #98 (findings in `docs/research/scan-proxy-rate-limit-binding.md`). Bounds how fast one funded account can repeat `POST /v1/scan`. Not a replacement for the #97 spend cap, and it does not close #96.
 
-**Blocked by.** Owner has run the throwaway `workers.dev` test from the findings file (Q1) and it returned a 200 then a 429. If it did not, close this ticket and revisit.
+**Blocked by.** None. The throwaway `workers.dev` test (findings file, Q1) was run on 2026-10-15 and the binding limited requests on a `workers.dev`-only Worker.
 
 **Acceptance criteria**
 

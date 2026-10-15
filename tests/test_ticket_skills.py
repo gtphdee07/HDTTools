@@ -77,6 +77,15 @@ def test_the_skills_never_tell_the_agent_to_push_or_close_without_the_owner():
         assert "git push" not in text
 
 
+def test_the_finish_skill_and_the_ticket_skills_doc_say_criteria_come_from_the_agent_brief_comment():
+    skill = (ROOT / ".claude" / "skills" / "ticket-finish" / "SKILL.md").read_text(encoding="utf-8")
+    doc = (ROOT / "docs" / "agents" / "ticket-skills.md").read_text(encoding="utf-8")
+
+    for text in (skill, doc):
+        assert "## Agent Brief" in text and "comment" in text
+        assert "issue body" in text
+
+
 def test_ticket_merge_skill_skips_the_merged_tree_run_unless_the_baseline_moved():
     text = (ROOT / ".claude" / "skills" / "ticket-merge" / "SKILL.md").read_text(encoding="utf-8")
 

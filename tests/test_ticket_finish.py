@@ -469,6 +469,84 @@ def test_criteria_for_a_body_only_ticket_prints_the_body_criteria(worktree):
     assert code == 0 and lines == [f"1. {CRIT[0]}", f"2. {CRIT[1]}"]
 
 
+# --- owner decisions (asked once, recorded on the ticket) ---------------------------------------------
+
+DECISIONS_SECTION = "\n## Decisions\n\n1. Which wording? Options: A (recommended) or B.\n"
+BODY_WITH_DECISIONS = BODY + DECISIONS_SECTION
+ANSWERS = "DECISIONS (owner, 2026-10-15)\n\n1. Which wording? Answer: A (the recommended default).\n"
+
+
+def test_a_decisions_heading_in_the_body_is_found():
+    assert finish.has_decisions_section({"body": BODY_WITH_DECISIONS, "comments": []}) is True
+
+
+def test_a_ticket_without_a_decisions_heading_has_none():
+    assert finish.has_decisions_section({"body": BODY, "comments": []}) is False
+
+
+def test_a_decisions_so_far_heading_is_not_a_decisions_section():
+    # The wayfinder maps keep a "Decisions so far" index; that is not a list of questions to ask.
+    assert finish.has_decisions_section({"body": "## Decisions so far\n\n- one\n", "comments": []}) is False
+
+
+def test_a_decisions_heading_in_the_latest_brief_comment_is_found():
+    brief = _brief("X works") + DECISIONS_SECTION
+    assert finish.has_decisions_section({"body": BODY_WITHOUT_CRITERIA, "comments": [{"body": brief}]}) is True
+
+
+def test_a_decisions_heading_in_a_plain_comment_is_not_a_decisions_section():
+    assert finish.has_decisions_section({"body": BODY, "comments": [{"body": DECISIONS_SECTION}]}) is False
+
+
+def test_decisions_are_recorded_by_a_comment_that_starts_with_decisions():
+    assert finish.decisions_recorded({"comments": [{"body": "STATUS: PARTIAL"}, {"body": ANSWERS}]}) is True
+
+
+def test_a_byte_order_mark_or_leading_blank_lines_do_not_hide_a_decisions_comment():
+    assert finish.decisions_recorded({"comments": [{"body": "﻿\n  " + ANSWERS}]}) is True
+
+
+def test_a_comment_that_only_mentions_decisions_is_not_a_record():
+    mention = {"body": "The DECISIONS are still open."}
+    assert finish.decisions_recorded({"comments": [mention, {"body": "Decisions: later"}]}) is False
+    assert finish.decisions_recorded({"comments": []}) is False
+
+
+def test_ready_is_refused_while_decisions_are_unrecorded_but_partial_and_blocked_are_not():
+    kw = dict(tree_clean=True, suites=PASSING, rows=GOOD_ROWS, criteria=CRITERIA, decisions_missing=True)
+
+    reasons = finish.refusals("READY TO MERGE", **kw)
+    assert any("DECISIONS comment" in r and "AskUserQuestion" in r for r in reasons)
+    assert finish.refusals("PARTIAL", not_done="Waiting on the owner.", **kw) == []
+    assert finish.refusals("BLOCKED", not_done="Waiting on the owner.", **kw) == []
+
+
+def test_post_ready_is_refused_when_the_ticket_lists_decisions_and_none_were_recorded(worktree, tmp_path):
+    gh = Gh(body=BODY_WITH_DECISIONS)
+
+    code, out = _post(worktree, gh, _report(tmp_path), tmp_path)
+
+    assert code == 1 and gh.comments == []
+    assert "DECISIONS comment" in out
+
+
+def test_post_ready_goes_through_once_the_decisions_comment_exists(worktree, tmp_path):
+    gh = Gh(body=BODY_WITH_DECISIONS, comments=[ANSWERS])
+
+    code, _ = _post(worktree, gh, _report(tmp_path), tmp_path)
+
+    assert code == 0 and gh.comments[0].startswith("STATUS: READY TO MERGE")
+
+
+def test_post_partial_is_allowed_with_decisions_unrecorded(worktree, tmp_path):
+    gh = Gh(body=BODY_WITH_DECISIONS)
+    report = _report(tmp_path, status="PARTIAL", not_done="Decisions not asked: the session could not reach the owner.")
+
+    code, _ = _post(worktree, gh, report, tmp_path)
+
+    assert code == 0 and gh.comments[0].startswith("STATUS: PARTIAL")
+
+
 def test_pushed_is_yes_only_when_the_remote_branch_holds_head(worktree, tmp_path):
     assert finish.is_pushed(common.real_shell, worktree) is False
     remote = tmp_path / "remote.git"

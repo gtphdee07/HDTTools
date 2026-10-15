@@ -11,6 +11,22 @@ How sessions (and the person running them) pass status to each other. Ticket wor
 
 When a session starts a ticket, assign the ticket to the person driving the work (`gh issue edit <N> --add-assignee @me`). An assigned open ticket is in flight; skip it.
 
+## Decisions that are the owner's
+
+A ticket that needs the owner's call lists the questions under a `## Decisions` heading in its body (or its Agent Brief), so they are on the record. Write each one so it can go straight into `AskUserQuestion`: the question in plain words, a short header, 2 to 4 options with a one-line description each, and the recommended option first. The owner is never asked to write answers into the ticket, and no agent re-reads them from there.
+
+- **The session asks directly.** Right after the worktree is ready, ask everything the section lists with `AskUserQuestion` (at most 4 questions per call, so batch the rest), and ask any further decision when it comes up. Keep the wording plain; say what each option means for the user, not for the code.
+- **Then it records them.** Post one comment on the ticket that starts with the word `DECISIONS`, giving the date, then each question, its options and the answer. Build on those answers; do not ask the same question again.
+- **If the session cannot ask** (a sub-agent, or a run with no one to answer), it uses the recommended defaults, posts them as `DECISIONS (assumed)` with the same layout, and lists each under "Owner actions needed" in its STATUS so the owner can overturn them at merge.
+- **`/ticket-finish` enforces it.** It refuses `STATUS: READY TO MERGE` for a ticket with a `## Decisions` section and no comment starting `DECISIONS`. `PARTIAL` and `BLOCKED` are not held back by it. A heading such as "Decisions so far" (the wayfinder maps) is not a Decisions section.
+
+```markdown
+DECISIONS (owner, 2026-10-15)
+
+1. <question> Options: A (recommended), B, C. Answer: A.
+2. <question> ... Answer: ...
+```
+
 ## The ticket comment
 
 Post one when the session finishes, stops, or is blocked. Start with the status line so it can be found by search.

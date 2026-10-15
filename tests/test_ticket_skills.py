@@ -92,3 +92,21 @@ def test_ticket_merge_skill_skips_the_merged_tree_run_unless_the_baseline_moved(
     assert "scripts/ticket_merge.py baseline" in text
     assert "--level issue" in text  # the narrowed worktree re-run
     assert "BASELINE UNCHANGED" in text
+
+
+def test_every_place_a_session_reads_tells_it_to_ask_decisions_directly_and_record_them():
+    """The owner is asked with AskUserQuestion and the answers go on the ticket as a DECISIONS comment."""
+    paths = [
+        ROOT / "docs" / "agents" / "session-handoff.md",
+        ROOT / "docs" / "agents" / "issue-tracker.md",
+        ROOT / "docs" / "agents" / "ticket-skills.md",
+        ROOT / ".claude" / "skills" / "ticket-start" / "SKILL.md",
+        ROOT / ".claude" / "skills" / "ticket-finish" / "SKILL.md",
+    ]
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        assert "## Decisions" in text or "Decisions section" in text, path.name
+        assert "DECISIONS" in text, path.name
+    # The two places that tell the session how to ask name the tool.
+    for path in (paths[0], paths[3]):
+        assert "AskUserQuestion" in path.read_text(encoding="utf-8"), path.name

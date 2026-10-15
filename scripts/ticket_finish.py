@@ -16,8 +16,10 @@ Brief` comment, else the issue body. `post` reads the report the skill wrote,
 recomputes the git facts itself, and posts the comment from
 docs/agents/session-handoff.md, then deletes the ticket's scratch file. It
 refuses `STATUS: READY TO MERGE` unless the tree is clean, every suite in the
-report passed, and each acceptance criterion names a test. `PARTIAL` and
-`BLOCKED` are never refused for those reasons, but must say what is not done.
+report passed, each acceptance criterion names a test, and, when the ticket
+lists owner decisions under `## Decisions`, a comment starting `DECISIONS`
+records them. `PARTIAL` and `BLOCKED` are never refused for those reasons, but
+must say what is not done.
 
 REPORT.json: {"status", "criteria": [{"criterion", "proven_by"}],
 "suites": [{"command", "passed", "summary"}], "review", "not_done",
@@ -75,6 +77,28 @@ def issue_criteria(issue: dict) -> list[str]:
     return parse_criteria(briefs[-1] if briefs else issue.get("body") or "")
 
 
+# A ticket that needs decisions from the owner lists them under `## Decisions` (in the body or its Agent
+# Brief). The session asks them with AskUserQuestion, then posts the questions and the answers as a comment
+# that starts with DECISIONS (docs/agents/session-handoff.md), so nobody writes answers into the ticket or
+# has an agent re-read them. A session that could not ask posts the defaults it assumed under the same word.
+DECISIONS_HEADING = re.compile(r"^##\s+Decisions\s*$", re.MULTILINE)
+
+
+def has_decisions_section(issue: dict) -> bool:
+    texts = [issue.get("body") or ""]
+    briefs = [c.get("body") or "" for c in issue.get("comments") or []]
+    briefs = [b for b in briefs if re.search(r"^##\s+Agent Brief", b, re.MULTILINE)]
+    if briefs:
+        texts.append(briefs[-1])
+    return any(DECISIONS_HEADING.search(t) for t in texts)
+
+
+def decisions_recorded(issue: dict) -> bool:
+    return any(
+        (c.get("body") or "").lstrip("﻿ \t\r\n").startswith("DECISIONS") for c in issue.get("comments") or []
+    )
+
+
 # The one env file that is committed on purpose: public client config (VITE_* values that ship in the
 # browser bundle). Every other `.env*` file may hold credentials and stays out of a feature branch.
 TRACKED_ENV_FILES = ("web/.env.production",)
@@ -96,7 +120,9 @@ def _proven(rows) -> dict[str, str]:
     return {r["criterion"].strip(): r.get("proven_by", "").strip() for r in rows}
 
 
-def refusals(status, *, tree_clean, suites, rows, criteria, not_done="", branch_problems=()) -> list[str]:
+def refusals(
+    status, *, tree_clean, suites, rows, criteria, not_done="", branch_problems=(), decisions_missing=False
+) -> list[str]:
     if status not in STATUSES:
         return [f"Unknown status {status!r}; use one of: {', '.join(STATUSES)}."]
     if status != "READY TO MERGE":
@@ -112,6 +138,11 @@ def refusals(status, *, tree_clean, suites, rows, criteria, not_done="", branch_
         reasons.append("The ticket lists no acceptance criteria, so nothing can be proven.")
     proven = _proven(rows)
     reasons.extend(f"No test named for criterion: {c}" for c in criteria if not proven.get(c.strip()))
+    if decisions_missing:
+        reasons.append(
+            "The ticket has a Decisions section but no DECISIONS comment: ask the owner with AskUserQuestion "
+            "and post the questions and answers (docs/agents/session-handoff.md)."
+        )
     return reasons
 
 
@@ -208,6 +239,7 @@ def post(
     problems = refusals(
         status, tree_clean=tree_clean, suites=suites, rows=rows, criteria=criteria,
         not_done=report.get("not_done", ""), branch_problems=branch_problems,
+        decisions_missing=has_decisions_section(issue) and not decisions_recorded(issue),
     )
     if problems:
         out(f"REFUSED to post STATUS: {status}. Nothing was posted.")

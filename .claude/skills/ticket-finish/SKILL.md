@@ -34,6 +34,8 @@ Update what the change requires (`CONTEXT.md`, the surface's `TESTING.md`, an AD
 
 ## 6. Post
 
+If the ticket has a `## Decisions` section, check that a comment starting `DECISIONS` is on it (`gh issue view <N> --comments`). The script refuses `READY TO MERGE` without one. If the decisions were never asked, ask the owner now with `AskUserQuestion` and post the answers (layout in `docs/agents/session-handoff.md`); if you cannot ask, post `PARTIAL` and name the unanswered decisions in `not_done`.
+
 Write the report JSON to your scratchpad (shape: `uv run scripts/ticket_finish.py --help`), then:
 
 ```

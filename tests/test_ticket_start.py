@@ -248,7 +248,10 @@ def test_implement_prompt_is_the_command_then_a_blank_line_then_the_handoff_line
         "\n"
         "Follow docs/agents/session-handoff.md: don't push, don't close the issue, "
         "and finish with a STATUS comment on the ticket. "
-        "Run a live External suite only if an acceptance criterion names one, and only after the owner approves that run; the merge step covers the rest."
+        "Run a live External suite only if an acceptance criterion names one, and only after the owner approves that run; the merge step covers the rest. "
+        "If the ticket has a `## Decisions` section, or needs a decision only the owner can make, ask the owner directly with AskUserQuestion "
+        "(up to 4 questions per call) before building on it, then post the questions and answers as a ticket comment starting `DECISIONS`; "
+        "if you cannot ask, use the recommended defaults, post them as `DECISIONS (assumed)` and list them under Owner actions."
     )
 
 

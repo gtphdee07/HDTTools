@@ -24,6 +24,8 @@ they're just no longer where new/open work gets tracked.
 - **Close**: `gh issue close <number> --comment "..."`
 - **Acceptance criteria**: every ticket an agent will build, follow-ups that sessions file included, carries a `## Acceptance criteria` checklist (`- [ ] ...`) in its body, each item something a test can prove. `/ticket-finish` reads the criteria from the body (the `## Acceptance criteria` heading or an Agent Brief's bold `**Acceptance criteria:**` label), and without any it can only post `PARTIAL`. A criterion about how the code is organised (rather than how it behaves) also has no test, so keep those few and say how the merge review checks them. Until #113 lands, a triaged ticket whose criteria live only in the Agent Brief comment must also list them in the body.
 
+- **Decisions for the owner**: when a ticket needs the owner's call, list the questions under a `## Decisions` heading in the ticket body, each with its options and a recommended default, written so they can go straight into `AskUserQuestion` (a plain-words question, a short header, 2 to 4 options with a one-line description each, the recommended one first). Do not write "recorded as awaiting owner" or ask the owner to answer in a comment, and do not finish the work on a default and leave the question open: the session that builds the ticket asks the owner directly, posts the questions and answers as a comment starting `DECISIONS`, and builds on them. `/ticket-finish` will not mark such a ticket READY TO MERGE without that comment. See `session-handoff.md`.
+
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
 ## Pull requests as a triage surface

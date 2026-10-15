@@ -1,9 +1,8 @@
-import { useState } from 'react';
 import { ArrowRight, Plus } from 'lucide-react';
 import type { HistoryEntry, RecentRig } from '../types';
 import { Button } from '../design-system/Button';
 import { Badge } from '../design-system/Badge';
-import { RigDeleteButton, RigDeleteConfirm } from '../components/RigDelete';
+import { RigDeleteButton, RigDeleteConfirm, useRigDelete } from '../components/RigDelete';
 import type { DeleteRig } from '../components/RigDelete';
 import { rigLookup, rigSubtitle } from '../nickname';
 import { VERDICT_BADGE } from '../verdictBadge';
@@ -20,8 +19,7 @@ interface DashboardProps {
 const RIG_DOT_COLORS = ['var(--color-teal)', 'var(--color-purple)', 'var(--accent-primary)'];
 
 export function Dashboard({ recentRigs, history, onStartWizard, onGoHistory, onDeleteRig }: DashboardProps) {
-  // Nickname of the Rig card being asked about, being deleted, or that failed to delete.
-  const [confirming, setConfirming] = useState<string | null>(null);
+  const { confirming, refocusBin, headingRef, ask, cancel, deleted } = useRigDelete();
   const recentHistory = history.slice(0, 2);
   const findRig = rigLookup(recentRigs);
 
@@ -181,7 +179,9 @@ export function Dashboard({ recentRigs, history, onStartWizard, onGoHistory, onD
       </div>
 
       {/* Your rigs */}
-      <h2 style={{ fontSize: 'var(--text-h1)', color: 'var(--fg-1)', margin: '0 0 16px' }}>Your Rigs</h2>
+      <h2 ref={headingRef} tabIndex={-1} style={{ fontSize: 'var(--text-h1)', color: 'var(--fg-1)', margin: '0 0 16px' }}>
+        Your Rigs
+      </h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 18 }}>
         {recentRigs.map((rig, i) => {
           const truckLabel = rig.truck.manufacturer;
@@ -231,7 +231,7 @@ export function Dashboard({ recentRigs, history, onStartWizard, onGoHistory, onD
                 {onDeleteRig && !isConfirming && (
                   // Pulled into the card's padding so the bin does not make the header row taller.
                   <span style={{ margin: -8 }}>
-                    <RigDeleteButton rig={rig} onAsk={() => setConfirming(rig.nickname)} />
+                    <RigDeleteButton rig={rig} onAsk={() => ask(rig.nickname)} takeFocus={refocusBin === rig.nickname} />
                   </span>
                 )}
               </div>
@@ -240,7 +240,7 @@ export function Dashboard({ recentRigs, history, onStartWizard, onGoHistory, onD
               </div>
               {isConfirming && onDeleteRig ? (
                 <div style={{ marginTop: 10 }}>
-                  <RigDeleteConfirm rig={rig} onDelete={onDeleteRig} onDone={() => setConfirming(null)} />
+                  <RigDeleteConfirm rig={rig} onDelete={onDeleteRig} onCancel={() => cancel(rig.nickname)} onDeleted={deleted} />
                 </div>
               ) : (
                 <>

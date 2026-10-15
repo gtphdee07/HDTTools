@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { RecentRig } from '../types';
 import { Button } from '../design-system/Button';
-import { RigDeleteButton, RigDeleteConfirm } from '../components/RigDelete';
+import { RigDeleteButton, RigDeleteConfirm, useRigDelete } from '../components/RigDelete';
 import type { DeleteRig } from '../components/RigDelete';
 import { rigSubtitle } from '../nickname';
 
@@ -17,12 +17,11 @@ const DOT_COLORS = ['var(--color-teal)', 'var(--color-purple)', 'var(--accent-pr
 
 export function RigStep({ recentRigs, onSelectExisting, onStartNew, onDeleteRig }: RigStepProps) {
   const [nickname, setNickname] = useState('');
-  // Nickname of the Rig being asked about, being deleted, or that failed to delete.
-  const [confirming, setConfirming] = useState<string | null>(null);
+  const { confirming, refocusBin, headingRef, ask, cancel, deleted } = useRigDelete();
 
   return (
     <div style={{ maxWidth: 620, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 'var(--text-h1)', margin: '0 0 10px', color: 'var(--fg-1)' }}>
+      <h1 ref={headingRef} tabIndex={-1} style={{ fontSize: 'var(--text-h1)', margin: '0 0 10px', color: 'var(--fg-1)' }}>
         Which rig are we checking?
       </h1>
       <p style={{ color: 'var(--fg-2)', fontSize: 'var(--text-body-lg)', margin: '0 0 24px' }}>
@@ -65,7 +64,7 @@ export function RigStep({ recentRigs, onSelectExisting, onStartNew, onDeleteRig 
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {onDeleteRig && !isConfirming && (
-                      <RigDeleteButton rig={rig} onAsk={() => setConfirming(rig.nickname)} />
+                      <RigDeleteButton rig={rig} onAsk={() => ask(rig.nickname)} takeFocus={refocusBin === rig.nickname} />
                     )}
                     <span
                       style={{
@@ -80,7 +79,7 @@ export function RigStep({ recentRigs, onSelectExisting, onStartNew, onDeleteRig 
                 </div>
                 {isConfirming && onDeleteRig && (
                   <div style={{ padding: '0 20px 16px' }}>
-                    <RigDeleteConfirm rig={rig} onDelete={onDeleteRig} onDone={() => setConfirming(null)} />
+                    <RigDeleteConfirm rig={rig} onDelete={onDeleteRig} onCancel={() => cancel(rig.nickname)} onDeleted={deleted} />
                   </div>
                 )}
               </div>

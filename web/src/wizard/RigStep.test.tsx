@@ -176,6 +176,8 @@ describe('RigStep delete focus', () => {
     const cancel = screen.getByRole('button', { name: 'Cancel' });
     expect(cancel).toHaveFocus();
     expect(screen.getByRole('group', { name: /Delete "Big Blue"\?/ })).toContainElement(cancel);
+    // A screen reader reads the question when focus lands on Cancel, not only the group's name.
+    expect(cancel).toHaveAccessibleDescription(/Delete "Big Blue"\?/);
   });
 
   it("returns focus to the same Rig's bin when the user cancels", async () => {

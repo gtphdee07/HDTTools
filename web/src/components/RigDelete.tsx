@@ -99,9 +99,12 @@ export function RigDeleteConfirm({
     cancelRef.current?.focus();
   }, []);
 
-  // The button was disabled while the delete ran, which can drop focus; give it back for the retry.
+  // The button was disabled while the delete ran, which can drop focus to the page; give it back for
+  // the retry, but not if the user has since moved focus somewhere else on purpose.
   useEffect(() => {
-    if (failed && !deleting) confirmRef.current?.focus();
+    if (failed && !deleting && (document.activeElement === document.body || document.activeElement === null)) {
+      confirmRef.current?.focus();
+    }
   }, [failed, deleting]);
 
   const confirm = async () => {
@@ -132,7 +135,7 @@ export function RigDeleteConfirm({
         <Button ref={confirmRef} variant="primary" size="sm" disabled={deleting} onClick={() => void confirm()}>
           {deleting ? 'Deleting…' : 'Yes, delete'}
         </Button>
-        <Button ref={cancelRef} variant="ghost" size="sm" disabled={deleting} onClick={onCancel}>
+        <Button ref={cancelRef} variant="ghost" size="sm" disabled={deleting} onClick={onCancel} aria-describedby={questionId}>
           Cancel
         </Button>
       </div>

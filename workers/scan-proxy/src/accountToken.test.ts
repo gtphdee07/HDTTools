@@ -19,7 +19,7 @@ import {
   TEST_SUPABASE_URL,
   unsignedToken,
 } from "./accountTokenFixtures.ts";
-import { clearJwksCache } from "./auth.ts";
+import { clearJwksCache, JWKS_MAX_AGE_SECONDS, JWKS_REFETCH_COOLDOWN_SECONDS } from "./auth.ts";
 import worker from "./index.ts";
 import type { Env } from "./types.ts";
 
@@ -104,8 +104,8 @@ const nowSeconds = () => Math.floor(Date.now() / 1000);
 
 // The JWKS cooldown and max cache age run off Date.now(), so those tests move a
 // mocked clock instead of sleeping. Tokens stay valid for an hour, longer than any jump.
-const COOLDOWN_MS = 30_000;
-const MAX_CACHE_AGE_MS = 10 * 60_000;
+const COOLDOWN_MS = JWKS_REFETCH_COOLDOWN_SECONDS * 1000;
+const MAX_CACHE_AGE_MS = JWKS_MAX_AGE_SECONDS * 1000;
 
 function mockClock(t: TestContext): (ms: number) => void {
   t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
@@ -331,6 +331,25 @@ test("distinct unknown kids trigger at most one JWKS fetch per cooldown window",
   assert.equal(world.jwksFetches(), 1, "the first fetch is still inside the cooldown");
 });
 
+test("a key published inside the cooldown is refused with no fetch until the window ends, then accepted", async (t) => {
+  const world = fakeWorld(t);
+  const advance = mockClock(t);
+  await worker.fetch(postScan(bearer(await signToken(USER_A, { key: goodKey }))), env);
+
+  const rotated = await generateTestKeyPair("rotated-key");
+  world.setJwks(jwksFor(rotated));
+  const rotatedToken = bearer(await signToken(USER_A, { key: rotated }));
+
+  await assertUnauthorized(await worker.fetch(postScan(rotatedToken), env));
+  advance(COOLDOWN_MS - 1_000);
+  await assertUnauthorized(await worker.fetch(postScan(rotatedToken), env));
+  assert.equal(world.jwksFetches(), 1, "no fetch while the window is still open");
+
+  advance(1_000);
+  assert.equal((await worker.fetch(postScan(rotatedToken), env)).status, 200);
+  assert.equal(world.jwksFetches(), 2);
+});
+
 test("requests that arrive together share one JWKS fetch and are all verified against it", async (t) => {
   const world = fakeWorld(t);
   mockClock(t);
@@ -399,7 +418,7 @@ test("a failed re-fetch for an unknown kid is 503 once, then 401 inside the cool
   assert.equal((await worker.fetch(postScan(good), env)).status, 200, "known keys still verify");
 });
 
-test("a known kid within the max cache age needs no fetch, however many cooldowns have passed", async (t) => {
+test("a known kid within the max cache age needs no fetch, even a second before it runs out", async (t) => {
   const world = fakeWorld(t);
   const advance = mockClock(t);
   const token = bearer(await signToken(USER_A, { key: goodKey }));

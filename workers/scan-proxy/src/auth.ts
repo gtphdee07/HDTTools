@@ -46,9 +46,8 @@ export const JWKS_REFETCH_COOLDOWN_SECONDS = 30;
 export const JWKS_MAX_AGE_SECONDS = 10 * 60;
 
 interface JwksState {
-  keys?: JwksDocument;
-  // When `keys` was fetched; past the max age they are no longer trusted.
-  keysFetchedAt?: number;
+  // The last key set fetched successfully; past the max age it is no longer trusted.
+  cached?: { doc: JwksDocument; fetchedAt: number };
   // When the latest fetch attempt (successful or not) was started.
   lastAttemptAt?: number;
   // The fetch running right now; requests arriving meanwhile wait for it.
@@ -62,23 +61,33 @@ export function clearJwksCache(): void {
   jwksState.clear();
 }
 
-async function fetchJwks(url: string, state: JwksState, deps: AuthDeps): Promise<JwksDocument> {
+async function loadJwks(url: string, state: JwksState, deps: AuthDeps): Promise<JwksDocument> {
   const doc = await deps.fetchJwks(url);
   const violation = jwksViolation(doc);
   if (violation) throw new Error(violation);
-  state.keys = { keys: usableKeys(doc) };
-  state.keysFetchedAt = deps.nowSeconds();
-  return state.keys;
+  const keys = { keys: usableKeys(doc) };
+  state.cached = { doc: keys, fetchedAt: deps.nowSeconds() };
+  return keys;
 }
 
-function startFetch(url: string, state: JwksState, deps: AuthDeps): Promise<JwksDocument> {
+// Starts a fetch and records it; the cooldown is measured from this moment,
+// not from when the fetch ends.
+function startLoad(url: string, state: JwksState, deps: AuthDeps): Promise<JwksDocument> {
   state.lastAttemptAt = deps.nowSeconds();
-  const fetching = fetchJwks(url, state, deps).finally(() => {
+  const loading = loadJwks(url, state, deps).finally(() => {
     state.inFlight = undefined;
   });
-  state.inFlight = fetching;
-  return fetching;
+  state.inFlight = loading;
+  return loading;
 }
+
+// The cached key set, unless it is older than the max age.
+function trustedKeys(state: JwksState, now: number): JwksDocument | undefined {
+  const { cached } = state;
+  return cached && now - cached.fetchedAt < JWKS_MAX_AGE_SECONDS ? cached.doc : undefined;
+}
+
+const withKid = (doc: JwksDocument | undefined, kid: string) => doc?.keys.find((key) => key.kid === kid);
 
 // The cached key set normally holds the key; an unknown kid means Supabase
 // may have rotated its keys, so re-fetch before giving up - unless a fetch
@@ -87,17 +96,17 @@ async function findKey(url: string, kid: string, deps: AuthDeps): Promise<Accoun
   let state = jwksState.get(url);
   if (!state) jwksState.set(url, (state = {}));
   const now = deps.nowSeconds();
-  const trusted = state.keys && now - (state.keysFetchedAt ?? 0) < JWKS_MAX_AGE_SECONDS ? state.keys : undefined;
-  const fromCache = trusted?.keys.find((key) => key.kid === kid);
+  const trusted = trustedKeys(state, now);
+  const fromCache = withKid(trusted, kid);
   if (fromCache) return fromCache;
-  if (state.inFlight) return (await state.inFlight).keys.find((key) => key.kid === kid);
+  if (state.inFlight) return withKid(await state.inFlight, kid);
   const inCooldown = state.lastAttemptAt !== undefined && now - state.lastAttemptAt < JWKS_REFETCH_COOLDOWN_SECONDS;
   if (inCooldown) {
     // No trusted keys to say the kid is unknown with: the service can't verify right now.
     if (!trusted) throw new Error("no trusted JWKS, and the last fetch was too recent to retry");
     return undefined;
   }
-  return (await startFetch(url, state, deps)).keys.find((key) => key.kid === kid);
+  return withKid(await startLoad(url, state, deps), kid);
 }
 
 async function signatureIsValid(key: AccountJwk, signingInput: string, signature: string): Promise<boolean> {

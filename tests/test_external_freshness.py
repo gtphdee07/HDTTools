@@ -306,6 +306,21 @@ def test_changing_the_verifier_or_its_contract_makes_worker_token_verification_s
     assert any(changed in r for r in stale.reasons)
 
 
+def test_every_active_scan_proxy_surface_has_tagged_external_tests():
+    # The wrapper filters on "[surface]" in a test name; an active surface with no such test would
+    # run nothing and have nothing to record, so it could never go fresh.
+    suite = "\n".join(p.read_text(encoding="utf-8") for p in (ef.REPO_ROOT / "workers/scan-proxy/src/external").glob("*.external.test.ts"))
+    for name, surface in ef.load_manifest()["surfaces"].items():
+        if surface["status"] == "active" and "scan-proxy" in surface["platforms"]:
+            assert f'test("[{name}]' in suite or f"test(`[{name}]" in suite, f"no External test is tagged [{name}]"
+
+
+def test_the_moved_token_checks_no_longer_live_untagged_in_the_weekly_file():
+    weekly = (ef.REPO_ROOT / "workers/scan-proxy/src/weekly/scan.weekly.test.ts").read_text(encoding="utf-8")
+    assert "no account token gets 401" not in weekly
+    assert "match the shared account-token contract" not in weekly
+
+
 @pytest.mark.parametrize("name", ["supabase-auth", "worker-token-verification"])
 def test_the_token_surfaces_boundary_files_and_pins_exist(name):
     # A mistyped path never shows as changed, so the surface would silently stop going stale.

@@ -1,6 +1,6 @@
 # Scan service rate limiting: effort to add Cloudflare's Workers Rate Limiting binding
 
-Findings for ticket #98 (follow-up to #96 and #97). Research only: no code was changed, no endpoint was called, nothing was deployed or spent.
+Findings for ticket #98 (follow-up to #96 and #97). Research only: no code in the repo was changed and no Anthropic, RevenueCat or Scan service endpoint was called. The one exception is the owner-approved throwaway Worker test described in Q1: one Worker deployed to the owner's Cloudflare account, called with curl about 17 times, and deleted. Nothing else was deployed, and no money was spent beyond free-tier requests.
 
 Cloudflare claims are cited to the primary page and marked **Confirmed**, **Indirect** (only in first-party source code or a PR description) or **UNCONFIRMED**. The full evidence table, with every URL and the date each page was read (2026-10-14), is in [scan-proxy-rate-limit-binding-cloudflare-facts.md](scan-proxy-rate-limit-binding-cloudflare-facts.md); section numbers below point into it as "facts §N". Claims about this repo cite the file read.
 

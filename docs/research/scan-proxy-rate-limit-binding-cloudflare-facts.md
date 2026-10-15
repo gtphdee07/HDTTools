@@ -1,6 +1,6 @@
 # Cloudflare Workers Rate Limiting binding: facts for ticket #98
 
-Research only. No recommendation. No endpoint was called, nothing was deployed or spent.
+Research only. No recommendation. This file records what Cloudflare's pages and workers-sdk say; no endpoint was called and nothing was deployed to produce it. (The separate throwaway-Worker test of 2026-10-15 is in the findings file, Q1.)
 
 All pages below were read on **2026-10-14** (docs pages fetched as raw Markdown from `developers.cloudflare.com/.../index.md`; GitHub material via the GitHub API). "Page updated" is the "Last updated" stamp on the page when read.
 

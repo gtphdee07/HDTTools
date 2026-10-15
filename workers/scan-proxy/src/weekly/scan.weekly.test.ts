@@ -32,12 +32,13 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 // each case below signs in a real Supabase test user - "funded" and
 // "noCredits" in liveToken.ts - instead of naming a customer in the body.
 // Never smoke-test-user. Credentials: see liveToken.ts.
-async function scan(account: TestAccount | null, docType: string, imageBase64: string, mediaType: string) {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (account !== null) headers.Authorization = `Bearer ${await signInTestAccount(account)}`;
+async function scan(account: TestAccount, docType: string, imageBase64: string, mediaType: string) {
   const response = await fetch(SCAN_ENDPOINT, {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${await signInTestAccount(account)}`,
+    },
     body: JSON.stringify({
       doc_type: docType,
       image_base64: imageBase64,

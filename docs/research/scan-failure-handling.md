@@ -23,7 +23,7 @@ Research for #111 (parent #15). Documentation and local reading only: no live Sc
 - **Both clients treat a delivered-but-blank main-path Scan the same way: straight to review, no words about the Scan Credit.** The stand-alone ticket path is handled on Web and not on Android.
 - **Web's "Try again" after a no-weight answer is the #104 review finding.** It re-sends the same photo as a new paid Scan (`web/src/wizard/ReviewStep.tsx:134-140`).
 - **Recommendation for where the rules live (R8):** one outcomes table in `workers/scan-proxy/CONTEXT.md` (the words), plus a shared fixture `test-vectors/scan_outcomes.json` that both clients' tests read, the same pattern as `test-vectors/breakdown_cases.json`.
-- 16 gaps found (G1 to G16). G3, G5, G14 and G15 are covered in whole or part by #79 and G16 by #101; the other 11 need new tickets. Eight drafts (A to H) are in Phase 4; G11 is recorded as "accept" (decision D10).
+- 16 gaps found (G1 to G16). G3, G5, G14 and G15 are covered in whole or part by #79 and G16 by #101; G11 is recorded as "accept" (decision D10); the other 10 need new tickets. Eight drafts (A to H) are in Phase 4.
 
 ---
 
@@ -45,7 +45,7 @@ Every way a Scan can end without usable fields. "Spent" is whether the Worker to
 
 | # | Case | Where it comes from | Spent? | Refunded? | What the user must be told |
 |---|---|---|---|---|---|
-| 1 | `insufficient_credits` (402) | `scan.ts:75-80` | No | n/a | You are out of Scans; nothing was used. Next: buy a pack (Pro) or upgrade (Free); or type it in. |
+| 1 | `insufficient_credits` (402) | `scan.ts:75-79` | No | n/a | You are out of Scans; nothing was used. Next: buy a pack (Pro) or upgrade (Free); or type it in. |
 | 2 | `unauthorized` (401) | `index.ts:16` | No | n/a | Your sign-in is not accepted; nothing was used. Next: sign in again. |
 | 3 | `auth_unavailable` (503) | `index.ts:14`, README `:35` | No | n/a | We could not verify your account just now; nothing was used. Next: try again shortly (free). |
 | 4 | `extraction_failed` (502) | `scan.ts:106-111` | Yes | **Yes** | We could not read the photo; the Scan Credit was refunded. Next: a clearer photo, or type it in. A new attempt is a new Scan. |
@@ -61,13 +61,13 @@ Every way a Scan can end without usable fields. "Spent" is whether the Worker to
 | 12c | Delivered, some fields filled | same | **Yes** | **No** | Show the filled fields for review; say which were not read. |
 | 12d | Delivered, a field that looks wrong | same | **Yes** | **No** | Nothing special: the review step is where the user fixes anything that looks off. |
 
-Inconsistency in the contract itself, to fix in the README: `README.md:39-40` says for `billing_error` that "spending never happened, so nothing to refund". `scan.ts:64-72` maps a *thrown* spend (RevenueCat unreachable or its 10 s timeout) to the same `billing_error`, and a timed-out request can have been applied by RevenueCat. Web already treats it as possibly charged (`web/src/api.ts:110-112`, `:24-25`). Row 6 above says "unknown" for that reason.
+Inconsistency in the contract itself, to fix in the README: `README.md:39-40` says for `billing_error` that "spending never happened, so nothing to refund". `scan.ts:64-72` maps a *thrown* spend (RevenueCat unreachable or its 10 s timeout) to the same `billing_error`, and a timed-out request can have been applied by RevenueCat. Web already treats it as possibly charged (`web/src/api.ts:110-112`, `:24-25`). Row 6 above says "unknown" for that reason. A second README gap: the error list at `README.md:32-41` has no `extraction_failed_no_refund`, which `scan.ts:113-123` returns.
 
 **Default:** this table is the case list. **Why:** it is the full set of outcomes the Worker can produce plus the client-side ones, and each row's "spent / refunded" comes from `scan.ts`, not from a client.
 
 ### R2. What the user is told
 
-Every message answers four things, in this order, in one consistent set of words: **(a)** was a Scan Credit used, **(b)** was it refunded, **(c)** does a retry cost another, **(d)** the next step.
+Every message answers four things, in this order, in one consistent set of words: **(a)** was a Scan Credit used, **(b)** was it refunded, **(c)** does a retry cost another, **(d)** the next step. Part (c) is stated wherever a retry is offered or a new photo is the next step (cases 3 to 6, 10 to 12); for cases 1 and 2 the next step is buying or signing in, so there is no retry to price.
 
 The words, for both clients (the table in R1 gives the facts; this is the phrasing to approve):
 
@@ -101,7 +101,7 @@ The words, for both clients (the table in R1 gives the facts; this is the phrasi
 
 ### R4. Credit visibility
 
-- After every outcome except case 1, and the "nothing was sent" cases (8, 9), read the balance again; the exception is that case 1 sets it to 0 locally (the Worker has just said so) and then still reads it back. Today Web does this (`web/src/App.tsx:147-152`).
+- After every outcome, read the balance again. For case 1 set it to 0 first (the Worker has just said so), so the screen is right even if the read fails; Web then also reads it back, Android does not need to (D6). Today Web does this for every outcome, including the "nothing was sent" cases 8 and 9, where the extra read is harmless (`web/src/App.tsx:142-153`, because `scan()` wraps `prepareImage` and the address check).
 - If the re-read fails, keep the balance on screen and say nothing: the next Scan is checked by the Worker either way (Web's existing comment, `web/src/billing.tsx:233-235`).
 
 **Default:** as above. **Why:** the balance on screen is a convenience, the Worker is the authority, and an error banner about the counter would be noise next to a more important Scan message. The alternative (a small "couldn't update your count" note) is listed in the decisions.
@@ -244,7 +244,7 @@ Status per requirement and client. **Met** / **Gap** / **Differs between clients
 | R2 consistent words | **Differs between clients** | **Differs between clients** | G2 |
 | R2 next step offered | **Gap**: no sign-in action after `unauthorized` (`api.ts:18` message; gate stays `ready`) | **Gap**: OK-only dialog for every case. **Covered in part by #79** (401, 503, 402, `not_signed_in`) | G3, G6 |
 | R3 same id after a lost answer | **Met** (`scanAttempts.ts`, tests) | **Gap** (new id every tap, `RigCheckViewModel.kt:211, 252`) | G1 |
-| R3 no Try again after 12 | **Gap**: `failedTicket` is set for every failure (`ReviewStep.tsx:58, 134-140`) | **Met** (no Try again anywhere) | G7 |
+| R3 Try again only where R3 allows | **Gap**: on the stand-alone ticket `failedTicket` is set for every failure (`ReviewStep.tsx:58, 134-140`) and hidden only when the user can no longer scan (`canScanTicket`), so it also shows after `unauthorized`, `bad_request`, an unsendable photo and the no-weight answer | **Met** (no Try again anywhere; also none after the cases that should have it, see G2/G3) | G7 |
 | R4 re-read after every outcome | **Met** | **Differs**: 402 leaves the old positive balance (`RigCheckViewModel.kt:231`) | G5. #79's 4th criterion says "balance not refreshed on 402, as today" |
 | R4 failed re-read | **Met** (default: silent), **Untested** after success | **Met** (silent), **Untested** | |
 | R5 locked while in flight | **Met** (`App.tsx:274-348`; tests `App.scanInFlight.test.tsx`) | **Gap**: no lock; no re-entry guard (`RigCheckViewModel.kt:204`) | G4 |
@@ -267,12 +267,12 @@ Status per requirement and client. **Met** / **Gap** / **Differs between clients
 | G4 | No in-flight lock or re-entry guard; a result is applied to the current rig and navigates after the user left | Android | Large | No | Read; runtime behaviour **unverified** |
 | G5 | 402 leaves the old balance on screen (`:231`) | Android | Small | **#79** criterion 4 says to keep it; see decision D6 | Read |
 | G6 | No sign-in button after `unauthorized` | Web | Small | No | Read; whether `auth.user` is still set after a refused token is **unverified** |
-| G7 | "Try again" offered after a delivered-but-unusable (no-weight) answer | Web | Small | No (this is #104's review finding) | Read, test-confirmed (`App.scan.test.tsx:170`) |
+| G7 | The stand-alone ticket's "Try again" is offered after a delivered-but-unusable (no-weight) answer (#104's review finding), and also after `unauthorized`, `bad_request` and an unsendable photo, where the same photo fails again or the next step is signing in | Web | Small | No | Read; the no-weight case is test-confirmed (`App.scan.test.tsx:170`); the other three are read from `ReviewStep.tsx:58, 134-140` and have no test |
 | G8 | Main path: an all-blank or partly filled Scan goes to review with no word that a Scan was used | Web and Android | Small per client | No | Read |
 | G9 | Android stand-alone no-weight message does not say the Scan was used or that a retry costs another, and invites a retry | Android | Small | No | Read |
 | G10 | `bad_request` and unsendable-photo wording: Web echoes internal detail and lacks "nothing was used" | Web (and Android as part of G2) | Small | No | Read |
 | G11 | Page reload or process death during a Scan loses the result and the id | Web, Android | n/a (accept) | No | **Unverified** |
-| G12 | Android's 60 s read timeout is below the Worker's worst case (about 87 s per Web's comment) | Android | Small | No | The 87 s figure is from `web/src/api.ts:36-40`; I did not re-derive it. `claude.ts` sets `timeout: 20_000` and no `maxRetries` (`workers/scan-proxy/src/claude.ts:18, 26`); the SDK's default retry count is outside this repo **(unverified)** |
+| G12 | Android's 60 s read timeout is below the Worker's worst case (about 87 s per Web's comment) | Android | Small | No | The 87 s figure is from `web/src/api.ts:36-40`; I did not re-derive it. `claude.ts` defines `ANTHROPIC_TIMEOUT_MS = 20_000` (`:18`), passes it as `timeout` and sets no `maxRetries` (`workers/scan-proxy/src/claude.ts:26`); the SDK's default retry count is outside this repo **(unverified)** |
 | G13 | No single place for outcome words and rules; clients drifted | Both | Medium | No | Read |
 | G14 | Android has no tests for Worker responses or error codes; no ViewModel tests | Android | Medium | **#79** for four codes | Read |
 | G15 | Standalone scan button ungated for signed-out and no-credit users | Android | Small | **#79** | Read |
@@ -301,7 +301,7 @@ Related open tickets stay as they are: **#79** (Android gate and four error case
 - [ ] Both Scan entry points behave the same
 - [ ] Tested with a fake Scan client (no network); the tests fail without the change
 
-Blocked by: none. Shares the outcome table (Draft E) but does not need it.
+Blocked by: none. Shares the outcome table (Draft G) but does not need it.
 
 ### Draft B (Android): say what happened and offer the next step for every Scan outcome
 
@@ -312,12 +312,13 @@ Blocked by: none. Shares the outcome table (Draft E) but does not need it.
 **Acceptance criteria**
 
 - [ ] Each case in the R1 table (rows 1-8, 10, 11) shows the R2 wording, including whether a Scan Credit was used and whether a retry costs another
+- [ ] The stand-alone ticket's no-weight answer (row 12b, gap G9) says the Scan was used and that trying again uses another, offers "Type it in" and "Choose a different photo", and has no "Try again"
 - [ ] "Try again" is offered only after cases 3, 4, 5, 6, 10, 11 and re-sends the same photo (id behaviour per Draft A)
 - [ ] After case 7 or 8, a "choose a different photo" action is offered
 - [ ] Balance after a 402 is set to 0 locally with no network refresh (so #79's "no refresh on 402" still holds; see decision D6)
 - [ ] Tested at ViewModel / screen level with a faked `ScanApiClient`, one test per case
 
-Blocked by: #79 (shares the dialog and the routing), and the owner's approval of the wording (D4).
+Blocked by: #79 (shares the dialog and the routing). The wording (D4) is approved.
 
 ### Draft C (Android): one Scan at a time, and a result that arrives for a changed check is dropped
 
@@ -337,7 +338,7 @@ Blocked by: none. Do after A and B so the messages exist.
 
 ### Draft D (Web and Android, one ticket per client): main-path Scan that delivered nothing usable says a Scan was used
 
-**What is wrong.** A Truck Tag, Trailer Tag or Scale Ticket Scan that returns all-blank (or partly blank) fields goes to review with no word about the Scan Credit (`web/src/App.tsx:174`; `RigCheckViewModel.kt:219-227`). #104 left this out of scope. **Shared decision (D1):** recommended default is a notice on the review screen, not a failure.
+**What is wrong.** A Truck Tag, Trailer Tag or Scale Ticket Scan that returns all-blank (or partly blank) fields goes to review with no word about the Scan Credit (`web/src/App.tsx:174`; `RigCheckViewModel.kt:219-227`). #104 left this out of scope. **Shared decision (D1, decided):** a notice on the review screen, not a failure.
 
 **What to build.** On the review screen after a Scan, if no field was filled: "A Scan was used and nothing could be read. Type the numbers in, or go back and choose a different photo." If some were not filled: name them. No "Try again" (R3). Web: `ReviewStep` plus a flag from `App.tsx`. Android: the entry screen after `performScan`.
 
@@ -349,14 +350,14 @@ Blocked by: none. Do after A and B so the messages exist.
 - [ ] The balance still drops by one and is re-read
 - [ ] Tested at the interaction level; fail without the change
 
-Blocked by: D1.
+Blocked by: none (D1 is decided).
 
 ### Draft E (Web, small): Web gaps from this audit
 
 **Shared:** the Phase 1 wording (R2) once.
 
 1. After `unauthorized`, offer a "Sign in again" action (G6); the gate stays `ready` today (`ScanGate.tsx:43-60`).
-2. Do not offer "Try again" after a delivered-but-unusable answer; offer "Choose a different photo" (G7, `ReviewStep.tsx:134-140`).
+2. Offer the stand-alone ticket's "Try again" only after cases 3, 4, 5, 6, 10 and 11 (R3). After the no-weight answer, `unauthorized`, `bad_request` and an unsendable photo, offer "Choose a different photo" (and, for the no-weight answer, "Type it in") instead (G7, `ReviewStep.tsx:58, 134-140`).
 3. Stop echoing the Worker's detail for `bad_request` and add "Nothing was used." to `bad_request` and unsendable-photo messages (G10, `api.ts:115`, `scanImage.ts:69,72`).
 
 **Acceptance criteria**
@@ -366,7 +367,7 @@ Blocked by: D1.
 - [ ] `bad_request` and the two photo messages say nothing was used and contain no Worker internals
 - [ ] Tests for each, failing without the change (update `App.scan.test.tsx:170`, which currently asserts Try again)
 
-Blocked by: D2, D3.
+Blocked by: none (D2 and D3 are decided).
 
 ### Draft F (Android): Scan timeout covers the Worker's worst case
 
@@ -387,16 +388,16 @@ Blocked by: A.
 
 **What is wrong.** Words and rules for a Scan that does not deliver live in each client's code; they drifted (Phase 2).
 
-**What to build.** (1) A "Scan outcomes" entry in `workers/scan-proxy/CONTEXT.md` with the R1 table, R2 words and R3 rules; (2) `test-vectors/scan_outcomes.json`; (3) one test per client that loads it and checks that client; (4) fix the README sentence at `workers/scan-proxy/README.md:39-40` ("spending never happened") to match `scan.ts:64-72`.
+**What to build.** (1) A "Scan outcomes" entry in `workers/scan-proxy/CONTEXT.md` with the R1 table, R2 words and R3 rules; (2) `test-vectors/scan_outcomes.json`; (3) one test per client that loads it and checks that client; (4) fix the README at `workers/scan-proxy/README.md`: the sentence at `:39-40` ("spending never happened") to match `scan.ts:64-72`, and add the missing `502` `extraction_failed_no_refund` entry to the error list at `:32-41` (the Worker returns it, `scan.ts:113-123`).
 
 **Acceptance criteria**
 
 - [ ] The glossary entry exists and both client CONTEXT.md files point at it
 - [ ] The fixture covers every R1 case
 - [ ] Web and Android each have a test that fails when a case's message, retry-id rule, or Try-again rule differs from the fixture
-- [ ] The README statement about `billing_error` matches the code
+- [ ] The README statement about `billing_error` matches the code, and the README lists `extraction_failed_no_refund`
 
-Blocked by: D4 (wording approved). Land it before B, or alongside it.
+Blocked by: none (D4 and D5 are decided). Land it before B, or alongside it.
 
 ### Draft H (Android): tests for the Worker's responses
 

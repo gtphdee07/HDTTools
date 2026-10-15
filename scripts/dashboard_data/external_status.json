@@ -18,7 +18,7 @@
   "surfaces": {
     "anthropic": {
       "commit": "f0f88134d836f26fb366e7c887cc91ac36b38b06",
-      "last_skipped_at": "2026-10-15T03:55:21Z",
+      "last_skipped_at": "2026-10-15T14:37:18Z",
       "passed": true,
       "result": "pass",
       "timestamp": "2026-10-05T02:54:45Z",
@@ -71,10 +71,10 @@
       }
     },
     "worker-token-verification": {
-      "commit": "26cb88dd0780d2d175f4fc51949ee037a9a34ef9",
+      "commit": "1bdb40ce8758034e2eb84d2c384918b0bd256aef",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-15T03:55:25Z",
+      "timestamp": "2026-10-15T14:37:21Z",
       "versions": {}
     }
   }

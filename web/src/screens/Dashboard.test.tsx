@@ -244,6 +244,25 @@ describe('Dashboard rig delete focus', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/couldn.t delete.*Big Blue/i);
     expect(screen.getByRole('button', { name: 'Yes, delete' })).toHaveFocus();
   });
+
+  it('does not pull focus back after a failed delete if the user has moved it on purpose', async () => {
+    const user = userEvent.setup();
+    // While the delete runs, the user moves focus to another rig's bin.
+    render(
+      <Harness
+        onDeleteRig={async () => {
+          screen.getByRole('button', { name: 'Delete Little Red' }).focus();
+          return false;
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn.t delete.*Big Blue/i);
+    expect(screen.getByRole('button', { name: 'Delete Little Red' })).toHaveFocus();
+  });
 });
 
 describe('Dashboard recent checks', () => {

@@ -200,7 +200,16 @@ describe('RigStep delete focus', () => {
   });
 
   it('announces the failure and keeps focus on the button just used when the delete fails', async () => {
-    render(<Harness onDeleteRig={async () => false} />);
+    // A browser drops focus from a button that becomes disabled while the delete runs; jsdom does
+    // not, so the fake delete blurs it the way the browser would.
+    render(
+      <Harness
+        onDeleteRig={async () => {
+          (document.activeElement as HTMLElement | null)?.blur();
+          return false;
+        }}
+      />,
+    );
 
     await userEvent.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
     await userEvent.click(screen.getByRole('button', { name: 'Yes, delete' }));

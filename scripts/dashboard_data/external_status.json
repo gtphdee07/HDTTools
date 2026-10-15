@@ -18,6 +18,7 @@
   "surfaces": {
     "anthropic": {
       "commit": "f0f88134d836f26fb366e7c887cc91ac36b38b06",
+      "last_skipped_at": "2026-10-15T03:55:21Z",
       "passed": true,
       "result": "pass",
       "timestamp": "2026-10-05T02:54:45Z",
@@ -68,6 +69,13 @@
       "versions": {
         "@supabase/supabase-js": "2.117.3"
       }
+    },
+    "worker-token-verification": {
+      "commit": "26cb88dd0780d2d175f4fc51949ee037a9a34ef9",
+      "passed": true,
+      "result": "pass",
+      "timestamp": "2026-10-15T03:55:25Z",
+      "versions": {}
     }
   }
 }

@@ -197,8 +197,9 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     // state and refreshes the credit balance (the Worker already charged
     // it server-side). onDone is called with true on success (caller
     // should navigate to the entry screen for review) or false on failure
-    // (caller should surface scanState.Error and stay put - no client-side
-    // retry, matching the Worker's own charge/refund discipline).
+    // (caller should surface scanState.Error and stay put - no automatic
+    // retry; the user's own retry of the same photo reuses its request id
+    // after a lost answer, so the Worker charges once).
     fun performScan(
         module: EntryModule,
         contentResolver: ContentResolver,
@@ -207,16 +208,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     ) {
         scanState = ScanUiState.Loading
         viewModelScope.launch {
-            // The Worker dedupes the RevenueCat charge on this id, so the
-            // same photo keeps it until an answer settles the attempt (see
-            // ScanAttempts); a retry after a lost answer is then charged once.
-            val result = runCatching {
-                scanAttempts.run(module, photoUri.toString()) { clientRequestId ->
-                    val token = accountManager.accessToken() ?: return@run NOT_SIGNED_IN
-                    val base64 = encodePhotoForScan(contentResolver, photoUri)
-                    ScanApiClient.scan(token, module, base64, clientRequestId = clientRequestId)
-                }
-            }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
+            val result = sendScan(module, contentResolver, photoUri)
 
             when (result) {
                 is ScanResult.Success -> {
@@ -252,13 +244,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     ) {
         scanState = ScanUiState.Loading
         viewModelScope.launch {
-            val result = runCatching {
-                scanAttempts.run(EntryModule.SCALE, photoUri.toString()) { clientRequestId ->
-                    val token = accountManager.accessToken() ?: return@run NOT_SIGNED_IN
-                    val base64 = encodePhotoForScan(contentResolver, photoUri)
-                    ScanApiClient.scan(token, EntryModule.SCALE, base64, clientRequestId = clientRequestId)
-                }
-            }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
+            val result = sendScan(EntryModule.SCALE, contentResolver, photoUri)
 
             when (result) {
                 is ScanResult.Success -> {
@@ -283,6 +269,19 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
             }
         }
     }
+
+    // The one place a Scan request is sent, for both entry points. The Worker
+    // dedupes the RevenueCat charge on the request id, so the same photo keeps
+    // its id until an answer settles the attempt (see ScanAttempts): a user's
+    // retry after a lost answer is then charged once.
+    private suspend fun sendScan(module: EntryModule, contentResolver: ContentResolver, photoUri: Uri): ScanResult =
+        runCatching {
+            scanAttempts.run(module, photoUri.toString()) { clientRequestId ->
+                val token = accountManager.accessToken() ?: return@run NOT_SIGNED_IN
+                val base64 = encodePhotoForScan(contentResolver, photoUri)
+                ScanApiClient.scan(token, module, base64, clientRequestId = clientRequestId)
+            }
+        }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
 
     fun clearScanError() {
         scanState = ScanUiState.Idle

@@ -111,6 +111,17 @@ class ScanAttemptsTest {
     }
 
     @Test
+    fun `a scan that throws leaves the id for a retry of the same photo`() = runTest {
+        val attempts = ScanAttempts()
+        val sent = mutableListOf<String>()
+
+        runCatching { attempts.run(EntryModule.TRUCK, "content://photo/a") { sent += it; error("interrupted") } }
+        attempts.run(EntryModule.TRUCK, "content://photo/a") { sent += it; success }
+
+        assertEquals(sent[0], sent[1])
+    }
+
+    @Test
     fun `the answer is passed through unchanged`() = runTest {
         val lost = failure("network_error")
 

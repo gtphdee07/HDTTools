@@ -70,7 +70,8 @@ def issue_criteria(issue: dict) -> list[str]:
     body also has a checklist (or none under a heading `parse_criteria` knows). `gh` lists comments
     oldest first, so the last brief is the most recent.
     """
-    briefs = [c.get("body") or "" for c in issue.get("comments") or [] if re.search(r"^##\s+Agent Brief", c.get("body") or "", re.MULTILINE)]
+    bodies = [c.get("body") or "" for c in issue.get("comments") or []]
+    briefs = [b for b in bodies if re.search(r"^##\s+Agent Brief", b, re.MULTILINE)]
     return parse_criteria(briefs[-1] if briefs else issue.get("body") or "")
 
 

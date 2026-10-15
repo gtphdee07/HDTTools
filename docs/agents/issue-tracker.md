@@ -22,6 +22,7 @@ they're just no longer where new/open work gets tracked.
 - **Comment on an issue**: `gh issue comment <number> --body "..."`
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
+- **Acceptance criteria**: every ticket an agent will build, follow-ups that sessions file included, carries a `## Acceptance criteria` checklist (`- [ ] ...`) in its body, each item something a test can prove. `/ticket-finish` reads the criteria from the body (the `## Acceptance criteria` heading or an Agent Brief's bold `**Acceptance criteria:**` label), and without any it can only post `PARTIAL`. A criterion about how the code is organised (rather than how it behaves) also has no test, so keep those few and say how the merge review checks them. Until #113 lands, a triaged ticket whose criteria live only in the Agent Brief comment must also list them in the body.
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 

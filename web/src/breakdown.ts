@@ -85,10 +85,10 @@ export function computeBreakdown(
   let trailerTotalNote: string;
   let trailerTotalEstimated = false;
   if (haveHitched && haveStandalone) {
-    const tongueWeight = Math.max(0, steer + drive - standaloneWeight);
-    trailerTotalActual = trailerAxle + tongueWeight;
+    const pinWeight = Math.max(0, steer + drive - standaloneWeight);
+    trailerTotalActual = trailerAxle + pinWeight;
     trailerTotalNote =
-      `Includes an estimated ${wholeNumber(tongueWeight)} lb tongue weight ` +
+      `Includes an estimated ${wholeNumber(pinWeight)} lb pin weight ` +
       "(steer + drive minus your truck's stand-alone weight).";
   } else if (trailerAxleRaw !== undefined) {
     trailerTotalActual = trailerAxle / (1 - pinWeightPct);
@@ -112,11 +112,11 @@ export function computeBreakdown(
     truckTotalActual = steer + drive;
     truckTotalNote = "Steer + drive axle readings vs. your truck tag's GVWR.";
   } else if (haveStandalone) {
-    const truckTongueWeightEstimate = trailerTotalActual * pinWeightPct;
-    truckTotalActual = standaloneWeight + truckTongueWeightEstimate;
+    const truckPinWeightEstimate = trailerTotalActual * pinWeightPct;
+    truckTotalActual = standaloneWeight + truckPinWeightEstimate;
     truckTotalNote =
       'Estimated total weight — includes an estimated ' +
-      `${wholeNumber(truckTongueWeightEstimate)} lb tongue weight ` +
+      `${wholeNumber(truckPinWeightEstimate)} lb pin weight ` +
       `(${percent(pinWeightPct)} of the trailer's estimated total); enter a ` +
       'real hitched scale reading for an exact figure.';
     truckTotalEstimated = true;

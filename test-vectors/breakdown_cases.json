@@ -44,7 +44,7 @@
       }
     },
     {
-      "name": "tongue_weight_from_standalone",
+      "name": "pin_weight_from_standalone",
       "requires": [],
       "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500, "standalone_weight_lb": 13000},
       "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
@@ -59,13 +59,13 @@
           {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "badge": "460 lb to spare", "note": null, "estimated": false},
           {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "badge": "660 lb over", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (5,620) + drive (9,040) = 14,660 lb, which is 660 lb over this truck's 14,000 lb GVWR.", "estimated": false},
           {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "badge": "620 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 13040, "limit_lb": 12500, "pct": 100, "badge": "540 lb over", "note": "Includes an estimated 1,660 lb tongue weight (steer + drive minus your truck's stand-alone weight).", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 13040, "limit_lb": 12500, "pct": 100, "badge": "540 lb over", "note": "Includes an estimated 1,660 lb pin weight (steer + drive minus your truck's stand-alone weight).", "estimated": false},
           {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "badge": "460 lb to spare", "note": null, "note_android": "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined weight — your 26,040 lb gross reading is 460 lb to spare.", "estimated": false}
         ]
       }
     },
     {
-      "name": "tongue_weight_clamps_at_zero",
+      "name": "pin_weight_clamps_at_zero",
       "requires": [],
       "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500, "standalone_weight_lb": 20000},
       "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
@@ -80,7 +80,7 @@
           {"label": "Rear Axle (Drive)", "tone": "success", "actual_lb": 9040, "limit_lb": 9500, "pct": 95, "badge": "460 lb to spare", "note": null, "estimated": false},
           {"label": "Tow Vehicle Total (GVWR)", "tone": "warning", "actual_lb": 14660, "limit_lb": 14000, "pct": 100, "badge": "660 lb over", "note": "Steer + drive axle readings vs. your truck tag's GVWR.", "note_android": "Steer (5,620) + drive (9,040) = 14,660 lb, which is 660 lb over this truck's 14,000 lb GVWR.", "estimated": false},
           {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "badge": "620 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
-          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 11380, "limit_lb": 12500, "pct": 91, "badge": "1,120 lb to spare", "note": "Includes an estimated 0 lb tongue weight (steer + drive minus your truck's stand-alone weight).", "estimated": false},
+          {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 11380, "limit_lb": 12500, "pct": 91, "badge": "1,120 lb to spare", "note": "Includes an estimated 0 lb pin weight (steer + drive minus your truck's stand-alone weight).", "estimated": false},
           {"label": "Combined Rig Weight", "tone": "success", "actual_lb": 26040, "limit_lb": 26500, "pct": 98, "badge": "460 lb to spare", "note": null, "note_android": "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined weight — your 26,040 lb gross reading is 460 lb to spare.", "estimated": false}
         ]
       }
@@ -162,7 +162,7 @@
         "items": [
           {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 6000, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false},
           {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 9500, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 8500, "limit_lb": 14000, "pct": 61, "badge": "5,500 lb to spare", "note": "Estimated total weight — includes an estimated 2,500 lb tongue weight (20% of the trailer's estimated total); enter a real hitched scale reading for an exact figure.", "estimated": true},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 8500, "limit_lb": 14000, "pct": 61, "badge": "5,500 lb to spare", "note": "Estimated total weight — includes an estimated 2,500 lb pin weight (20% of the trailer's estimated total); enter a real hitched scale reading for an exact figure.", "estimated": true},
           {"label": "Trailer Axle(s)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 12000, "pct": 0, "badge": "Not enough info", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
           {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 12500, "limit_lb": 12500, "pct": 100, "badge": "0 lb to spare", "note": "Estimated total weight — no scale reading yet, so this assumes the trailer is loaded to its rated GVWR; weigh it for a real figure.", "estimated": true},
           {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 26500, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false}
@@ -205,7 +205,7 @@
         "items": [
           {"label": "Front Axle (Steer)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 6000, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false},
           {"label": "Rear Axle (Drive)", "tone": "insufficient", "actual_lb": 0, "limit_lb": 9500, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false},
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 12845, "limit_lb": 14000, "pct": 92, "badge": "1,155 lb to spare", "note": "Estimated total weight — includes an estimated 2,845 lb tongue weight (20% of the trailer's estimated total); enter a real hitched scale reading for an exact figure.", "estimated": true},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 12845, "limit_lb": 14000, "pct": 92, "badge": "1,155 lb to spare", "note": "Estimated total weight — includes an estimated 2,845 lb pin weight (20% of the trailer's estimated total); enter a real hitched scale reading for an exact figure.", "estimated": true},
           {"label": "Trailer Axle(s)", "tone": "success", "actual_lb": 11380, "limit_lb": 12000, "pct": 95, "badge": "620 lb to spare", "note": "Assumes a 2-axle trailer at the tag's per-axle rating.", "estimated": false},
           {"label": "Trailer Total (GVWR)", "tone": "warning", "actual_lb": 14225, "limit_lb": 12500, "pct": 100, "badge": "1,725 lb over", "note": "Estimated total weight — assumes the axle reading is 80% of actual trailer weight; enter your truck's stand-alone weight for an exact figure.", "estimated": true},
           {"label": "Combined Rig Weight", "tone": "insufficient", "actual_lb": 0, "limit_lb": 26500, "pct": 0, "badge": "Not enough info", "note": null, "estimated": false}
@@ -237,7 +237,7 @@
     {
       "name": "pin_weight_pct_of_one_does_not_crash",
       "requires": ["adjustable_pin_weight_pct"],
-      "_note": "Regression case for a real bug, found 2026-08-24 via a combinatorial sweep and fixed in both Python (compute_breakdown) and Kotlin (Breakdown.kt): the axle-reading-estimate branch divides by `1 - pin_weight_pct` - exactly 1.0 (100% of the trailer's weight claimed as tongue weight, physically nonsensical) crashed with ZeroDivisionError in Python; a Kotlin Double doesn't crash on this (silently yields Infinity instead), but it's the same real bug. Fixed by narrowly snapping only the exact 1.0 value to 0.99 - a value *above* 1.0 (e.g. a caller sending a whole-number percentage like 15 instead of the fraction 0.15) is deliberately left alone, since it already fails loud with an obviously-wrong negative result instead of crashing or silently looking plausible.",
+      "_note": "Regression case for a real bug, found 2026-08-24 via a combinatorial sweep and fixed in both Python (compute_breakdown) and Kotlin (Breakdown.kt): the axle-reading-estimate branch divides by `1 - pin_weight_pct` - exactly 1.0 (100% of the trailer's weight claimed as pin weight, physically nonsensical) crashed with ZeroDivisionError in Python; a Kotlin Double doesn't crash on this (silently yields Infinity instead), but it's the same real bug. Fixed by narrowly snapping only the exact 1.0 value to 0.99 - a value *above* 1.0 (e.g. a caller sending a whole-number percentage like 15 instead of the fraction 0.15) is deliberately left alone, since it already fails loud with an obviously-wrong negative result instead of crashing or silently looking plausible.",
       "truck": {"gvwr_lb": 14000, "front_gawr_lb": 6000, "rear_gawr_lb": 9500},
       "trailer": {"gvwr_lb": 12500, "gawr_per_axle_lb": 6000},
       "scale": {"steer_axle_lb": 5620, "drive_axle_lb": 9040, "trailer_axle_lb": 11380, "gross_weight_lb": 26040},
@@ -281,7 +281,7 @@
     {
       "name": "rounding_half_way_predictive_truck_estimate",
       "requires": ["predictive_truck_estimate", "adjustable_pin_weight_pct"],
-      "_note": "Rounding-edge case on the predictive standalone-only branch: stand-alone 7000.5 plus a tongue-weight estimate of 16000 * 0.25 = 4000 gives a Tow Vehicle Total of exactly 11000.5 lb, which rounds half-UP to 11001 (round-half-to-even would give 11000). See rounding_half_way_values_round_up for the agreed rule.",
+      "_note": "Rounding-edge case on the predictive standalone-only branch: stand-alone 7000.5 plus a pin-weight estimate of 16000 * 0.25 = 4000 gives a Tow Vehicle Total of exactly 11000.5 lb, which rounds half-UP to 11001 (round-half-to-even would give 11000). See rounding_half_way_values_round_up for the agreed rule.",
       "truck": {"gvwr_lb": 16000, "front_gawr_lb": 8000, "rear_gawr_lb": 8000, "standalone_weight_lb": 7000.5},
       "trailer": {"gvwr_lb": 16000, "gawr_per_axle_lb": 4000},
       "scale": {},
@@ -291,7 +291,7 @@
         "headline": "Partially Checked",
         "subline": "Some axles couldn't be checked yet — add more data for a complete picture.",
         "items": [
-          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 11001, "limit_lb": 16000, "pct": 69, "badge": "5,000 lb to spare", "note": "Estimated total weight — includes an estimated 4,000 lb tongue weight (25% of the trailer's estimated total); enter a real hitched scale reading for an exact figure.", "estimated": true},
+          {"label": "Tow Vehicle Total (GVWR)", "tone": "success", "actual_lb": 11001, "limit_lb": 16000, "pct": 69, "badge": "5,000 lb to spare", "note": "Estimated total weight — includes an estimated 4,000 lb pin weight (25% of the trailer's estimated total); enter a real hitched scale reading for an exact figure.", "estimated": true},
           {"label": "Trailer Total (GVWR)", "tone": "success", "actual_lb": 16000, "limit_lb": 16000, "pct": 100, "badge": "0 lb to spare", "note": "Estimated total weight — no scale reading yet, so this assumes the trailer is loaded to its rated GVWR; weigh it for a real figure.", "estimated": true}
         ]
       }

@@ -144,7 +144,7 @@ fun TruckTagEntryScreen(
                 if (showStandaloneInfo) {
                     Text(
                         "If left blank, we'll assume the trailer axle reading is 80% of the " +
-                            "trailer's total weight. Fill this in for a more accurate tongue-weight " +
+                            "trailer's total weight. Fill this in for a more accurate pin-weight " +
                             "estimate.",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(bottom = 4.dp),

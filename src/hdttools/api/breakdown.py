@@ -12,7 +12,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
-# Pin/tongue weight is commonly ~15-25% of trailer weight. Used two ways,
+# Pin weight is commonly ~15-25% of trailer weight. Used two ways,
 # both in compute_breakdown below: as a fraction of a REAL trailer-axle
 # scale reading (the reading is assumed to be (1 - pin_weight_pct) of the
 # trailer's actual total weight) when a scale reading exists, or as a
@@ -93,21 +93,21 @@ def compute_breakdown(
     # found 2026-08-21 while porting this fix to Kotlin - a plain
     # `is not None` check (introduced earlier this session alongside the
     # have_hitched/have_standalone decoupling) let standalone_weight_lb: 0
-    # through as "real data," producing a nonsensical tongue-weight result.
+    # through as "real data," producing a nonsensical pin-weight result.
     have_standalone = bool(standalone_raw)
 
     # Trailer total: which branch fires depends only on what's known about
-    # the TRAILER side of the tongue-weight math (a real hitched reading
+    # the TRAILER side of the pin-weight math (a real hitched reading
     # plus a real stand-alone reading gives an exact figure; otherwise fall
     # back to an axle-reading estimate or, with no scale data at all, a
     # GVWR-rated estimate) - deliberately independent of whether the truck
     # side ends up using an estimate too (see truck_total_actual below).
     trailer_total_estimated = False
     if have_hitched and have_standalone:
-        tongue_weight = max(0.0, (steer + drive) - standalone_weight)
-        trailer_total_actual = trailer_axle + tongue_weight
+        pin_weight = max(0.0, (steer + drive) - standalone_weight)
+        trailer_total_actual = trailer_axle + pin_weight
         trailer_total_note = (
-            f"Includes an estimated {_round_half_up(tongue_weight):,.0f} lb tongue weight "
+            f"Includes an estimated {_round_half_up(pin_weight):,.0f} lb pin weight "
             "(steer + drive minus your truck's stand-alone weight)."
         )
     elif trailer_axle_raw is not None:
@@ -132,7 +132,7 @@ def compute_breakdown(
 
     # Truck total: a real hitched reading always wins (today's original
     # behavior). Without one, but with a real tow-vehicle-alone reading,
-    # estimate the missing tongue weight off the trailer total above -
+    # estimate the missing pin weight off the trailer total above -
     # this is what actually answers the pre-purchase "can I tow this"
     # question, which previously stayed "Not enough info" forever since
     # only a hitched reading was ever recognized here.
@@ -141,11 +141,11 @@ def compute_breakdown(
         truck_total_actual: float | None = steer + drive
         truck_total_note = "Steer + drive axle readings vs. your truck tag's GVWR."
     elif have_standalone:
-        truck_tongue_weight_estimate = trailer_total_actual * pin_weight_pct
-        truck_total_actual = standalone_weight + truck_tongue_weight_estimate
+        truck_pin_weight_estimate = trailer_total_actual * pin_weight_pct
+        truck_total_actual = standalone_weight + truck_pin_weight_estimate
         truck_total_note = (
             "Estimated total weight — includes an estimated "
-            f"{_round_half_up(truck_tongue_weight_estimate):,.0f} lb tongue weight "
+            f"{_round_half_up(truck_pin_weight_estimate):,.0f} lb pin weight "
             f"({pin_weight_pct:.0%} of the trailer's estimated total); enter a "
             "real hitched scale reading for an exact figure."
         )

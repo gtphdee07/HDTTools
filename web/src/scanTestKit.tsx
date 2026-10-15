@@ -53,6 +53,9 @@ export interface FakeWorld {
   // The next request is charged and processed, but its answer is held until the returned function is called,
   // so a scan stays in flight for as long as a test needs it to.
   holdNextResponse(): () => void;
+  // The next request is charged and processed, but no answer ever comes: the request stays open until the app
+  // aborts it, the way a stalled connection does (it then fails with an AbortError, as a browser's fetch would).
+  neverAnswerNextRequest(): void;
 }
 
 export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; balance?: number } = {}): FakeWorld {
@@ -62,6 +65,7 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
   const requests: ScanRequestSeen[] = [];
   let loseNext = false;
   let holdNext: Promise<void> | null = null;
+  let silentNext = false;
 
   const answer = (status: number, body: unknown) => ({ ok: status < 300, status, json: async () => body });
 
@@ -94,6 +98,12 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
   const fetchFake = vi.fn(async (url: string, init: RequestInit) => {
     if (url !== `${SERVICE_URL}/v1/scan`) throw new Error(`unexpected request to ${url}`);
     const response = handleRequest(init);
+    if (silentNext) {
+      silentNext = false;
+      await new Promise<never>((_, reject) => {
+        init.signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')));
+      });
+    }
     if (holdNext) {
       const held = holdNext;
       holdNext = null;
@@ -134,6 +144,9 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
       });
       return release;
     },
+    neverAnswerNextRequest: () => {
+      silentNext = true;
+    },
   };
 }
 
@@ -147,7 +160,9 @@ export function renderApp({ world, session = PAT }: { world: FakeWorld | null; s
       </BillingProvider>
     </AuthProvider>,
   );
-  return userEvent.setup();
+  // A test that fakes timers (to run out a request's time limit without waiting) needs the user's typing and
+  // clicking to move the fake clock along; with real timers there is nothing to move.
+  return userEvent.setup({ advanceTimers: (ms) => void (vi.isFakeTimers() && vi.advanceTimersByTime(ms)) });
 }
 
 type User = ReturnType<typeof userEvent.setup>;

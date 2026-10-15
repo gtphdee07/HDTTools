@@ -58,6 +58,16 @@ def test_acceptance_criteria_are_read_from_their_section_only():
     assert finish.parse_criteria(BODY) == ["First thing works", "Second thing works, with `code` and a | pipe"]
 
 
+def test_acceptance_criteria_are_read_from_a_bold_label_inside_an_agent_brief():
+    body = (
+        "## Agent Brief\n\n"
+        "**Current behavior:**\n- [ ] not a criterion\n\n"
+        "**Acceptance criteria:**\n- [ ] First thing works\n- [x] Second thing works\n\n"
+        "**Out of scope:**\n- [ ] not a criterion either\n"
+    )
+    assert finish.parse_criteria(body) == ["First thing works", "Second thing works"]
+
+
 def test_no_acceptance_section_means_no_criteria():
     assert finish.parse_criteria("## What\n\n- [ ] a\n") == []
 

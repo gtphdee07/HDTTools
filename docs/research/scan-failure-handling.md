@@ -284,7 +284,7 @@ The #104 review findings: *Try again after a delivered-but-unusable answer* is G
 
 ## Phase 4: draft follow-up tickets
 
-Drafts for the owner to file. Style follows #102 to #110. They are posted as a comment on #111, not filed. Each states the shared decision once.
+Style follows #102 to #110. Each states the shared decision once. **Filed on 2026-10-15** (owner-approved): Draft A is #116, B #117, C #118, D #119 (Web) and #120 (Android), E #121, G #115, H #122. Draft F was not filed: #112 covers it.
 
 Related open tickets stay as they are: **#79** (Android gate and four error cases), **#101** (Android packs only for Pro). Drafts A and B below are written to sit beside #79 and not repeat it.
 

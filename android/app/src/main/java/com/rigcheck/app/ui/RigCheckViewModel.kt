@@ -16,6 +16,7 @@ import com.rigcheck.app.data.PurchaseCancelledException
 import com.rigcheck.app.data.RecentRigsRepository
 import com.rigcheck.app.data.RevenueCatManager
 import com.rigcheck.app.data.ScanApiClient
+import com.rigcheck.app.data.ScanAttempts
 import com.rigcheck.app.data.ScanResult
 import com.rigcheck.app.data.SupabaseAccountBackend
 import com.rigcheck.app.data.UnavailableAccountBackend
@@ -35,7 +36,6 @@ import com.rigcheck.app.domain.model.TruckTag
 import com.rigcheck.app.domain.verdictFor
 import com.rigcheck.app.ui.navigation.EntryModule
 import com.revenuecat.purchases.Package
-import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -81,6 +81,10 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         private set
     var scanState by mutableStateOf<ScanUiState>(ScanUiState.Idle)
         private set
+
+    // Shared by both Scan entry points (the three documents and the stand-alone
+    // ticket), so a photo's request id survives a lost answer on either.
+    private val scanAttempts = ScanAttempts()
 
     val breakdown: List<BreakdownItem>
         get() = computeBreakdown(truck, trailer, scale, pinWeightPct / 100.0)
@@ -203,16 +207,15 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     ) {
         scanState = ScanUiState.Loading
         viewModelScope.launch {
-            // One id per user-initiated tap - the Worker uses this to dedupe
-            // the RevenueCat charge if this attempt has to be retried after
-            // a lost/timed-out response. There's no existing client-side
-            // retry loop, so generating it once here (not inside
-            // ScanApiClient) is enough to cover "the same logical attempt."
-            val clientRequestId = UUID.randomUUID().toString()
+            // The Worker dedupes the RevenueCat charge on this id, so the
+            // same photo keeps it until an answer settles the attempt (see
+            // ScanAttempts); a retry after a lost answer is then charged once.
             val result = runCatching {
-                val token = accountManager.accessToken() ?: return@runCatching NOT_SIGNED_IN
-                val base64 = encodePhotoForScan(contentResolver, photoUri)
-                ScanApiClient.scan(token, module, base64, clientRequestId = clientRequestId)
+                scanAttempts.run(module, photoUri.toString()) { clientRequestId ->
+                    val token = accountManager.accessToken() ?: return@run NOT_SIGNED_IN
+                    val base64 = encodePhotoForScan(contentResolver, photoUri)
+                    ScanApiClient.scan(token, module, base64, clientRequestId = clientRequestId)
+                }
             }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
 
             when (result) {
@@ -249,11 +252,12 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     ) {
         scanState = ScanUiState.Loading
         viewModelScope.launch {
-            val clientRequestId = UUID.randomUUID().toString()
             val result = runCatching {
-                val token = accountManager.accessToken() ?: return@runCatching NOT_SIGNED_IN
-                val base64 = encodePhotoForScan(contentResolver, photoUri)
-                ScanApiClient.scan(token, EntryModule.SCALE, base64, clientRequestId = clientRequestId)
+                scanAttempts.run(EntryModule.SCALE, photoUri.toString()) { clientRequestId ->
+                    val token = accountManager.accessToken() ?: return@run NOT_SIGNED_IN
+                    val base64 = encodePhotoForScan(contentResolver, photoUri)
+                    ScanApiClient.scan(token, EntryModule.SCALE, base64, clientRequestId = clientRequestId)
+                }
             }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
 
             when (result) {

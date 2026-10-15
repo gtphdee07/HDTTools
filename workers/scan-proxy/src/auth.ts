@@ -34,29 +34,70 @@ const defaultAuthDeps: AuthDeps = {
   nowSeconds: () => Math.floor(Date.now() / 1000),
 };
 
-// Per isolate: the last JWKS fetched for each Supabase project URL.
-const jwksCache = new Map<string, JwksDocument>();
+// A JWKS fetch is started at most once per cooldown window per Supabase
+// project, so a caller sending random kids cannot make the Worker hammer
+// Supabase. A key published inside the window is picked up once it ends.
+export const JWKS_REFETCH_COOLDOWN_SECONDS = 30;
 
-export function clearJwksCache(): void {
-  jwksCache.clear();
+// A cached key set is trusted for at most this long after it was fetched, so a
+// key Supabase withdraws cannot stay accepted until the isolate is recycled.
+// Past it the keys are re-fetched; if that fails the request is 503, never
+// verified against stale keys.
+export const JWKS_MAX_AGE_SECONDS = 10 * 60;
+
+interface JwksState {
+  keys?: JwksDocument;
+  // When `keys` was fetched; past the max age they are no longer trusted.
+  keysFetchedAt?: number;
+  // When the latest fetch attempt (successful or not) was started.
+  lastAttemptAt?: number;
+  // The fetch running right now; requests arriving meanwhile wait for it.
+  inFlight?: Promise<JwksDocument>;
 }
 
-async function loadJwks(url: string, deps: AuthDeps): Promise<JwksDocument> {
+// Per isolate: what was last learned from each Supabase project URL.
+const jwksState = new Map<string, JwksState>();
+
+export function clearJwksCache(): void {
+  jwksState.clear();
+}
+
+async function fetchJwks(url: string, state: JwksState, deps: AuthDeps): Promise<JwksDocument> {
   const doc = await deps.fetchJwks(url);
   const violation = jwksViolation(doc);
   if (violation) throw new Error(violation);
-  const keys = { keys: usableKeys(doc) };
-  jwksCache.set(url, keys);
-  return keys;
+  state.keys = { keys: usableKeys(doc) };
+  state.keysFetchedAt = deps.nowSeconds();
+  return state.keys;
+}
+
+function startFetch(url: string, state: JwksState, deps: AuthDeps): Promise<JwksDocument> {
+  state.lastAttemptAt = deps.nowSeconds();
+  const fetching = fetchJwks(url, state, deps).finally(() => {
+    state.inFlight = undefined;
+  });
+  state.inFlight = fetching;
+  return fetching;
 }
 
 // The cached key set normally holds the key; an unknown kid means Supabase
-// may have rotated its keys, so re-fetch once before giving up.
+// may have rotated its keys, so re-fetch before giving up - unless a fetch
+// was started within the cooldown, in which case the kid is simply unknown.
 async function findKey(url: string, kid: string, deps: AuthDeps): Promise<AccountJwk | undefined> {
-  const cached = jwksCache.get(url);
-  const fromCache = cached?.keys.find((key) => key.kid === kid);
+  let state = jwksState.get(url);
+  if (!state) jwksState.set(url, (state = {}));
+  const now = deps.nowSeconds();
+  const trusted = state.keys && now - (state.keysFetchedAt ?? 0) < JWKS_MAX_AGE_SECONDS ? state.keys : undefined;
+  const fromCache = trusted?.keys.find((key) => key.kid === kid);
   if (fromCache) return fromCache;
-  return (await loadJwks(url, deps)).keys.find((key) => key.kid === kid);
+  if (state.inFlight) return (await state.inFlight).keys.find((key) => key.kid === kid);
+  const inCooldown = state.lastAttemptAt !== undefined && now - state.lastAttemptAt < JWKS_REFETCH_COOLDOWN_SECONDS;
+  if (inCooldown) {
+    // No trusted keys to say the kid is unknown with: the service can't verify right now.
+    if (!trusted) throw new Error("no trusted JWKS, and the last fetch was too recent to retry");
+    return undefined;
+  }
+  return (await startFetch(url, state, deps)).keys.find((key) => key.kid === kid);
 }
 
 async function signatureIsValid(key: AccountJwk, signingInput: string, signature: string): Promise<boolean> {

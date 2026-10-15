@@ -11,8 +11,9 @@ Usage:
 `preflight` exits 1 when the tree is dirty, the branch has no commits ahead of
 MPSkills, or a commit carries a file a feature branch must not (dashboard.svg,
 external_status.json, `.env*`). `criteria` prints the issue's acceptance
-criteria so the report covers every one. `post` reads the report the skill
-wrote, recomputes the git facts itself, and posts the comment from
+criteria so the report covers every one; they come from the latest `## Agent
+Brief` comment, else the issue body. `post` reads the report the skill wrote,
+recomputes the git facts itself, and posts the comment from
 docs/agents/session-handoff.md, then deletes the ticket's scratch file. It
 refuses `STATUS: READY TO MERGE` unless the tree is clean, every suite in the
 report passed, and each acceptance criterion names a test. `PARTIAL` and
@@ -60,6 +61,17 @@ def parse_criteria(body: str) -> list[str]:
     if not m:
         return []
     return [c.strip() for c in re.findall(r"^\s*-\s*\[[ xX]\]\s*(.+?)\s*$", m.group(1), re.MULTILINE)]
+
+
+def issue_criteria(issue: dict) -> list[str]:
+    """The ticket's acceptance criteria: from its latest `## Agent Brief` comment, else from the body.
+
+    `/triage` calls the brief the authoritative specification, so when one exists it wins even if the
+    body also has a checklist (or none under a heading `parse_criteria` knows). `gh` lists comments
+    oldest first, so the last brief is the most recent.
+    """
+    briefs = [c.get("body") or "" for c in issue.get("comments") or [] if re.search(r"^##\s+Agent Brief", c.get("body") or "", re.MULTILINE)]
+    return parse_criteria(briefs[-1] if briefs else issue.get("body") or "")
 
 
 # The one env file that is committed on purpose: public client config (VITE_* values that ship in the
@@ -173,14 +185,14 @@ def post(
     if n is None:
         out(f"Branch {branch!r} is not a ticket-<N> branch; run this inside the ticket's worktree.")
         return 1
-    issue = gh_issue(shell, root, n, "number,title,body")
+    issue = gh_issue(shell, root, n, "number,title,body,comments")
     if issue is None:
         out(f"Could not read ticket #{n} with gh.")
         return 1
 
     report = json.loads(Path(report_path).read_text(encoding="utf-8"))
     status = report.get("status", "")
-    criteria = parse_criteria(issue.get("body") or "")
+    criteria = issue_criteria(issue)
     rows = report.get("criteria", [])
     raw_suites = report.get("suites", [])
     unclear = [s.get("command", "?") for s in raw_suites if not isinstance(s.get("passed"), bool)]
@@ -237,6 +249,17 @@ def post(
     return 0
 
 
+def print_criteria(shell: Shell, root: Path, out: Callable[[str], None] = print) -> int:
+    n = ticket_from_branch(git_out(shell, root, "branch", "--show-current"))
+    issue = gh_issue(shell, root, n, "number,body,comments") if n else None
+    if issue is None:
+        print("Run this inside a ticket-<N> worktree with gh available.", file=sys.stderr)
+        return 1
+    for i, c in enumerate(issue_criteria(issue), 1):
+        out(f"{i}. {c}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -255,14 +278,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  - {r}")
         return 1 if reasons else 0
     if args.command == "criteria":
-        n = ticket_from_branch(git_out(real_shell, root, "branch", "--show-current"))
-        issue = gh_issue(real_shell, root, n, "number,body") if n else None
-        if issue is None:
-            print("Run this inside a ticket-<N> worktree with gh available.", file=sys.stderr)
-            return 1
-        for i, c in enumerate(parse_criteria(issue["body"]), 1):
-            print(f"{i}. {c}")
-        return 0
+        return print_criteria(real_shell, root)
     return post(args.report, shell=real_shell, root=root, dry_run=args.dry_run)
 
 

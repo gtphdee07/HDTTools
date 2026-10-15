@@ -22,7 +22,7 @@ Paid or live suites (`action: confirm` in the plan) run only when the owner has 
 
 ## 3. Criterion-to-test table
 
-`uv run scripts/ticket_finish.py criteria` lists the acceptance criteria. For **each one**, name the test file and test that proves it, after reading that test and confirming it would fail without the change. A criterion with no automated test stays unproven; say so, and do not stretch a test to fit it.
+`uv run scripts/ticket_finish.py criteria` lists the acceptance criteria. They are read from the ticket's latest `## Agent Brief` comment (its `**Acceptance criteria:**` list, which `/triage` makes the authoritative spec), and from the issue body (`## Acceptance criteria` or the bold label) only when no brief comment exists. For **each one**, name the test file and test that proves it, after reading that test and confirming it would fail without the change. A criterion with no automated test stays unproven; say so, and do not stretch a test to fit it.
 
 ## 4. Review
 

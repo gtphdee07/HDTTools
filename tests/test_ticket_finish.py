@@ -72,6 +72,49 @@ def test_no_acceptance_section_means_no_criteria():
     assert finish.parse_criteria("## What\n\n- [ ] a\n") == []
 
 
+def _brief(*criteria):
+    items = "\n".join(f"- [ ] {c}" for c in criteria)
+    return f"## Agent Brief\n\n**Category:** enhancement\n\n**Acceptance criteria:**\n{items}\n\n**Out of scope:**\n- nothing\n"
+
+
+BODY_WITHOUT_CRITERIA = "## What to build\n\nA thing.\n\n## Acceptance\n\n- [ ] not under the matched heading\n"
+
+
+def test_a_brief_comment_supplies_the_criteria_when_the_body_has_none():
+    issue = {"body": BODY_WITHOUT_CRITERIA, "comments": [{"body": "triage notes"}, {"body": _brief("Brief one", "Brief two")}]}
+
+    assert finish.issue_criteria(issue) == ["Brief one", "Brief two"]
+
+
+def test_the_brief_wins_over_a_body_checklist():
+    issue = {"body": BODY, "comments": [{"body": _brief("Brief one")}]}
+
+    assert finish.issue_criteria(issue) == ["Brief one"]
+
+
+def test_the_most_recent_brief_comment_wins():
+    issue = {
+        "body": BODY,
+        "comments": [{"body": _brief("Old one")}, {"body": "chatter"}, {"body": _brief("New one")}, {"body": "more chatter"}],
+    }
+
+    assert finish.issue_criteria(issue) == ["New one"]
+
+
+def test_a_ticket_with_no_brief_comment_reads_its_body_as_before():
+    issue = {"body": BODY, "comments": [{"body": "just a comment with - [ ] a checkbox"}]}
+
+    assert finish.issue_criteria(issue) == finish.parse_criteria(BODY)
+    assert finish.issue_criteria({"body": BODY}) == finish.parse_criteria(BODY)
+
+
+def test_a_brief_with_no_criteria_list_does_not_fall_back_to_the_body():
+    # The brief is the authoritative spec; a brief that lists none means the ticket has none to prove.
+    issue = {"body": BODY, "comments": [{"body": "## Agent Brief\n\n**Summary:** no list here\n"}]}
+
+    assert finish.issue_criteria(issue) == []
+
+
 def _rows(*pairs):
     return [{"criterion": c, "proven_by": p} for c, p in pairs]
 
@@ -225,8 +268,9 @@ def worktree(tmp_path):
 
 
 class Gh:
-    def __init__(self, body=BODY):
+    def __init__(self, body=BODY, comments=None):
         self.body = body
+        self.issue_comments = comments or []
         self.comments: list[str] = []
         self.calls: list[list[str]] = []
 
@@ -236,7 +280,9 @@ class Gh:
             return common.real_shell(cmd, cwd)
         self.calls.append(cmd)
         if cmd[:3] == ["gh", "issue", "view"]:
-            return Result(0, json.dumps({"number": 9, "title": "T", "body": self.body}))
+            fields = cmd[cmd.index("--json") + 1].split(",")
+            issue = {"number": 9, "title": "T", "body": self.body, "comments": [{"body": c} for c in self.issue_comments]}
+            return Result(0, json.dumps({k: v for k, v in issue.items() if k in fields}))
         if cmd[:3] == ["gh", "issue", "comment"]:
             self.comments.append(Path(cmd[cmd.index("--body-file") + 1]).read_text(encoding="utf-8"))
             return Result(0)
@@ -382,6 +428,45 @@ def test_post_outside_a_ticket_branch_is_an_error(worktree, tmp_path):
     code, out = _post(worktree, Gh(), _report(tmp_path), tmp_path)
 
     assert code == 1 and "ticket-" in out
+
+
+def test_post_ready_requires_a_test_for_each_criterion_of_the_latest_brief_comment(worktree, tmp_path):
+    gh = Gh(body=BODY_WITHOUT_CRITERIA, comments=[_brief("Old"), _brief("Brief one", "Brief two")])
+    report = _report(tmp_path, criteria=_rows(("Brief one", "tests/t.py::one")))
+
+    code, out = _post(worktree, gh, report, tmp_path)
+
+    assert code == 1 and gh.comments == []
+    assert "No test named for criterion: Brief two" in out
+    assert "Old" not in out
+
+
+def test_post_ready_with_a_brief_comment_lists_its_criteria_in_the_table(worktree, tmp_path):
+    gh = Gh(body=BODY_WITHOUT_CRITERIA, comments=[_brief("Brief one", "Brief two")])
+    report = _report(tmp_path, criteria=_rows(("Brief one", "tests/t.py::one"), ("Brief two", "tests/t.py::two")))
+
+    code, _ = _post(worktree, gh, report, tmp_path)
+
+    assert code == 0
+    assert "| Brief one | tests/t.py::one |" in gh.comments[0]
+    assert "| Brief two | tests/t.py::two |" in gh.comments[0]
+
+
+def test_criteria_prints_the_latest_brief_comments_criteria(worktree):
+    gh = Gh(body=BODY_WITHOUT_CRITERIA, comments=[_brief("Old"), _brief("Brief one", "Brief two")])
+    lines = []
+
+    code = finish.print_criteria(gh, worktree, out=lines.append)
+
+    assert code == 0 and lines == ["1. Brief one", "2. Brief two"]
+
+
+def test_criteria_for_a_body_only_ticket_prints_the_body_criteria(worktree):
+    lines = []
+
+    code = finish.print_criteria(Gh(), worktree, out=lines.append)
+
+    assert code == 0 and lines == [f"1. {CRIT[0]}", f"2. {CRIT[1]}"]
 
 
 def test_pushed_is_yes_only_when_the_remote_branch_holds_head(worktree, tmp_path):

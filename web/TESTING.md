@@ -88,7 +88,11 @@ is no longer in that process.
 
 Real calls to the live Supabase project with the test user from
 `scripts/wizard_web_external_test_user.sh`. It never creates a user or sends
-mail.
+mail. Since #74 the surface's manifest entry also lists Android's Supabase
+pieces (`SupabaseAccountBackend.kt` and the `supabase-kt` pin in
+`android/gradle/libs.versions.toml`) and the `android` platform, so a change
+there makes it stale and Android's release gate waits on it; only this Web suite
+exercises it live.
 
 ### `supabase-tables` (#28)
 

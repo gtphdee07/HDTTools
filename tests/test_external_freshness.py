@@ -249,11 +249,69 @@ def test_the_real_manifest_declares_supabase_auth():
     m = ef.load_manifest()
     s = m["surfaces"]["supabase-auth"]
     assert s["status"] == "active"
-    assert s["boundary_files"] == ["web/src/auth.tsx"]
-    assert s["dependency_pins"] == ["web/package.json", "web/package-lock.json"]
+    assert s["boundary_files"] == [
+        "web/src/auth.tsx",
+        "android/app/src/main/java/com/rigcheck/app/data/SupabaseAccountBackend.kt",
+    ]
+    assert s["dependency_pins"] == ["web/package.json", "web/package-lock.json", "android/gradle/libs.versions.toml"]
     assert s["registry_packages"] == [{"ecosystem": "npm", "package": "@supabase/supabase-js"}]
     assert s["max_paid_calls"] == 0
-    assert "web" in s["platforms"]
+    assert s["platforms"] == ["web", "android"]
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        "android/app/src/main/java/com/rigcheck/app/data/SupabaseAccountBackend.kt",
+        "android/gradle/libs.versions.toml",
+    ],
+)
+def test_changing_the_android_supabase_pieces_makes_supabase_auth_stale(changed):
+    real = ef.load_manifest()
+    recorded = status_with(passed())
+    quiet = FakeRegistry({"@supabase/supabase-js": {"2.0.0": "2026-09-01T00:00:00Z", "created": "2020-01-01T00:00:00Z"}})
+
+    fresh = ef.evaluate(real, recorded, FakeGit(), quiet, only=["supabase-auth"])[0]
+    stale = ef.evaluate(real, recorded, FakeGit(changed=[changed]), quiet, only=["supabase-auth"])[0]
+
+    assert fresh.state == "fresh"
+    assert stale.state == "stale"
+    assert any(changed in r for r in stale.reasons)
+
+
+def test_supabase_auth_is_in_the_android_release_chain():
+    assert "supabase-auth" in ef.surfaces_for_platform(ef.load_manifest(), "android")
+
+
+def test_worker_token_verification_is_in_the_real_manifest_active_with_the_worker_chains():
+    surface = ef.load_manifest()["surfaces"]["worker-token-verification"]
+    assert surface["status"] == "active"
+    # Every case in its External suite is free: a refused token stops at the 401.
+    assert surface["max_paid_calls"] == 0
+    assert surface["boundary_files"] == ["workers/scan-proxy/src/auth.ts", "workers/scan-proxy/src/accountTokenContract.ts"]
+    assert {"workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json"} <= set(surface["dependency_pins"])
+    assert {"scan-proxy", "android", "web"} == set(surface["platforms"])
+
+
+@pytest.mark.parametrize("changed", ["workers/scan-proxy/src/auth.ts", "workers/scan-proxy/src/accountTokenContract.ts"])
+def test_changing_the_verifier_or_its_contract_makes_worker_token_verification_stale(changed):
+    real = ef.load_manifest()
+    recorded = status_with(passed(), name="worker-token-verification")
+
+    fresh = ef.evaluate(real, recorded, FakeGit(), FakeRegistry({}), only=["worker-token-verification"])[0]
+    stale = ef.evaluate(real, recorded, FakeGit(changed=[changed]), FakeRegistry({}), only=["worker-token-verification"])[0]
+
+    assert fresh.state == "fresh"
+    assert stale.state == "stale"
+    assert any(changed in r for r in stale.reasons)
+
+
+@pytest.mark.parametrize("name", ["supabase-auth", "worker-token-verification"])
+def test_the_token_surfaces_boundary_files_and_pins_exist(name):
+    # A mistyped path never shows as changed, so the surface would silently stop going stale.
+    surface = ef.load_manifest()["surfaces"][name]
+    for rel in surface["boundary_files"] + surface["dependency_pins"]:
+        assert (ef.REPO_ROOT / rel).is_file(), f"{name}: {rel} does not exist"
 
 
 def test_npm_fetcher_returns_the_registry_time_map():
@@ -417,7 +475,7 @@ _REQUIRED_PROVIDER_SURFACES = {
 
 
 # Surfaces from the list above that have since gained a tagged External test and flipped to active.
-_SURFACES_NOW_ACTIVE = {"pages-site", "supabase-tables", "revenuecat-web-billing"}
+_SURFACES_NOW_ACTIVE = {"pages-site", "supabase-tables", "revenuecat-web-billing", "worker-token-verification"}
 
 
 def test_every_required_provider_surface_is_registered_in_the_real_manifest():

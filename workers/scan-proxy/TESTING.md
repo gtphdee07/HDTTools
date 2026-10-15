@@ -341,8 +341,7 @@ validates a real token against.
 ### `weekly/scan.weekly.test.ts` — real network, against the live deployed Worker (`npm run test:weekly` only)
 
 - **Credentials (#21)**: every case below signs in a real Supabase test user (`src/liveToken.ts`) and sends its access token. `funded` is the web external test user (`WEB_EXTERNAL_TEST_EMAIL`/`_PASSWORD`, from `scripts/wizard_web_external_test_user.sh`); `noCredits` is a second Supabase test user (`WEB_EXTERNAL_TEST_NOCREDITS_EMAIL`/`_PASSWORD`). Plus `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Read from the environment, falling back to `web/.env.local`; a missing value fails the run naming it, never skips. **Owner setup still required** before these run — walk through `scripts/wizard_scan_proxy_live_accounts.sh` (creates the second Supabase user, saves its credentials, creates both RevenueCat customers, and prompts the SCAN grant; it prints each page to open rather than launching a browser). What it sets up: in RevenueCat, a customer named by each test user's Supabase UUID — the `funded` one with a SCAN balance, the `noCredits` one left at zero. Never `smoke-test-user`. The old `weekly-test-user*` customers are no longer used.
-- **a request with no account token gets 401 unauthorized from the deployed Worker** (#21) — free: nothing is spent, Claude is never reached.
-- **a real Supabase token and JWKS match the shared account-token contract** (#21) — free: signs in `funded`, checks the real token's header and claims and the real JWKS document against `accountTokenContract.ts`, and that the token's `kid` is published.
+- The two free token-verification cases #21 added here (no token gets 401; a real token and JWKS match the shared contract) moved to the `[worker-token-verification]` External suite (#74) — see the last section of this file.
 - **a customer with no SCAN credits gets 402 insufficient_credits, never reaches Claude** — real POST to the deployed Worker as the `noCredits` account (0 balance, no entitlement granted). Costs nothing to run repeatedly: `spendCredit`'s real 422 short-circuits the request before any real Claude call happens, the same control-flow ordering `scan.test.ts`'s equivalent mocked case already proves — this is that same claim, proven for real.
 - **a real scan of a real truck tag succeeds and returns real extracted fields** (2026-08-22) — as the `funded` account, `ExampleDocs/AddieTag.jpg`. The real-scan-and-charge case: proves the full Worker pipeline (spend → real Claude call → return fields) works end-to-end for a genuine success, not just the failure paths the other three cases in this file cover. **Real cost: one SCAN credit and one billed Claude call (~$0.01) every run** — not free to re-run repeatedly, unlike the case above.
 - **a real scan of a valid but irrelevant image still succeeds and is charged, not refunded** (2026-08-22) — the WTWT logo (`streamlit_app/assets/wtwt_logo.png`), a real, valid, real-world image that just isn't a truck tag. Exists because `claude.ts` forces Claude's `tool_choice` to the extraction tool — it can't refuse just because the photo is wrong, so it returns a (mostly-empty) result instead of erroring. Proves `scan.ts`'s refund path is genuinely conditioned on `extractFields` throwing, not on "was the result useful" — a real user who photographs the wrong thing still gets charged, matching current intended behavior. Same real cost as the case above.
@@ -447,3 +446,39 @@ behaviour, same reasoning as the `revenuecat-rest` review above) — also kept
 as-is. The new `[anthropic]` suite is what first covers all three doc types
 and the malformed-image contract at the `claude.ts` boundary itself; neither
 older suite feeds the freshness record.
+
+## Per-surface External suite: `worker-token-verification` (ADR-0008, #74)
+
+The `worker-token-verification` surface (boundary files `src/auth.ts` and
+`src/accountTokenContract.ts`; manifest entry
+`scripts/external_manifest/surfaces/worker-token-verification.json`, platforms
+`scan-proxy`/`android`/`web`, watching no registry package) has its own suite in
+`src/external/workerTokenVerification.external.test.ts`, every test tagged
+`[worker-token-verification]`. Run it like the others: `.\test-external.ps1`
+(only when stale) or `npm run test:external`. Needs the `funded` Supabase test
+user's credentials, `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`
+(`src/liveToken.ts`, from the environment or `web/.env.local`); a missing value
+fails the run naming it, and `-Skip` records `skipped`. Every case is free
+(`max_paid_calls` is 0): a refused token stops at the 401 and nothing reaches
+RevenueCat or Claude.
+
+| ADR-0008 depth | Covered by |
+|---|---|
+| Reachable and authenticated | The deployed Worker answers a scan with no account token with 401 `unauthorized`. |
+| Response shape | A real Supabase token's header and claims, and the real JWKS document, match `accountTokenContract.ts`, and the token's `kid` is published. |
+| Error contract | A Bearer value that is not a JWT, and a real token with a tampered signature, both get the same 401 `unauthorized` envelope. |
+| Full journey | A real token is accepted: a body that is not JSON gets the 400 `bad_request` that only a verified token can reach (authentication runs before the body is read). |
+
+The first and fourth cases moved here from `src/weekly/scan.weekly.test.ts`
+(the no-token 401 and the contract check); the Weekly file keeps the
+credit-and-scan cases, which exercise `scan.ts` rather than the token contract
+and stay untagged.
+
+The same ticket registered the Android side of Supabase sign-in under the
+`supabase-auth` surface (`scripts/external_manifest/surfaces/supabase-auth.json`):
+`SupabaseAccountBackend.kt` is a boundary file, `android/gradle/libs.versions.toml`
+(the `supabase-kt` pin) is a dependency pin, and `android` is one of its
+platforms, so Android's release gate now waits on it. Only the Web suite
+exercises that surface live. The freshness script has no Maven fetcher, so
+`supabase-kt` is not a watched registry package; adding it would leave the
+surface permanently stale until a `maven` ecosystem fetcher exists.

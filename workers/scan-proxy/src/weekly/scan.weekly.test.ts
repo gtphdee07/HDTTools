@@ -22,15 +22,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import {
-  claimsViolation,
-  headerViolation,
-  jwksUrl,
-  jwksViolation,
-  usableKeys,
-} from "../accountTokenContract.ts";
-import { decodeJwt } from "../jwt.ts";
-import { liveSupabaseUrl, signInTestAccount, type TestAccount } from "../liveToken.ts";
+import { signInTestAccount, type TestAccount } from "../liveToken.ts";
 
 const SCAN_ENDPOINT = "https://rigcheck-scan-proxy.wanderingtrailswaggingtails.workers.dev/v1/scan";
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -55,37 +47,9 @@ async function scan(account: TestAccount | null, docType: string, imageBase64: s
   return { status: response.status, body: await response.json() };
 }
 
-// Free (no token, so nothing is spent and Claude is never reached): the
-// deployed Worker refuses a scan that carries no account token.
-test("a request with no account token gets 401 unauthorized from the deployed Worker", async () => {
-  const result = await scan(null, "truck_tag", "aGVsbG8=", "image/jpeg");
-
-  assert.equal(result.status, 401);
-  assert.deepEqual(result.body, {
-    ok: false,
-    code: "unauthorized",
-    message: "Missing or invalid account token.",
-  });
-});
-
-// Free: signs in a real Supabase user and checks the real token's header and
-// claims, and the real JWKS document, against the same contract definition
-// (accountTokenContract.ts) the Worker verifies and the offline fakes mint to
-// - so Supabase changing its signing setup fails here, not in a user's scan.
-test("a real Supabase token and JWKS match the shared account-token contract", async () => {
-  const supabaseUrl = liveSupabaseUrl();
-  const token = await signInTestAccount("funded");
-  const { header, claims } = decodeJwt(token);
-
-  assert.equal(headerViolation(header), null);
-  assert.equal(claimsViolation(claims, supabaseUrl, Math.floor(Date.now() / 1000)), null);
-
-  const response = await fetch(jwksUrl(supabaseUrl));
-  const jwks = await response.json();
-  assert.equal(jwksViolation(jwks), null);
-  const publishedKids = usableKeys(jwks).map((key) => key.kid);
-  assert.ok(publishedKids.includes((header as { kid: string }).kid), "the token's kid is not in the published JWKS");
-});
+// The two free token-verification checks that used to open this file (no token gets
+// 401; a real token and JWKS match the shared contract) moved to the
+// [worker-token-verification] External suite (#74).
 
 // The "noCredits" account: a second Supabase test user whose RevenueCat
 // customer (named by that user's UUID) exists for this case and is

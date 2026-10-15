@@ -243,10 +243,12 @@ the apps at a new project, all of it must be recreated or re-verified.
   rebuilding the app.
 - **Pages** project `rigcheck-web`, Git integration to `gtphdee07/HDTTools`.
   Settings: root directory `web`, build command `npm run build`, build output
-  directory `dist`. Which branch is the **production branch** is a dashboard
-  setting I could not see from the repo; confirm it, because `MPSkills` is the
-  working branch and `main` is not used. Other branches get preview URLs, which
-  is why preview hosts appear in Supabase's Redirect URLs.
+  directory `dist`. The **production branch is `MPSkills`** (confirmed in the
+  Cloudflare dashboard, 2026-10-15, with automatic deployments on), so **every
+  push to `MPSkills` publishes the Web app to https://rigcheck-web.pages.dev/**.
+  A Web change that depends on a Worker change must wait to be pushed until
+  the Worker is redeployed. Other branches get preview URLs, which is why
+  preview hosts appear in Supabase's Redirect URLs.
 
 ### GitHub
 
@@ -274,8 +276,8 @@ Anything in `[vars]` (`wrangler.toml`) is plain config and is committed. If you
 use a different RevenueCat project, Supabase project or currency, change those
 values there.
 
-**Web:** push to the production branch and Cloudflare Pages builds and
-publishes. Local build check: `cd web && npm run build`. Anything the
+**Web:** push to `MPSkills` (the production branch) and Cloudflare Pages builds
+and publishes within a few minutes. Local build check: `cd web && npm run build`. Anything the
 production bundle needs at build time must be committed in `web/.env.production`
 (public values only).
 

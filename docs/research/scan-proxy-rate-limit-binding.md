@@ -152,6 +152,22 @@ Owner steps: approve the deploy; choose N (the draft uses 10 per 60 s); after de
 
 Main risks: counting is per location and eventually consistent, and the throwaway test showed it admitting 4 of 12 rapid requests at `limit = 1`, so the limit is a deterrent not a guarantee; N too low would throttle a legitimate burst or trip the weekly suite; the binding is invisible in the dashboard; a shared `namespace_id` would silently share counters.
 
+## Questions left open, and why they do not block the build
+
+Two questions stayed unsettled after the 2026-10-15 throwaway test. No other ticket tracks them (searched open and closed issues on 2026-10-15; only #98 and #114 mention rate limiting). They are recorded here with the reasoning and the conditions that would make them matter, so someone can re-examine them if the design changes.
+
+### 1. Behaviour of an empty key in production
+
+- **What is unknown.** Whether `limit({ key: "" })` is counted as one shared bucket or rejected. Locally (Miniflare) `""` is a valid, shared key; no production source says. The throwaway test's two empty-key calls both returned 200, which settles nothing because the second call on a normal key also passed.
+- **Why it does not matter for the build.** The design keys on `auth.userId`, the token's `sub`. `claimsViolation` in `workers/scan-proxy/src/accountTokenContract.ts` (line 100) refuses a token whose `sub` is not a string or is blank, and the limiter runs only after `verifyAccountToken` succeeds, so `limit()` is never called with an empty key.
+- **Re-examine if:** the key changes to something that can be empty (for example `CF-Connecting-IP` as a fallback, a header, or an optional body field), or the token check stops rejecting a blank `sub`. Then run the empty-key test: `limit = 1`, two calls with `?empty=1`, wait for the counters to settle (the first throwaway attempt shows two quick calls prove nothing), repeat several times, and see whether any call is refused.
+
+### 2. Fixed or sliding window in production
+
+- **What is unknown.** Whether production counts a fixed wall-clock window or a sliding one, and whether a rejected call still increments the counter. The only statement is in a workers-sdk PR description (**Indirect**, written by an AI agent): sliding, with no increment when over the limit. Local `wrangler dev` uses a fixed window.
+- **Why it does not matter for the build.** It only changes the ceiling arithmetic: a fixed window can pass up to about 2N in a burst that straddles a boundary, a sliding window less. The observed looseness is larger than that. At `limit = 1`, 4 of 12 rapid requests got through, and the first three passed before the count caught up. The design already treats the limit as a deterrent on the sustained rate, not a precise count, and its numbers (10 per 60 s) come from the weekly suite's headroom (four sequential scans) and the cost ceiling in Q2, neither of which depends on the window type. Settling it would need a purpose-built measurement, and the answer would not change the code, the key, the placement or the value of N.
+- **Re-examine if:** someone proposes relying on an exact count (for example a hard cap of N scans a minute per account, a quota, or billing-related enforcement), or a limit small enough that a 2N boundary burst matters (N of about 3 or less). Then measure it against the deployed limiter: call a fresh key at a steady rate for several windows and compare accepted counts across a window boundary; a count of N followed by an immediate burst of N after the boundary shows a fixed window. If an exact count is needed, use a Durable Object (Q8) instead of tuning the binding.
+
 ## Draft implementation ticket
 
 **Title:** Scan service: per-account rate limit on `POST /v1/scan` (Workers Rate Limiting binding)

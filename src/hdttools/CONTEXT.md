@@ -41,7 +41,7 @@ The truck manufacturer's maximum rated weight for the truck-plus-trailer combina
 The portion of a hitched fifth-wheel/gooseneck trailer's weight transferred onto the truck's hitch point, expressed as a percentage of the trailer's total weight (default 20%). Used for **Fifth-wheel / Gooseneck** Hitch Type. For a bumper-pull trailer the equivalent concept is Tongue Weight; the two are physically distinct and must not be used interchangeably in code or copy.
 
 **Tongue Weight**:
-The portion of a hitched **bumper-pull** trailer's weight carried on the ball hitch, expressed as a percentage of the trailer's total weight (default 12%, typically 10 to 15%). Planned, not yet supported: see [issue #2](https://github.com/gtphdee07/HDTTools/issues/2). Until it ships, any user-visible text that says "tongue weight" for the fifth-wheel hitch load is a bug: say "pin weight" (the breakdown notes on all three platforms and the Android truck-entry hint do, and the shared golden-vector fixture asserts the note text).
+The portion of a hitched **bumper-pull** trailer's weight carried on the ball hitch, expressed as a percentage of the trailer's total weight (default 12%, typically 10 to 15%). Planned, not yet supported: see [issue #2](https://github.com/gtphdee07/HDTTools/issues/2). Until it ships, any user-visible text that says "tongue weight" for the fifth-wheel hitch load is a bug: say "pin weight".
 
 **Hitch Type**:
 Which kind of hitch a trailer uses: **Fifth-wheel / Gooseneck** (Pin Weight) or **Bumper-pull** (Tongue Weight). A property of the Trailer, saved with the Rig. Defaults to Fifth-wheel / Gooseneck, so every existing Rig keeps today's behavior. Planned; see issue #2.

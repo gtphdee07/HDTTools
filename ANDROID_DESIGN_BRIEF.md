@@ -122,7 +122,7 @@ being a numbers-and-safety tool.
    - Front GAWR, lb (number)
    - Rear GAWR, lb (number)
    - Stand-alone weight, lb (number, **optional, always manual even
-     after a scan** — used to estimate tongue weight; label should make
+     after a scan** — used to estimate pin weight; label should make
      clear it's optional)
 3. **Trailer tag entry** — same scan-or-manual choice, reference image
    (annotated Brinkley-RV-style compliance label) + fields:
@@ -193,17 +193,17 @@ being a numbers-and-safety tool.
 
    **"Trailer Total (GVWR)" default, decided 2026-08-14**: when
    stand-alone weight was left blank, don't just show the trailer axle
-   reading unadjusted — that implicitly assumes 0% tongue weight, which
+   reading unadjusted — that implicitly assumes 0% pin weight, which
    is wrong in the unsafe direction (can make an overweight trailer look
    compliant). Instead, estimate total trailer weight as
    `trailer_axle_lb / 0.8` (a named constant,
-   `DEFAULT_AXLE_TO_TOTAL_RATIO` — pin/tongue weight is commonly ~15–25%
+   `DEFAULT_AXLE_TO_TOTAL_RATIO` — pin weight is commonly ~15–25%
    of trailer weight, so the axle reading alone is assumed to be ~80% of
    the total). Note text should say plainly that this is an estimate,
    e.g. "Estimated total weight — assumes the axle reading is 80% of
    actual trailer weight; enter your truck's stand-alone weight for an
    exact figure." When stand-alone weight *is* provided, the exact
-   tongue-weight calculation is used instead (unaffected by this
+   pin-weight calculation is used instead (unaffected by this
    default). This is already the assumption baked into the existing
    Android mockups — it's `web`/`streamlit_app`'s implementation
    (`src/hdttools/api/breakdown.py`) that still needs to catch up, per

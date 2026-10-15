@@ -8,14 +8,17 @@
 import "./requireInstall.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { JWKS_TIMEOUT_MS } from "./auth.ts";
 import { REVENUECAT_TIMEOUT_MS } from "./revenuecat.ts";
 // Dynamic for claude.ts, which imports the SDK (see requireInstall.ts).
 const { ANTHROPIC_MAX_RETRIES, ANTHROPIC_TIMEOUT_MS } = await import("./claude.ts");
 
-const ANDROID_CLIENT = new URL("../../../android/app/src/main/java/com/rigcheck/app/data/ScanApiClient.kt", import.meta.url);
-const WEB_API = new URL("../../../web/src/api.ts", import.meta.url);
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const ANDROID_CLIENT = path.resolve(HERE, "../../../android/app/src/main/java/com/rigcheck/app/data/ScanApiClient.kt");
+const WEB_API = path.resolve(HERE, "../../../web/src/api.ts");
 
 function androidReadTimeoutMs(): number {
   const match = /\.readTimeout\(\s*(\d+)\s*,\s*TimeUnit\.SECONDS\s*\)/.exec(readFileSync(ANDROID_CLIENT, "utf8"));

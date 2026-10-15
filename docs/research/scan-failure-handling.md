@@ -14,7 +14,7 @@ Research for #111 (parent #15). Documentation and local reading only: no live Sc
 3. [Phase 2: audit](#phase-2-audit) (Web, Android)
 4. [Phase 3: gap table](#phase-3-gap-table)
 5. [Phase 4: draft follow-up tickets](#phase-4-draft-follow-up-tickets)
-6. [Decisions awaiting the owner](#decisions-awaiting-the-owner)
+6. [Decisions](#decisions) (D1 to D10, decided 2026-10-14)
 
 ## Summary
 
@@ -29,7 +29,7 @@ Research for #111 (parent #15). Documentation and local reading only: no live Sc
 
 ## Phase 1: requirements
 
-Written from the Worker's contract and the glossary, not from what the clients do. Each requirement ends with **Default** (what the audit is measured against) and **Why**. All defaults are *recommended default, awaiting owner*; the owner's decisions are collected at the end.
+Written from the Worker's contract and the glossary, not from what the clients do. Each requirement ends with **Default** (what the audit is measured against) and **Why**. All defaults were put to the owner as D1 to D10 and accepted on 2026-10-14 (see [Decisions](#decisions)).
 
 Sources for the contract:
 
@@ -414,21 +414,21 @@ Blocked by: none.
 
 ---
 
-## Decisions awaiting the owner
+## Decisions
 
-Recommended default, awaiting owner. The audit above was finished against each default.
+**Decided by the owner on 2026-10-14: D1 to D10 each take the recommended default below** (D9: check first, as the default says). The audit above was finished against these defaults, so no gap, requirement or draft changes. The last column records what the alternative would have changed.
 
-| # | Decision | Recommended default | If the owner chooses differently, these change |
+| # | Decision | Decided (the recommended default) | If the owner had chosen differently, these would change |
 |---|---|---|---|
 | D1 | A main-path Scan that comes back all-blank or partly blank (R7) | Go to review with a notice that a Scan was used; not a failure | If it becomes a **failure**: G8 and Draft D become "show the error state and Try again"; R3's "no Try again after 12" and G7 flip for the main path; the stand-alone no-weight rule stays |
 | D2 | Offer "Try again" after a delivered-but-unusable answer (R3) | No; offer "Choose a different photo" and "Type it in" | If **yes**: G7 closes (Web's behaviour is kept); Draft E item 2 is dropped; Android's stand-alone ticket must get a Try again (G9 grows) |
 | D3 | Wording of `bad_request` and unsendable-photo messages | Plain wording, no Worker internals, "Nothing was used." | Draft E item 3 and Draft B change wording only |
 | D4 | The R2 messages (the words in both clients) | As written in R2 | Drafts B, E and G change wording only |
 | D5 | Where wording and rules live (R8) | CONTEXT.md entry plus `test-vectors/scan_outcomes.json` | If only a glossary entry: Draft G loses its fixture and tests, and G13 stays partly open |
-| D6 | Balance after a 402 on Android | Set to 0 locally, no network re-read (so #79's "not refreshed on 402" still holds), then re-read as Web does | If #79's criterion is meant literally with no local 0: G5 stays open and Android keeps showing a positive balance after the Worker said none left |
+| D6 | Balance after a 402 on Android | Set to 0 locally with no network re-read, so #79's "not refreshed on 402" still holds (Web's extra re-read after the 0 is not required on Android) | If #79's criterion is meant literally with no local 0: G5 stays open and Android keeps showing a positive balance after the Worker said none left |
 | D7 | A failed balance re-read (R4) | Silent, keep the balance | If a note is wanted: new small ticket on both clients |
 | D8 | Result for a gone check on Android (R5) | Drop it and tell the user | If only drop silently: Draft C loses its notice criterion |
-| D9 | Lock Back on Android while a Scan is in flight | Not decided; Draft C says to check what Back does first | Affects the size of Draft C (large with a lock, medium without) |
+| D9 | Lock Back on Android while a Scan is in flight | Check first: Draft C starts by verifying on the emulator what Back, rotation and the scrim allow today, then decides | Affects the size of Draft C (large with a lock, medium without) |
 | D10 | Page reload / process death mid-Scan (G11) | Accept and document; one Scan Credit at risk | If not accepted: a `beforeunload` guard on Web and a `SavedStateHandle` on Android, both new tickets |
 
 ## Appendix: what was read

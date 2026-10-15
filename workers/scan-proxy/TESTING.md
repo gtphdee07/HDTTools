@@ -277,6 +277,17 @@ These use a fake RevenueCat ledger that replays a repeated Idempotency-Key and 4
 - **throws when no content block matches the requested tool** — the single most important case in this file: this is exactly the branch `scan.ts`'s entire refund path exists to handle.
 - **finds the matching tool_use block even when a non-matching block comes first** — a text block before the real tool_use block.
 - **a tool_use block with a different tool name is not accepted** — falls through to the same throw as no match at all.
+- `[sanity]` **a 529 from Claude is not retried** (#112) — drives `extractFields` with a mocked 529 and asserts exactly one upstream call, then a throw. Before the fix the SDK's default made three calls.
+- **a Claude call that never answers is abandoned at `ANTHROPIC_TIMEOUT_MS` and not retried** (#112) — a fetch that hangs until aborted, with only `setTimeout` faked and ticked past four timeout-lengths: one call, then a failure.
+- `[sanity]` **the Anthropic client's limits: no retries, one 20 s attempt** — pins `ANTHROPIC_MAX_RETRIES` = 0 and `ANTHROPIC_TIMEOUT_MS` = 20 s.
+
+### `timeLimits.test.ts` — the Worker, Web and Android time limits agree (#112)
+
+Reads the two clients' limits from their own source (`ScanApiClient.kt`'s `.readTimeout(...)`, `web/src/api.ts`'s `SCAN_TIMEOUT_MS`), the way `docTypes.test.ts` reads `ScanFieldMapping.kt`. The arithmetic is in `CONTEXT.md` ("Time limits").
+
+- `[sanity]` **the Worker's worst case is 5 + 10 + 20 + 10 = 45 s** — sign-in key fetch, credit spend, one Claude attempt, refund. Refuses to compute at all if `ANTHROPIC_MAX_RETRIES` is not 0, since retries add back-off and `Retry-After` waits this sum does not count.
+- `[sanity]` **Android's read timeout is longer than the Worker's worst case**.
+- `[sanity]` **Web's Scan time limit is longer than the Worker's worst case**.
 
 ### `http.test.ts` — `json`/`badRequest`, the response-shaping helpers used everywhere
 

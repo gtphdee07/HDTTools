@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { RecentRig } from '../types';
@@ -144,5 +145,65 @@ describe('RigStep delete', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/couldn.t delete.*Big Blue/i);
     expect(screen.getByText('Big Blue')).toBeInTheDocument();
+  });
+});
+
+// Keyboard and screen-reader behaviour of the shared delete control (#108): focus follows the user
+// through ask / cancel / delete / fail instead of dropping back to the page.
+describe('RigStep delete focus', () => {
+  // Removes a Rig from the list the way the app does once a delete succeeds.
+  function Harness({ onDeleteRig }: { onDeleteRig: (r: RecentRig) => Promise<boolean> }) {
+    const [rigs, setRigs] = useState([rig({ nickname: 'Big Blue' }), rig({ nickname: 'Little Red' })]);
+    return (
+      <RigStep
+        {...baseProps({
+          recentRigs: rigs,
+          onDeleteRig: async (r: RecentRig) => {
+            const ok = await onDeleteRig(r);
+            if (ok) setRigs((all) => all.filter((x) => x.nickname !== r.nickname));
+            return ok;
+          },
+        })}
+      />
+    );
+  }
+
+  it('moves focus to Cancel when the confirmation opens, and labels the question with the Rig', async () => {
+    render(<Harness onDeleteRig={async () => true} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+
+    const cancel = screen.getByRole('button', { name: 'Cancel' });
+    expect(cancel).toHaveFocus();
+    expect(screen.getByRole('group', { name: /Delete "Big Blue"\?/ })).toContainElement(cancel);
+  });
+
+  it("returns focus to the same Rig's bin when the user cancels", async () => {
+    render(<Harness onDeleteRig={async () => true} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Little Red' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByRole('button', { name: 'Delete Little Red' })).toHaveFocus();
+  });
+
+  it('puts focus on the page heading after a successful delete', async () => {
+    render(<Harness onDeleteRig={async () => true} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Yes, delete' }));
+
+    await waitFor(() => expect(screen.queryByText('Big Blue')).not.toBeInTheDocument());
+    expect(screen.getByRole('heading', { name: 'Which rig are we checking?' })).toHaveFocus();
+  });
+
+  it('announces the failure and keeps focus on the button just used when the delete fails', async () => {
+    render(<Harness onDeleteRig={async () => false} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Big Blue' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Yes, delete' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn.t delete.*Big Blue/i);
+    expect(screen.getByRole('button', { name: 'Yes, delete' })).toHaveFocus();
   });
 });

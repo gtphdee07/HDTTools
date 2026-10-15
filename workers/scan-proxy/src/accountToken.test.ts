@@ -19,7 +19,7 @@ import {
   TEST_SUPABASE_URL,
   unsignedToken,
 } from "./accountTokenFixtures.ts";
-import { clearJwksCache } from "./auth.ts";
+import { clearJwksCache, JWKS_MAX_AGE_SECONDS, JWKS_REFETCH_COOLDOWN_SECONDS } from "./auth.ts";
 import worker from "./index.ts";
 import type { Env } from "./types.ts";
 
@@ -101,6 +101,18 @@ function postScan(authorization: string | undefined, payload: unknown = body): R
 
 const bearer = (token: string) => `Bearer ${token}`;
 const nowSeconds = () => Math.floor(Date.now() / 1000);
+
+// The JWKS cooldown and max cache age run off Date.now(), so those tests move a
+// mocked clock instead of sleeping. Tokens stay valid for an hour, longer than any jump.
+const COOLDOWN_MS = JWKS_REFETCH_COOLDOWN_SECONDS * 1000;
+const MAX_CACHE_AGE_MS = JWKS_MAX_AGE_SECONDS * 1000;
+
+function mockClock(t: TestContext): (ms: number) => void {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  return (ms) => t.mock.timers.tick(ms);
+}
+
+const strayToken = async (kid: string) => bearer(await signToken(USER_A, { key: { ...goodKey, kid } }));
 
 beforeEach(() => clearJwksCache());
 
@@ -283,25 +295,181 @@ test("the JWKS is cached across requests", async (t) => {
   assert.equal(world.jwksFetches(), 1);
 });
 
-test("an unknown kid triggers one JWKS re-fetch, so a rotated key is picked up", async (t) => {
+test("an unknown kid after the cooldown triggers one JWKS re-fetch, so a rotated key is picked up", async (t) => {
   const world = fakeWorld(t);
+  const advance = mockClock(t);
   assert.equal((await worker.fetch(postScan(bearer(await signToken(USER_A, { key: goodKey }))), env)).status, 200);
 
   const rotated = await generateTestKeyPair("rotated-key");
   world.setJwks(jwksFor(rotated));
+  advance(COOLDOWN_MS);
   const res = await worker.fetch(postScan(bearer(await signToken(USER_A, { key: rotated }))), env);
   assert.equal(res.status, 200);
   assert.equal(world.jwksFetches(), 2);
 });
 
-test("an unknown kid re-fetches the JWKS once, then is rejected", async (t) => {
+test("an unknown kid after the cooldown re-fetches the JWKS once, then is rejected", async (t) => {
   const world = fakeWorld(t);
+  const advance = mockClock(t);
   await worker.fetch(postScan(bearer(await signToken(USER_A, { key: goodKey }))), env);
   assert.equal(world.jwksFetches(), 1);
 
-  const stray = { ...goodKey, kid: "stray" };
-  await assertUnauthorized(await worker.fetch(postScan(bearer(await signToken(USER_A, { key: stray }))), env));
+  advance(COOLDOWN_MS);
+  await assertUnauthorized(await worker.fetch(postScan(await strayToken("stray")), env));
   assert.equal(world.jwksFetches(), 2, "exactly one re-fetch for the unknown kid");
+});
+
+test("distinct unknown kids trigger at most one JWKS fetch per cooldown window", async (t) => {
+  const world = fakeWorld(t);
+  mockClock(t);
+  await worker.fetch(postScan(bearer(await signToken(USER_A, { key: goodKey }))), env);
+  assert.equal(world.jwksFetches(), 1);
+
+  for (let i = 0; i < 5; i++) {
+    await assertUnauthorized(await worker.fetch(postScan(await strayToken(`stray-${i}`)), env));
+  }
+  assert.equal(world.jwksFetches(), 1, "the first fetch is still inside the cooldown");
+});
+
+test("a key published inside the cooldown is refused with no fetch until the window ends, then accepted", async (t) => {
+  const world = fakeWorld(t);
+  const advance = mockClock(t);
+  await worker.fetch(postScan(bearer(await signToken(USER_A, { key: goodKey }))), env);
+
+  const rotated = await generateTestKeyPair("rotated-key");
+  world.setJwks(jwksFor(rotated));
+  const rotatedToken = bearer(await signToken(USER_A, { key: rotated }));
+
+  await assertUnauthorized(await worker.fetch(postScan(rotatedToken), env));
+  advance(COOLDOWN_MS - 1_000);
+  await assertUnauthorized(await worker.fetch(postScan(rotatedToken), env));
+  assert.equal(world.jwksFetches(), 1, "no fetch while the window is still open");
+
+  advance(1_000);
+  assert.equal((await worker.fetch(postScan(rotatedToken), env)).status, 200);
+  assert.equal(world.jwksFetches(), 2);
+});
+
+test("requests that arrive together share one JWKS fetch and are all verified against it", async (t) => {
+  const world = fakeWorld(t);
+  mockClock(t);
+  const token = bearer(await signToken(USER_A, { key: goodKey }));
+
+  const responses = await Promise.all([1, 2, 3, 4].map(() => worker.fetch(postScan(token), env)));
+  assert.deepEqual(
+    responses.map((res) => res.status),
+    [200, 200, 200, 200],
+  );
+  assert.equal(world.jwksFetches(), 1);
+});
+
+test("a burst of unknown kids arriving together costs one JWKS fetch, and a key it publishes is accepted by all of them", async (t) => {
+  const world = fakeWorld(t);
+  const advance = mockClock(t);
+  await worker.fetch(postScan(bearer(await signToken(USER_A, { key: goodKey }))), env);
+  const rotated = await generateTestKeyPair("rotated-key");
+  world.setJwks(jwksFor(rotated));
+  advance(COOLDOWN_MS);
+
+  const tokens = [
+    bearer(await signToken(USER_A, { key: rotated })),
+    bearer(await signToken(USER_A, { key: rotated })),
+    await strayToken("stray-a"),
+    await strayToken("stray-b"),
+  ];
+  const responses = await Promise.all(tokens.map((token) => worker.fetch(postScan(token), env)));
+  assert.deepEqual(
+    responses.map((res) => res.status),
+    [200, 200, 401, 401],
+  );
+  assert.equal(world.jwksFetches(), 2, "one fetch at the start, one for the whole burst");
+});
+
+test("a failed JWKS fetch starts the cooldown: with no keys known, requests answer 503 without hitting Supabase again", async (t) => {
+  const world = fakeWorld(t, "unreachable");
+  const advance = mockClock(t);
+  const token = bearer(await signToken(USER_A, { key: goodKey }));
+
+  for (let i = 0; i < 3; i++) {
+    const res = await worker.fetch(postScan(token), env);
+    assert.equal(res.status, 503);
+    assert.equal(((await res.json()) as { code: string }).code, "auth_unavailable");
+  }
+  assert.equal(world.jwksFetches(), 1);
+
+  // Once the window is over and Supabase is back, the next request recovers.
+  world.setJwks(jwksFor(goodKey));
+  advance(COOLDOWN_MS);
+  assert.equal((await worker.fetch(postScan(token), env)).status, 200);
+  assert.equal(world.jwksFetches(), 2);
+});
+
+test("a failed re-fetch for an unknown kid is 503 once, then 401 inside the cooldown while the cached keys stand", async (t) => {
+  const world = fakeWorld(t);
+  const advance = mockClock(t);
+  const good = bearer(await signToken(USER_A, { key: goodKey }));
+  await worker.fetch(postScan(good), env);
+
+  world.setJwks("unreachable");
+  advance(COOLDOWN_MS);
+  assert.equal((await worker.fetch(postScan(await strayToken("stray-1")), env)).status, 503);
+  await assertUnauthorized(await worker.fetch(postScan(await strayToken("stray-2")), env));
+  assert.equal(world.jwksFetches(), 2);
+  assert.equal((await worker.fetch(postScan(good), env)).status, 200, "known keys still verify");
+});
+
+test("a known kid within the max cache age needs no fetch, even a second before it runs out", async (t) => {
+  const world = fakeWorld(t);
+  const advance = mockClock(t);
+  const token = bearer(await signToken(USER_A, { key: goodKey }));
+  await worker.fetch(postScan(token), env);
+
+  advance(MAX_CACHE_AGE_MS - 1_000);
+  assert.equal((await worker.fetch(postScan(token), env)).status, 200);
+  assert.equal(world.jwksFetches(), 1);
+});
+
+test("cached keys expire after the max age: a still-published key is re-fetched and accepted", async (t) => {
+  const world = fakeWorld(t);
+  const advance = mockClock(t);
+  const token = bearer(await signToken(USER_A, { key: goodKey }));
+  await worker.fetch(postScan(token), env);
+
+  advance(MAX_CACHE_AGE_MS);
+  assert.equal((await worker.fetch(postScan(token), env)).status, 200);
+  assert.equal(world.jwksFetches(), 2);
+});
+
+test("a key Supabase withdraws stops being trusted once the cached keys expire", async (t) => {
+  const world = fakeWorld(t);
+  const advance = mockClock(t);
+  const token = bearer(await signToken(USER_A, { key: goodKey }));
+  assert.equal((await worker.fetch(postScan(token), env)).status, 200);
+
+  const replacement = await generateTestKeyPair("replacement-key");
+  world.setJwks(jwksFor(replacement));
+  assert.equal((await worker.fetch(postScan(token), env)).status, 200, "still trusted from cache before the max age");
+
+  advance(MAX_CACHE_AGE_MS);
+  await assertUnauthorized(await worker.fetch(postScan(token), env));
+  assert.equal((await worker.fetch(postScan(bearer(await signToken(USER_A, { key: replacement }))), env)).status, 200);
+});
+
+test("expired cached keys are never used when the re-fetch fails: 503, and no further fetch inside the cooldown", async (t) => {
+  const world = fakeWorld(t);
+  const advance = mockClock(t);
+  const token = bearer(await signToken(USER_A, { key: goodKey }));
+  await worker.fetch(postScan(token), env);
+
+  world.setJwks("unreachable");
+  advance(MAX_CACHE_AGE_MS);
+  for (let i = 0; i < 3; i++) {
+    const res = await worker.fetch(postScan(token), env);
+    assert.equal(res.status, 503);
+    assert.equal(((await res.json()) as { code: string }).code, "auth_unavailable");
+  }
+  assert.equal(world.jwksFetches(), 2, "one failed re-fetch, then the cooldown holds");
+  assert.deepEqual(world.revenuecatCustomers, [USER_A], "only the first, pre-expiry request spent anything");
 });
 
 test("the failure cause is not leaked in the 401 body", async (t) => {

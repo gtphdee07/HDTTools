@@ -299,7 +299,13 @@ validates a real token against.
 - **a token is checked before the body** — a malformed body with no token is 401, not 400.
 - **accepts an array `aud` containing `authenticated`; tolerates a few seconds of clock skew past `exp` (the allowance is 30 s); enforces `nbf` (future and non-numeric rejected, past accepted)**; **a published key whose material can't be imported rejects the token with 401**.
 - **JWKS unreachable / not a valid key set / no usable EC P-256 key / `SUPABASE_URL` unset → 503 `auth_unavailable`** (not 401), with no RevenueCat or Anthropic call. Keys of other types alongside a usable one are skipped, not fatal.
-- **the JWKS is cached across requests; an unknown `kid` re-fetches once** (a rotated key is picked up; a stray `kid` is re-fetched once, then rejected).
+- **the JWKS is cached across requests** (one fetch for repeated valid requests).
+- **JWKS re-fetch cooldown and max age (#73)** — these tests move a mocked `Date` (`mockClock`) instead of sleeping; the cooldown is 30 s and the max cache age 10 min (`auth.ts`):
+  - distinct unknown `kid`s cause at most one fetch per cooldown window (401, no fetch inside it);
+  - after the window an unknown `kid` re-fetches once: a rotated key is picked up, a stray `kid` is rejected;
+  - requests arriving together share one fetch (valid ones on a cold isolate all pass; in a burst the key it publishes is accepted by all of them, strays 401);
+  - a failed fetch starts the cooldown: with no keys known, requests are 503 without a new fetch, and the next window recovers; with cached keys, the failing request is 503 once, then strays are 401 and known keys still verify;
+  - keys are trusted until the max age (no fetch), then re-fetched: a still-published key is accepted, a withdrawn key is rejected; if the re-fetch fails the response is 503 and the old key is not used, with no further fetch inside the cooldown.
 - **the failure cause is not leaked in the 401 body**.
 - **the offline fixtures conform to the shared contract**.
 

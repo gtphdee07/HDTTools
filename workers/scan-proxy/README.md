@@ -131,7 +131,7 @@ adding once this is closer to shipping, not before.
 - **Auth (#21).** Every scan must carry a Supabase access token (the
   **account token**). The Worker verifies its ES256 signature against the
   project's public JWKS (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`,
-  cached per isolate, re-fetched once on an unknown `kid`), then checks
+  cached per isolate; see "JWKS caching" below), then checks
   `exp`, `iss`, `aud` and that the user isn't anonymous, before the body is
   read or any credit is spent. The token's `sub` — the account id, which is
   also the RevenueCat app user id (spec #15) — is the customer that gets
@@ -139,6 +139,23 @@ adding once this is closer to shipping, not before.
   path: the shipped Android build, which still sends `app_user_id`, is
   rejected until #22/#23 land. `SUPABASE_URL` is a public `[vars]` entry in
   `wrangler.toml`.
+- **JWKS caching (#73).** Each isolate keeps the last key set per Supabase
+  project (`src/auth.ts`):
+  - **Max age: 10 minutes** (`JWKS_MAX_AGE_SECONDS`). Older keys are never
+    trusted, so a key Supabase withdraws stops working within that time even
+    in a long-lived isolate. If the re-fetch then fails, the request is
+    `503 auth_unavailable`, not verified against stale keys.
+  - **Re-fetch cooldown: 30 seconds** (`JWKS_REFETCH_COOLDOWN_SECONDS`). A
+    token with an unknown `kid` makes the Worker re-fetch (Supabase may have
+    rotated keys), but at most one fetch is *started* per project per
+    window — failed fetches count — and requests arriving during a fetch
+    share it. Inside the window an unknown `kid` is a plain `401`, so a
+    token signed with a key published in the last 30 seconds can be refused
+    until the window ends. With no trusted keys at all (a cold isolate whose
+    fetch just failed) it is `503 auth_unavailable` instead.
+  - The state is per isolate, so a caller spread across many isolates or
+    locations still costs one fetch per window *per isolate*. This bounds the
+    cost of random-`kid` requests; it is not a request rate limit (#98).
 - **Model:** Haiku 4.5 (`src/claude.ts`) — structured extraction from a
   printed label is squarely its use case, and it's the cheapest tier.
 

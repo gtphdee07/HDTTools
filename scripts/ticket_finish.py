@@ -50,7 +50,13 @@ class SuiteResult:
 
 
 def parse_criteria(body: str) -> list[str]:
-    m = re.search(r"^##\s+Acceptance criteria\s*$(.*?)(?=^##\s|\Z)", body or "", re.MULTILINE | re.DOTALL)
+    # Either a `## Acceptance criteria` heading, or the `**Acceptance criteria:**` label an Agent Brief uses
+    # (which ends at the next bold label or heading).
+    m = re.search(
+        r"^(?:##\s+Acceptance criteria|\*\*Acceptance criteria:?\*\*:?)\s*$(.*?)(?=^##\s|^\*\*[^*\n]+\*\*:?\s*$|\Z)",
+        body or "",
+        re.MULTILINE | re.DOTALL,
+    )
     if not m:
         return []
     return [c.strip() for c in re.findall(r"^\s*-\s*\[[ xX]\]\s*(.+?)\s*$", m.group(1), re.MULTILINE)]

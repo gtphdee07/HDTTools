@@ -1,10 +1,10 @@
-"""Tests for compute_breakdown's axle-count and tongue-weight handling.
+"""Tests for compute_breakdown's axle-count and pin-weight handling.
 
 axle_count falls back to a 2-axle assumption when omitted. standalone_weight_lb
 falls back to estimating total trailer weight as trailer_axle_lb /
 (1 - pin_weight_pct) when omitted (a real scale reading exists), or off the
 trailer's rated GVWR when no scale reading exists at all - rather than
-using the axle reading unadjusted (that assumed 0% tongue weight, which
+using the axle reading unadjusted (that assumed 0% pin weight, which
 understates the real total). These tests cover all three paths plus the
 exact-figure behavior when each field is provided, per NEXT_STEPS.md.
 
@@ -61,22 +61,22 @@ def test_trailer_total_estimates_from_axle_reading_when_standalone_weight_omitte
     )
 
 
-def test_trailer_total_includes_estimated_tongue_weight_when_provided():
-    # steer + drive (hitched) = 14,660; stand-alone = 13,000 -> tongue weight 1,660
+def test_trailer_total_includes_estimated_pin_weight_when_provided():
+    # steer + drive (hitched) = 14,660; stand-alone = 13,000 -> pin weight 1,660
     truck = {**_TRUCK, "standalone_weight_lb": 13000}
     items = compute_breakdown(truck, _TRAILER, _SCALE)
     total_item = _item(items, "Trailer Total (GVWR)")
     assert total_item["actualLabel"] == "13,040 lb"
-    assert "1,660 lb tongue weight" in total_item["note"]
+    assert "1,660 lb pin weight" in total_item["note"]
 
 
-def test_tongue_weight_clamps_at_zero_when_standalone_exceeds_hitched_total():
+def test_pin_weight_clamps_at_zero_when_standalone_exceeds_hitched_total():
     # steer + drive (hitched) = 14,660; stand-alone = 20,000 -> negative estimate clamped to 0
     truck = {**_TRUCK, "standalone_weight_lb": 20000}
     items = compute_breakdown(truck, _TRAILER, _SCALE)
     total_item = _item(items, "Trailer Total (GVWR)")
     assert total_item["actualLabel"] == "11,380 lb"
-    assert "0 lb tongue weight" in total_item["note"]
+    assert "0 lb pin weight" in total_item["note"]
 
 
 def test_custom_pin_weight_pct_changes_the_trailer_axle_reading_estimate():
@@ -90,7 +90,7 @@ def test_custom_pin_weight_pct_changes_the_trailer_axle_reading_estimate():
 def test_pin_weight_pct_of_exactly_one_does_not_crash():
     # Regression test: found 2026-08-24 via a combinatorial sweep. The
     # axle-reading-estimate branch divides by `1 - pin_weight_pct` - exactly
-    # 1.0 (100% of the trailer's weight claimed as tongue weight, physically
+    # 1.0 (100% of the trailer's weight claimed as pin weight, physically
     # nonsensical) crashed with ZeroDivisionError. Reaches here unvalidated
     # from a real caller too (POST /api/breakdown's pin_weight_pct has no
     # Pydantic range constraint). Deliberately narrow fix - only this exact
@@ -170,7 +170,7 @@ def test_truck_total_estimates_from_standalone_weight_when_no_hitched_reading():
     # "Tow Vehicle Total (GVWR)" stayed "Not enough info" forever here -
     # this is the fix that actually answers "can I tow this" pre-purchase.
     # No scale data at all -> trailer total falls to the GVWR-fallback
-    # estimate (12,500) -> tongue weight estimate = 12,500 * 0.20 = 2,500.
+    # estimate (12,500) -> pin weight estimate = 12,500 * 0.20 = 2,500.
     truck = {**_TRUCK, "standalone_weight_lb": 6000}
     items = compute_breakdown(truck, _TRAILER, {})
     truck_item = _item(items, "Tow Vehicle Total (GVWR)")
@@ -178,7 +178,7 @@ def test_truck_total_estimates_from_standalone_weight_when_no_hitched_reading():
     assert truck_item["actualLabel"] == "8,500 lb"
     assert truck_item["badgeLabel"] == "5,500 lb to spare"
     assert truck_item["estimated"] is True
-    assert "2,500 lb tongue weight" in truck_item["note"]
+    assert "2,500 lb pin weight" in truck_item["note"]
     assert "20% of the trailer's estimated total" in truck_item["note"]
 
 
@@ -186,8 +186,8 @@ def test_truck_and_trailer_totals_both_estimate_when_only_a_trailer_axle_reading
     # A real trailer-axle scale reading exists (weighed the trailer alone)
     # and a real tow-vehicle-alone reading exists, but the two were never
     # weighed hitched together. Regression test for the bug this session
-    # fixed: the old code gated tongue-weight math on `if standalone_weight`
-    # alone, so this exact scenario silently zeroed tongue weight instead
+    # fixed: the old code gated pin-weight math on `if standalone_weight`
+    # alone, so this exact scenario silently zeroed pin weight instead
     # of falling back to the axle-based estimate (11,380 unadjusted instead
     # of the correct 14,225 estimate).
     truck = {**_TRUCK, "standalone_weight_lb": 10000}
@@ -231,15 +231,15 @@ def test_standalone_weight_of_zero_is_treated_as_not_provided():
     # test: have_standalone briefly became a plain `is not None` check
     # earlier this session (alongside the have_hitched/have_standalone
     # decoupling fix), which let a literal 0 through as "real data" and
-    # produced a nonsensical tongue-weight estimate - caught while porting
+    # produced a nonsensical pin-weight estimate - caught while porting
     # this exact logic to Kotlin, where the equivalent truthiness-parity
     # test already existed and failed against it.
     truck = {**_TRUCK, "standalone_weight_lb": 0}
     items = compute_breakdown(truck, _TRAILER, _SCALE)
     total_item = _item(items, "Trailer Total (GVWR)")
     # Falls back to the axle-based estimate (11,380 / 0.8 = 14,225), not
-    # the exact-tongue-weight branch (which would wrongly use the full
-    # steer+drive reading as "tongue weight").
+    # the exact-pin-weight branch (which would wrongly use the full
+    # steer+drive reading as "pin weight").
     assert total_item["actualLabel"] == "14,225 lb"
 
 

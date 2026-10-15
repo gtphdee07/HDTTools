@@ -360,7 +360,7 @@ network involved:
   Web's `PredictiveEstimateNotice.tsx`) shows when any row is `estimated`,
   hidden otherwise.
 - `BreakdownRowTest` — a row's note is hidden until tapped, then appears
-  (the dynamic tongue-weight-explanation feature); a note-less row's tap
+  (the dynamic pin-weight-explanation feature); a note-less row's tap
   is a no-op, doesn't crash; an insufficient row renders without crashing
   and shows 0%. A real bug was found manually verifying this on-device,
   not by this test: the progress bar's *track* color didn't follow

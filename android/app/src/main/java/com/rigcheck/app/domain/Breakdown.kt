@@ -11,7 +11,7 @@ import kotlin.math.roundToInt
 // itself already a port of web/src/calc.ts) — keep the three in sync, and
 // keep SUPPORTED_CAPABILITIES in
 // BreakdownGoldenVectorTest.kt updated as this port gains capabilities.
-// Pin/tongue weight is commonly ~15-25% of trailer weight - used as a
+// Pin weight is commonly ~15-25% of trailer weight - used as a
 // fraction of a REAL trailer-axle scale reading when one exists, or as a
 // fraction of the trailer's RATED GVWR when no scale reading exists at all.
 const val DEFAULT_PIN_WEIGHT_PCT = 0.20
@@ -115,9 +115,9 @@ fun computeBreakdown(
     val trailerTotalNote: String
     var trailerTotalEstimated = false
     if (haveHitched && haveStandalone) {
-        val tongueWeight = ((steer + drive) - standaloneWeight).coerceAtLeast(0.0)
-        trailerTotalActual = trailerAxle + tongueWeight
-        trailerTotalNote = "Includes an estimated ${formatWholeNumber(tongueWeight)} lb tongue weight " +
+        val pinWeight = ((steer + drive) - standaloneWeight).coerceAtLeast(0.0)
+        trailerTotalActual = trailerAxle + pinWeight
+        trailerTotalNote = "Includes an estimated ${formatWholeNumber(pinWeight)} lb pin weight " +
             "(steer + drive minus your truck's stand-alone weight)."
     } else if (scale.trailerAxleLb != null) {
         trailerTotalActual = trailerAxle / (1 - pinWeightPctSafe)
@@ -137,7 +137,7 @@ fun computeBreakdown(
     }
 
     // Truck total: a real hitched reading always wins. Without one, but
-    // with a real tow-vehicle-alone reading, estimate the missing tongue
+    // with a real tow-vehicle-alone reading, estimate the missing pin
     // weight off the trailer total above - mirrors breakdown.py's
     // `elif have_standalone:` branch (added 2026-08-21). This is what
     // answers the pre-purchase "can I tow this" question instead of
@@ -150,10 +150,10 @@ fun computeBreakdown(
         truckTotalActual = steer + drive
         truckTotalNote = towVehicleTotalNote(steer, drive, truckGvwr)
     } else if (haveStandalone) {
-        val truckTongueWeightEstimate = trailerTotalActual * pinWeightPctSafe
-        truckTotalActual = standaloneWeight + truckTongueWeightEstimate
+        val truckPinWeightEstimate = trailerTotalActual * pinWeightPctSafe
+        truckTotalActual = standaloneWeight + truckPinWeightEstimate
         truckTotalNote = "Estimated total weight — includes an estimated " +
-            "${formatWholeNumber(truckTongueWeightEstimate)} lb tongue weight " +
+            "${formatWholeNumber(truckPinWeightEstimate)} lb pin weight " +
             "(${formatWholeNumber(pinWeightPctSafe * 100)}% of the trailer's estimated total); " +
             "enter a real hitched scale reading for an exact figure."
         truckTotalEstimated = true

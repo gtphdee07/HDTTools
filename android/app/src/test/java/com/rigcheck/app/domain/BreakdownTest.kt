@@ -49,21 +49,21 @@ class BreakdownTest {
     }
 
     @Test
-    fun `trailer total includes estimated tongue weight when provided`() {
+    fun `trailer total includes estimated pin weight when provided`() {
         val truck = TRUCK.copy(standaloneWeightLb = 13000.0)
         val items = computeBreakdown(truck, TRAILER, SCALE)
         val row = item(items, "Trailer Total (GVWR)")
         assertEquals("13,040 lb", formatLb(row.actual))
-        assertTrue(row.note!!.contains("1,660 lb tongue weight"))
+        assertTrue(row.note!!.contains("1,660 lb pin weight"))
     }
 
     @Test
-    fun `tongue weight clamps at zero when standalone exceeds hitched total`() {
+    fun `pin weight clamps at zero when standalone exceeds hitched total`() {
         val truck = TRUCK.copy(standaloneWeightLb = 20000.0)
         val items = computeBreakdown(truck, TRAILER, SCALE)
         val row = item(items, "Trailer Total (GVWR)")
         assertEquals("11,380 lb", formatLb(row.actual))
-        assertTrue(row.note!!.contains("0 lb tongue weight"))
+        assertTrue(row.note!!.contains("0 lb pin weight"))
     }
 
     // Not covered by tests/test_breakdown.py — the Python truthiness checks
@@ -138,7 +138,7 @@ class BreakdownTest {
     // producing the wrong trailer total.
 
     @Test
-    fun `standalone weight without a hitched reading falls back to the axle estimate, not the exact-tongue-weight math`() {
+    fun `standalone weight without a hitched reading falls back to the axle estimate, not the exact-pin-weight math`() {
         val truck = TRUCK.copy(standaloneWeightLb = 10000.0)
         val scaleTrailerAxleOnly = ScaleTicket(trailerAxleLb = 11380.0)
         val items = computeBreakdown(truck, TRAILER, scaleTrailerAxleOnly)
@@ -203,7 +203,7 @@ class BreakdownTest {
     @Test
     fun `tow vehicle total estimates from standalone weight when no hitched reading exists`() {
         // No scale data at all -> trailer total falls to the GVWR-fallback
-        // estimate (12,500) -> tongue weight estimate = 12,500 * 0.20 = 2,500
+        // estimate (12,500) -> pin weight estimate = 12,500 * 0.20 = 2,500
         // -> truck total = 6,000 (standalone) + 2,500 = 8,500.
         val truck = TRUCK.copy(standaloneWeightLb = 6000.0)
         val items = computeBreakdown(truck, TRAILER, ScaleTicket())

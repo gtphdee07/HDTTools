@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nicknameKey, rigLookup, sameNickname } from './nickname';
+import { nicknameKey, rigLookup, rigSubtitle, sameNickname } from './nickname';
 
 describe('nickname rule', () => {
   it('treats names that differ only by case or surrounding spaces as the same Rig', () => {
@@ -32,5 +32,29 @@ describe('rigLookup', () => {
     expect(find('Truck B')).toBeUndefined();
     expect(find('Truck  A')).toBeUndefined();
     expect(rigLookup([])('Truck A')).toBeUndefined();
+  });
+});
+
+describe('rigSubtitle', () => {
+  const rig = (truck?: string, trailer?: string) => ({
+    truck: { manufacturer: truck },
+    trailer: { manufacturer: trailer },
+  });
+
+  it('joins the truck and trailer manufacturers with a plus', () => {
+    expect(rigSubtitle(rig('Peterbilt', 'Great Dane'))).toBe('Peterbilt + Great Dane');
+  });
+
+  it('shows only the truck when the trailer has no manufacturer', () => {
+    expect(rigSubtitle(rig('Peterbilt'))).toBe('Peterbilt');
+    expect(rigSubtitle(rig('Peterbilt', ''))).toBe('Peterbilt');
+  });
+
+  it('shows only the trailer when the truck has no manufacturer', () => {
+    expect(rigSubtitle(rig(undefined, 'Great Dane'))).toBe('Great Dane');
+  });
+
+  it('is empty when neither has a manufacturer', () => {
+    expect(rigSubtitle(rig())).toBe('');
   });
 });

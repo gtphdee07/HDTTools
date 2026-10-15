@@ -13,3 +13,12 @@ export function rigLookup<R extends { nickname: string }>(rigs: R[]): (nickname:
   const byKey = new Map(rigs.map((rig) => [nicknameKey(rig.nickname), rig]));
   return (nickname) => byKey.get(nicknameKey(nickname));
 }
+
+// The line shown under a Rig: "Peterbilt + Great Dane". Drops whichever manufacturer is empty; empty when both are.
+// Each screen keeps its own fallback for a Rig that is gone or has no manufacturers (#109).
+export function rigSubtitle(rig: {
+  truck: { manufacturer?: string };
+  trailer: { manufacturer?: string };
+}): string {
+  return [rig.truck.manufacturer, rig.trailer.manufacturer].filter(Boolean).join(' + ');
+}

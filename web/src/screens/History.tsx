@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import type { HistoryEntry, RecentRig } from '../types';
 import { Badge } from '../design-system/Badge';
-import { nicknameKey, rigLookup } from '../nickname';
+import { nicknameKey, rigLookup, rigSubtitle } from '../nickname';
 import { VERDICT_BADGE } from '../verdictBadge';
 
 interface HistoryProps {
@@ -96,7 +96,7 @@ export function History({ history, recentRigs = [] }: HistoryProps) {
         {filtered.map((h, i) => {
           const badge = VERDICT_BADGE[h.verdict];
           const rig = findRig(h.rigNickname);
-          const subtitle = rig ? [rig.truck.manufacturer, rig.trailer.manufacturer].filter(Boolean).join(' + ') : '—';
+          const subtitle = rig ? rigSubtitle(rig) : '—';
           return (
             <div
               key={h.id}

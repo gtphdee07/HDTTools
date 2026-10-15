@@ -5,7 +5,7 @@ import { Button } from '../design-system/Button';
 import { Badge } from '../design-system/Badge';
 import { RigDeleteButton, RigDeleteConfirm } from '../components/RigDelete';
 import type { DeleteRig } from '../components/RigDelete';
-import { rigLookup } from '../nickname';
+import { rigLookup, rigSubtitle } from '../nickname';
 import { VERDICT_BADGE } from '../verdictBadge';
 
 interface DashboardProps {
@@ -146,7 +146,7 @@ export function Dashboard({ recentRigs, history, onStartWizard, onGoHistory, onD
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18, marginBottom: 40 }}>
         {recentHistory.map((h) => {
           const rig = findRig(h.rigNickname);
-          const subtitle = rig ? [rig.truck.manufacturer, rig.trailer.manufacturer].filter(Boolean).join(' + ') : undefined;
+          const subtitle = rig ? rigSubtitle(rig) : undefined;
           const badge = VERDICT_BADGE[h.verdict];
           return (
             <div

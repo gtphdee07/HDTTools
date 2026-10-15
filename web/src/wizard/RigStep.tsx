@@ -3,6 +3,7 @@ import type { RecentRig } from '../types';
 import { Button } from '../design-system/Button';
 import { RigDeleteButton, RigDeleteConfirm } from '../components/RigDelete';
 import type { DeleteRig } from '../components/RigDelete';
+import { rigSubtitle } from '../nickname';
 
 interface RigStepProps {
   recentRigs: RecentRig[];
@@ -32,7 +33,7 @@ export function RigStep({ recentRigs, onSelectExisting, onStartNew, onDeleteRig 
       {recentRigs.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
           {recentRigs.map((rig, i) => {
-            const subtitle = [rig.truck.manufacturer, rig.trailer.manufacturer].filter(Boolean).join(' + ');
+            const subtitle = rigSubtitle(rig);
             const isConfirming = confirming === rig.nickname;
             return (
               <div

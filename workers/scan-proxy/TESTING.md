@@ -283,7 +283,7 @@ These use a fake RevenueCat ledger that replays a repeated Idempotency-Key and 4
 
 ### `timeLimits.test.ts` — the Worker, Web and Android time limits agree (#112)
 
-Reads the two clients' limits from their own source (`ScanApiClient.kt`'s `.readTimeout(...)`, `web/src/api.ts`'s `SCAN_TIMEOUT_MS`), the way `docTypes.test.ts` reads `ScanFieldMapping.kt`. The arithmetic is in `CONTEXT.md` ("Time limits").
+Reads the two clients' limits from their own source (`ScanApiClient.kt`'s `.readTimeout(...)`, `web/src/api.ts`'s `SCAN_TIMEOUT_MS`) rather than keeping copies, so a client edit that breaks the agreement fails here. The arithmetic is in `CONTEXT.md` ("Time limits").
 
 - `[sanity]` **the Worker's worst case is 5 + 10 + 20 + 10 = 45 s** — sign-in key fetch, credit spend, one Claude attempt, refund. Refuses to compute at all if `ANTHROPIC_MAX_RETRIES` is not 0, since retries add back-off and `Retry-After` waits this sum does not count.
 - `[sanity]` **Android's read timeout is longer than the Worker's worst case**.

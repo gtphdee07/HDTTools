@@ -1,10 +1,11 @@
 // The Scan service's time limits have to agree across three surfaces (#112): a
 // client that gives up before the Worker can finish abandons a Scan the
 // Worker then completes and charges for, and the user never sees the result.
-// This reads the other two surfaces' own source for their limits (the way
-// docTypes.test.ts reads ScanFieldMapping.kt), so a change on any side that
-// breaks the agreement fails here instead of drifting unnoticed. The
-// arithmetic and the reasoning are written down in CONTEXT.md "Time limits".
+// This reads the other two surfaces' own source for their limits (the one test
+// here that parses another surface's file rather than keeping a copy), so a
+// change on any side that breaks the agreement fails here instead of drifting
+// unnoticed. The arithmetic and the reasoning are written down in CONTEXT.md
+// "Time limits".
 import "./requireInstall.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -42,7 +43,7 @@ function workerWorstCaseMs(): number {
     0,
     "with retries the worst case also holds back-off and Retry-After waits (up to 60 s each), which this sum does not count",
   );
-  return JWKS_TIMEOUT_MS + REVENUECAT_TIMEOUT_MS + ANTHROPIC_TIMEOUT_MS * (1 + ANTHROPIC_MAX_RETRIES) + REVENUECAT_TIMEOUT_MS;
+  return JWKS_TIMEOUT_MS + REVENUECAT_TIMEOUT_MS + ANTHROPIC_TIMEOUT_MS + REVENUECAT_TIMEOUT_MS;
 }
 
 test("[sanity] the Worker's worst case is 5 + 10 + 20 + 10 = 45 s", () => {
@@ -50,15 +51,13 @@ test("[sanity] the Worker's worst case is 5 + 10 + 20 + 10 = 45 s", () => {
 });
 
 test("[sanity] Android's read timeout is longer than the Worker's worst case", () => {
-  assert.ok(
-    workerWorstCaseMs() < androidReadTimeoutMs(),
-    `the Worker can take ${workerWorstCaseMs()} ms but Android gives up after ${androidReadTimeoutMs()} ms`,
-  );
+  const worst = workerWorstCaseMs();
+  const limit = androidReadTimeoutMs();
+  assert.ok(worst < limit, `the Worker can take ${worst} ms but Android gives up after ${limit} ms`);
 });
 
 test("[sanity] Web's Scan time limit is longer than the Worker's worst case", () => {
-  assert.ok(
-    workerWorstCaseMs() < webScanTimeoutMs(),
-    `the Worker can take ${workerWorstCaseMs()} ms but Web gives up after ${webScanTimeoutMs()} ms`,
-  );
+  const worst = workerWorstCaseMs();
+  const limit = webScanTimeoutMs();
+  assert.ok(worst < limit, `the Worker can take ${worst} ms but Web gives up after ${limit} ms`);
 });

@@ -12,9 +12,18 @@ import type { MediaType } from "./types.ts";
 // item #13 / ARCHIVE_MONETIZATION.md for the full real-call evidence.
 const MODEL = "claude-sonnet-5";
 
-// Must be shorter than Android's own ScanApiClient 60s readTimeout, or a
-// timeout here would never actually fire before the app's own client had
-// already given up and shown its own error.
+// One attempt, no more. The SDK's default of 2 retries (on timeouts, 408, 409,
+// 429 and every 5xx, and honouring a Retry-After of up to 60 s per wait)
+// stretched a Scan to about 87 s at best and to no real limit at worst, past
+// Android's 60 s read timeout. A failed attempt already refunds the credit and
+// the user can try again at no charge, so a silent retry buys little. See
+// CONTEXT.md "Time limits" for the arithmetic, and timeLimits.test.ts, which
+// fails if the Worker's worst case reaches a client's limit.
+export const ANTHROPIC_MAX_RETRIES = 0;
+
+// One attempt's limit. Together with ANTHROPIC_MAX_RETRIES it must keep the
+// Worker's whole worst case under Android's 60 s readTimeout, or the app gives
+// up on a Scan the Worker then finishes and charges for.
 export const ANTHROPIC_TIMEOUT_MS = 20_000;
 
 export async function extractFields(
@@ -23,7 +32,7 @@ export async function extractFields(
   mediaType: MediaType,
   config: DocTypeConfig,
 ): Promise<Record<string, unknown>> {
-  const client = new Anthropic({ apiKey, timeout: ANTHROPIC_TIMEOUT_MS });
+  const client = new Anthropic({ apiKey, timeout: ANTHROPIC_TIMEOUT_MS, maxRetries: ANTHROPIC_MAX_RETRIES });
 
   const response = await client.messages.create({
     model: MODEL,

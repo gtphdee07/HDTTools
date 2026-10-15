@@ -7,11 +7,10 @@ import "./requireInstall.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DOC_TYPE_CONFIG } from "./docTypes.ts";
-// Dynamic, not static, for the SDK and for claude.ts (which imports it): ESM links static
+// Dynamic, not static, for claude.ts (which imports the SDK): ESM links static
 // imports before running any module, so a missing SDK would fail with ERR_MODULE_NOT_FOUND
 // before requireInstall.ts could explain it.
-const { default: Anthropic } = await import("@anthropic-ai/sdk");
-const { ANTHROPIC_TIMEOUT_MS, extractFields } = await import("./claude.ts");
+const { ANTHROPIC_MAX_RETRIES, ANTHROPIC_TIMEOUT_MS, extractFields } = await import("./claude.ts");
 
 const config = DOC_TYPE_CONFIG.truck_tag;
 
@@ -100,16 +99,54 @@ test("a tool_use block with a different tool name is not accepted", async (t) =>
   await assert.rejects(() => extractFields("sk-ant-test", "aGVsbG8=", "image/jpeg", config));
 });
 
-// A hung Claude call must not tie up the Worker until Cloudflare's platform
-// execution limit kills it uncontrolled - extractFields relies on the SDK's
-// own timeout enforcement (an AbortController per request, confirmed by
-// reading @anthropic-ai/sdk's client.js) rather than reimplementing one, so
-// what this pins down is the *value* actually reaching the client, since
-// that's the part that's easy to silently drop in a refactor.
-test("[sanity] the Anthropic client is constructed with ANTHROPIC_TIMEOUT_MS, shorter than Android's 60s read timeout", () => {
-  assert.equal(ANTHROPIC_TIMEOUT_MS, 20_000);
-  assert.ok(ANTHROPIC_TIMEOUT_MS < 60_000, "must be shorter than ScanApiClient's readTimeout or it's pointless");
+// A hung or failing Claude call must make exactly one attempt (#112): the SDK's
+// default of two retries stretched the Worker's worst case to about 87 s (more
+// with a Retry-After wait), past Android's 60 s read timeout. These drive
+// extractFields itself through a mocked fetch, so they prove what the client
+// built inside claude.ts does, not what a client built in the test would do.
+// The timeout is enforced by the SDK (an AbortController per request, read in
+// @anthropic-ai/sdk's client.js), so the hung case fakes only setTimeout and
+// ticks past it.
+test("[sanity] a 529 from Claude is not retried: one upstream call, then it throws", async (t) => {
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    calls++;
+    return jsonResponse({ type: "error", error: { type: "overloaded_error", message: "Overloaded" } }, 529);
+  });
 
-  const client = new Anthropic({ apiKey: "sk-ant-test", timeout: ANTHROPIC_TIMEOUT_MS });
-  assert.equal(client.timeout, ANTHROPIC_TIMEOUT_MS);
+  await assert.rejects(() => extractFields("sk-ant-test", "aGVsbG8=", "image/jpeg", config));
+  assert.equal(calls, 1);
+});
+
+test("a Claude call that never answers is abandoned at ANTHROPIC_TIMEOUT_MS and not retried", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let calls = 0;
+  t.mock.method(
+    globalThis,
+    "fetch",
+    (_url: string | URL, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        calls++;
+        init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+      }),
+  );
+
+  const outcome = extractFields("sk-ant-test", "aGVsbG8=", "image/jpeg", config).then(
+    () => "delivered",
+    () => "failed",
+  );
+  // Several timeout-lengths, so a retry (its back-off sleep, then a second attempt) would show as extra calls.
+  for (let i = 0; i < 4; i++) {
+    await new Promise((resolve) => setImmediate(resolve));
+    t.mock.timers.tick(ANTHROPIC_TIMEOUT_MS);
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(calls, 1);
+  assert.equal(await outcome, "failed");
+});
+
+test("[sanity] the Anthropic client's limits: no retries, one 20 s attempt", () => {
+  assert.equal(ANTHROPIC_MAX_RETRIES, 0);
+  assert.equal(ANTHROPIC_TIMEOUT_MS, 20_000);
 });

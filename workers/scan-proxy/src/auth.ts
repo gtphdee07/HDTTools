@@ -23,7 +23,7 @@ export interface AuthDeps {
   nowSeconds: () => number;
 }
 
-const JWKS_TIMEOUT_MS = 5_000;
+export const JWKS_TIMEOUT_MS = 5_000;
 
 const defaultAuthDeps: AuthDeps = {
   fetchJwks: async (url) => {

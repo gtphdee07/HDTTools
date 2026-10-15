@@ -50,10 +50,13 @@ not the origin, is what authorises a scan. Android is unaffected.
 **Timeouts.** Both outbound calls are bounded so a hung upstream returns a
 clean error instead of tying up the Worker until Cloudflare's platform
 execution limit kills it: the Anthropic call (`src/claude.ts`) times out at
-20s (`ANTHROPIC_TIMEOUT_MS`) — shorter than the Android client's own 60s
-read timeout, or a Worker-side timeout would never fire first. The
-RevenueCat call (`src/revenuecat.ts`) times out at 10s
-(`REVENUECAT_TIMEOUT_MS`), tighter since it's a simple ledger write.
+20s (`ANTHROPIC_TIMEOUT_MS`) and is **not retried** (`ANTHROPIC_MAX_RETRIES`
+is 0; the SDK's default retries stretched a scan past the clients' limits).
+The RevenueCat call (`src/revenuecat.ts`) times out at 10s
+(`REVENUECAT_TIMEOUT_MS`), tighter since it's a simple ledger write. With the
+5s sign-in key fetch and a 10s refund, a scan takes at most 45s, below the
+Android client's 60s read timeout and Web's 60s limit; the arithmetic is in
+`CONTEXT.md` ("Time limits") and pinned by `src/timeLimits.test.ts`.
 
 **Idempotency.** `client_request_id` is an optional, client-generated id,
 stable across retries of the same logical scan attempt (the Android app

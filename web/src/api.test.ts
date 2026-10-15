@@ -250,6 +250,12 @@ describe('a scan request that takes too long', () => {
       (err: unknown) => err,
     );
 
+  // 60 s, not a tuned number: longer than the Scan service's worst case (45 s, no Claude retries) and equal to
+  // Android's read timeout. workers/scan-proxy/src/timeLimits.test.ts checks the first against this value.
+  it('gives up on a request after 60 seconds', () => {
+    expect(SCAN_TIMEOUT_MS).toBe(60_000);
+  });
+
   it('aborts a request that never answers once the limit passes, and reports a lost response', async () => {
     const signal = waitForever();
     const outcome = settle(extractTruckTag(JPEG(), CONTEXT));

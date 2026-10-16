@@ -244,13 +244,15 @@ fun TruckTagEntryScreen(
         ScanErrorDialog(
             scanState,
             onDismiss = onDismissStandaloneScanError,
-            // A different photo is picked here, on this screen; typing the weight
-            // in is the field above, so closing the error leaves the user at it.
+            // A different photo is picked here, on this screen, behind the same
+            // gate as the Scan button (the answer just charged a Scan, so the
+            // balance may be 0 now); typing the weight in is the field above,
+            // so closing the error leaves the user at it.
             onNextStep = { step ->
                 when (step) {
                     ScanNextStep.CHOOSE_DIFFERENT_PHOTO -> {
                         onDismissStandaloneScanError()
-                        showStandaloneSourceDialog = true
+                        if (canStartScan(creditBalance)) showStandaloneSourceDialog = true else onNeedCredits()
                     }
                     ScanNextStep.TYPE_IT_IN -> onDismissStandaloneScanError()
                     else -> onScanErrorNextStep(step)

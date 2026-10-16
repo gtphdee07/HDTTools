@@ -21,25 +21,25 @@ internal val NO_WEIGHT_ERROR = ScanUiState.Error(
     listOf(ScanNextStep.TYPE_IT_IN, ScanNextStep.CHOOSE_DIFFERENT_PHOTO),
 )
 
-private fun error(message: String, vararg steps: ScanNextStep) = ScanUiState.Error(message, steps.toList())
+private fun scanError(message: String, vararg steps: ScanNextStep) = ScanUiState.Error(message, steps.toList())
 
 // The words and next steps for a failure, by its code. The Worker's own text is
 // written for developers and never shown, so an unknown code gets a message that
 // claims nothing about the charge.
 fun scanErrorFor(failure: ScanResult.Failure): ScanUiState.Error = when (failure.code) {
-    "insufficient_credits" -> error(ScanMessages.OUT_OF_SCANS, ScanNextStep.BUY_SCANS)
-    "unauthorized" -> error(ScanMessages.EXPIRED_SIGN_IN, ScanNextStep.SIGN_IN)
-    "not_signed_in" -> error(ScanMessages.NOT_SIGNED_IN, ScanNextStep.SIGN_IN)
-    "auth_unavailable" -> error(ScanMessages.AUTH_UNAVAILABLE, ScanNextStep.TRY_AGAIN)
-    "extraction_failed" -> error(ScanMessages.EXTRACTION_FAILED, ScanNextStep.TRY_AGAIN)
-    "extraction_failed_no_refund" -> error(ScanMessages.EXTRACTION_FAILED_NO_REFUND, ScanNextStep.TRY_AGAIN)
-    "billing_error" -> error(ScanMessages.BILLING_ERROR, ScanNextStep.TRY_AGAIN)
-    "bad_request" -> error(ScanMessages.BAD_REQUEST, ScanNextStep.CHOOSE_DIFFERENT_PHOTO)
-    "photo_unsendable" -> error(ScanMessages.PHOTO_UNSENDABLE, ScanNextStep.CHOOSE_DIFFERENT_PHOTO)
-    "network_error" -> error(ScanMessages.NO_CONNECTION, ScanNextStep.TRY_AGAIN)
-    "parse_error" -> error(ScanMessages.NO_ANSWER, ScanNextStep.TRY_AGAIN)
-    "timeout" -> error(ScanMessages.TOO_SLOW, ScanNextStep.TRY_AGAIN)
-    else -> error(ScanMessages.UNKNOWN)
+    "insufficient_credits" -> scanError(ScanMessages.OUT_OF_SCANS, ScanNextStep.BUY_SCANS)
+    "unauthorized" -> scanError(ScanMessages.EXPIRED_SIGN_IN, ScanNextStep.SIGN_IN)
+    "not_signed_in" -> scanError(ScanMessages.NOT_SIGNED_IN, ScanNextStep.SIGN_IN)
+    "auth_unavailable" -> scanError(ScanMessages.AUTH_UNAVAILABLE, ScanNextStep.TRY_AGAIN)
+    "extraction_failed" -> scanError(ScanMessages.EXTRACTION_FAILED, ScanNextStep.TRY_AGAIN)
+    "extraction_failed_no_refund" -> scanError(ScanMessages.EXTRACTION_FAILED_NO_REFUND, ScanNextStep.TRY_AGAIN)
+    "billing_error" -> scanError(ScanMessages.BILLING_ERROR, ScanNextStep.TRY_AGAIN)
+    "bad_request" -> scanError(ScanMessages.BAD_REQUEST, ScanNextStep.CHOOSE_DIFFERENT_PHOTO)
+    "photo_unsendable" -> scanError(ScanMessages.PHOTO_UNSENDABLE, ScanNextStep.CHOOSE_DIFFERENT_PHOTO)
+    "network_error" -> scanError(ScanMessages.NO_CONNECTION, ScanNextStep.TRY_AGAIN)
+    "parse_error" -> scanError(ScanMessages.NO_ANSWER, ScanNextStep.TRY_AGAIN)
+    "timeout" -> scanError(ScanMessages.TOO_SLOW, ScanNextStep.TRY_AGAIN)
+    else -> scanError(ScanMessages.UNKNOWN)
 }
 
 // Shows a failed Scan and brings the balance on screen up to date. After

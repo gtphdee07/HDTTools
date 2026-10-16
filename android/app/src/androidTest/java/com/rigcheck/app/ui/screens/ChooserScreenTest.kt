@@ -197,4 +197,19 @@ class ChooserScreenTest {
         composeRule.onNodeWithText("Take Photo").assertIsDisplayed()
         composeRule.onNodeWithText("Choose from Gallery").assertIsDisplayed()
     }
+
+    @Test
+    fun choosingADifferentPhotoWithNoScansLeftGoesToThePaywallInsteadOfTheSourceChoice() {
+        var neededCredits = false
+        setChooser(
+            creditBalance = 0,
+            scanState = failed("bad_request"),
+            onNeedCredits = { neededCredits = true },
+        )
+
+        composeRule.onNodeWithText("Choose a different photo").performClick()
+
+        assert(neededCredits) { "onNeedCredits should have fired for a 0-credit user" }
+        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+    }
 }

@@ -151,13 +151,14 @@ fun ChooserScreen(
             scanState,
             onDismiss = onDismissScanError,
             // A different photo is picked here, on this screen: close the error
-            // and offer the same Take Photo / Choose from Gallery choice again.
+            // and start a Scan the way the Scan Photo button does (the photo
+            // source choice, or the paywall with no balance left).
             // Typing the numbers in is the Enter Manually button beneath it.
             onNextStep = { step ->
                 when (step) {
                     ScanNextStep.CHOOSE_DIFFERENT_PHOTO -> {
                         onDismissScanError()
-                        showSourceDialog = true
+                        if (canStartScan(creditBalance)) showSourceDialog = true else onNeedCredits()
                     }
                     ScanNextStep.TYPE_IT_IN -> onDismissScanError()
                     else -> onScanErrorNextStep(step)

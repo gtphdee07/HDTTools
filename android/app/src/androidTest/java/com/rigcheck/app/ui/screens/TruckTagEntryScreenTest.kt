@@ -305,6 +305,7 @@ class TruckTagEntryScreenTest {
                 onContinue = {},
                 scanState = NO_WEIGHT_ERROR,
                 onDismissStandaloneScanError = { dismissed = true },
+                creditBalance = 3,
                 onScanErrorNextStep = { steps += it },
             )
         }
@@ -315,6 +316,28 @@ class TruckTagEntryScreenTest {
         assertEquals(emptyList<ScanNextStep>(), steps)
         composeRule.onNodeWithText("Take Photo").assertIsDisplayed()
         composeRule.onNodeWithText("Choose from Gallery").assertIsDisplayed()
+    }
+
+    // The no-weight answer charged a Scan, so the balance may now be 0: a different
+    // photo goes through the same gate as the Scan button, to the paywall.
+    @Test
+    fun choosingADifferentPhotoWithNoScansLeftGoesToThePaywallInsteadOfTheSourceChoice() {
+        var neededCredits = false
+        composeRule.setContent {
+            TruckTagEntryScreen(
+                truck = TruckTag(),
+                onTruckChange = {},
+                onContinue = {},
+                scanState = NO_WEIGHT_ERROR,
+                creditBalance = 0,
+                onNeedCredits = { neededCredits = true },
+            )
+        }
+
+        composeRule.onNodeWithText("Choose a different photo").performClick()
+
+        assert(neededCredits) { "onNeedCredits should have fired for a 0-credit user" }
+        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
     }
 
     // The error a failed Scan with this code shows, as the app builds it.

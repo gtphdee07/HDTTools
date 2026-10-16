@@ -441,7 +441,8 @@ network involved:
   Photo with 0 credits calls `onNeedCredits` instead; Enter Manually
   fires `onChooseManual`; a scan error shows the error dialog with its
   message and dismisses on OK, and (#117) a bad request or a photo that cannot
-  be sent offers a different photo and not Try again.
+  be sent offers a different photo and not Try again, and a different photo with
+  no Scans left goes to the paywall instead of the photo choice.
 - `CreditBalanceChipTest` — null shows the "…" not-yet-loaded
   placeholder; 0/1/5 use correct singular/plural wording; `onClick`
   fires when provided.

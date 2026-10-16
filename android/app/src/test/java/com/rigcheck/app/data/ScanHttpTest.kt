@@ -172,18 +172,12 @@ class ScanHttpTest {
     @Test
     fun `ok false with no code is a failure, not a success`() {
         reply(500, """{"ok":false}""")
-
-        val result = scan()
-
-        assertTrue("expected a Failure, got $result", result is ScanResult.Failure)
+        assertFailure("unknown_error", "Unknown error.")
     }
 
     @Test
     fun `a reply with no ok at all is a failure, not a success`() {
         reply(200, """{"fields":{"vin":"1"}}""")
-
-        val result = scan()
-
-        assertTrue("expected a Failure, got $result", result is ScanResult.Failure)
+        assertFailure("unknown_error", "Unknown error.")
     }
 }

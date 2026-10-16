@@ -51,6 +51,7 @@ internal fun buildScanRequest(
     imageBase64: String,
     mediaType: String,
     clientRequestId: String?,
+    endpoint: String = SCAN_ENDPOINT,
 ): Request {
     val requestJson = buildJsonObject {
         put("doc_type", module.toDocType())
@@ -59,18 +60,20 @@ internal fun buildScanRequest(
         clientRequestId?.let { put("client_request_id", it) }
     }
     return Request.Builder()
-        .url(SCAN_ENDPOINT)
+        .url(endpoint)
         .header("Authorization", "Bearer $accessToken")
         .post(requestJson.toString().toRequestBody(JSON_MEDIA_TYPE))
         .build()
 }
 
 object ScanApiClient {
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .build()
-    private val json = Json { ignoreUnknownKeys = true }
+    private val http = ScanHttp(
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .build(),
+        SCAN_ENDPOINT,
+    )
 
     // No client-side auto-retry on failure, deliberately - the Worker
     // already charges-then-refunds server-side; a client retry after a
@@ -85,8 +88,36 @@ object ScanApiClient {
         // lost/timed-out response. Optional and omittable: absent falls
         // back to the Worker's own random-key behavior.
         clientRequestId: String? = null,
+    ): ScanResult = http.scan(accessToken, module, imageBase64, mediaType, clientRequestId)
+}
+
+private val replyJson = Json { ignoreUnknownKeys = true }
+
+// Any reply that is not the Worker's documented shape is a parse_error. It
+// must never throw: a throw inside the OkHttp callback would leave the scan
+// waiting for an answer that never comes.
+internal fun readScanReply(body: String): ScanResult = runCatching {
+    val parsed = replyJson.parseToJsonElement(body).jsonObject
+    if (parsed["ok"]?.jsonPrimitive?.boolean ?: false) {
+        ScanResult.Success(parsed["fields"]?.jsonObject ?: JsonObject(emptyMap()))
+    } else {
+        val code = parsed["code"]?.jsonPrimitive?.contentOrNull ?: "unknown_error"
+        val message = parsed["message"]?.jsonPrimitive?.contentOrNull ?: "Unknown error."
+        ScanResult.Failure(code, message)
+    }
+}.getOrElse { ScanResult.Failure("parse_error", "Could not parse the server's response.") }
+
+// The send-and-read half of the client, with the HTTP client and endpoint
+// passed in so tests can point it at a fake server.
+internal class ScanHttp(private val client: OkHttpClient, private val endpoint: String) {
+    suspend fun scan(
+        accessToken: String,
+        module: EntryModule,
+        imageBase64: String,
+        mediaType: String,
+        clientRequestId: String?,
     ): ScanResult {
-        val request = buildScanRequest(accessToken, module, imageBase64, mediaType, clientRequestId)
+        val request = buildScanRequest(accessToken, module, imageBase64, mediaType, clientRequestId, endpoint)
 
         return suspendCancellableCoroutine { continuation ->
             val call = client.newCall(request)
@@ -99,20 +130,7 @@ object ScanApiClient {
                 override fun onResponse(call: Call, response: Response) {
                     response.use { resp ->
                         val bodyString = resp.body?.string().orEmpty()
-                        val parsed = runCatching { json.parseToJsonElement(bodyString).jsonObject }.getOrNull()
-                        if (parsed == null) {
-                            continuation.resume(ScanResult.Failure("parse_error", "Could not parse the server's response."))
-                            return
-                        }
-                        val ok = parsed["ok"]?.jsonPrimitive?.boolean ?: false
-                        if (ok) {
-                            val fields = parsed["fields"]?.jsonObject ?: JsonObject(emptyMap())
-                            continuation.resume(ScanResult.Success(fields))
-                        } else {
-                            val code = parsed["code"]?.jsonPrimitive?.contentOrNull ?: "unknown_error"
-                            val message = parsed["message"]?.jsonPrimitive?.contentOrNull ?: "Unknown error."
-                            continuation.resume(ScanResult.Failure(code, message))
-                        }
+                        continuation.resume(readScanReply(bodyString))
                     }
                 }
             })

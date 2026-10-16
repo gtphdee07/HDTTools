@@ -4,6 +4,9 @@ interface FieldDef {
   name: string;
   label: string;
   type: FieldType;
+  // Not something a Scan of this document is expected to fill (the label says "optional"), so a Scan that
+  // leaves it blank has not missed anything.
+  optional?: boolean;
 }
 
 export interface ModuleDef {
@@ -27,7 +30,7 @@ export const MODULES: Record<1 | 2 | 3, ModuleDef> = {
       { name: 'gvwr_lb', label: 'GVWR (lb)', type: 'number' },
       { name: 'front_gawr_lb', label: 'Front GAWR (lb)', type: 'number' },
       { name: 'rear_gawr_lb', label: 'Rear GAWR (lb)', type: 'number' },
-      { name: 'standalone_weight_lb', label: 'Stand-alone Weight (lb, optional)', type: 'number' },
+      { name: 'standalone_weight_lb', label: 'Stand-alone Weight (lb, optional)', type: 'number', optional: true },
     ],
   },
   2: {
@@ -40,7 +43,7 @@ export const MODULES: Record<1 | 2 | 3, ModuleDef> = {
       { name: 'manufacturer', label: 'Manufacturer', type: 'text' },
       { name: 'gvwr_lb', label: 'GVWR (lb)', type: 'number' },
       { name: 'gawr_per_axle_lb', label: 'GAWR per axle (lb)', type: 'number' },
-      { name: 'axle_count', label: 'Axle Count (optional, defaults to 2)', type: 'number' },
+      { name: 'axle_count', label: 'Axle Count (optional, defaults to 2)', type: 'number', optional: true },
       { name: 'uvw_lb', label: 'Unloaded Weight / UVW (lb)', type: 'number' },
     ],
   },

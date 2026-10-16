@@ -37,10 +37,13 @@ import androidx.compose.ui.unit.dp
 import com.rigcheck.app.R
 import com.rigcheck.app.data.createScanPhotoUri
 import com.rigcheck.app.domain.model.TruckTag
+import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanUiState
+import com.rigcheck.app.ui.canStartScan
 import com.rigcheck.app.ui.components.LabeledNumberField
 import com.rigcheck.app.ui.components.LabeledTextField
 import com.rigcheck.app.ui.components.ReferenceImageCard
+import com.rigcheck.app.ui.components.ScanErrorDialog
 import com.rigcheck.app.ui.components.StepProgressBar
 import kotlin.math.roundToInt
 
@@ -54,6 +57,9 @@ fun TruckTagEntryScreen(
     scanState: ScanUiState = ScanUiState.Idle,
     onScanStandaloneTicket: (Uri) -> Unit = {},
     onDismissStandaloneScanError: () -> Unit = {},
+    creditBalance: Int? = null,
+    onNeedCredits: () -> Unit = {},
+    onScanErrorNextStep: (ScanNextStep) -> Unit = {},
 ) {
     var showStandaloneInfo by remember { mutableStateOf(false) }
     var showStandaloneSourceDialog by remember { mutableStateOf(false) }
@@ -174,7 +180,10 @@ fun TruckTagEntryScreen(
                     modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
                 )
                 OutlinedButton(
-                    onClick = { showStandaloneSourceDialog = true },
+                    // Same gate as the main Scan Photo button: no balance above
+                    // zero (signed out, or none left) goes to the paywall, which
+                    // asks for sign-in first - before any photo is taken.
+                    onClick = { if (canStartScan(creditBalance)) showStandaloneSourceDialog = true else onNeedCredits() },
                     modifier = Modifier.testTag("scan_standalone_ticket"),
                 ) {
                     Text(if (scanState is ScanUiState.Loading) "Reading…" else "Scan tow-vehicle-only ticket")
@@ -232,11 +241,6 @@ fun TruckTagEntryScreen(
     }
 
     if (scanState is ScanUiState.Error) {
-        AlertDialog(
-            onDismissRequest = onDismissStandaloneScanError,
-            confirmButton = { TextButton(onClick = onDismissStandaloneScanError) { Text("OK") } },
-            title = { Text("Scan failed") },
-            text = { Text(scanState.message) },
-        )
+        ScanErrorDialog(scanState, onDismiss = onDismissStandaloneScanError, onNextStep = onScanErrorNextStep)
     }
 }

@@ -19,6 +19,7 @@ import androidx.navigation.toRoute
 import com.rigcheck.app.data.APPLE_SIGN_IN_ENABLED
 import com.rigcheck.app.data.AccountState
 import com.rigcheck.app.ui.RigCheckViewModel
+import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.screens.AccountScreen
 import com.rigcheck.app.ui.screens.ChooserScreen
 import com.rigcheck.app.ui.screens.DisclaimerScreen
@@ -45,6 +46,22 @@ fun RigCheckNavHost(
         val destination = if (viewModel.disclaimerAcknowledged) RigCheckRoute.Results else RigCheckRoute.Disclaimer
         navController.navigate(destination) {
             popUpTo(RigCheckRoute.RigPicker) { inclusive = false }
+        }
+    }
+
+    // What a failed Scan's dialog offers beyond OK. Both ways forward end at the
+    // Paywall route, which shows the sign-in screen to a signed-out user. A
+    // user the Worker refused is still signed in here, so that session is ended
+    // first, as Web does for its "Sign in again".
+    fun followScanNextStep(step: ScanNextStep) {
+        viewModel.clearScanError()
+        when (step) {
+            ScanNextStep.SIGN_IN -> {
+                if (accountState is AccountState.SignedIn) viewModel.signOut()
+                navController.navigate(RigCheckRoute.Paywall)
+            }
+            ScanNextStep.BUY_SCANS -> navController.navigate(RigCheckRoute.Paywall)
+            ScanNextStep.NONE -> Unit
         }
     }
 
@@ -88,6 +105,7 @@ fun RigCheckNavHost(
                 onNeedCredits = { navController.navigate(RigCheckRoute.Paywall) },
                 onOpenPaywall = { navController.navigate(RigCheckRoute.Paywall) },
                 onDismissScanError = { viewModel.clearScanError() },
+                onScanErrorNextStep = ::followScanNextStep,
             )
         }
 
@@ -134,6 +152,9 @@ fun RigCheckNavHost(
                     viewModel.performStandaloneScan(context.contentResolver, uri) {}
                 },
                 onDismissStandaloneScanError = { viewModel.clearScanError() },
+                creditBalance = viewModel.creditBalance,
+                onNeedCredits = { navController.navigate(RigCheckRoute.Paywall) },
+                onScanErrorNextStep = ::followScanNextStep,
             )
         }
 

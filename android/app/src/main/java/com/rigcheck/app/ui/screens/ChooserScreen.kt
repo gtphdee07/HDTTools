@@ -25,8 +25,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.data.createScanPhotoUri
+import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanUiState
+import com.rigcheck.app.ui.canStartScan
 import com.rigcheck.app.ui.components.CreditBalanceChip
+import com.rigcheck.app.ui.components.ScanErrorDialog
 import com.rigcheck.app.ui.components.ScanOrManualChooser
 import com.rigcheck.app.ui.components.StepProgressBar
 import com.rigcheck.app.ui.navigation.EntryModule
@@ -49,6 +52,7 @@ fun ChooserScreen(
     onNeedCredits: () -> Unit,
     onOpenPaywall: () -> Unit,
     onDismissScanError: () -> Unit,
+    onScanErrorNextStep: (ScanNextStep) -> Unit,
 ) {
     val copy = copyFor(module)
     val context = LocalContext.current
@@ -95,7 +99,7 @@ fun ChooserScreen(
             )
             ScanOrManualChooser(
                 onScanPhoto = {
-                    if ((creditBalance ?: 0) > 0) {
+                    if (canStartScan(creditBalance)) {
                         showSourceDialog = true
                     } else {
                         onNeedCredits()
@@ -143,11 +147,6 @@ fun ChooserScreen(
     }
 
     if (scanState is ScanUiState.Error) {
-        AlertDialog(
-            onDismissRequest = onDismissScanError,
-            confirmButton = { TextButton(onClick = onDismissScanError) { Text("OK") } },
-            title = { Text("Scan failed") },
-            text = { Text(scanState.message) },
-        )
+        ScanErrorDialog(scanState, onDismiss = onDismissScanError, onNextStep = onScanErrorNextStep)
     }
 }

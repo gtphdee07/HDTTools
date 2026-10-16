@@ -3,9 +3,11 @@ package com.rigcheck.app.ui.navigation
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -151,6 +153,30 @@ class RigCheckNavHostTest {
         pressBack()
 
         composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
+    }
+
+    // The "Scan tow-vehicle-only ticket" button had no gate: a signed-out tap
+    // opened the camera and only failed afterwards with a dead-end "Sign in to
+    // scan." dialog. Offline (CustomTestRunner) there is no balance and no
+    // account, so the tap must land on the sign-in screen with no photo
+    // source offered, and "Not now" must return to the Truck Tag form.
+    @Test
+    fun standaloneTicketScanWhileSignedOutGoesToSignInBeforeAnyPhotoSource() {
+        composeRule.setContent { RigCheckNavHost() }
+
+        composeRule.onNodeWithText("Rig nickname").performTextInput("Tow Only")
+        composeRule.onNodeWithText("Create").performClick()
+        composeRule.onNodeWithText("Enter Manually").performClick()
+        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("scan_standalone_ticket").performScrollTo().performClick()
+
+        composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
+        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+
+        composeRule.onNodeWithText("Not now").performClick()
+
+        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
     }
 
     // The free flow must never be gated: a full manual check reaches

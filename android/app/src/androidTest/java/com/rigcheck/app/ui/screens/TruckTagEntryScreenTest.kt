@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.domain.model.TruckTag
+import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanUiState
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -78,15 +79,57 @@ class TruckTagEntryScreenTest {
     }
 
     @Test
-    fun scanStandaloneTicketButtonOpensTheSourceChoiceDialog() {
+    fun scanStandaloneTicketButtonWithCreditsOpensTheSourceChoiceDialog() {
         composeRule.setContent {
-            TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {})
+            TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {}, creditBalance = 3)
         }
 
         composeRule.onNodeWithTag("scan_standalone_ticket").performScrollTo().performClick()
 
         composeRule.onNodeWithText("Take Photo").assertIsDisplayed()
         composeRule.onNodeWithText("Choose from Gallery").assertIsDisplayed()
+    }
+
+    // The same gate as the main Scan Photo button: no balance above zero (none
+    // loaded, which is what a signed-out user has, or none left) goes to
+    // onNeedCredits, which opens the paywall - or sign-in first when signed
+    // out - before any camera or gallery is offered.
+    @Test
+    fun scanStandaloneTicketButtonWithZeroCreditsCallsOnNeedCreditsInsteadOfShowingTheDialog() {
+        var neededCredits = false
+        composeRule.setContent {
+            TruckTagEntryScreen(
+                truck = TruckTag(),
+                onTruckChange = {},
+                onContinue = {},
+                creditBalance = 0,
+                onNeedCredits = { neededCredits = true },
+            )
+        }
+
+        composeRule.onNodeWithTag("scan_standalone_ticket").performScrollTo().performClick()
+
+        assert(neededCredits) { "onNeedCredits should have fired for a 0-credit user" }
+        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+    }
+
+    @Test
+    fun scanStandaloneTicketButtonWithNoBalanceLoadedCallsOnNeedCreditsInsteadOfShowingTheDialog() {
+        var neededCredits = false
+        composeRule.setContent {
+            TruckTagEntryScreen(
+                truck = TruckTag(),
+                onTruckChange = {},
+                onContinue = {},
+                creditBalance = null,
+                onNeedCredits = { neededCredits = true },
+            )
+        }
+
+        composeRule.onNodeWithTag("scan_standalone_ticket").performScrollTo().performClick()
+
+        assert(neededCredits) { "onNeedCredits should have fired when no balance is loaded" }
+        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
     }
 
     @Test
@@ -104,9 +147,49 @@ class TruckTagEntryScreenTest {
 
         composeRule.onNodeWithText("Scan failed").assertIsDisplayed()
         composeRule.onNodeWithText("Could not read the image.").assertIsDisplayed()
+        composeRule.onNodeWithText("Sign in").assertDoesNotExist()
+        composeRule.onNodeWithText("Buy scans").assertDoesNotExist()
 
         composeRule.onNodeWithText("OK").performClick()
 
         assert(dismissed) { "onDismissStandaloneScanError should have fired" }
+    }
+
+    @Test
+    fun standaloneScanErrorThatNeedsASignInOffersItAndPassesTheStepOn() {
+        val steps = mutableListOf<ScanNextStep>()
+        composeRule.setContent {
+            TruckTagEntryScreen(
+                truck = TruckTag(),
+                onTruckChange = {},
+                onContinue = {},
+                scanState = ScanUiState.Error("Your sign-in has expired. Sign in again to scan.", ScanNextStep.SIGN_IN),
+                onScanErrorNextStep = { steps += it },
+            )
+        }
+
+        composeRule.onNodeWithText("Your sign-in has expired. Sign in again to scan.").assertIsDisplayed()
+        composeRule.onNodeWithText("Sign in").performClick()
+
+        assertEquals(listOf(ScanNextStep.SIGN_IN), steps)
+    }
+
+    @Test
+    fun standaloneScanErrorWithNoScansLeftOffersBuyingScans() {
+        val steps = mutableListOf<ScanNextStep>()
+        composeRule.setContent {
+            TruckTagEntryScreen(
+                truck = TruckTag(),
+                onTruckChange = {},
+                onContinue = {},
+                scanState = ScanUiState.Error("You're out of scans.", ScanNextStep.BUY_SCANS),
+                onScanErrorNextStep = { steps += it },
+            )
+        }
+
+        composeRule.onNodeWithText("You're out of scans.").assertIsDisplayed()
+        composeRule.onNodeWithText("Buy scans").performClick()
+
+        assertEquals(listOf(ScanNextStep.BUY_SCANS), steps)
     }
 }

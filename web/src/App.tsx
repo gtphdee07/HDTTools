@@ -5,6 +5,7 @@ import { extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
 import type { ScanContext } from './api';
 import { ScanError, needsDifferentPhoto, photoRefused } from './scanError';
 import { ScanAttempts } from './scanAttempts';
+import { scanNoticeFor } from './scanNotice';
 import { useScanAccess } from './scanAccess';
 import type { ScanAccess } from './scanAccess';
 import { useBilling } from './billing';
@@ -40,6 +41,7 @@ const EMPTY_WIZARD: WizardState = {
   pendingFile: null,
   uploadError: null,
   uploadErrorCode: null,
+  scanNotice: null,
   pinWeightPct: 20,
 };
 
@@ -195,7 +197,9 @@ function App() {
             : await scan(file, extractScaleTicket);
       // The scan was paid for, but the check it was for is gone: the new one is left as it is.
       if (check !== currentCheck.current) return;
-      setWizard((w) => ({ ...w, [moduleKey]: extracted, subStep: 'review', pendingFile: null }));
+      // The Scan was charged however much of the photo was read, so a partial or blank read says so (not a failure).
+      const scanNotice = scanNoticeFor(currentModule, extracted as Record<string, unknown>);
+      setWizard((w) => ({ ...w, [moduleKey]: extracted, subStep: 'review', pendingFile: null, scanNotice }));
     } catch (err) {
       if (check !== currentCheck.current) return;
       const code = err instanceof ScanError ? err.code : null;
@@ -218,8 +222,21 @@ function App() {
   const skipCurrent = () => {
     if (!currentModule) return;
     const moduleKey = currentModule.key;
-    setWizard((w) => ({ ...w, [moduleKey]: {}, subStep: 'review', pendingFile: null, uploadError: null, uploadErrorCode: null }));
+    setWizard((w) => ({
+      ...w,
+      [moduleKey]: {},
+      subStep: 'review',
+      pendingFile: null,
+      uploadError: null,
+      uploadErrorCode: null,
+      scanNotice: null,
+    }));
   };
+
+  // From the review step of a Scan that read nothing: back to the photo step. Nothing is sent from here;
+  // a new photo is a new Scan the user starts with Extract Data.
+  const chooseDifferentPhoto = () =>
+    setWizard((w) => ({ ...w, subStep: 'upload', pendingFile: null, uploadError: null, uploadErrorCode: null, scanNotice: null }));
 
   // Reuses the scale-ticket OCR pipeline for a tow-vehicle-only ticket -
   // same CAT ticket format, just without a trailer-axle line - and maps
@@ -256,7 +273,15 @@ function App() {
   const continueReview = async () => {
     const nextStep = wizard.step + 1;
     if (nextStep !== 4) {
-      setWizard((w) => ({ ...w, step: nextStep, subStep: 'upload', pendingFile: null, uploadError: null, uploadErrorCode: null }));
+      setWizard((w) => ({
+        ...w,
+        step: nextStep,
+        subStep: 'upload',
+        pendingFile: null,
+        uploadError: null,
+        uploadErrorCode: null,
+        scanNotice: null,
+      }));
       return;
     }
 
@@ -412,6 +437,8 @@ function App() {
                 module={currentModule}
                 data={wizard[currentModule.key] as Record<string, unknown>}
                 error={wizard.uploadError}
+                scanNotice={wizard.scanNotice}
+                onChooseDifferentPhoto={chooseDifferentPhoto}
                 onFieldChange={(name, isNumber, value) => updateField(currentModule.key, name, isNumber, value)}
                 onContinue={continueReview}
                 {...(currentModule.key === 'truck'

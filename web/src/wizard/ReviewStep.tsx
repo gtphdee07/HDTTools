@@ -4,11 +4,17 @@ import { Button } from '../design-system/Button';
 import { ScanGate } from '../components/ScanGate';
 import { ScanError } from '../scanError';
 import type { ScanAccess } from '../scanAccess';
+import { scanNoticeText } from '../scanNotice';
+import type { ScanNotice } from '../scanNotice';
 
 interface ReviewStepProps {
   module: ModuleDef;
   data: Record<string, unknown>;
   error: string | null;
+  // Set when this step was reached from a Scan that did not fill every field; left out otherwise.
+  scanNotice?: ScanNotice | null;
+  // Offered with the notice for a Scan that read nothing: back to the photo step, without sending anything.
+  onChooseDifferentPhoto?: () => void;
   onFieldChange: (name: string, isNumber: boolean, value: string) => void;
   onContinue: () => void;
   // Truck-step-only extras (per the "fold it into the Truck Tag step"
@@ -28,6 +34,8 @@ export function ReviewStep({
   module,
   data,
   error,
+  scanNotice,
+  onChooseDifferentPhoto,
   onFieldChange,
   onContinue,
   pinWeightPct,
@@ -85,6 +93,27 @@ export function ReviewStep({
       <p style={{ color: 'var(--fg-2)', fontSize: 'var(--text-body-lg)', margin: '0 0 24px' }}>
         Here's what we read off your photo. Fix anything that looks off before we do the math.
       </p>
+      {scanNotice && (
+        <div
+          style={{
+            background: 'var(--color-tint-purple)',
+            color: 'var(--fg-1)',
+            borderRadius: 12,
+            padding: '12px 16px',
+            marginBottom: 24,
+            fontSize: 14,
+          }}
+        >
+          <p style={{ margin: 0 }}>{scanNoticeText(scanNotice)}</p>
+          {scanNotice.kind === 'nothing-read' && onChooseDifferentPhoto && (
+            <div style={{ marginTop: 10 }}>
+              <Button variant="secondary" size="sm" onClick={onChooseDifferentPhoto}>
+                Choose a different photo
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginBottom: 24 }}>
         {module.fields.map((f) => {
           const raw = data[f.name];

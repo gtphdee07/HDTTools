@@ -1,3 +1,4 @@
+import type { ScanNotice } from './scanNotice';
 import type { ScanErrorCode } from './scanError';
 
 interface TireSpec {
@@ -96,6 +97,9 @@ export interface WizardState {
   uploadError: string | null;
   // Which kind of Scan failure `uploadError` came from, when it came from one.
   uploadErrorCode: ScanErrorCode | null;
+  // Set when a Scan landed on the review step without every field filled; null for a full read and for a
+  // skipped photo (no Scan was used).
+  scanNotice: ScanNotice | null;
   // Whole percentage points (15-25), not a 0-1 fraction - converted when
   // calling createBreakdown. Only used when truck.standalone_weight_lb
   // isn't known from a real tow-vehicle-only scale reading.

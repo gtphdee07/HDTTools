@@ -9,6 +9,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -27,11 +29,35 @@ class RigCheckNavHostTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
-    // The system Back button. These tests type a nickname first, and an open
-    // keyboard takes the first Back for itself (it closes, nothing navigates),
-    // so a Back pressed before the keyboard has gone is a flaky navigation
-    // test. Closing it first makes Back always mean "go back" (a no-op if no
-    // keyboard is open).
+    // Types into the "Rig nickname" field and leaves the soft keyboard fully
+    // closed. Typing focuses the field, which asks the IME to show; on a
+    // freshly booted emulator Gboard takes seconds to bring its window up. If
+    // the test moves on meanwhile, the hide it sends is lost, the keyboard
+    // appears over a later screen and takes the first Back for itself (it
+    // closes, nothing navigates). closeSoftKeyboard alone cannot help: it only
+    // checks the app's own view of the keyboard, which still says hidden while
+    // the show is in flight (#125). So wait until the keyboard is really up,
+    // close it, and wait until it is really gone. Any test that types and later
+    // presses Back must enter text through this.
+    private fun enterNickname(nickname: String) {
+        composeRule.onNodeWithText("Rig nickname").performTextInput(nickname)
+        composeRule.waitUntil(timeoutMillis = 30_000) { isKeyboardVisible() }
+        closeSoftKeyboard()
+        composeRule.waitUntil(timeoutMillis = 30_000) { !isKeyboardVisible() }
+    }
+
+    private fun isKeyboardVisible(): Boolean {
+        var visible = false
+        composeRule.runOnUiThread {
+            visible = ViewCompat.getRootWindowInsets(composeRule.activity.window.decorView)
+                ?.isVisible(WindowInsetsCompat.Type.ime()) == true
+        }
+        return visible
+    }
+
+    // The system Back button. With enterNickname() the keyboard is already
+    // closed, so this closeSoftKeyboard is only a safety net for a test that
+    // opens the keyboard some other way.
     private fun goBack() {
         closeSoftKeyboard()
         pressBack()
@@ -40,7 +66,7 @@ class RigCheckNavHostTest {
     // The Next / Check Weights buttons are pinned below each entry form's
     // scrolling area, so they are always on screen and need no scrolling.
     private fun goThroughManualEntryFlow(nickname: String) {
-        composeRule.onNodeWithText("Rig nickname").performTextInput(nickname)
+        enterNickname(nickname)
         composeRule.onNodeWithText("Create").performClick()
 
         composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
@@ -128,7 +154,7 @@ class RigCheckNavHostTest {
     fun scanPhotoWithoutCreditsRoutesToPaywallAndBackReturnsToChooser() {
         composeRule.setContent { RigCheckNavHost() }
 
-        composeRule.onNodeWithText("Rig nickname").performTextInput("Zoomer")
+        enterNickname("Zoomer")
         composeRule.onNodeWithText("Create").performClick()
         composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
 
@@ -152,7 +178,7 @@ class RigCheckNavHostTest {
     fun creditChipTapOpensPaywallDirectlyAndBackReturnsToChooser() {
         composeRule.setContent { RigCheckNavHost() }
 
-        composeRule.onNodeWithText("Rig nickname").performTextInput("Chip Test")
+        enterNickname("Chip Test")
         composeRule.onNodeWithText("Create").performClick()
         composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
 
@@ -175,7 +201,7 @@ class RigCheckNavHostTest {
     fun standaloneTicketScanWhileSignedOutGoesToSignInBeforeAnyPhotoSource() {
         composeRule.setContent { RigCheckNavHost() }
 
-        composeRule.onNodeWithText("Rig nickname").performTextInput("Tow Only")
+        enterNickname("Tow Only")
         composeRule.onNodeWithText("Create").performClick()
         composeRule.onNodeWithText("Enter Manually").performClick()
         composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
@@ -199,7 +225,7 @@ class RigCheckNavHostTest {
     fun notNowOnTheSignInScreenReturnsToTheChooser() {
         composeRule.setContent { RigCheckNavHost() }
 
-        composeRule.onNodeWithText("Rig nickname").performTextInput("Maybe Later")
+        enterNickname("Maybe Later")
         composeRule.onNodeWithText("Create").performClick()
         composeRule.onNodeWithText("Scan Photo").performClick()
         composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()

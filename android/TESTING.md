@@ -196,11 +196,11 @@ per-class gaps for real (measured before/after, not estimated):
   chip (`onOpenPaywall`) each separately drive `RigCheckRoute.Paywall`
   for the first time, with the system back button confirmed (on a real
   device) to return cleanly to the Chooser screen it came from.
-  **One real flake observed, not reproduced since**: on the first full
+  **One real flake observed here, explained in #125**: on the first full
   4-test run, `creditChipTapOpensPaywallDirectlyAndBackReturnsToChooser`
   failed a `pressBack()` assertion once; the same 4 tests then passed
-  cleanly on 3 immediate reruns with no code change. Left as-is —
-  documented here rather than chased further, since it didn't reproduce.
+  cleanly on 3 immediate reruns with no code change. Cause and fix: see
+  "Why the nav tests flaked (#125)" under *Navigation-flow tests* below.
 - **`com.rigcheck.app.ui.components` — 89% → 97%** (238/2,172 → 53/2,172
   missed). `ReferenceImageCardKt`: **57% → 100%** (148/352 → 0/352
   missed); its pointer-input gesture lambda
@@ -502,6 +502,52 @@ third checks "Not now" returns to the Chooser).
   and tapping the credit chip directly (`onOpenPaywall`), each a
   separate call site in `RigCheckNavHost.kt`. Both confirm the system
   back button returns to the Chooser screen it came from.
+
+**Why the nav tests flaked (#125).** `creditChipTapOpensPaywallDirectlyAndBackReturnsToChooser`
+and its sibling `scanPhotoWithoutCreditsRoutesToPaywallAndBackReturnsToChooser`
+failed with `'Truck Tag' ... is not displayed` on the line after `pressBack()`.
+It was the test, not the app: **the injected Back never reached navigation,
+the soft keyboard took it.**
+
+- *What fails.* Every nav test types a nickname first. Typing focuses the
+  field, which asks the IME to show the keyboard. On a freshly booted
+  emulator Gboard is slow to start, and its window can appear 2-3 s after
+  the request, after the test has already pressed Create and moved on. The
+  app's own state says "keyboard hidden" the whole time (the insets API
+  and `closeSoftKeyboard()` both read it), so `closeSoftKeyboard()` does
+  nothing, the late keyboard appears over the Paywall, and the Back press is
+  spent closing it. The screen then stays on the sign-in screen (checked 3 s
+  later: activity `RESUMED`, not finishing, still the sign-in texts).
+- *Why only sometimes.* It depends on how slow the keyboard is that run:
+  a warm emulator brings it up in under a second and never fails; right
+  after a cold boot the first 5 class runs gave 3 passes, 1 failure of this
+  kind and 1 emulator crash, and 6 of 6 runs of the single test failed with
+  a probe that added a little time before Back. It
+  hit full or multi-class runs on a fresh emulator, never a single test run
+  on a warm one, which is the pattern #79, #116 and #117 saw. The #117
+  `goBack()` helper fixed the same family (Back with the keyboard visibly
+  open) but could not fix this one, because here the keyboard is not yet
+  visible when `closeSoftKeyboard()` runs.
+- *What showed it.* Cold-booting the emulator before each run (the loop that
+  turned the flake red), then `adb logcat`: `ImeTracker` shows the show
+  request, then `closeSoftKeyboard` ending in `PHASE_CLIENT_ALREADY_HIDDEN`,
+  then the key event, then Gboard's `onWindowShown` about 100 ms *after* the
+  Back and an `ImeTracker ... HIDE_SOFT_INPUT_REQUEST_HIDE_WITH_CONTROL
+  fromUser true` (the keyboard handling Back). Adding a 6 s sleep before
+  Back made the test pass 4 of 4 cold runs, which confirmed the cause.
+- *The fix.* `enterNickname()` in the test: type, wait until the keyboard is
+  really visible, close it, wait until it is really gone. Back then always
+  means "go back". Use it in any nav test that types and later presses Back.
+  No assertion changed. After the fix: `RigCheckNavHostTest` passed 6 of 6
+  cold-boot runs and 10 of 10 warm runs, and the full offline suite (97
+  tests) passed 5 of 5 runs, each after a cold emulator boot. Two things
+  that do NOT work: `performTextReplacement`
+  (it also focuses the field and shows the keyboard), and `closeSoftKeyboard()`
+  alone.
+- *Not this flake.* A run that dies mid-way with `INSTRUMENTATION_ABORTED`,
+  `System has crashed` or `Can't find service: activity` is the emulator
+  itself falling over (seen right after a cold boot with ANRs in Google
+  apps). Read the failure text before counting a run.
 
 **Test-support tests** (`testsupport/`) — real-network-free coverage for
 infrastructure the External suite below depends on:

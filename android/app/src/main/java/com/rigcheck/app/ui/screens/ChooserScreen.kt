@@ -147,6 +147,22 @@ fun ChooserScreen(
     }
 
     if (scanState is ScanUiState.Error) {
-        ScanErrorDialog(scanState, onDismiss = onDismissScanError, onNextStep = onScanErrorNextStep)
+        ScanErrorDialog(
+            scanState,
+            onDismiss = onDismissScanError,
+            // A different photo is picked here, on this screen: close the error
+            // and offer the same Take Photo / Choose from Gallery choice again.
+            // Typing the numbers in is the Enter Manually button beneath it.
+            onNextStep = { step ->
+                when (step) {
+                    ScanNextStep.CHOOSE_DIFFERENT_PHOTO -> {
+                        onDismissScanError()
+                        showSourceDialog = true
+                    }
+                    ScanNextStep.TYPE_IT_IN -> onDismissScanError()
+                    else -> onScanErrorNextStep(step)
+                }
+            },
+        )
     }
 }

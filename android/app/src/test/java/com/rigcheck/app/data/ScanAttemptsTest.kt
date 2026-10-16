@@ -40,7 +40,7 @@ class ScanAttemptsTest {
 
     @Test
     fun `a lost answer keeps the id for the next scan of the same photo`() = runTest {
-        for (lost in listOf("network_error", "parse_error", "billing_error", "extraction_failed_no_refund")) {
+        for (lost in listOf("network_error", "timeout", "parse_error", "billing_error", "extraction_failed_no_refund")) {
             val ids = scanRepeatedly(ScanAttempts(), "content://photo/a", failure(lost), success)
 
             assertEquals("after $lost", ids[0], ids[1])

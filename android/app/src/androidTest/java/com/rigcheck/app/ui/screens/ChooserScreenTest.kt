@@ -6,9 +6,11 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.rigcheck.app.data.ScanResult
 import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanUiState
 import com.rigcheck.app.ui.navigation.EntryModule
+import com.rigcheck.app.ui.scanErrorFor
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -44,6 +46,9 @@ class ChooserScreenTest {
             )
         }
     }
+
+    // The error a failed Scan with this code shows, as the app builds it.
+    private fun failed(code: String) = scanErrorFor(ScanResult.Failure(code, "the Worker's own text"))
 
     @Test
     fun creditChipShowsTheGivenBalance() {
@@ -94,7 +99,9 @@ class ChooserScreenTest {
         composeRule.onNodeWithText("Scan failed").assertIsDisplayed()
         composeRule.onNodeWithText("Could not read the image.").assertIsDisplayed()
         composeRule.onNodeWithText("Sign in").assertDoesNotExist()
-        composeRule.onNodeWithText("Buy scans").assertDoesNotExist()
+        composeRule.onNodeWithText("Buy more Scans").assertDoesNotExist()
+        composeRule.onNodeWithText("Try again").assertDoesNotExist()
+        composeRule.onNodeWithText("Choose a different photo").assertDoesNotExist()
 
         composeRule.onNodeWithText("OK").performClick()
 
@@ -106,11 +113,11 @@ class ChooserScreenTest {
         val steps = mutableListOf<ScanNextStep>()
         setChooser(
             creditBalance = 5,
-            scanState = ScanUiState.Error("Your sign-in has expired. Sign in again to scan.", ScanNextStep.SIGN_IN),
+            scanState = failed("unauthorized"),
             onScanErrorNextStep = { steps += it },
         )
 
-        composeRule.onNodeWithText("Your sign-in has expired. Sign in again to scan.").assertIsDisplayed()
+        composeRule.onNodeWithText("Your sign-in has expired. Nothing was used. Sign in again to scan.").assertIsDisplayed()
         composeRule.onNodeWithText("Sign in").performClick()
 
         assertEquals(listOf(ScanNextStep.SIGN_IN), steps)
@@ -120,14 +127,74 @@ class ChooserScreenTest {
     fun scanErrorWithNoScansLeftOffersBuyingScans() {
         val steps = mutableListOf<ScanNextStep>()
         setChooser(
-            creditBalance = 5,
-            scanState = ScanUiState.Error("You're out of scans.", ScanNextStep.BUY_SCANS),
+            creditBalance = 0,
+            scanState = failed("insufficient_credits"),
             onScanErrorNextStep = { steps += it },
         )
 
-        composeRule.onNodeWithText("You're out of scans.").assertIsDisplayed()
-        composeRule.onNodeWithText("Buy scans").performClick()
+        composeRule.onNodeWithText(
+            "You're out of Scans. Nothing was used. Buy more Scans, or type the numbers in yourself.",
+        ).assertIsDisplayed()
+        composeRule.onNodeWithText("Try again").assertDoesNotExist()
+        composeRule.onNodeWithText("Buy more Scans").performClick()
 
         assertEquals(listOf(ScanNextStep.BUY_SCANS), steps)
+    }
+
+    // A lost answer, an unverifiable account, a failed read and a failed balance
+    // check each offer Try again, which the screen passes on (it re-sends the photo).
+    @Test
+    fun scanErrorAfterALostAnswerOffersTryAgainAndPassesTheStepOn() {
+        val steps = mutableListOf<ScanNextStep>()
+        setChooser(creditBalance = 5, scanState = failed("network_error"), onScanErrorNextStep = { steps += it })
+
+        composeRule.onNodeWithText("Choose a different photo").assertDoesNotExist()
+        composeRule.onNodeWithText("Try again").performClick()
+
+        assertEquals(listOf(ScanNextStep.TRY_AGAIN), steps)
+    }
+
+    @Test
+    fun scanErrorAfterARefundedReadOffersTryAgain() {
+        setChooser(creditBalance = 5, scanState = failed("extraction_failed"))
+
+        composeRule.onNodeWithText("Try again").assertIsDisplayed()
+    }
+
+    // After a request the service rejected, or a photo that cannot be sent, the
+    // same photo would fail again: a different photo is offered, Try again is not.
+    @Test
+    fun scanErrorAfterARejectedRequestOffersADifferentPhotoAndNotTryAgain() {
+        setChooser(creditBalance = 5, scanState = failed("bad_request"))
+
+        composeRule.onNodeWithText("Choose a different photo").assertIsDisplayed()
+        composeRule.onNodeWithText("Try again").assertDoesNotExist()
+    }
+
+    @Test
+    fun scanErrorAfterAPhotoThatCannotBeSentOffersADifferentPhotoAndNotTryAgain() {
+        setChooser(creditBalance = 5, scanState = failed("photo_unsendable"))
+
+        composeRule.onNodeWithText("Choose a different photo").assertIsDisplayed()
+        composeRule.onNodeWithText("Try again").assertDoesNotExist()
+    }
+
+    @Test
+    fun choosingADifferentPhotoClosesTheErrorAndOffersTheSourceChoice() {
+        var dismissed = false
+        val steps = mutableListOf<ScanNextStep>()
+        setChooser(
+            creditBalance = 5,
+            scanState = failed("bad_request"),
+            onDismissScanError = { dismissed = true },
+            onScanErrorNextStep = { steps += it },
+        )
+
+        composeRule.onNodeWithText("Choose a different photo").performClick()
+
+        assert(dismissed) { "the error should be dismissed" }
+        assertEquals(emptyList<ScanNextStep>(), steps)
+        composeRule.onNodeWithText("Take Photo").assertIsDisplayed()
+        composeRule.onNodeWithText("Choose from Gallery").assertIsDisplayed()
     }
 }

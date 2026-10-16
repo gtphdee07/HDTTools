@@ -355,19 +355,35 @@ root `TESTING.md`'s "Dashboard" section.
   `parse_error`; a success returns its fields, or an empty set when there are
   none; `ok: false` with no code, or no `ok` at all, is a failure. Writing it
   found that the last two `parse_error` cases used to throw inside the OkHttp
-  callback and leave the Scan waiting forever.
-- `ScanFailureTest.kt` (#79) — what the user is shown, and which next step the
-  error dialog offers, when a Scan does not deliver. The Worker's 401
-  `unauthorized`, 503 `auth_unavailable` and 402 `insufficient_credits` replies
-  come from a MockWebServer through the real `ScanHttp`; the app's own
-  `not_signed_in` from the constant the view model returns without a token.
-  Asserts the message and the step: an expired or rejected token says to sign in
-  again and offers sign-in, no scans left says so and offers buying scans, an
-  unverifiable account says nothing was charged and offers nothing (signing in
-  would not help), any other code shows its own message with no step. Also
-  drives `reportScanFailure`, the one function both of the view model's Scan
-  entry points end in, with a fake show and a fake balance read, to pin that the
-  balance is read again after every failure except `insufficient_credits`.
+  callback and leave the Scan waiting forever. (#117) A read that never
+  answers, with a short read limit and a stalled fake server, is a `timeout`,
+  not a `network_error`.
+- `ScanFailureTest.kt` (#79, rewritten by #117) — what the user is shown, and
+  which next steps the error dialog offers, when a Scan does not deliver, one
+  test per case of `docs/research/scan-failure-handling.md` (R1 rows 1 to 8, 10,
+  11, the sign-in gate and the stand-alone ticket's no-weight answer). The
+  Worker's replies (401, 503, 402, 502 in its three forms, 400) and the
+  client's own `network_error`, `parse_error` and `timeout` come from a
+  MockWebServer through the real `ScanHttp`; `photo_unsendable` and
+  `not_signed_in` from the constants the view model returns without a Worker.
+  Each message is asserted as the literal words the user reads (whether a Scan
+  Credit was used, whether it was refunded, whether a retry costs another, the
+  next step), with the Worker's own text never shown. Try again is offered only
+  after `auth_unavailable`, `extraction_failed`, `extraction_failed_no_refund`,
+  `billing_error`, `network_error`, `parse_error` and `timeout`; a different
+  photo after `bad_request` and `photo_unsendable`; typing it in or a different
+  photo, and no Try again, after the no-weight answer; an unknown code claims
+  nothing and offers nothing. Also drives `reportScanFailure`, the one function
+  both of the view model's Scan entry points end in, with a fake show, a fake
+  balance read and a fake balance set, to pin that after `insufficient_credits`
+  the balance is set to 0 with no read, and after every other failure it is read
+  again and never set.
+- `ScanRetryTest.kt` (#117) — "Try again" sends the last Scan's photo again
+  through the same entry point (a document's Scan or the stand-alone
+  ticket's), over a fake Scan client and a real `ScanAttempts`: after a lost
+  answer the retry carries the same photo and the same `client_request_id`,
+  after a refunded failure a new id; with no Scan started it sends nothing; and
+  it follows the latest Scan, not an earlier one.
 
 ### Major (instrumented) — `./gradlew connectedDebugAndroidTest`
 
@@ -410,16 +426,22 @@ network involved:
   tow-vehicle-only ticket" button opens the same Take Photo/Choose from
   Gallery dialog as `ChooserScreen` with a balance above zero, and (#79) calls
   `onNeedCredits` with none, or none loaded, instead of opening it; a scan
-  error shows the error dialog and dismisses on OK, and (#79) offers "Sign in"
-  or "Buy scans" beside OK when the failure has that next step (and neither
-  otherwise). `ChooserScreenTest` covers the same two buttons on its dialog.
+  error shows the error dialog and dismisses on OK, and (#79, #117) offers
+  "Sign in", "Buy more Scans", "Try again" or "Choose a different photo" beside
+  OK when the failure has that next step (and none otherwise): Try again is
+  passed on, Choose a different photo closes the error and opens the Take
+  Photo/Choose from Gallery dialog, and the stand-alone ticket's no-weight
+  answer offers "Type it in" (closes the error) and "Choose a different
+  photo" with no Try again. `ChooserScreenTest` covers the same buttons on its
+  dialog.
 - `ChooserScreenTest` — the credit chip shows the given balance; Scan
   Photo with credits opens the Take Photo/Choose from Gallery dialog
   (dialog presence and button existence only — no Espresso-Intents, real
   capture/picker flows stay covered by manual on-device testing); Scan
   Photo with 0 credits calls `onNeedCredits` instead; Enter Manually
   fires `onChooseManual`; a scan error shows the error dialog with its
-  message and dismisses on OK.
+  message and dismisses on OK, and (#117) a bad request or a photo that cannot
+  be sent offers a different photo and not Try again.
 - `CreditBalanceChipTest` — null shows the "…" not-yet-loaded
   placeholder; 0/1/5 use correct singular/plural wording; `onClick`
   fires when provided.

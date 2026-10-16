@@ -1,5 +1,6 @@
 package com.rigcheck.app.ui.navigation
 
+import android.content.ContentResolver
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,11 +50,14 @@ fun RigCheckNavHost(
         }
     }
 
-    // What a failed Scan's dialog offers beyond OK. Both ways forward end at the
-    // Paywall route, which shows the sign-in screen to a signed-out user. A
-    // user the Worker refused is still signed in here, so that session is ended
-    // first, as Web does for its "Sign in again".
-    fun followScanNextStep(step: ScanNextStep) {
+    // What a failed Scan's dialog offers beyond OK. Signing in and buying Scans
+    // end at the Paywall route, which shows the sign-in screen to a signed-out
+    // user. A user the Worker refused is still signed in here, so that session
+    // is ended first, as Web does for its "Sign in again". Try again sends the
+    // last photo again, so the screen that started it says what happens when it
+    // succeeds. The screens handle the rest themselves: they own the photo
+    // choice and the fields to type into.
+    fun followScanNextStep(step: ScanNextStep, resolver: ContentResolver, onTryAgainDone: (success: Boolean) -> Unit) {
         viewModel.clearScanError()
         when (step) {
             ScanNextStep.SIGN_IN -> {
@@ -61,7 +65,8 @@ fun RigCheckNavHost(
                 navController.navigate(RigCheckRoute.Paywall)
             }
             ScanNextStep.BUY_SCANS -> navController.navigate(RigCheckRoute.Paywall)
-            ScanNextStep.NONE -> Unit
+            ScanNextStep.TRY_AGAIN -> viewModel.retryScan(resolver, onTryAgainDone)
+            ScanNextStep.CHOOSE_DIFFERENT_PHOTO, ScanNextStep.TYPE_IT_IN -> Unit
         }
     }
 
@@ -92,20 +97,24 @@ fun RigCheckNavHost(
                 EntryModule.SCALE -> RigCheckRoute.ScaleTicketEntry
             }
 
+            // A Scan that delivers goes on to this document's entry screen to be
+            // reviewed; a retry from the error dialog ends the same way.
+            val onScanDone = { success: Boolean ->
+                if (success) navController.navigate(destinationFor(route.module))
+            }
+
             ChooserScreen(
                 module = route.module,
                 creditBalance = viewModel.creditBalance,
                 scanState = viewModel.scanState,
                 onChooseManual = { navController.navigate(destinationFor(route.module)) },
                 onPhotoScanned = { uri ->
-                    viewModel.performScan(route.module, context.contentResolver, uri) { success ->
-                        if (success) navController.navigate(destinationFor(route.module))
-                    }
+                    viewModel.performScan(route.module, context.contentResolver, uri, onScanDone)
                 },
                 onNeedCredits = { navController.navigate(RigCheckRoute.Paywall) },
                 onOpenPaywall = { navController.navigate(RigCheckRoute.Paywall) },
                 onDismissScanError = { viewModel.clearScanError() },
-                onScanErrorNextStep = ::followScanNextStep,
+                onScanErrorNextStep = { step -> followScanNextStep(step, context.contentResolver, onScanDone) },
             )
         }
 
@@ -154,7 +163,7 @@ fun RigCheckNavHost(
                 onDismissStandaloneScanError = { viewModel.clearScanError() },
                 creditBalance = viewModel.creditBalance,
                 onNeedCredits = { navController.navigate(RigCheckRoute.Paywall) },
-                onScanErrorNextStep = ::followScanNextStep,
+                onScanErrorNextStep = { step -> followScanNextStep(step, context.contentResolver) {} },
             )
         }
 

@@ -241,6 +241,21 @@ fun TruckTagEntryScreen(
     }
 
     if (scanState is ScanUiState.Error) {
-        ScanErrorDialog(scanState, onDismiss = onDismissStandaloneScanError, onNextStep = onScanErrorNextStep)
+        ScanErrorDialog(
+            scanState,
+            onDismiss = onDismissStandaloneScanError,
+            // A different photo is picked here, on this screen; typing the weight
+            // in is the field above, so closing the error leaves the user at it.
+            onNextStep = { step ->
+                when (step) {
+                    ScanNextStep.CHOOSE_DIFFERENT_PHOTO -> {
+                        onDismissStandaloneScanError()
+                        showStandaloneSourceDialog = true
+                    }
+                    ScanNextStep.TYPE_IT_IN -> onDismissStandaloneScanError()
+                    else -> onScanErrorNextStep(step)
+                }
+            },
+        )
     }
 }

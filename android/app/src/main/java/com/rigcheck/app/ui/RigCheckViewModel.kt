@@ -49,7 +49,7 @@ private const val BILLING_NOT_LINKED = "Couldn't connect your account to purchas
 sealed interface ScanUiState {
     data object Idle : ScanUiState
     data object Loading : ScanUiState
-    data class Error(val message: String, val nextStep: ScanNextStep = ScanNextStep.NONE) : ScanUiState
+    data class Error(val message: String, val nextSteps: List<ScanNextStep> = emptyList()) : ScanUiState
 }
 
 // Nav-graph-scoped: one instance shared across every screen so the
@@ -84,6 +84,9 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     // Shared by both Scan entry points (the three documents and the stand-alone
     // ticket), so a photo's request id survives a lost answer on either.
     private val scanAttempts = ScanAttempts()
+
+    // The Scan the user last started, so "Try again" can send its photo again.
+    private val scanRetry = ScanRetry<Uri>()
 
     val breakdown: List<BreakdownItem>
         get() = computeBreakdown(truck, trailer, scale, pinWeightPct / 100.0)
@@ -205,6 +208,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         photoUri: Uri,
         onDone: (success: Boolean) -> Unit,
     ) {
+        scanRetry.started(module, photoUri)
         scanState = ScanUiState.Loading
         viewModelScope.launch {
             val result = sendScan(module, contentResolver, photoUri)
@@ -240,6 +244,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         photoUri: Uri,
         onDone: (success: Boolean) -> Unit,
     ) {
+        scanRetry.startedStandalone(photoUri)
         scanState = ScanUiState.Loading
         viewModelScope.launch {
             val result = sendScan(EntryModule.SCALE, contentResolver, photoUri)
@@ -253,9 +258,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
                         truck = truck.copy(standaloneWeightLb = standalone)
                         onDone(true)
                     } else {
-                        scanState = ScanUiState.Error(
-                            "Couldn't find a weight on that ticket — try a clearer photo, or enter it manually.",
-                        )
+                        scanState = NO_WEIGHT_ERROR
                         onDone(false)
                     }
                 }
@@ -267,8 +270,21 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun showScanFailure(failure: ScanResult.Failure) =
-        reportScanFailure(failure, show = { scanState = it }, refreshBalance = ::refreshCreditBalance)
+    private fun showScanFailure(failure: ScanResult.Failure) = reportScanFailure(
+        failure,
+        show = { scanState = it },
+        refreshBalance = ::refreshCreditBalance,
+        setBalance = { creditBalance = it },
+    )
+
+    // Sends the photo of the last Scan again, through the same entry point, for
+    // the error dialog's "Try again". Does nothing if no Scan was started.
+    fun retryScan(contentResolver: ContentResolver, onDone: (success: Boolean) -> Unit) {
+        scanRetry.again(
+            main = { module, photoUri -> performScan(module, contentResolver, photoUri, onDone) },
+            standalone = { photoUri -> performStandaloneScan(contentResolver, photoUri, onDone) },
+        )
+    }
 
     // The one place a Scan request is sent, for both entry points. The Worker
     // dedupes the RevenueCat charge on the request id, so the same photo keeps
@@ -278,7 +294,9 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         runCatching {
             scanAttempts.run(module, photoUri.toString()) { clientRequestId ->
                 val token = accountManager.accessToken() ?: return@run NOT_SIGNED_IN
-                val base64 = encodePhotoForScan(contentResolver, photoUri)
+                // A photo that cannot be opened or decoded fails before anything is sent.
+                val base64 = runCatching { encodePhotoForScan(contentResolver, photoUri) }
+                    .getOrElse { return@run PHOTO_UNSENDABLE }
                 ScanApiClient.scan(token, module, base64, clientRequestId = clientRequestId)
             }
         }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }

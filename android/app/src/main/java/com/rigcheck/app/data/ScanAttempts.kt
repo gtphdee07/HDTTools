@@ -9,6 +9,7 @@ import java.util.UUID
 // ScanError.lostResponse.
 private val LOST_ANSWER_CODES = setOf(
     "network_error",
+    "timeout",
     "parse_error",
     "billing_error",
     "extraction_failed_no_refund",

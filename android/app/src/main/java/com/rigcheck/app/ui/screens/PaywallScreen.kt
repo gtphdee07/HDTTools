@@ -67,7 +67,7 @@ fun PaywallScreen(
             }
         }
         Text(
-            "You have ${creditBalance ?: 0} scan credit${if (creditBalance == 1) "" else "s"} left. " +
+            "You have ${creditBalance ?: 0} scan${if (creditBalance == 1) "" else "s"} left. " +
                 "Claude reads your truck tag, trailer tag, or scale ticket for you.",
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(top = 12.dp, bottom = 24.dp),

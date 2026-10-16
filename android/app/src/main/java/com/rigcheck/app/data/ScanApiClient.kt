@@ -2,6 +2,7 @@ package com.rigcheck.app.data
 
 import com.rigcheck.app.ui.navigation.EntryModule
 import java.io.IOException
+import java.io.InterruptedIOException
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -33,7 +34,7 @@ sealed interface ScanResult {
     data class Success(val fields: JsonObject) : ScanResult
     // code matches the Worker's error taxonomy: insufficient_credits,
     // extraction_failed, billing_error, bad_request - plus client-side
-    // network_error/parse_error for transport failures.
+    // network_error/timeout/parse_error for transport failures.
     data class Failure(val code: String, val message: String) : ScanResult
 }
 
@@ -124,7 +125,10 @@ internal class ScanHttp(private val client: OkHttpClient, private val endpoint: 
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    continuation.resume(ScanResult.Failure("network_error", e.message ?: "Network error"))
+                    // A limit that ran out (SocketTimeoutException is one) is told
+                    // apart from no connection: the user is told it took too long.
+                    val code = if (e is InterruptedIOException) "timeout" else "network_error"
+                    continuation.resume(ScanResult.Failure(code, e.message ?: "Network error"))
                 }
 
                 override fun onResponse(call: Call, response: Response) {

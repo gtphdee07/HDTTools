@@ -15,7 +15,10 @@ export type ScanAccess =
   // Signed in on the Free plan: scans are part of Pro (ADR-0006).
   | { kind: 'upgrade' }
   // Pro with no Scan Credit left.
-  | { kind: 'no-scans' };
+  | { kind: 'no-scans' }
+  // Signed in, but the Scan service refused the account token. Not read from the account: the app sets it
+  // (App.tsx) for as long as that token is the one in use, since a scan with it would be refused again.
+  | { kind: 'sign-in-again' };
 
 export function useScanAccess(): ScanAccess {
   const auth = useAuth();

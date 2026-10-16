@@ -1,4 +1,5 @@
 import type { ScanNotice } from './scanNotice';
+import type { ScanErrorCode } from './scanError';
 
 interface TireSpec {
   tire?: string;
@@ -94,6 +95,8 @@ export interface WizardState {
   scale: ScaleTicketData;
   pendingFile: File | null;
   uploadError: string | null;
+  // Which kind of Scan failure `uploadError` came from, when it came from one.
+  uploadErrorCode: ScanErrorCode | null;
   // Set when a Scan landed on the review step without every field filled; null for a full read and for a
   // skipped photo (no Scan was used).
   scanNotice: ScanNotice | null;

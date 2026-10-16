@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { ModuleDef } from '../mockData';
 import { Button } from '../design-system/Button';
 import { ScanGate } from '../components/ScanGate';
+import { ScanError } from '../scanError';
 import type { ScanAccess } from '../scanAccess';
 import { scanNoticeText } from '../scanNotice';
 import type { ScanNotice } from '../scanNotice';
@@ -50,20 +51,36 @@ export function ReviewStep({
   // The photo of a ticket scan that did not deliver, kept so "Try again" re-runs it with the same File
   // (and so the same request id: a retry after a lost response is then charged once).
   const [failedTicket, setFailedTicket] = useState<File | null>(null);
+  // Whether sending that same photo again could help. When it cannot (a delivered answer with no weight in it,
+  // a refusal that repeats, a photo that cannot be sent), the next step is a different photo instead.
+  const [retryHelps, setRetryHelps] = useState(true);
+  // The failure was a delivered, charged Scan with no weight in it: typing the weight in is then the other way on.
+  const [noWeight, setNoWeight] = useState(false);
+  const standaloneWeightRef = useRef<HTMLInputElement>(null);
 
   const showStandaloneTicketScan = module.key === 'truck' && onScanStandaloneTicket;
   const standaloneWeightKnown = Boolean(data.standalone_weight_lb);
   const canScanTicket = !scanAccess || scanAccess.kind === 'ready';
+  // A refused account token blocks scanning until the user signs in again, but a different photo is still
+  // offered after it (it is the photo they will use once they are back); typing the weight in never needs a scan.
+  const canPickAnother = canScanTicket || scanAccess?.kind === 'sign-in-again';
+  const showTryAgain = failedTicket && !scanningStandalone && canScanTicket && retryHelps;
+  const showDifferentPhoto = failedTicket && !scanningStandalone && canPickAnother && !retryHelps;
+  const showTypeItIn = failedTicket && !scanningStandalone && noWeight;
 
   const handleStandaloneFile = async (file: File) => {
     if (!onScanStandaloneTicket) return;
     setScanningStandalone(true);
     setStandaloneScanError(null);
     setFailedTicket(null);
+    setRetryHelps(true);
+    setNoWeight(false);
     try {
       await onScanStandaloneTicket(file);
     } catch (err) {
       setFailedTicket(file);
+      setRetryHelps(!(err instanceof ScanError) || err.canTryAgain);
+      setNoWeight(err instanceof ScanError && err.code === 'no_weight');
       setStandaloneScanError(err instanceof Error ? err.message : 'Could not read that photo — try again.');
     } finally {
       setScanningStandalone(false);
@@ -105,6 +122,7 @@ export function ReviewStep({
             <label key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-1)' }}>{f.label}</span>
               <input
+                ref={f.name === 'standalone_weight_lb' ? standaloneWeightRef : undefined}
                 type={f.type}
                 value={value}
                 onChange={(e) => onFieldChange(f.name, f.type === 'number', e.target.value)}
@@ -133,38 +151,48 @@ export function ReviewStep({
           {scanAccess && onGoAccount && onRetryScanAccess && (
             <ScanGate access={scanAccess} onGoAccount={onGoAccount} onRetry={onRetryScanAccess} />
           )}
+          <input
+            ref={standaloneInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const picked = e.target.files?.[0];
+              // Reset so picking the same photo again still fires a change.
+              e.target.value = '';
+              if (picked) void handleStandaloneFile(picked);
+            }}
+          />
           {canScanTicket && (
-            <>
-              <input
-                ref={standaloneInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const picked = e.target.files?.[0];
-                  // Reset so picking the same photo again still fires a change.
-                  e.target.value = '';
-                  if (picked) void handleStandaloneFile(picked);
-                }}
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => standaloneInputRef.current?.click()}
-                disabled={scanningStandalone}
-              >
-                {scanningStandalone ? 'Reading…' : 'Scan tow-vehicle-only ticket'}
-              </Button>
-            </>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => standaloneInputRef.current?.click()}
+              disabled={scanningStandalone}
+            >
+              {scanningStandalone ? 'Reading…' : 'Scan tow-vehicle-only ticket'}
+            </Button>
           )}
           {standaloneScanError && (
             <div style={{ color: 'var(--state-danger)', fontSize: 12, marginTop: 8 }}>{standaloneScanError}</div>
           )}
-          {failedTicket && !scanningStandalone && canScanTicket && (
-            <div style={{ marginTop: 8 }}>
-              <Button variant="secondary" size="sm" onClick={() => void handleStandaloneFile(failedTicket)}>
-                Try again
-              </Button>
+          {(showTryAgain || showDifferentPhoto || showTypeItIn) && (
+            <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {showTryAgain && (
+                <Button variant="secondary" size="sm" onClick={() => failedTicket && void handleStandaloneFile(failedTicket)}>
+                  Try again
+                </Button>
+              )}
+              {showDifferentPhoto && (
+                <Button variant="secondary" size="sm" onClick={() => standaloneInputRef.current?.click()}>
+                  Choose a different photo
+                </Button>
+              )}
+              {showTypeItIn && (
+                <Button variant="ghost" size="sm" onClick={() => standaloneWeightRef.current?.focus()}>
+                  Type it in
+                </Button>
+              )}
             </div>
           )}
 

@@ -169,7 +169,7 @@ describe('what the user is told when a scan does not deliver', () => {
       body: { ok: false, code: 'bad_request', message: 'media_type must be image/jpeg' },
       code: 'bad_request',
       lostResponse: false,
-      message: /media_type must be image\/jpeg/,
+      message: /nothing was used/i,
     },
     {
       name: 'an error page from the edge instead of the service',
@@ -200,6 +200,15 @@ describe('what the user is told when a scan does not deliver', () => {
       expect(err.message).toMatch(c.message);
     });
   }
+
+  it("does not repeat the service's internal detail when it rejects a request", async () => {
+    answer(400, { ok: false, code: 'bad_request', message: 'media_type must be image/jpeg' });
+
+    const err = await failure(extractTruckTag(JPEG(), CONTEXT));
+
+    expect(err.message).not.toMatch(/media_type|image\/jpeg|\(|\)/);
+    expect(err.message).toMatch(/nothing was used/i);
+  });
 
   it('reports no connection as a lost response, so a retry may reuse the same request id', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));

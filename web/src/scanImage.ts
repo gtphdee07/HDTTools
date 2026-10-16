@@ -66,8 +66,11 @@ export async function prepareImage(file: File): Promise<PreparedImage> {
   if (!isSupported(file.type)) {
     throw new ScanError(
       'bad_photo',
-      "We can't read that kind of photo here. Use a JPEG, PNG, WebP or GIF, or type the numbers in yourself.",
+      "We can't read that kind of photo here. Nothing was used. Use a JPEG, PNG, WebP or GIF, or type the numbers in yourself.",
     );
   }
-  throw new ScanError('bad_photo', 'That photo is too large to send. Try a smaller photo, or type the numbers in yourself.');
+  throw new ScanError(
+    'bad_photo',
+    'That photo is too large to send. Nothing was used. Try a smaller photo, or type the numbers in yourself.',
+  );
 }

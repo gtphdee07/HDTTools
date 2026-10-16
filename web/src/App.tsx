@@ -3,10 +3,11 @@ import type { HistoryEntry, RecentRig, Screen, WizardState } from './types';
 import { MODULES } from './mockData';
 import { extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
 import type { ScanContext } from './api';
-import { ScanError } from './scanError';
+import { ScanError, needsDifferentPhoto, photoRefused } from './scanError';
 import { ScanAttempts } from './scanAttempts';
 import { scanNoticeFor } from './scanNotice';
 import { useScanAccess } from './scanAccess';
+import type { ScanAccess } from './scanAccess';
 import { useBilling } from './billing';
 import { createBreakdown } from './breakdown';
 import type { CreateBreakdownResult } from './breakdown';
@@ -39,6 +40,7 @@ const EMPTY_WIZARD: WizardState = {
   scale: {},
   pendingFile: null,
   uploadError: null,
+  uploadErrorCode: null,
   scanNotice: null,
   pinWeightPct: 20,
 };
@@ -71,9 +73,16 @@ function App() {
     setDisclaimerAcknowledged(true);
   };
 
-  const { recovering, linkProblem, accessToken } = useAuth();
+  const { recovering, linkProblem, accessToken, signOut } = useAuth();
   const billing = useBilling();
-  const scanAccess = useScanAccess();
+  // The account token the Scan service last refused. While it is still the token in use, scanning with it
+  // would be refused again, so the visitor is offered signing in again instead of a scan.
+  const [refusedToken, setRefusedToken] = useState<string | null>(null);
+  const baseScanAccess = useScanAccess();
+  const scanAccess: ScanAccess =
+    baseScanAccess.kind === 'ready' && refusedToken !== null && refusedToken === accessToken
+      ? { kind: 'sign-in-again' }
+      : baseScanAccess;
   const scanAttempts = useRef(new ScanAttempts());
   // Which check is current: a new one every time a check starts. A scan notes it when it starts and drops
   // its result if the check has changed by the time the answer comes back.
@@ -108,6 +117,19 @@ function App() {
   const backToWizard = () => {
     setAccountFromWizard(false);
     setScreen('wizard');
+    // The refusal that sent the visitor to sign in again is settled either way: signed in, the scan gate is
+    // clear; not signed in, the gate says so. Its message would only be stale.
+    setWizard((w) => (w.uploadErrorCode === 'unauthorized' ? { ...w, uploadError: null, uploadErrorCode: null } : w));
+  };
+  // The Account screen only offers the sign-in form to someone who is signed out, so a refused session is
+  // ended first.
+  const signInAgain = async () => {
+    try {
+      await signOut();
+    } catch {
+      // Still go to the Account screen: it shows whatever state the session is really in.
+    }
+    goAccountFromWizard();
   };
 
   const startWizard = () => {
@@ -134,7 +156,8 @@ function App() {
   const startNewRig = (nickname: string) =>
     setWizard((w) => ({ ...w, rigNickname: nickname, step: 1, subStep: 'upload' }));
 
-  const onFileSelected = (file: File) => setWizard((w) => ({ ...w, pendingFile: file, uploadError: null }));
+  const onFileSelected = (file: File) =>
+    setWizard((w) => ({ ...w, pendingFile: file, uploadError: null, uploadErrorCode: null }));
 
   const step = wizard.step;
   const currentModule = step >= 1 && step <= 3 ? MODULES[step as 1 | 2 | 3] : null;
@@ -152,6 +175,7 @@ function App() {
       // The service saying none are left is believed even if reading the balance back fails.
       const noneLeft = err instanceof ScanError && err.code === 'insufficient_credits';
       void billing.refreshScanBalance(noneLeft ? 0 : undefined);
+      if (err instanceof ScanError && err.code === 'unauthorized') setRefusedToken(accessToken);
       throw err;
     } finally {
       setScansInFlight((n) => n - 1);
@@ -178,10 +202,15 @@ function App() {
       setWizard((w) => ({ ...w, [moduleKey]: extracted, subStep: 'review', pendingFile: null, scanNotice }));
     } catch (err) {
       if (check !== currentCheck.current) return;
+      const code = err instanceof ScanError ? err.code : null;
       setWizard((w) => ({
         ...w,
         subStep: 'error',
         uploadError: err instanceof Error ? err.message : 'Could not read that photo — try again.',
+        uploadErrorCode: code,
+        // A photo that was refused is not kept ready to send again: only a different one can work.
+        // (After 'unauthorized' it is kept: once the user has signed in again the same photo is fine.)
+        pendingFile: code && photoRefused(code) ? null : w.pendingFile,
       }));
     }
   };
@@ -193,13 +222,21 @@ function App() {
   const skipCurrent = () => {
     if (!currentModule) return;
     const moduleKey = currentModule.key;
-    setWizard((w) => ({ ...w, [moduleKey]: {}, subStep: 'review', pendingFile: null, uploadError: null, scanNotice: null }));
+    setWizard((w) => ({
+      ...w,
+      [moduleKey]: {},
+      subStep: 'review',
+      pendingFile: null,
+      uploadError: null,
+      uploadErrorCode: null,
+      scanNotice: null,
+    }));
   };
 
   // From the review step of a Scan that read nothing: back to the photo step. Nothing is sent from here;
   // a new photo is a new Scan the user starts with Extract Data.
   const chooseDifferentPhoto = () =>
-    setWizard((w) => ({ ...w, subStep: 'upload', pendingFile: null, uploadError: null, scanNotice: null }));
+    setWizard((w) => ({ ...w, subStep: 'upload', pendingFile: null, uploadError: null, uploadErrorCode: null, scanNotice: null }));
 
   // Reuses the scale-ticket OCR pipeline for a tow-vehicle-only ticket -
   // same CAT ticket format, just without a trailer-axle line - and maps
@@ -223,7 +260,8 @@ function App() {
         : extracted.gross_weight_lb;
     if (standalone == null) {
       // The service delivered, so this Scan was charged (see Scan Proxy's CONTEXT.md); a retry is a new one.
-      throw new Error(
+      throw new ScanError(
+        'no_weight',
         "We read the ticket but couldn't find a weight. That Scan was used, and trying again uses another. You can also type the weight in.",
       );
     }
@@ -235,7 +273,15 @@ function App() {
   const continueReview = async () => {
     const nextStep = wizard.step + 1;
     if (nextStep !== 4) {
-      setWizard((w) => ({ ...w, step: nextStep, subStep: 'upload', pendingFile: null, uploadError: null, scanNotice: null }));
+      setWizard((w) => ({
+        ...w,
+        step: nextStep,
+        subStep: 'upload',
+        pendingFile: null,
+        uploadError: null,
+        uploadErrorCode: null,
+        scanNotice: null,
+      }));
       return;
     }
 
@@ -373,7 +419,8 @@ function App() {
                 file={wizard.pendingFile}
                 error={wizard.uploadError}
                 scanAccess={scanAccess}
-                onGoAccount={goAccountFromWizard}
+                needsNewPhoto={wizard.uploadErrorCode !== null && needsDifferentPhoto(wizard.uploadErrorCode)}
+                onGoAccount={scanAccess.kind === 'sign-in-again' ? signInAgain : goAccountFromWizard}
                 onRetryScanAccess={billing.reload}
                 onFileSelected={onFileSelected}
                 onExtract={extractCurrent}
@@ -400,7 +447,7 @@ function App() {
                       onPinWeightPctChange: updatePinWeightPct,
                       onScanStandaloneTicket: scanStandaloneTicket,
                       scanAccess,
-                      onGoAccount: goAccountFromWizard,
+                      onGoAccount: scanAccess.kind === 'sign-in-again' ? signInAgain : goAccountFromWizard,
                       onRetryScanAccess: billing.reload,
                     }
                   : {})}

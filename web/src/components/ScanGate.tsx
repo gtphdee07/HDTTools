@@ -3,7 +3,8 @@ import { Button } from '../design-system/Button';
 
 interface ScanGateProps {
   access: ScanAccess;
-  // Opens the Account screen, where a visitor signs in, buys Pro or buys scan packs.
+  // Opens the Account screen, where a visitor signs in, buys Pro or buys scan packs. For 'sign-in-again' the
+  // caller also ends the session the service refused, so that screen offers the sign-in form.
   onGoAccount: () => void;
   // Loads the plan again after it failed to load.
   onRetry: () => void;
@@ -56,6 +57,8 @@ function messageFor(access: ScanAccess): string {
       return 'Scanning is part of RigCheck Pro. Upgrade to have this photo read for you, or type the numbers in yourself.';
     case 'no-scans':
       return "You're out of scans. Buy a scan pack to have this photo read for you, or type the numbers in yourself.";
+    case 'sign-in-again':
+      return 'Your sign-in has expired. Nothing was used. Sign in again to have this photo read for you, or type the numbers in yourself.';
   }
 }
 
@@ -63,6 +66,8 @@ function actionFor(access: ScanAccess, onGoAccount: () => void, onRetry: () => v
   switch (access.kind) {
     case 'sign-in':
       return { label: 'Sign in to scan', run: onGoAccount };
+    case 'sign-in-again':
+      return { label: 'Sign in again', run: onGoAccount };
     case 'upgrade':
       return { label: 'Upgrade to Pro', run: onGoAccount };
     case 'no-scans':

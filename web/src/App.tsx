@@ -3,8 +3,7 @@ import type { HistoryEntry, RecentRig, Screen, WizardState } from './types';
 import { MODULES } from './mockData';
 import { extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
 import type { ScanContext } from './api';
-import { ScanError } from './scanError';
-import type { ScanErrorCode } from './scanError';
+import { ScanError, needsDifferentPhoto, photoRefused } from './scanError';
 import { ScanAttempts } from './scanAttempts';
 import { useScanAccess } from './scanAccess';
 import type { ScanAccess } from './scanAccess';
@@ -43,12 +42,6 @@ const EMPTY_WIZARD: WizardState = {
   uploadErrorCode: null,
   pinWeightPct: 20,
 };
-
-// Scan failures after which sending the same photo again cannot help, so the upload step offers a different one.
-const NEEDS_NEW_PHOTO = new Set<ScanErrorCode>(['unauthorized', 'bad_request', 'bad_photo']);
-// Of those, the ones where the photo itself is the problem, so it is not kept ready to send again.
-// (After 'unauthorized' it is kept: once the user has signed in again the same photo is fine.)
-const PHOTO_IS_THE_PROBLEM = new Set<ScanErrorCode>(['bad_request', 'bad_photo']);
 
 function garageNoticeFor(nickname: string, outcome: SaveRigOutcome): string | null {
   if (outcome.status === 'full') {
@@ -211,8 +204,9 @@ function App() {
         subStep: 'error',
         uploadError: err instanceof Error ? err.message : 'Could not read that photo — try again.',
         uploadErrorCode: code,
-        // A photo that cannot be sent is not kept ready to send again: only a different one can work.
-        pendingFile: code && PHOTO_IS_THE_PROBLEM.has(code) ? null : w.pendingFile,
+        // A photo that was refused is not kept ready to send again: only a different one can work.
+        // (After 'unauthorized' it is kept: once the user has signed in again the same photo is fine.)
+        pendingFile: code && photoRefused(code) ? null : w.pendingFile,
       }));
     }
   };
@@ -400,7 +394,7 @@ function App() {
                 file={wizard.pendingFile}
                 error={wizard.uploadError}
                 scanAccess={scanAccess}
-                needsNewPhoto={wizard.uploadErrorCode !== null && NEEDS_NEW_PHOTO.has(wizard.uploadErrorCode)}
+                needsNewPhoto={wizard.uploadErrorCode !== null && needsDifferentPhoto(wizard.uploadErrorCode)}
                 onGoAccount={scanAccess.kind === 'sign-in-again' ? signInAgain : goAccountFromWizard}
                 onRetryScanAccess={billing.reload}
                 onFileSelected={onFileSelected}

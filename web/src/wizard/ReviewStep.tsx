@@ -48,11 +48,17 @@ export function ReviewStep({
   const [retryHelps, setRetryHelps] = useState(true);
   // The failure was a delivered, charged Scan with no weight in it: typing the weight in is then the other way on.
   const [noWeight, setNoWeight] = useState(false);
-  const formRef = useRef<HTMLDivElement>(null);
+  const standaloneWeightRef = useRef<HTMLInputElement>(null);
 
   const showStandaloneTicketScan = module.key === 'truck' && onScanStandaloneTicket;
   const standaloneWeightKnown = Boolean(data.standalone_weight_lb);
   const canScanTicket = !scanAccess || scanAccess.kind === 'ready';
+  // A refused account token blocks scanning until the user signs in again, but a different photo is still
+  // offered after it (it is the photo they will use once they are back); typing the weight in never needs a scan.
+  const canPickAnother = canScanTicket || scanAccess?.kind === 'sign-in-again';
+  const showTryAgain = failedTicket && !scanningStandalone && canScanTicket && retryHelps;
+  const showDifferentPhoto = failedTicket && !scanningStandalone && canPickAnother && !retryHelps;
+  const showTypeItIn = failedTicket && !scanningStandalone && noWeight;
 
   const handleStandaloneFile = async (file: File) => {
     if (!onScanStandaloneTicket) return;
@@ -74,7 +80,7 @@ export function ReviewStep({
   };
 
   return (
-    <div ref={formRef} style={{ maxWidth: 620, margin: '0 auto' }}>
+    <div style={{ maxWidth: 620, margin: '0 auto' }}>
       <h1 style={{ fontSize: 'var(--text-h1)', margin: '0 0 10px', color: 'var(--fg-1)' }}>Check the numbers</h1>
       <p style={{ color: 'var(--fg-2)', fontSize: 'var(--text-body-lg)', margin: '0 0 24px' }}>
         Here's what we read off your photo. Fix anything that looks off before we do the math.
@@ -87,7 +93,7 @@ export function ReviewStep({
             <label key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-1)' }}>{f.label}</span>
               <input
-                name={f.name}
+                ref={f.name === 'standalone_weight_lb' ? standaloneWeightRef : undefined}
                 type={f.type}
                 value={value}
                 onChange={(e) => onFieldChange(f.name, f.type === 'number', e.target.value)}
@@ -116,54 +122,47 @@ export function ReviewStep({
           {scanAccess && onGoAccount && onRetryScanAccess && (
             <ScanGate access={scanAccess} onGoAccount={onGoAccount} onRetry={onRetryScanAccess} />
           )}
+          <input
+            ref={standaloneInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const picked = e.target.files?.[0];
+              // Reset so picking the same photo again still fires a change.
+              e.target.value = '';
+              if (picked) void handleStandaloneFile(picked);
+            }}
+          />
           {canScanTicket && (
-            <>
-              <input
-                ref={standaloneInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const picked = e.target.files?.[0];
-                  // Reset so picking the same photo again still fires a change.
-                  e.target.value = '';
-                  if (picked) void handleStandaloneFile(picked);
-                }}
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => standaloneInputRef.current?.click()}
-                disabled={scanningStandalone}
-              >
-                {scanningStandalone ? 'Reading…' : 'Scan tow-vehicle-only ticket'}
-              </Button>
-            </>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => standaloneInputRef.current?.click()}
+              disabled={scanningStandalone}
+            >
+              {scanningStandalone ? 'Reading…' : 'Scan tow-vehicle-only ticket'}
+            </Button>
           )}
           {standaloneScanError && (
             <div style={{ color: 'var(--state-danger)', fontSize: 12, marginTop: 8 }}>{standaloneScanError}</div>
           )}
-          {failedTicket && !scanningStandalone && canScanTicket && (
+          {(showTryAgain || showDifferentPhoto || showTypeItIn) && (
             <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {retryHelps ? (
-                <Button variant="secondary" size="sm" onClick={() => void handleStandaloneFile(failedTicket)}>
+              {showTryAgain && (
+                <Button variant="secondary" size="sm" onClick={() => failedTicket && void handleStandaloneFile(failedTicket)}>
                   Try again
                 </Button>
-              ) : (
-                <>
-                  <Button variant="secondary" size="sm" onClick={() => standaloneInputRef.current?.click()}>
-                    Choose a different photo
-                  </Button>
-                  {noWeight && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => formRef.current?.querySelector<HTMLInputElement>('input[name="standalone_weight_lb"]')?.focus()}
-                    >
-                      Type it in
-                    </Button>
-                  )}
-                </>
+              )}
+              {showDifferentPhoto && (
+                <Button variant="secondary" size="sm" onClick={() => standaloneInputRef.current?.click()}>
+                  Choose a different photo
+                </Button>
+              )}
+              {showTypeItIn && (
+                <Button variant="ghost" size="sm" onClick={() => standaloneWeightRef.current?.focus()}>
+                  Type it in
+                </Button>
               )}
             </div>
           )}

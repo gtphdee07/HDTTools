@@ -356,6 +356,7 @@ describe('what the user is offered when a Scan does not deliver', () => {
       expect(screen.getByRole('button', { name: 'Sign in again' })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Scan tow-vehicle-only ticket' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Choose a different photo' })).toBeEnabled();
     });
   });
 

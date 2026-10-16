@@ -28,7 +28,7 @@ const MESSAGES = {
 // The service's own wording for what it disliked is for developers (e.g. which field), so it is not shown.
 const BAD_REQUEST = "The scan service couldn't take that photo. Nothing was used. Try a different photo, or type the numbers in yourself.";
 
-const NO_ANSWER ="We didn't get a usable answer from the scan service. Try again; a retry is not charged twice.";
+const NO_ANSWER = "We didn't get a usable answer from the scan service. Try again; a retry is not charged twice.";
 
 const NO_CONNECTION = "We couldn't reach the scan service. Check your connection and try again. A retry is not charged twice.";
 const TOO_SLOW = 'The scan service took too long to answer. Try again; a retry is not charged twice.';

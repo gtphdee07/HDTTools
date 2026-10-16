@@ -31,6 +31,15 @@ const NO_TRY_AGAIN: ReadonlySet<ScanErrorCode> = new Set<ScanErrorCode>([
   'unavailable',
 ]);
 
+// Of the failures a photo can be sent into, the ones where the way forward is a different photo (or, for
+// 'unauthorized', signing in first) rather than the same one again.
+const NEEDS_DIFFERENT_PHOTO: ReadonlySet<ScanErrorCode> = new Set<ScanErrorCode>(['unauthorized', 'bad_request', 'bad_photo']);
+// The ones where the photo itself is what the service or the browser would not take.
+const PHOTO_REFUSED: ReadonlySet<ScanErrorCode> = new Set<ScanErrorCode>(['bad_request', 'bad_photo']);
+
+export const needsDifferentPhoto = (code: ScanErrorCode) => NEEDS_DIFFERENT_PHOTO.has(code);
+export const photoRefused = (code: ScanErrorCode) => PHOTO_REFUSED.has(code);
+
 // A scan that did not deliver fields. `message` is written for the user.
 export class ScanError extends Error {
   readonly code: ScanErrorCode;

@@ -219,6 +219,40 @@ describe('ReviewStep', () => {
       expect(screen.getByLabelText('Stand-alone Weight (lb, optional)')).toHaveFocus();
     });
 
+    it('still offers "Choose a different photo" after unauthorized while the user is told to sign in again', async () => {
+      const onScanStandaloneTicket = vi.fn().mockRejectedValue(new ScanError('unauthorized', 'It did not work.'));
+      const props = baseProps({ pinWeightPct: 20, onPinWeightPctChange: vi.fn(), onScanStandaloneTicket });
+      const { container, rerender } = render(<ReviewStep {...props} scanAccess={{ kind: 'ready', balance: 1 }} onGoAccount={vi.fn()} onRetryScanAccess={vi.fn()} />);
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+      await userEvent.upload(input, new File(['x'], 'standalone.jpg', { type: 'image/jpeg' }));
+      await screen.findByText('It did not work.');
+
+      rerender(<ReviewStep {...props} scanAccess={{ kind: 'sign-in-again' }} onGoAccount={vi.fn()} onRetryScanAccess={vi.fn()} />);
+      const click = vi.spyOn(input, 'click');
+
+      expect(screen.getByRole('button', { name: 'Sign in again' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Scan tow-vehicle-only ticket' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Choose a different photo' }));
+      expect(click).toHaveBeenCalled();
+    });
+
+    it('still offers "Type it in" after a no-weight answer that used the last scan, but no way to scan another photo', async () => {
+      const onScanStandaloneTicket = vi.fn().mockRejectedValue(new ScanError('no_weight', 'It did not work.'));
+      const props = baseProps({ pinWeightPct: 20, onPinWeightPctChange: vi.fn(), onScanStandaloneTicket });
+      const { container, rerender } = render(<ReviewStep {...props} scanAccess={{ kind: 'ready', balance: 1 }} onGoAccount={vi.fn()} onRetryScanAccess={vi.fn()} />);
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+      await userEvent.upload(input, new File(['x'], 'standalone.jpg', { type: 'image/jpeg' }));
+      await screen.findByText('It did not work.');
+
+      rerender(<ReviewStep {...props} scanAccess={{ kind: 'no-scans' }} onGoAccount={vi.fn()} onRetryScanAccess={vi.fn()} />);
+
+      expect(screen.queryByRole('button', { name: 'Choose a different photo' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Type it in' }));
+      expect(screen.getByLabelText('Stand-alone Weight (lb, optional)')).toHaveFocus();
+    });
+
     it('clears the different-photo prompt when the next scan starts', async () => {
       const { onScanStandaloneTicket, input } = await failWith('bad_request');
       onScanStandaloneTicket.mockResolvedValue(undefined);

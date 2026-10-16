@@ -6,8 +6,10 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanUiState
 import com.rigcheck.app.ui.navigation.EntryModule
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,6 +28,7 @@ class ChooserScreenTest {
         onNeedCredits: () -> Unit = {},
         onOpenPaywall: () -> Unit = {},
         onDismissScanError: () -> Unit = {},
+        onScanErrorNextStep: (ScanNextStep) -> Unit = {},
     ) {
         composeRule.setContent {
             ChooserScreen(
@@ -37,6 +40,7 @@ class ChooserScreenTest {
                 onNeedCredits = onNeedCredits,
                 onOpenPaywall = onOpenPaywall,
                 onDismissScanError = onDismissScanError,
+                onScanErrorNextStep = onScanErrorNextStep,
             )
         }
     }
@@ -89,9 +93,41 @@ class ChooserScreenTest {
 
         composeRule.onNodeWithText("Scan failed").assertIsDisplayed()
         composeRule.onNodeWithText("Could not read the image.").assertIsDisplayed()
+        composeRule.onNodeWithText("Sign in").assertDoesNotExist()
+        composeRule.onNodeWithText("Buy scans").assertDoesNotExist()
 
         composeRule.onNodeWithText("OK").performClick()
 
         assert(dismissed) { "onDismissScanError should have fired" }
+    }
+
+    @Test
+    fun scanErrorThatNeedsASignInOffersItAndPassesTheStepOn() {
+        val steps = mutableListOf<ScanNextStep>()
+        setChooser(
+            creditBalance = 5,
+            scanState = ScanUiState.Error("Your sign-in has expired. Sign in again to scan.", ScanNextStep.SIGN_IN),
+            onScanErrorNextStep = { steps += it },
+        )
+
+        composeRule.onNodeWithText("Your sign-in has expired. Sign in again to scan.").assertIsDisplayed()
+        composeRule.onNodeWithText("Sign in").performClick()
+
+        assertEquals(listOf(ScanNextStep.SIGN_IN), steps)
+    }
+
+    @Test
+    fun scanErrorWithNoScansLeftOffersBuyingScans() {
+        val steps = mutableListOf<ScanNextStep>()
+        setChooser(
+            creditBalance = 5,
+            scanState = ScanUiState.Error("You're out of scans.", ScanNextStep.BUY_SCANS),
+            onScanErrorNextStep = { steps += it },
+        )
+
+        composeRule.onNodeWithText("You're out of scans.").assertIsDisplayed()
+        composeRule.onNodeWithText("Buy scans").performClick()
+
+        assertEquals(listOf(ScanNextStep.BUY_SCANS), steps)
     }
 }

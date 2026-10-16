@@ -356,6 +356,18 @@ root `TESTING.md`'s "Dashboard" section.
   none; `ok: false` with no code, or no `ok` at all, is a failure. Writing it
   found that the last two `parse_error` cases used to throw inside the OkHttp
   callback and leave the Scan waiting forever.
+- `ScanFailureTest.kt` (#79) — what the user is shown, and which next step the
+  error dialog offers, when a Scan does not deliver. The Worker's 401
+  `unauthorized`, 503 `auth_unavailable` and 402 `insufficient_credits` replies
+  come from a MockWebServer through the real `ScanHttp`; the app's own
+  `not_signed_in` from the constant the view model returns without a token.
+  Asserts the message and the step: an expired or rejected token says to sign in
+  again and offers sign-in, no scans left says so and offers buying scans, an
+  unverifiable account says nothing was charged and offers nothing (signing in
+  would not help), any other code shows its own message with no step. Also
+  drives `reportScanFailure`, the one function both of the view model's Scan
+  entry points end in, with a fake show and a fake balance read, to pin that the
+  balance is read again after every failure except `insufficient_credits`.
 
 ### Major (instrumented) — `./gradlew connectedDebugAndroidTest`
 
@@ -396,8 +408,11 @@ network involved:
   section (added 2026-08-21): the pin-weight-% slider shows only when
   `standaloneWeightLb` is unknown, hides once it's known; the "Scan
   tow-vehicle-only ticket" button opens the same Take Photo/Choose from
-  Gallery dialog as `ChooserScreen`; a scan error shows the error dialog
-  and dismisses on OK.
+  Gallery dialog as `ChooserScreen` with a balance above zero, and (#79) calls
+  `onNeedCredits` with none, or none loaded, instead of opening it; a scan
+  error shows the error dialog and dismisses on OK, and (#79) offers "Sign in"
+  or "Buy scans" beside OK when the failure has that next step (and neither
+  otherwise). `ChooserScreenTest` covers the same two buttons on its dialog.
 - `ChooserScreenTest` — the credit chip shows the given balance; Scan
   Photo with credits opens the Take Photo/Choose from Gallery dialog
   (dialog presence and button existence only — no Espresso-Intents, real
@@ -455,6 +470,10 @@ third checks "Not now" returns to the Chooser).
   Chooser (not the entry form directly) — and separately confirms the
   disclaimer does *not* reappear on this second checkout in the same
   session.
+- **#79**: a signed-out tap on "Scan tow-vehicle-only ticket" lands on the
+  sign-in screen with no photo source offered, and "Not now" returns to the
+  Truck Tag form. (The tap used to open the camera and fail afterwards with a
+  dead-end "Sign in to scan." dialog.)
 - **Added 2026-09-09**: two tests reaching `RigCheckRoute.Paywall` for
   the first time — tapping "Scan Photo" with 0 credits (`onNeedCredits`)
   and tapping the credit chip directly (`onOpenPaywall`), each a

@@ -45,12 +45,11 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private const val BILLING_NOT_LINKED = "Couldn't connect your account to purchases. Check your connection and try again."
-private val NOT_SIGNED_IN = ScanResult.Failure("not_signed_in", "Sign in to scan.")
 
 sealed interface ScanUiState {
     data object Idle : ScanUiState
     data object Loading : ScanUiState
-    data class Error(val message: String) : ScanUiState
+    data class Error(val message: String, val nextStep: ScanNextStep = ScanNextStep.NONE) : ScanUiState
 }
 
 // Nav-graph-scoped: one instance shared across every screen so the
@@ -222,8 +221,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
                     onDone(true)
                 }
                 is ScanResult.Failure -> {
-                    scanState = ScanUiState.Error(result.message)
-                    if (result.code != "insufficient_credits") refreshCreditBalance()
+                    showScanFailure(result)
                     onDone(false)
                 }
             }
@@ -262,13 +260,15 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
                     }
                 }
                 is ScanResult.Failure -> {
-                    scanState = ScanUiState.Error(result.message)
-                    if (result.code != "insufficient_credits") refreshCreditBalance()
+                    showScanFailure(result)
                     onDone(false)
                 }
             }
         }
     }
+
+    private fun showScanFailure(failure: ScanResult.Failure) =
+        reportScanFailure(failure, show = { scanState = it }, refreshBalance = ::refreshCreditBalance)
 
     // The one place a Scan request is sent, for both entry points. The Worker
     // dedupes the RevenueCat charge on the request id, so the same photo keeps

@@ -11,10 +11,10 @@ const isFilled = (value: unknown) => value != null && value !== '';
 // filled. Optional fields are left out of the count: a Truck Tag has no stand-alone weight on it, so a good
 // read of the tag would otherwise always look incomplete.
 export function scanNoticeFor(module: ModuleDef, data: Record<string, unknown>): ScanNotice | null {
-  const readable = module.fields.filter((f) => !f.optional);
-  const unread = readable.filter((f) => !isFilled(data[f.name]));
+  const expected = module.fields.filter((f) => !f.optional);
+  const unread = expected.filter((f) => !isFilled(data[f.name]));
   if (unread.length === 0) return null;
-  if (unread.length === readable.length) return { kind: 'nothing-read' };
+  if (unread.length === expected.length) return { kind: 'nothing-read' };
   return { kind: 'some-unread', fields: unread.map((f) => f.label) };
 }
 

@@ -513,18 +513,23 @@ the soft keyboard took it.**
   field, which asks the IME to show the keyboard. On a freshly booted
   emulator Gboard is slow to start, and its window can appear 2-3 s after
   the request, after the test has already pressed Create and moved on. The
-  app's own state says "keyboard hidden" the whole time (the insets API
-  and `closeSoftKeyboard()` both read it), so `closeSoftKeyboard()` does
-  nothing, the late keyboard appears over the Paywall, and the Back press is
-  spent closing it. The screen then stays on the sign-in screen (checked 3 s
-  later: activity `RESUMED`, not finishing, still the sign-in texts).
+  app's own state says "keyboard hidden" until Gboard's window actually
+  shows (the insets API and `closeSoftKeyboard()` both read it), so
+  `closeSoftKeyboard()` does nothing, the late keyboard appears over the
+  sign-in screen (a signed-out Paywall visit shows sign-in first, #22), and
+  the Back press is spent closing it. The screen then stays on the sign-in
+  screen (checked 3 s later: activity `RESUMED`, not finishing, still the
+  sign-in texts).
 - *Why only sometimes.* It depends on how slow the keyboard is that run:
   a warm emulator brings it up in under a second and never fails; right
   after a cold boot the first 5 class runs gave 3 passes, 1 failure of this
-  kind and 1 emulator crash, and 6 of 6 runs of the single test failed with
-  a probe that added a little time before Back. It
-  hit full or multi-class runs on a fresh emulator, never a single test run
-  on a warm one, which is the pattern #79, #116 and #117 saw. The #117
+  kind and 1 emulator crash. (A temporary diagnostic probe that dumped the
+  screen before Back made the single test fail 6 of 6 cold runs; the probe
+  was removed and is not in the code.) So it hit full or multi-class runs
+  on a fresh emulator, never a single test run on a warm one, which is the
+  pattern #79, #116 and #117 saw. It still reproduced on `MPSkills` with
+  #117's `goBack()` already in place (the first cold-boot loop ran exactly
+  that code), so that change was not the whole story. The #117
   `goBack()` helper fixed the same family (Back with the keyboard visibly
   open) but could not fix this one, because here the keyboard is not yet
   visible when `closeSoftKeyboard()` runs.
@@ -537,7 +542,12 @@ the soft keyboard took it.**
   Back made the test pass 4 of 4 cold runs, which confirmed the cause.
 - *The fix.* `enterNickname()` in the test: type, wait until the keyboard is
   really visible, close it, wait until it is really gone. Back then always
-  means "go back". Use it in any nav test that types and later presses Back.
+  means "go back". Use it in any nav test that types and later presses Back
+  (it is used for every nickname entry in the class, since a show request can
+  be in flight after any of them). It assumes the emulator shows a soft
+  keyboard: with a hardware keyboard attached or `show_ime_with_hard_keyboard`
+  off, the keyboard never appears and `enterNickname()` fails after 30 s
+  rather than passing silently.
   No assertion changed. After the fix: `RigCheckNavHostTest` passed 6 of 6
   cold-boot runs and 10 of 10 warm runs, and the full offline suite (97
   tests) passed 5 of 5 runs, each after a cold emulator boot. Two things

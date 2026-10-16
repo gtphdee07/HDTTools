@@ -11,6 +11,9 @@ interface UploadStepProps {
   error: string | null;
   // Whether this visitor can scan; when they cannot, the step offers the way past it instead of Extract Data.
   scanAccess: ScanAccess;
+  // True when the last scan failed in a way sending the same photo again cannot fix (the photo cannot be sent,
+  // or the service rejected it), so the way forward is a different photo.
+  needsNewPhoto?: boolean;
   onGoAccount: () => void;
   onRetryScanAccess: () => void;
   onFileSelected: (file: File) => void;
@@ -23,6 +26,7 @@ export function UploadStep({
   file,
   error,
   scanAccess,
+  needsNewPhoto = false,
   onGoAccount,
   onRetryScanAccess,
   onFileSelected,
@@ -90,7 +94,7 @@ export function UploadStep({
           </div>
           {!file && <div style={{ fontSize: 13, color: 'var(--fg-2)' }}>{module.slotPlaceholder}</div>}
           <Button variant="secondary" size="md" onClick={() => inputRef.current?.click()}>
-            Choose photo
+            {needsNewPhoto ? 'Choose a different photo' : 'Choose photo'}
           </Button>
         </div>
         {error && (

@@ -15,14 +15,34 @@ import type { BillingClient } from './billing';
 
 const SERVICE_URL = 'https://scan.example.com';
 const PAT: AuthSession = { access_token: 'token-pat', user: { id: 'acct-pat', email: 'pat@example.com' } };
+// The same account after signing in again: a fresh token, which the fake service accepts like the first.
+const PAT_AGAIN: AuthSession = { access_token: 'token-pat-again', user: PAT.user };
+const ACCEPTED_TOKENS = [PAT.access_token, PAT_AGAIN.access_token];
+
+type AuthListener = Parameters<AuthClient['onAuthStateChange']>[0];
 
 function makeAuth(session: AuthSession | null = PAT): AuthClient {
+  let current = session;
+  const listeners = new Set<AuthListener>();
+  const emit = (event: Parameters<AuthListener>[0], next: AuthSession | null) => {
+    current = next;
+    listeners.forEach((listener) => listener(event, next));
+  };
   return {
-    getSession: vi.fn(async () => ({ data: { session }, error: null })),
-    onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: () => {} } } })),
+    getSession: vi.fn(async () => ({ data: { session: current }, error: null })),
+    onAuthStateChange: vi.fn((listener: AuthListener) => {
+      listeners.add(listener);
+      return { data: { subscription: { unsubscribe: () => void listeners.delete(listener) } } };
+    }),
     signUp: vi.fn(),
-    signInWithPassword: vi.fn(),
-    signOut: vi.fn(),
+    signInWithPassword: vi.fn(async () => {
+      emit('SIGNED_IN', PAT_AGAIN);
+      return { data: {}, error: null };
+    }),
+    signOut: vi.fn(async () => {
+      emit('SIGNED_OUT', null);
+      return { error: null };
+    }),
     resetPasswordForEmail: vi.fn(),
     updateUser: vi.fn(),
   } as unknown as AuthClient;
@@ -36,7 +56,8 @@ interface ScanRequestSeen {
 }
 
 // 'fail' is an extraction that failed and was refunded; 'fail-no-refund' one whose refund failed too.
-type Extraction = { fields: Record<string, unknown> } | 'fail' | 'fail-no-refund';
+// 'unauthorized' and 'bad-request' are refused before anything is charged.
+type Extraction = { fields: Record<string, unknown> } | 'fail' | 'fail-no-refund' | 'unauthorized' | 'bad-request';
 
 export interface FakeWorld {
   billing: BillingClient;
@@ -78,7 +99,17 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
       mediaType: body.media_type,
       clientRequestId: body.client_request_id,
     });
-    if (headers.Authorization !== `Bearer ${PAT.access_token}`) return answer(401, { ok: false, code: 'unauthorized' });
+    if (!ACCEPTED_TOKENS.some((token) => headers.Authorization === `Bearer ${token}`)) {
+      return answer(401, { ok: false, code: 'unauthorized' });
+    }
+    if (queue[0] === 'unauthorized') {
+      queue.shift();
+      return answer(401, { ok: false, code: 'unauthorized' });
+    }
+    if (queue[0] === 'bad-request') {
+      queue.shift();
+      return answer(400, { ok: false, code: 'bad_request', message: 'media_type must be image/jpeg' });
+    }
 
     const key = [headers.Authorization, body.doc_type, body.media_type, body.image_base64, body.client_request_id].join('|');
     if (!chargedKeys.has(key)) {
@@ -87,6 +118,7 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
       chargedKeys.add(key);
     }
     const extraction = queue.shift() ?? { fields: { manufacturer: 'Ford' } };
+    if (extraction === 'unauthorized' || extraction === 'bad-request') throw new Error('refused before the charge, above');
     if (extraction === 'fail-no-refund') return answer(502, { ok: false, code: 'extraction_failed_no_refund' });
     if (extraction === 'fail') {
       current += 1;
@@ -149,6 +181,8 @@ export function makeWorld({ isPro = true, balance = 3 }: { isPro?: boolean; bala
     },
   };
 }
+
+export const SIGNED_IN_AGAIN_TOKEN = PAT_AGAIN.access_token;
 
 export function renderApp({ world, session = PAT }: { world: FakeWorld | null; session?: AuthSession | null }) {
   vi.stubGlobal('fetch', world?.fetch ?? vi.fn());

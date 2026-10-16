@@ -25,6 +25,7 @@ describe('prepareImage', () => {
 
     expect(err).toBeInstanceOf(ScanError);
     expect(err.code).toBe('bad_photo');
+    expect(err.message).toMatch(/nothing was used/i);
   });
 
   it('refuses an oversize photo when it cannot be shrunk', async () => {
@@ -33,6 +34,7 @@ describe('prepareImage', () => {
     expect(err).toBeInstanceOf(ScanError);
     expect(err.code).toBe('bad_photo');
     expect(err.message).toMatch(/too large/i);
+    expect(err.message).toMatch(/nothing was used/i);
   });
 
   it('shrinks an oversize photo to a JPEG that fits', async () => {

@@ -80,6 +80,28 @@ describe('UploadStep', () => {
     expect(onGoAccount).toHaveBeenCalled();
   });
 
+  it('offers "Sign in again" instead of Extract Data and the scan count when the service refused the account token', async () => {
+    const onGoAccount = vi.fn();
+    const file = new File(['x'], 'truck.jpg', { type: 'image/jpeg' });
+    render(<UploadStep {...baseProps({ file, onGoAccount, scanAccess: { kind: 'sign-in-again' } })} />);
+
+    expect(screen.queryByRole('button', { name: 'Extract Data' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/scans? left/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in again' }));
+
+    expect(onGoAccount).toHaveBeenCalled();
+  });
+
+  it('calls the photo button "Choose a different photo" only when the last photo cannot be sent again', () => {
+    const { rerender } = render(<UploadStep {...baseProps()} />);
+    expect(screen.getByRole('button', { name: 'Choose photo' })).toBeInTheDocument();
+
+    rerender(<UploadStep {...baseProps({ needsNewPhoto: true })} />);
+
+    expect(screen.getByRole('button', { name: 'Choose a different photo' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Choose photo' })).not.toBeInTheDocument();
+  });
+
   it('offers Try again when the plan would not load', async () => {
     const onRetryScanAccess = vi.fn();
     render(<UploadStep {...baseProps({ onRetryScanAccess, scanAccess: { kind: 'load-failed' } })} />);

@@ -15,7 +15,21 @@ export type ScanErrorCode =
   | 'network'
   // The service did not finish answering within the time limit (api.ts); the request was abandoned.
   | 'timeout'
+  // The service delivered and charged, but the answer has no weight in it (the tow-vehicle-only ticket).
+  | 'no_weight'
   | 'unknown';
+
+// Outcomes where sending the same photo again cannot help: a delivered answer (a retry is another paid Scan
+// that reads the same), a refusal that repeats, or a photo that cannot be sent. After these the next step is
+// a different photo, signing in, or typing the numbers in.
+const NO_TRY_AGAIN: ReadonlySet<ScanErrorCode> = new Set<ScanErrorCode>([
+  'no_weight',
+  'unauthorized',
+  'bad_request',
+  'bad_photo',
+  'insufficient_credits',
+  'unavailable',
+]);
 
 // A scan that did not deliver fields. `message` is written for the user.
 export class ScanError extends Error {
@@ -30,5 +44,10 @@ export class ScanError extends Error {
     this.name = 'ScanError';
     this.code = code;
     this.lostResponse = lostResponse;
+  }
+
+  // Whether re-sending the same photo is worth offering.
+  get canTryAgain(): boolean {
+    return !NO_TRY_AGAIN.has(this.code);
   }
 }

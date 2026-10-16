@@ -25,7 +25,10 @@ const MESSAGES = {
     "We couldn't confirm your scan balance with the payment service, so nothing was scanned. You may not have been charged. Try again in a moment; a retry is not charged twice.",
 } as const;
 
-const NO_ANSWER = "We didn't get a usable answer from the scan service. Try again; a retry is not charged twice.";
+// The service's own wording for what it disliked is for developers (e.g. which field), so it is not shown.
+const BAD_REQUEST = "The scan service couldn't take that photo. Nothing was used. Try a different photo, or type the numbers in yourself.";
+
+const NO_ANSWER ="We didn't get a usable answer from the scan service. Try again; a retry is not charged twice.";
 
 const NO_CONNECTION = "We couldn't reach the scan service. Check your connection and try again. A retry is not charged twice.";
 const TOO_SLOW = 'The scan service took too long to answer. Try again; a retry is not charged twice.';
@@ -111,8 +114,7 @@ async function scan<T>(docType: DocType, file: File, context: ScanContext): Prom
     throw new ScanError(named, MESSAGES[named], named === 'extraction_failed_no_refund' || named === 'billing_error');
   }
   if (code === 'bad_request') {
-    const detail = typeof body?.message === 'string' ? ` (${body.message})` : '';
-    throw new ScanError('bad_request', `The scan service could not accept that request${detail}.`);
+    throw new ScanError('bad_request', BAD_REQUEST);
   }
   // Not an answer the service gave (an error page from the edge, an unreadable success): it may have
   // charged, so the retry must carry the same request id.

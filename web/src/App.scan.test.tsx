@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BillingStatus } from './billing';
-import { makeWorld, renderApp } from './scanTestKit';
+import { SIGNED_IN_AGAIN_TOKEN, makeWorld, renderApp } from './scanTestKit';
 
 // Scanning on Web, end to end through the real screens: signed-in Pro users spend scans through the shared
 // Scan service; Free and signed-out visitors are sent to upgrade or sign in; a failed scan, a stale balance
@@ -186,12 +186,34 @@ describe('a Pro user with scans', () => {
     expect(message).toHaveTextContent(/type the weight in/i);
     expect(world.balance()).toBe(before - 1);
 
-    // The message is true: Try again is a new request that spends another scan.
-    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    // Re-sending the same photo is another paid Scan that reads the same, so Try again is not offered.
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Choose a different photo' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Type it in' })).toBeEnabled();
+    expect(world.requests).toHaveLength(2);
+
+    // A different photo is its own Scan, under its own request id.
+    await user.upload(fileInput(), photo('clearer-ticket.jpg'));
     await waitFor(() => expect(screen.getByLabelText('Stand-alone Weight (lb, optional)')).toHaveValue(7000));
     expect(world.requests).toHaveLength(3);
     expect(world.requests[2].clientRequestId).not.toBe(world.requests[1].clientRequestId);
     expect(world.balance()).toBe(before - 2);
+  });
+
+  it('takes the user to the weight field when they choose to type it in after a ticket with no weight', async () => {
+    const world = makeWorld({ balance: 3 });
+    world.queueExtraction({ fields: { manufacturer: 'Ford' } }, { fields: {} });
+    const user = renderApp({ world });
+    await startNewRig(user);
+    await screen.findByText(/3 scans left/);
+    await chooseAndExtract(user);
+    await screen.findByText('Check the numbers');
+    await user.upload(fileInput(), photo('blank-ticket.jpg'));
+    await screen.findByText(/couldn't find a weight/i);
+
+    await user.click(screen.getByRole('button', { name: 'Type it in' }));
+
+    expect(screen.getByLabelText('Stand-alone Weight (lb, optional)')).toHaveFocus();
   });
 
   describe('when a tow-vehicle-only ticket scan does not deliver', () => {
@@ -271,6 +293,146 @@ describe('a Pro user with scans', () => {
       await waitFor(() => expect(world.requests).toHaveLength(3));
       expect(world.requests[2].clientRequestId).not.toBe(world.requests[1].clientRequestId);
     });
+  });
+});
+
+describe('what the user is offered when a Scan does not deliver', () => {
+  const heic = () => new File(['pixels'], 'tag.heic', { type: 'image/heic' });
+
+  async function reachTruckUpload(world: ReturnType<typeof makeWorld>) {
+    const user = renderApp({ world });
+    await startNewRig(user);
+    await screen.findByText(/3 scans left/);
+    return user;
+  }
+
+  async function reachTruckReview(world: ReturnType<typeof makeWorld>) {
+    const user = await reachTruckUpload(world);
+    await chooseAndExtract(user);
+    await screen.findByText('Check the numbers');
+    return user;
+  }
+
+  describe('after the service refuses the account token', () => {
+    it('offers "Sign in again" instead of the scan count, which leads to the Account screen and back to the same check', async () => {
+      const world = makeWorld({ balance: 3 });
+      world.queueExtraction('unauthorized');
+      const user = await reachTruckUpload(world);
+
+      await chooseAndExtract(user, photo('keep-me.jpg'));
+
+      expect(await screen.findAllByText(/sign-in has expired/i)).not.toHaveLength(0);
+      expect(screen.queryByText(/scans left/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Extract Data' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Choose a different photo' })).toBeInTheDocument();
+      expect(world.balance()).toBe(3);
+
+      await user.click(screen.getByRole('button', { name: 'Sign in again' }));
+      await user.type(await screen.findByLabelText('Email'), 'pat@example.com');
+      await user.type(screen.getByLabelText('Password'), 'secret1');
+      // The header has a Sign in button too; the form's submit is the last one.
+      await user.click(screen.getAllByRole('button', { name: 'Sign in' }).at(-1)!);
+      await user.click(await screen.findByRole('button', { name: 'Back to your check' }));
+
+      // The same check: the same photo is still chosen, and the stale refusal is gone.
+      expect(await screen.findByText(/3 scans left/)).toBeInTheDocument();
+      expect(screen.getByText('Selected: keep-me.jpg')).toBeInTheDocument();
+      expect(screen.queryByText(/sign-in has expired/i)).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Extract Data' }));
+      expect(await screen.findByText('Check the numbers')).toBeInTheDocument();
+      expect(world.requests[1].authorization).toBe(`Bearer ${SIGNED_IN_AGAIN_TOKEN}`);
+      expect(world.balance()).toBe(2);
+    });
+
+    it('offers it on the tow-vehicle-only ticket too, with no Try again', async () => {
+      const world = makeWorld({ balance: 3 });
+      world.queueExtraction({ fields: { manufacturer: 'Ford' } }, 'unauthorized');
+      const user = await reachTruckReview(world);
+
+      await user.upload(fileInput(), photo('standalone.jpg'));
+
+      expect((await screen.findAllByText(/sign-in has expired/i)).length).toBeGreaterThan(0);
+      expect(screen.getByRole('button', { name: 'Sign in again' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Scan tow-vehicle-only ticket' })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('after the service rejects the request', () => {
+    it("says nothing was used, without the service's internal detail, and offers a different photo, not Try again", async () => {
+      const world = makeWorld({ balance: 3 });
+      world.queueExtraction('bad-request');
+      const user = await reachTruckUpload(world);
+
+      await chooseAndExtract(user);
+
+      const message = await screen.findByText(/nothing was used/i);
+      expect(message).not.toHaveTextContent(/media_type/);
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+      // The same photo is not offered for sending again; a different one is.
+      expect(screen.getByRole('button', { name: 'Extract Data' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Choose a different photo' })).toBeInTheDocument();
+      expect(world.balance()).toBe(3);
+
+      await user.upload(fileInput(), photo('other.jpg'));
+      await user.click(screen.getByRole('button', { name: 'Extract Data' }));
+      expect(await screen.findByText('Check the numbers')).toBeInTheDocument();
+      expect(world.requests[1].clientRequestId).not.toBe(world.requests[0].clientRequestId);
+    });
+
+    it('does the same for the tow-vehicle-only ticket', async () => {
+      const world = makeWorld({ balance: 3 });
+      world.queueExtraction({ fields: { manufacturer: 'Ford' } }, 'bad-request');
+      const user = await reachTruckReview(world);
+
+      await user.upload(fileInput(), photo('standalone.jpg'));
+
+      const message = await screen.findByText(/nothing was used/i);
+      expect(message).not.toHaveTextContent(/media_type/);
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Choose a different photo' })).toBeEnabled();
+    });
+  });
+
+  describe('after a photo that cannot be sent', () => {
+    it('says nothing was used and offers a different photo, not Try again', async () => {
+      const world = makeWorld({ balance: 3 });
+      const user = await reachTruckUpload(world);
+
+      await chooseAndExtract(user, heic());
+
+      expect(await screen.findByText(/nothing was used/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Extract Data' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Choose a different photo' })).toBeInTheDocument();
+      expect(world.requests).toHaveLength(0);
+      expect(world.balance()).toBe(3);
+    });
+
+    it('does the same for the tow-vehicle-only ticket', async () => {
+      const world = makeWorld({ balance: 3 });
+      const user = await reachTruckReview(world);
+
+      await user.upload(fileInput(), heic());
+
+      expect(await screen.findByText(/nothing was used/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Choose a different photo' })).toBeEnabled();
+      expect(world.requests).toHaveLength(1);
+    });
+  });
+
+  it('keeps offering Extract Data with the same photo after an answer that can be retried', async () => {
+    const world = makeWorld({ balance: 3 });
+    world.queueExtraction('fail');
+    const user = await reachTruckUpload(world);
+
+    await chooseAndExtract(user);
+
+    expect(await screen.findByText(/your scan was refunded/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Extract Data' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Choose a different photo' })).not.toBeInTheDocument();
   });
 });
 

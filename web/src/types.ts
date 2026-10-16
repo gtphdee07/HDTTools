@@ -1,3 +1,5 @@
+import type { ScanErrorCode } from './scanError';
+
 interface TireSpec {
   tire?: string;
   rim?: string;
@@ -92,6 +94,8 @@ export interface WizardState {
   scale: ScaleTicketData;
   pendingFile: File | null;
   uploadError: string | null;
+  // Which kind of Scan failure `uploadError` came from, when it came from one.
+  uploadErrorCode: ScanErrorCode | null;
   // Whole percentage points (15-25), not a 0-1 fraction - converted when
   // calling createBreakdown. Only used when truck.standalone_weight_lb
   // isn't known from a real tow-vehicle-only scale reading.

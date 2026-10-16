@@ -35,7 +35,9 @@ class PaywallScreenTest {
         }
 
         composeRule.onNodeWithText("Get More Scans").assertIsDisplayed()
-        composeRule.onNodeWithText("You have 7 scan credits left.", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("You have 7 scans left.", substring = true).assertIsDisplayed()
+        // The glossary's words are "Scan" and "Scan Credit"; the lower-case "scan credits" is not used.
+        composeRule.onNodeWithText("scan credit", substring = true, ignoreCase = true).assertDoesNotExist()
         composeRule.onNodeWithText("Couldn't load offers", substring = true).assertIsDisplayed()
     }
 
@@ -45,7 +47,7 @@ class PaywallScreenTest {
             PaywallScreen(creditBalance = 1, onPurchase = { _, _ -> }, onRestore = { }, onDone = { })
         }
 
-        composeRule.onNodeWithText("You have 1 scan credit left.", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("You have 1 scan left.", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -113,7 +115,7 @@ class PaywallScreenTest {
             PaywallScreen(creditBalance = null, onPurchase = { _, _ -> }, onRestore = { }, onDone = { })
         }
 
-        composeRule.onNodeWithText("You have 0 scan credits left.", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("You have 0 scans left.", substring = true).assertIsDisplayed()
     }
 
     // "Restore purchase" is a real button with real onRestore plumbing

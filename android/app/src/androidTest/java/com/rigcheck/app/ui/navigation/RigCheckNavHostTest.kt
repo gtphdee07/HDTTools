@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -25,6 +26,16 @@ class RigCheckNavHostTest {
 
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
+
+    // The system Back button. These tests type a nickname first, and an open
+    // keyboard takes the first Back for itself (it closes, nothing navigates),
+    // so a Back pressed before the keyboard has gone is a flaky navigation
+    // test. Closing it first makes Back always mean "go back" (a no-op if no
+    // keyboard is open).
+    private fun goBack() {
+        closeSoftKeyboard()
+        pressBack()
+    }
 
     // The Next / Check Weights buttons are pinned below each entry form's
     // scrolling area, so they are always on screen and need no scrolling.
@@ -80,7 +91,7 @@ class RigCheckNavHostTest {
         assertOnResults()
 
         // Results -> RigPicker is a single pop (popUpTo RigPicker, inclusive = false).
-        pressBack()
+        goBack()
 
         // saveCurrentRig() writes to DataStore asynchronously (Results
         // screen's LaunchedEffect), and RigPickerScreen's recentRigs list
@@ -126,7 +137,7 @@ class RigCheckNavHostTest {
         // Signed out, buying asks for an account first (#22).
         composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
 
-        pressBack()
+        goBack()
 
         composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
         composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
@@ -150,7 +161,7 @@ class RigCheckNavHostTest {
 
         composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
 
-        pressBack()
+        goBack()
 
         composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
     }

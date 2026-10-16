@@ -116,6 +116,20 @@ class ScanHttpTest {
     }
 
     @Test
+    fun `a reply that never comes is a timeout, not a network_error`() {
+        http = ScanHttp(
+            OkHttpClient.Builder().readTimeout(1, TimeUnit.SECONDS).build(),
+            server.url("/v1/scan").toString(),
+        )
+        server.enqueue(MockResponse.Builder().onResponseStart(SocketEffect.Stall).build())
+
+        val result = scan()
+
+        assertTrue("expected a Failure, got $result", result is ScanResult.Failure)
+        assertEquals("timeout", (result as ScanResult.Failure).code)
+    }
+
+    @Test
     fun `a reply that is not JSON is a parse_error`() {
         reply(200, "<html>Bad gateway</html>")
         assertFailure("parse_error", "Could not parse the server's response.")

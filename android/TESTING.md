@@ -345,6 +345,17 @@ root `TESTING.md`'s "Dashboard" section.
   nonce, Google its SHA-256 hex) and cancel/missing-account messages.
 - `ScanApiClientTest.kt` (#22) — scan requests carry
   `Authorization: Bearer <account token>` and no `app_user_id`.
+- `ScanHttpTest.kt` (#122) — how the Scan client reads the Worker's reply,
+  against a MockWebServer (no live Worker, no network, no money): one test
+  per Worker error code (`insufficient_credits`, `unauthorized`,
+  `auth_unavailable`, `extraction_failed`, `extraction_failed_no_refund`,
+  `billing_error`, `bad_request`) asserting the code and message returned; a
+  dropped connection is `network_error`; an empty, non-JSON or non-object
+  reply, an `ok` that is not a boolean and `fields` that is not an object are
+  `parse_error`; a success returns its fields, or an empty set when there are
+  none; `ok: false` with no code, or no `ok` at all, is a failure. Writing it
+  found that the last two `parse_error` cases used to throw inside the OkHttp
+  callback and leave the Scan waiting forever.
 
 ### Major (instrumented) — `./gradlew connectedDebugAndroidTest`
 

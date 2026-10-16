@@ -364,9 +364,10 @@ root `TESTING.md`'s "Dashboard" section.
   Asserts the message and the step: an expired or rejected token says to sign in
   again and offers sign-in, no scans left says so and offers buying scans, an
   unverifiable account says nothing was charged and offers nothing (signing in
-  would not help), any other code shows its own message with no step. Also pins
-  that the balance is read again after every failure except
-  `insufficient_credits`.
+  would not help), any other code shows its own message with no step. Also
+  drives `reportScanFailure`, the one function both of the view model's Scan
+  entry points end in, with a fake show and a fake balance read, to pin that the
+  balance is read again after every failure except `insufficient_credits`.
 
 ### Major (instrumented) — `./gradlew connectedDebugAndroidTest`
 

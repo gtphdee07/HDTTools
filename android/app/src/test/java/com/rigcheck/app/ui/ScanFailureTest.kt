@@ -11,8 +11,6 @@ import mockwebserver3.MockWebServer
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -90,19 +88,40 @@ class ScanFailureTest {
         assertEquals(ScanUiState.Error("Could not read the image. Credit refunded.", ScanNextStep.NONE), shown)
     }
 
-    // The balance is read again after a failed Scan (a refund or a failed
-    // refund may have changed it), except when the Worker said there was
-    // nothing to spend: the balance then cannot have changed.
-    @Test
-    fun `the balance is not read again after insufficient_credits`() {
-        assertFalse(refreshesBalanceAfter(ScanResult.Failure("insufficient_credits", "Not enough scan credits.")))
+    // The path the view model takes for a failed Scan: show the error, and read
+    // the balance again (a refund or a failed refund may have changed it),
+    // except when the Worker said there was nothing to spend: the balance then
+    // cannot have changed.
+    private class Reported {
+        val shown = mutableListOf<ScanUiState.Error>()
+        var balanceReads = 0
+    }
+
+    private fun report(failure: ScanResult.Failure) = Reported().also { reported ->
+        reportScanFailure(failure, show = { reported.shown += it }, refreshBalance = { reported.balanceReads++ })
     }
 
     @Test
-    fun `the balance is read again after every other failure`() {
+    fun `insufficient_credits is shown with its next step and the balance is not read again`() {
+        val reported = report(ScanResult.Failure("insufficient_credits", "Not enough scan credits."))
+        assertEquals(listOf(ScanUiState.Error("You're out of scans.", ScanNextStep.BUY_SCANS)), reported.shown)
+        assertEquals(0, reported.balanceReads)
+    }
+
+    @Test
+    fun `every other failure is shown and the balance is read again once`() {
         for (code in listOf("unauthorized", "auth_unavailable", "extraction_failed", "billing_error", "network_error")) {
-            assertTrue(code, refreshesBalanceAfter(ScanResult.Failure(code, "message")))
+            val failure = ScanResult.Failure(code, "message")
+            val reported = report(failure)
+            assertEquals(code, listOf(scanErrorFor(failure)), reported.shown)
+            assertEquals(code, 1, reported.balanceReads)
         }
-        assertTrue(refreshesBalanceAfter(NOT_SIGNED_IN))
+    }
+
+    @Test
+    fun `no account token is shown with its next step and the balance is read again`() {
+        val reported = report(NOT_SIGNED_IN)
+        assertEquals(listOf(ScanUiState.Error("Sign in to scan.", ScanNextStep.SIGN_IN)), reported.shown)
+        assertEquals(1, reported.balanceReads)
     }
 }

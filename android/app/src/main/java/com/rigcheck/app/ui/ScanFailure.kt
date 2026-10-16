@@ -27,9 +27,17 @@ fun scanErrorFor(failure: ScanResult.Failure): ScanUiState.Error = when (failure
     else -> ScanUiState.Error(failure.message)
 }
 
-// A failed Scan may have been charged and refunded (or not), so the balance is
-// read again - except after insufficient_credits, where nothing was spent.
-fun refreshesBalanceAfter(failure: ScanResult.Failure): Boolean = failure.code != "insufficient_credits"
+// Shows a failed Scan and reads the balance again, since it may have been
+// charged and refunded (or not) - except after insufficient_credits, where
+// nothing was spent. The view model's two Scan entry points both end here.
+fun reportScanFailure(
+    failure: ScanResult.Failure,
+    show: (ScanUiState.Error) -> Unit,
+    refreshBalance: () -> Unit,
+) {
+    show(scanErrorFor(failure))
+    if (failure.code != "insufficient_credits") refreshBalance()
+}
 
 // The one rule for starting a Scan from any button: with a balance above zero
 // the photo source is offered, otherwise the user goes to the paywall, which

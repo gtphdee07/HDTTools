@@ -267,10 +267,8 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun showScanFailure(failure: ScanResult.Failure) {
-        scanState = scanErrorFor(failure)
-        if (refreshesBalanceAfter(failure)) refreshCreditBalance()
-    }
+    private fun showScanFailure(failure: ScanResult.Failure) =
+        reportScanFailure(failure, show = { scanState = it }, refreshBalance = ::refreshCreditBalance)
 
     // The one place a Scan request is sent, for both entry points. The Worker
     // dedupes the RevenueCat charge on the request id, so the same photo keeps

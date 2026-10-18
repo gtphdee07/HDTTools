@@ -143,7 +143,7 @@ class ScanSessionTest {
     }
 
     @Test
-    fun `a Scan of another document's Chooser counts as another screen`() = runTest {
+    fun `another document's Chooser is another screen`() = runTest {
         val h = Harness()
         val first = CompletableDeferred<ScanResult>()
         with(h) {

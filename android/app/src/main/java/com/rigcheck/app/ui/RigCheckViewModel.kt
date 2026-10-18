@@ -98,7 +98,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
 
     // What a Scan that answered after its check ended tells the user, oldest
     // first; each may be a spent Scan Credit, so none is dropped for a newer one.
-    var lateScanNotices by mutableStateOf<List<String>>(emptyList())
+    var lateScanMessages by mutableStateOf<List<String>>(emptyList())
         private set
 
     // What the entry screen reached after a delivered Scan tells the user about
@@ -319,13 +319,13 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     // device): a Scan started on another screen is over for its check.
     fun screenShown(screen: ScanScreen) = scanSession.screenShown(screen)
 
-    fun dismissLateScanNotice() {
-        lateScanNotices = lateScanNotices.drop(1)
+    fun dismissLateScanMessage() {
+        lateScanMessages = lateScanMessages.drop(1)
     }
 
     private fun reportGoneScan(result: ScanResult) = reportLateScan(
         result,
-        show = { lateScanNotices = lateScanNotices + it },
+        show = { lateScanMessages = lateScanMessages + it },
         refreshBalance = ::refreshCreditBalance,
         setBalance = { creditBalance = it },
     )

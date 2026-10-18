@@ -235,8 +235,8 @@ fun RigCheckNavHost(
 
     // On whichever screen the user is on, so a Scan that answered after they
     // left its check is never missed. One at a time, oldest first.
-    viewModel.lateScanNotices.firstOrNull()?.let { message ->
-        LateScanDialog(message = message, onDismiss = { viewModel.dismissLateScanNotice() })
+    viewModel.lateScanMessages.firstOrNull()?.let { message ->
+        LateScanDialog(message = message, onDismiss = { viewModel.dismissLateScanMessage() })
     }
 }
 

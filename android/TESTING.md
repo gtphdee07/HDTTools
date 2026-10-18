@@ -596,8 +596,14 @@ held the NavController of the destroyed activity, now the view model records the
 delivered Scan and the live nav host navigates); one answered after **backing out
 to the Rig Picker** or after **another rig was started** is not used (the rig's
 data is unchanged, nothing opens) and the user is told in the late-Scan dialog;
-the next check can scan while the old Scan is still out; a **late failure** shows
-its own message with OK only (no Try again, no "Scan failed" title). The tests
+the next check can scan while the old Scan is still out, and the old Scan's late
+answer leaves the new check's loading state (`scanState` stays `Loading`) and
+error state alone; leaving a check clears its loading state at once; a **late
+failure** shows its own message with OK only (no Try again, no "Scan failed"
+title). The **stand-alone ticket Scan** has its own tests on the Truck Tag
+screen: a second tap sends nothing, an answer on that screen fills
+`standaloneWeightLb`, and one answered after leaving the screen or starting
+another rig is not written and is reported. The tests
 fail without the change: breaking the rig-start signal, the screen-change signal
 or the in-flight guard each turns several of them red. `enterNickname` here is the
 #125 recipe (keyboard really closed before a Back).

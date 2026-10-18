@@ -21,6 +21,8 @@ sealed interface ScanScreen {
 // the check frees the lock at once, so the next check can scan while the old
 // request is still out.
 class ScanSession(private val onLiveScanGone: () -> Unit = {}) {
+    // The Scan in flight. A new instance per Scan, so `live === mine` tells a Scan
+    // still standing from one that ended and was replaced by the next check's.
     private class Live(val screen: ScanScreen)
 
     private var live: Live? = null

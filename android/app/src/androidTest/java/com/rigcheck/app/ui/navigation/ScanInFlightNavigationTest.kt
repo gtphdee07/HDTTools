@@ -18,8 +18,8 @@ import com.rigcheck.app.MainActivity
 import com.rigcheck.app.data.ScanResult
 import com.rigcheck.app.ui.RigCheckViewModel
 import com.rigcheck.app.ui.ScanMessages
+import com.rigcheck.app.ui.ScanUiState
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
@@ -32,7 +32,8 @@ import org.junit.runner.RunWith
 // The view model's Scan is answered by the test (RigCheckViewModel.scanSender), so
 // a Scan can be held open and answered when the test chooses, with no Worker and
 // no Scan Credit. What a late answer must not do: change the current rig, open an
-// entry screen, or crash; what it must do: tell the user and leave the app usable.
+// entry screen, touch the loading or error state of the check the user is in now,
+// or crash; what it must do: tell the user and leave the app usable.
 @RunWith(AndroidJUnit4::class)
 class ScanInFlightNavigationTest {
 
@@ -41,11 +42,14 @@ class ScanInFlightNavigationTest {
 
     private fun viewModel() = ViewModelProvider(composeRule.activity)[RigCheckViewModel::class.java]
 
-    // The Scan the sender was asked to make, and what it is waiting on.
-    private val answer = CompletableDeferred<ScanResult>()
+    // One answer per Scan, in the order the Scans are sent; the test completes each
+    // when it likes. `sent` counts the Scans that reached the sender.
+    private val answers = List(2) { CompletableDeferred<ScanResult>() }
+    private val answer = answers[0]
     private var sent = 0
 
     private val gvwrScan = ScanResult.Success(buildJsonObject { put("gvwr_lb", 11111) })
+    private val ticketScan = ScanResult.Success(buildJsonObject { put("gross_weight_lb", 7000) })
 
     // Same recipe as RigCheckNavHostTest (#125): leave the soft keyboard really
     // closed so a later Back is a Back.
@@ -65,13 +69,10 @@ class ScanInFlightNavigationTest {
         return visible
     }
 
-    // A new rig, on the Truck Tag Chooser, with the view model's Scan held on `answer`.
+    // A new rig, on the Truck Tag Chooser, with the view model's Scans held on `answers`.
     private fun startRigOnTheChooser(nickname: String) {
         composeRule.runOnUiThread {
-            viewModel().scanSender = { _, _ ->
-                sent++
-                answer.await()
-            }
+            viewModel().scanSender = { _, _ -> answers[sent++].await() }
         }
         enterNickname(nickname)
         composeRule.onNodeWithText("Create").performClick()
@@ -84,17 +85,30 @@ class ScanInFlightNavigationTest {
         }
     }
 
+    private fun scanStandaloneTicket() {
+        composeRule.runOnUiThread {
+            viewModel().performStandaloneScan(composeRule.activity.contentResolver, Uri.parse("content://scan/ticket"))
+        }
+    }
+
     private fun waitForText(text: String) {
         composeRule.waitUntil(timeoutMillis = 10_000) {
             composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
         }
     }
 
-    private fun truckGvwr(): Double? {
-        var gvwr: Double? = null
-        composeRule.runOnUiThread { gvwr = viewModel().truck.gvwrLb }
-        return gvwr
+    private fun <T> onUiThread(read: RigCheckViewModel.() -> T): T {
+        var value: T? = null
+        composeRule.runOnUiThread { value = viewModel().read() }
+        @Suppress("UNCHECKED_CAST")
+        return value as T
     }
+
+    private fun truckGvwr(): Double? = onUiThread { truck.gvwrLb }
+
+    private fun standaloneWeight(): Double? = onUiThread { truck.standaloneWeightLb }
+
+    private fun scanState(): ScanUiState = onUiThread { scanState }
 
     @Test
     fun aSecondScanWhileOneIsOutSendsNothing() {
@@ -142,6 +156,8 @@ class ScanInFlightNavigationTest {
         scanTruckTag()
         pressBack()
         composeRule.onNodeWithText("Which rig?").assertIsDisplayed()
+        // Leaving the check cleared its loading state at once.
+        assertEquals(ScanUiState.Idle, scanState())
 
         answer.complete(gvwrScan)
 
@@ -155,7 +171,9 @@ class ScanInFlightNavigationTest {
     fun aScanAnsweredAfterAnotherRigWasStartedDoesNotTouchThatRig() {
         startRigOnTheChooser("First Rig")
         scanTruckTag()
+        assertEquals(ScanUiState.Loading, scanState())
         composeRule.runOnUiThread { viewModel().startNewRig("Second Rig") }
+        assertEquals(ScanUiState.Idle, scanState())
 
         answer.complete(gvwrScan)
 
@@ -166,17 +184,28 @@ class ScanInFlightNavigationTest {
     }
 
     @Test
-    fun theNextCheckCanScanWhileTheOldScanIsStillOut() {
+    fun theNextCheckCanScanWhileTheOldScanIsOutAndTheOldAnswerLeavesItsLoadingStateAlone() {
         startRigOnTheChooser("Old Check")
         scanTruckTag()
         composeRule.runOnUiThread { viewModel().startNewRig("New Check") }
 
         scanTruckTag()
         composeRule.waitForIdle()
-
         assertEquals(2, sent)
-        answer.complete(gvwrScan)
+        assertEquals(ScanUiState.Loading, scanState())
+
+        // The old Scan answers while the new check's Scan is still out: it is
+        // reported, and the new check is still loading, with no error shown.
+        answers[0].complete(gvwrScan)
         waitForText(ScanMessages.RESULT_NOT_USED)
+        assertEquals(ScanUiState.Loading, scanState())
+        composeRule.onAllNodesWithText("Scan failed").assertCountEquals(0)
+        assertNull(truckGvwr())
+
+        // The new check's own Scan then fills it and opens its entry screen.
+        answers[1].complete(gvwrScan)
+        waitForText("Next: Trailer Tag")
+        assertEquals(11111.0, truckGvwr()!!, 0.0)
     }
 
     @Test
@@ -191,5 +220,67 @@ class ScanInFlightNavigationTest {
         composeRule.onNodeWithText("OK").assertIsDisplayed()
         composeRule.onAllNodesWithText("Try again").assertCountEquals(0)
         composeRule.onAllNodesWithText("Scan failed").assertCountEquals(0)
+        assertEquals(ScanUiState.Idle, scanState())
+    }
+
+    // --- The stand-alone ticket Scan, on the Truck Tag screen ---
+
+    private fun openTheTruckTagByHand() {
+        composeRule.onNodeWithText("Enter Manually").performClick()
+        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
+    }
+
+    @Test
+    fun aSecondStandaloneScanWhileOneIsOutSendsNothing() {
+        startRigOnTheChooser("Ticket Once")
+        openTheTruckTagByHand()
+
+        scanStandaloneTicket()
+        scanStandaloneTicket()
+        composeRule.waitForIdle()
+
+        assertEquals(1, sent)
+        answer.complete(ticketScan)
+        composeRule.waitUntil(timeoutMillis = 10_000) { standaloneWeight() == 7000.0 }
+    }
+
+    @Test
+    fun aStandaloneScanAnsweredOnTheTruckTagScreenFillsTheWeight() {
+        startRigOnTheChooser("Ticket Here")
+        openTheTruckTagByHand()
+
+        scanStandaloneTicket()
+        answer.complete(ticketScan)
+
+        composeRule.waitUntil(timeoutMillis = 10_000) { standaloneWeight() == 7000.0 }
+        composeRule.onAllNodesWithText(ScanMessages.RESULT_NOT_USED).assertCountEquals(0)
+    }
+
+    @Test
+    fun aStandaloneScanAnsweredAfterLeavingTheTruckTagScreenIsNotUsedAndTheUserIsTold() {
+        startRigOnTheChooser("Ticket Gone")
+        openTheTruckTagByHand()
+        scanStandaloneTicket()
+        composeRule.onNodeWithText("Next: Trailer Tag").performClick()
+        composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
+        assertEquals(ScanUiState.Idle, scanState())
+
+        answer.complete(ticketScan)
+
+        waitForText(ScanMessages.RESULT_NOT_USED)
+        assertNull(standaloneWeight())
+    }
+
+    @Test
+    fun aStandaloneScanAnsweredAfterAnotherRigWasStartedDoesNotTouchThatRig() {
+        startRigOnTheChooser("Ticket First")
+        openTheTruckTagByHand()
+        scanStandaloneTicket()
+        composeRule.runOnUiThread { viewModel().startNewRig("Ticket Second") }
+
+        answer.complete(ticketScan)
+
+        waitForText(ScanMessages.RESULT_NOT_USED)
+        assertNull(standaloneWeight())
     }
 }

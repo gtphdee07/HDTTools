@@ -108,7 +108,7 @@ fun RigCheckNavHost(
                 creditBalance = viewModel.creditBalance,
                 scanState = viewModel.scanState,
                 onChooseManual = {
-                    viewModel.clearScanNotice()
+                    viewModel.scanNoticeState.enteredManually()
                     navController.navigate(destinationFor(route.module))
                 },
                 onPhotoScanned = { uri ->
@@ -157,10 +157,10 @@ fun RigCheckNavHost(
                 truck = viewModel.truck,
                 onTruckChange = { viewModel.truck = it },
                 onContinue = {
-                    viewModel.clearScanNotice()
+                    viewModel.scanNoticeState.leftEntryScreen()
                     navController.navigate(RigCheckRoute.Chooser(EntryModule.TRAILER))
                 },
-                scanNotice = viewModel.scanNotice,
+                scanNotice = viewModel.scanNoticeState.notice,
                 pinWeightPct = viewModel.pinWeightPct,
                 onPinWeightPctChange = { viewModel.updatePinWeightPct(it) },
                 scanState = viewModel.scanState,
@@ -179,10 +179,10 @@ fun RigCheckNavHost(
                 trailer = viewModel.trailer,
                 onTrailerChange = { viewModel.trailer = it },
                 onContinue = {
-                    viewModel.clearScanNotice()
+                    viewModel.scanNoticeState.leftEntryScreen()
                     navController.navigate(RigCheckRoute.Chooser(EntryModule.SCALE))
                 },
-                scanNotice = viewModel.scanNotice,
+                scanNotice = viewModel.scanNoticeState.notice,
             )
         }
 
@@ -191,10 +191,10 @@ fun RigCheckNavHost(
                 scale = viewModel.scale,
                 onScaleChange = { viewModel.scale = it },
                 onContinue = {
-                    viewModel.clearScanNotice()
+                    viewModel.scanNoticeState.leftEntryScreen()
                     goToDisclaimerOrResults()
                 },
-                scanNotice = viewModel.scanNotice,
+                scanNotice = viewModel.scanNoticeState.notice,
             )
         }
 

@@ -81,11 +81,8 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         private set
 
     // What the entry screen reached after a delivered Scan tells the user about
-    // the fields it did not read (#120). Null for manual entry and for a Scan
-    // that read everything. Cleared when the user leaves that screen, enters
-    // manually, starts another Scan or starts a rig.
-    var scanNotice by mutableStateOf<ScanNotice?>(null)
-        private set
+    // the fields it did not read (#120); see ScanNoticeState for when it goes.
+    val scanNoticeState = ScanNoticeState()
 
     // Shared by both Scan entry points (the three documents and the stand-alone
     // ticket), so a photo's request id survives a lost answer on either.
@@ -178,7 +175,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         truck = rig.truck
         trailer = rig.trailer
         scale = ScaleTicket()
-        scanNotice = null
+        scanNoticeState.rigStarted()
         pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
     }
 
@@ -187,7 +184,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         truck = TruckTag()
         trailer = TrailerTag()
         scale = ScaleTicket()
-        scanNotice = null
+        scanNoticeState.rigStarted()
         pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
     }
 
@@ -217,7 +214,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         onDone: (success: Boolean) -> Unit,
     ) {
         scanRetry.started(module, photoUri)
-        scanNotice = null
+        scanNoticeState.scanStarted()
         scanState = ScanUiState.Loading
         viewModelScope.launch {
             val result = sendScan(module, contentResolver, photoUri)
@@ -235,7 +232,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
                             truck = it.truck
                             trailer = it.trailer
                             scale = it.scale
-                            scanNotice = it.notice
+                            scanNoticeState.scanDelivered(it.notice)
                         },
                         refreshBalance = ::refreshCreditBalance,
                     )
@@ -317,10 +314,6 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
                 ScanApiClient.scan(token, module, base64, clientRequestId = clientRequestId)
             }
         }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
-
-    fun clearScanNotice() {
-        scanNotice = null
-    }
 
     fun clearScanError() {
         scanState = ScanUiState.Idle

@@ -132,11 +132,11 @@ class ScanFailureTest {
     }
 
     @Test
-    fun `a rejected request says nothing was used, hides the Worker's detail and offers a different photo`() {
+    fun `a rejected request says nothing was used, hides the Worker's detail and offers typing or a different photo`() {
         val shown = shownAfterWorkerReply(400, "bad_request", "Body must be valid JSON.")
         assertShown(
             "We couldn't use that photo. Try a different photo, or type the numbers in yourself. Nothing was used.",
-            listOf(ScanNextStep.CHOOSE_DIFFERENT_PHOTO),
+            listOf(ScanNextStep.TYPE_IT_IN, ScanNextStep.CHOOSE_DIFFERENT_PHOTO),
             shown,
         )
         assertFalse(shown.message.contains("valid JSON"))
@@ -145,11 +145,11 @@ class ScanFailureTest {
     // --- The app's own failures (R1 rows 8, 10, 11 and the sign-in gate) ----
 
     @Test
-    fun `a photo that cannot be sent says nothing was used and offers a different photo`() {
+    fun `a photo that cannot be sent says nothing was used and offers typing or a different photo`() {
         val shown = scanErrorFor(ScanResult.Failure("photo_unsendable", "Could not decode the captured photo."))
         assertShown(
             "We couldn't open that photo. Try a different photo, or type the numbers in yourself. Nothing was used.",
-            listOf(ScanNextStep.CHOOSE_DIFFERENT_PHOTO),
+            listOf(ScanNextStep.TYPE_IT_IN, ScanNextStep.CHOOSE_DIFFERENT_PHOTO),
             shown,
         )
     }

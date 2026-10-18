@@ -1,5 +1,9 @@
 package com.rigcheck.app.ui
 
+import com.rigcheck.app.data.SCALE_SCAN_FIELDS
+import com.rigcheck.app.data.TRAILER_SCAN_FIELDS
+import com.rigcheck.app.data.TRUCK_SCAN_FIELDS
+import com.rigcheck.app.data.mergeScanFields
 import com.rigcheck.app.domain.model.ScaleTicket
 import com.rigcheck.app.domain.model.TrailerTag
 import com.rigcheck.app.domain.model.TruckTag
@@ -204,6 +208,27 @@ class ScanNoticeTest {
         val applied = apply(EntryModule.TRUCK, fields("{}"))
         assertNull(applied.notice!!.textFor(applied.trailer))
         assertNull(applied.notice!!.textFor(applied.scale))
+    }
+
+    // --- the field tables agree with the merge ---
+
+    // The notice names fields by the keys in the *_SCAN_FIELDS tables, and the
+    // merge reads the same keys on its own, so a key renamed in one would make
+    // the notice claim a field was unread when it was filled (or the reverse).
+    @Test
+    fun `every key in a field table is one the merge fills in`() {
+        for (field in TRUCK_SCAN_FIELDS) {
+            val one = fields("""{"${field.key}":${if (field.key == "manufacturer") "\"x\"" else "1"}}""")
+            assertEquals(field.key, false, field.isBlankIn(TruckTag().mergeScanFields(one)))
+        }
+        for (field in TRAILER_SCAN_FIELDS) {
+            val one = fields("""{"${field.key}":${if (field.key == "manufacturer") "\"x\"" else "1"}}""")
+            assertEquals(field.key, false, field.isBlankIn(TrailerTag().mergeScanFields(one)))
+        }
+        for (field in SCALE_SCAN_FIELDS) {
+            val one = fields("""{"${field.key}":${if (field.key == "location_name") "\"x\"" else "1"}}""")
+            assertEquals(field.key, false, field.isBlankIn(ScaleTicket().mergeScanFields(one)))
+        }
     }
 
     // --- the balance ---

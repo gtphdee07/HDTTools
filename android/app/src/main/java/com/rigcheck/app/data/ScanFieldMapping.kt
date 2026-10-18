@@ -43,6 +43,42 @@ fun ScaleTicket.mergeScanFields(fields: JsonObject): ScaleTicket = copy(
     grossWeightLb = fields.doubleField("gross_weight_lb") ?: grossWeightLb,
 )
 
+// One field a Scan can fill: its key in the Worker's `fields`, the label the
+// entry screen shows for it, and how to tell whether the screen's value is
+// still blank. The notice after a Scan (ui/ScanNotice.kt) names the fields the
+// Scan did not read by this label.
+class ScanField<T>(
+    val key: String,
+    val label: String,
+    private val numeric: Boolean,
+    val isBlankIn: (T) -> Boolean,
+) {
+    fun wasReadIn(fields: JsonObject): Boolean =
+        if (numeric) fields.doubleField(key) != null else !fields.stringField(key).isNullOrBlank()
+}
+
+val TRUCK_SCAN_FIELDS = listOf(
+    ScanField<TruckTag>("manufacturer", "Description", numeric = false) { it.description.isNullOrBlank() },
+    ScanField<TruckTag>("gvwr_lb", "GVWR", numeric = true) { it.gvwrLb == null },
+    ScanField<TruckTag>("front_gawr_lb", "Front GAWR", numeric = true) { it.frontGawrLb == null },
+    ScanField<TruckTag>("rear_gawr_lb", "Rear GAWR", numeric = true) { it.rearGawrLb == null },
+)
+
+val TRAILER_SCAN_FIELDS = listOf(
+    ScanField<TrailerTag>("manufacturer", "Description", numeric = false) { it.description.isNullOrBlank() },
+    ScanField<TrailerTag>("gvwr_lb", "GVWR", numeric = true) { it.gvwrLb == null },
+    ScanField<TrailerTag>("gawr_per_axle_lb", "GAWR per axle", numeric = true) { it.gawrPerAxleLb == null },
+    ScanField<TrailerTag>("uvw_lb", "Unloaded weight (UVW)", numeric = true) { it.uvwLb == null },
+)
+
+val SCALE_SCAN_FIELDS = listOf(
+    ScanField<ScaleTicket>("location_name", "Scale location", numeric = false) { it.locationName.isNullOrBlank() },
+    ScanField<ScaleTicket>("steer_axle_lb", "Steer axle", numeric = true) { it.steerAxleLb == null },
+    ScanField<ScaleTicket>("drive_axle_lb", "Drive axle", numeric = true) { it.driveAxleLb == null },
+    ScanField<ScaleTicket>("trailer_axle_lb", "Trailer axle(s)", numeric = true) { it.trailerAxleLb == null },
+    ScanField<ScaleTicket>("gross_weight_lb", "Gross weight", numeric = true) { it.grossWeightLb == null },
+)
+
 // A tow-vehicle-only CAT Scale ticket is the same scale_ticket doc type,
 // just without a trailer-axle line - so it's scanned via the same
 // EntryModule.SCALE endpoint and this only picks a different field back

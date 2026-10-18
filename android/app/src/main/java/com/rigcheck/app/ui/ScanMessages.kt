@@ -41,6 +41,18 @@ internal object ScanMessages {
         "We read the ticket but couldn't find a weight. That Scan was used, and trying again uses another. " +
             "Type the weight in, or choose a different photo."
 
+    // A Scan that was delivered but read nothing, or only some of the fields, on
+    // the entry screen it leads to. The Scan was charged, so the user is told one
+    // was used; it is a notice, not a failure, and offers no Try again (#120).
+    const val NOTHING_READ =
+        "A Scan was used and nothing could be read. Type the numbers in, or go back and choose a different photo."
+
+    fun someNotRead(labels: List<String>): String {
+        val names = if (labels.size < 2) labels.joinToString() else labels.dropLast(1).joinToString() + " and " + labels.last()
+        val them = if (labels.size == 1) "it" else "them"
+        return "A Scan was used, but we couldn't read: $names. Type $them in, or go back and choose a different photo."
+    }
+
     // Any code this app has no wording for: nothing is claimed about the charge,
     // and no retry is offered, since a retry of an unknown outcome could be charged twice.
     const val UNKNOWN =

@@ -22,8 +22,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.R
 import com.rigcheck.app.domain.model.ScaleTicket
+import com.rigcheck.app.ui.ScanNotice
 import com.rigcheck.app.ui.components.LabeledNumberField
 import com.rigcheck.app.ui.components.LabeledTextField
+import com.rigcheck.app.ui.components.ScanNoticeCard
 import com.rigcheck.app.ui.components.StepProgressBar
 import com.rigcheck.app.ui.theme.Orange
 
@@ -40,6 +42,7 @@ fun ScaleTicketEntryScreen(
     scale: ScaleTicket,
     onScaleChange: (ScaleTicket) -> Unit,
     onContinue: () -> Unit,
+    scanNotice: ScanNotice? = null,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
     Column(
@@ -50,6 +53,8 @@ fun ScaleTicketEntryScreen(
     ) {
         Text("Scale Ticket", style = MaterialTheme.typography.headlineMedium)
         StepProgressBar(step = 3, totalSteps = 3, modifier = Modifier.padding(top = 8.dp))
+
+        ScanNoticeCard(scanNotice?.textFor(scale), modifier = Modifier.padding(top = 16.dp))
 
         Text(
             "Find these values on your CAT Scale printout.",

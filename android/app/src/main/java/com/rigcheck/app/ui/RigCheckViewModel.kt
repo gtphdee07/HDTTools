@@ -22,7 +22,6 @@ import com.rigcheck.app.data.SupabaseAccountBackend
 import com.rigcheck.app.data.UnavailableAccountBackend
 import com.rigcheck.app.data.encodePhotoForScan
 import com.rigcheck.app.data.googleFailureMessage
-import com.rigcheck.app.data.mergeScanFields
 import com.rigcheck.app.data.requestGoogleIdentity
 import com.rigcheck.app.data.standaloneWeightFrom
 import com.rigcheck.app.domain.BreakdownItem
@@ -79,6 +78,13 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     var creditBalance by mutableStateOf<Int?>(null)
         private set
     var scanState by mutableStateOf<ScanUiState>(ScanUiState.Idle)
+        private set
+
+    // What the entry screen reached after a delivered Scan tells the user about
+    // the fields it did not read (#120). Null for manual entry and for a Scan
+    // that read everything. Cleared when the user leaves that screen, enters
+    // manually, starts another Scan or starts a rig.
+    var scanNotice by mutableStateOf<ScanNotice?>(null)
         private set
 
     // Shared by both Scan entry points (the three documents and the stand-alone
@@ -172,6 +178,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         truck = rig.truck
         trailer = rig.trailer
         scale = ScaleTicket()
+        scanNotice = null
         pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
     }
 
@@ -180,6 +187,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         truck = TruckTag()
         trailer = TrailerTag()
         scale = ScaleTicket()
+        scanNotice = null
         pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
     }
 
@@ -209,19 +217,28 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         onDone: (success: Boolean) -> Unit,
     ) {
         scanRetry.started(module, photoUri)
+        scanNotice = null
         scanState = ScanUiState.Loading
         viewModelScope.launch {
             val result = sendScan(module, contentResolver, photoUri)
 
             when (result) {
                 is ScanResult.Success -> {
-                    when (module) {
-                        EntryModule.TRUCK -> truck = truck.mergeScanFields(result.fields)
-                        EntryModule.TRAILER -> trailer = trailer.mergeScanFields(result.fields)
-                        EntryModule.SCALE -> scale = scale.mergeScanFields(result.fields)
-                    }
                     scanState = ScanUiState.Idle
-                    refreshCreditBalance()
+                    reportScanDelivered(
+                        module,
+                        result.fields,
+                        truck,
+                        trailer,
+                        scale,
+                        show = {
+                            truck = it.truck
+                            trailer = it.trailer
+                            scale = it.scale
+                            scanNotice = it.notice
+                        },
+                        refreshBalance = ::refreshCreditBalance,
+                    )
                     onDone(true)
                 }
                 is ScanResult.Failure -> {
@@ -300,6 +317,10 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
                 ScanApiClient.scan(token, module, base64, clientRequestId = clientRequestId)
             }
         }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
+
+    fun clearScanNotice() {
+        scanNotice = null
+    }
 
     fun clearScanError() {
         scanState = ScanUiState.Idle

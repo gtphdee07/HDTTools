@@ -107,7 +107,10 @@ fun RigCheckNavHost(
                 module = route.module,
                 creditBalance = viewModel.creditBalance,
                 scanState = viewModel.scanState,
-                onChooseManual = { navController.navigate(destinationFor(route.module)) },
+                onChooseManual = {
+                    viewModel.clearScanNotice()
+                    navController.navigate(destinationFor(route.module))
+                },
                 onPhotoScanned = { uri ->
                     viewModel.performScan(route.module, context.contentResolver, uri, onScanDone)
                 },
@@ -153,7 +156,11 @@ fun RigCheckNavHost(
             TruckTagEntryScreen(
                 truck = viewModel.truck,
                 onTruckChange = { viewModel.truck = it },
-                onContinue = { navController.navigate(RigCheckRoute.Chooser(EntryModule.TRAILER)) },
+                onContinue = {
+                    viewModel.clearScanNotice()
+                    navController.navigate(RigCheckRoute.Chooser(EntryModule.TRAILER))
+                },
+                scanNotice = viewModel.scanNotice,
                 pinWeightPct = viewModel.pinWeightPct,
                 onPinWeightPctChange = { viewModel.updatePinWeightPct(it) },
                 scanState = viewModel.scanState,
@@ -171,7 +178,11 @@ fun RigCheckNavHost(
             TrailerTagEntryScreen(
                 trailer = viewModel.trailer,
                 onTrailerChange = { viewModel.trailer = it },
-                onContinue = { navController.navigate(RigCheckRoute.Chooser(EntryModule.SCALE)) },
+                onContinue = {
+                    viewModel.clearScanNotice()
+                    navController.navigate(RigCheckRoute.Chooser(EntryModule.SCALE))
+                },
+                scanNotice = viewModel.scanNotice,
             )
         }
 
@@ -179,7 +190,11 @@ fun RigCheckNavHost(
             ScaleTicketEntryScreen(
                 scale = viewModel.scale,
                 onScaleChange = { viewModel.scale = it },
-                onContinue = { goToDisclaimerOrResults() },
+                onContinue = {
+                    viewModel.clearScanNotice()
+                    goToDisclaimerOrResults()
+                },
+                scanNotice = viewModel.scanNotice,
             )
         }
 

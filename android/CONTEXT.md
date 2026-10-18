@@ -15,6 +15,9 @@ Which of the three documents (Truck Tag, Trailer Tag, or Scale Ticket) a given s
 **Account**:
 The shared RigCheck sign-in (Supabase Auth; email + password and Google; Apple is deferred to the iOS port, #77) that Android shares with Web — the same account on every device. Its id is also the RevenueCat app user id, so purchases and the Scan Credit balance follow the account (ADR-0003, ADR-0004). Asked for only when something needs it — buying or scanning; the free manual-entry flow never requires one. Signing out affects this device only. Anonymous-id beta users are not migrated.
 
+**Scan notice**:
+The note above the fields of the entry screen reached after a delivered Scan (Truck Tag, Trailer Tag, Scale Ticket) that did not read every field: "A Scan was used and nothing could be read…" when it read none, or the unread fields named when it read some (#120). The Scan was charged whatever it read, so this tells the user one was used. A notice, not a failure: no Try again. Manual entry never shows it; it goes away when the user leaves the screen or types in the missing fields.
+
 ## Open question, not yet a term
 
 `ANDROID_DESIGN_BRIEF.md` describes a future two-tier purchase model (a "lifetime unlock" with preset credits, plus separate consumable "credit packs"), but `PaywallScreen.kt` today just lists whatever RevenueCat's current `Offering` returns, with no such distinction in code. Don't treat "lifetime unlock"/"credit pack" as established vocabulary until that's actually built — pricing/packaging is explicitly still undecided.

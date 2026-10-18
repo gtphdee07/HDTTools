@@ -14,6 +14,16 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.core.app.ApplicationProvider
+import com.rigcheck.app.domain.model.RecentRig
+import com.rigcheck.app.domain.model.ScaleTicket
+import com.rigcheck.app.domain.model.TrailerTag
+import com.rigcheck.app.domain.model.TruckTag
+import com.rigcheck.app.ui.RigCheckViewModel
+import com.rigcheck.app.ui.ScanNotice
+import com.rigcheck.app.ui.applyScan
+import kotlinx.serialization.json.JsonObject
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -234,5 +244,112 @@ class RigCheckNavHostTest {
 
         composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
         composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
+    }
+
+    // --- The Scan notice (#120) ---
+    //
+    // Offline there is no way to deliver a Scan, so these tests plant the notice
+    // a Scan would have left in the view model and check that the real nav host
+    // drops it when the user leaves the entry screen or enters by hand. A notice
+    // that is shown on the entry screen is the control: it proves the planted
+    // notice is one the screen can show, so "gone" means dropped, not never shown.
+
+    private fun setContentWithViewModel(): RigCheckViewModel {
+        val viewModel = RigCheckViewModel(ApplicationProvider.getApplicationContext())
+        composeRule.setContent { RigCheckNavHost(viewModel = viewModel) }
+        return viewModel
+    }
+
+    // The notice for a Scan of `module` that read nothing.
+    private fun nothingReadNotice(module: EntryModule): ScanNotice =
+        applyScan(module, JsonObject(emptyMap()), TruckTag(), TrailerTag(), ScaleTicket()).notice!!
+
+    private fun plant(viewModel: RigCheckViewModel, module: EntryModule) {
+        composeRule.runOnUiThread { viewModel.scanNoticeState.scanDelivered(nothingReadNotice(module)) }
+    }
+
+    @Test
+    fun enteringByHandDropsAScanNoticeLeftOnTheChooser() {
+        val viewModel = setContentWithViewModel()
+        enterNickname("Hand Entry")
+        composeRule.onNodeWithText("Create").performClick()
+        composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
+        plant(viewModel, EntryModule.TRUCK)
+
+        composeRule.onNodeWithText("Enter Manually").performClick()
+
+        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
+        composeRule.onNodeWithTag("scan_notice").assertDoesNotExist()
+    }
+
+    @Test
+    fun continuingFromTheTruckTagDropsTheNoticeForGood() {
+        val viewModel = setContentWithViewModel()
+        enterNickname("Truck Continue")
+        composeRule.onNodeWithText("Create").performClick()
+        composeRule.onNodeWithText("Enter Manually").performClick()
+        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
+        plant(viewModel, EntryModule.TRUCK)
+        composeRule.onNodeWithTag("scan_notice").assertIsDisplayed()
+
+        composeRule.onNodeWithText("Next: Trailer Tag").performClick()
+        composeRule.onNodeWithText("Trailer Tag").assertIsDisplayed()
+        goBack()
+
+        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
+        composeRule.onNodeWithTag("scan_notice").assertDoesNotExist()
+    }
+
+    @Test
+    fun continuingFromTheTrailerTagDropsTheNoticeForGood() {
+        val viewModel = setContentWithViewModel()
+        enterNickname("Trailer Continue")
+        composeRule.onNodeWithText("Create").performClick()
+        composeRule.onNodeWithText("Enter Manually").performClick()
+        composeRule.onNodeWithText("Next: Trailer Tag").performClick()
+        composeRule.onNodeWithText("Enter Manually").performClick()
+        composeRule.onNodeWithText("Next: Scale Ticket").assertIsDisplayed()
+        plant(viewModel, EntryModule.TRAILER)
+        composeRule.onNodeWithTag("scan_notice").assertIsDisplayed()
+
+        composeRule.onNodeWithText("Next: Scale Ticket").performClick()
+        composeRule.onNodeWithText("Scale Ticket").assertIsDisplayed()
+        goBack()
+
+        composeRule.onNodeWithText("Next: Scale Ticket").assertIsDisplayed()
+        composeRule.onNodeWithTag("scan_notice").assertDoesNotExist()
+    }
+
+    @Test
+    fun continuingFromTheScaleTicketDropsTheNotice() {
+        val viewModel = setContentWithViewModel()
+        enterNickname("Scale Continue")
+        composeRule.onNodeWithText("Create").performClick()
+        composeRule.onNodeWithText("Enter Manually").performClick()
+        composeRule.onNodeWithText("Next: Trailer Tag").performClick()
+        composeRule.onNodeWithText("Enter Manually").performClick()
+        composeRule.onNodeWithText("Next: Scale Ticket").performClick()
+        composeRule.onNodeWithText("Enter Manually").performClick()
+        composeRule.onNodeWithText("Check Weights").assertIsDisplayed()
+        plant(viewModel, EntryModule.SCALE)
+        composeRule.onNodeWithTag("scan_notice").assertIsDisplayed()
+
+        composeRule.onNodeWithText("Check Weights").performClick()
+
+        composeRule.runOnUiThread { assertNull(viewModel.scanNoticeState.notice) }
+    }
+
+    @Test
+    fun startingARigDropsTheNotice() {
+        val viewModel = setContentWithViewModel()
+        val rig = RecentRig("Old Rig", TruckTag(), TrailerTag(), "2026-10-17")
+
+        plant(viewModel, EntryModule.TRUCK)
+        composeRule.runOnUiThread { viewModel.startNewRig("New Rig") }
+        composeRule.runOnUiThread { assertNull(viewModel.scanNoticeState.notice) }
+
+        plant(viewModel, EntryModule.TRUCK)
+        composeRule.runOnUiThread { viewModel.selectRecentRig(rig) }
+        composeRule.runOnUiThread { assertNull(viewModel.scanNoticeState.notice) }
     }
 }

@@ -16,10 +16,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.R
 import com.rigcheck.app.domain.model.TrailerTag
+import com.rigcheck.app.ui.ScanNotice
 import com.rigcheck.app.ui.components.LabeledIntField
 import com.rigcheck.app.ui.components.LabeledNumberField
 import com.rigcheck.app.ui.components.LabeledTextField
 import com.rigcheck.app.ui.components.ReferenceImageCard
+import com.rigcheck.app.ui.components.ScanNoticeCard
 import com.rigcheck.app.ui.components.StepProgressBar
 
 @Composable
@@ -27,6 +29,7 @@ fun TrailerTagEntryScreen(
     trailer: TrailerTag,
     onTrailerChange: (TrailerTag) -> Unit,
     onContinue: () -> Unit,
+    scanNotice: ScanNotice? = null,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
     Column(
@@ -37,6 +40,8 @@ fun TrailerTagEntryScreen(
     ) {
         Text("Trailer Tag", style = MaterialTheme.typography.headlineMedium)
         StepProgressBar(step = 2, totalSteps = 3, modifier = Modifier.padding(top = 8.dp))
+
+        ScanNoticeCard(scanNotice?.textFor(trailer), modifier = Modifier.padding(top = 16.dp))
 
         Text(
             "Find these values on your trailer's compliance label (usually near the front, curb side).",

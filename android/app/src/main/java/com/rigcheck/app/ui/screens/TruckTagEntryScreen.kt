@@ -38,12 +38,14 @@ import com.rigcheck.app.R
 import com.rigcheck.app.data.createScanPhotoUri
 import com.rigcheck.app.domain.model.TruckTag
 import com.rigcheck.app.ui.ScanNextStep
+import com.rigcheck.app.ui.ScanNotice
 import com.rigcheck.app.ui.ScanUiState
 import com.rigcheck.app.ui.canStartScan
 import com.rigcheck.app.ui.components.LabeledNumberField
 import com.rigcheck.app.ui.components.LabeledTextField
 import com.rigcheck.app.ui.components.ReferenceImageCard
 import com.rigcheck.app.ui.components.ScanErrorDialog
+import com.rigcheck.app.ui.components.ScanNoticeCard
 import com.rigcheck.app.ui.components.StepProgressBar
 import kotlin.math.roundToInt
 
@@ -60,6 +62,7 @@ fun TruckTagEntryScreen(
     creditBalance: Int? = null,
     onNeedCredits: () -> Unit = {},
     onScanErrorNextStep: (ScanNextStep) -> Unit = {},
+    scanNotice: ScanNotice? = null,
 ) {
     var showStandaloneInfo by remember { mutableStateOf(false) }
     var showStandaloneSourceDialog by remember { mutableStateOf(false) }
@@ -87,6 +90,8 @@ fun TruckTagEntryScreen(
     ) {
         Text("Truck Tag", style = MaterialTheme.typography.headlineMedium)
         StepProgressBar(step = 1, totalSteps = 3, modifier = Modifier.padding(top = 8.dp))
+
+        ScanNoticeCard(scanNotice?.textFor(truck), modifier = Modifier.padding(top = 16.dp))
 
         Text(
             "Find these values on your truck's compliance label (usually inside the driver door jamb).",

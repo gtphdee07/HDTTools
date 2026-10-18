@@ -22,7 +22,6 @@ import com.rigcheck.app.data.SupabaseAccountBackend
 import com.rigcheck.app.data.UnavailableAccountBackend
 import com.rigcheck.app.data.encodePhotoForScan
 import com.rigcheck.app.data.googleFailureMessage
-import com.rigcheck.app.data.mergeScanFields
 import com.rigcheck.app.data.requestGoogleIdentity
 import com.rigcheck.app.data.standaloneWeightFrom
 import com.rigcheck.app.domain.BreakdownItem
@@ -80,6 +79,10 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         private set
     var scanState by mutableStateOf<ScanUiState>(ScanUiState.Idle)
         private set
+
+    // What the entry screen reached after a delivered Scan tells the user about
+    // the fields it did not read (#120); see ScanNoticeState for when it goes.
+    val scanNoticeState = ScanNoticeState()
 
     // Shared by both Scan entry points (the three documents and the stand-alone
     // ticket), so a photo's request id survives a lost answer on either.
@@ -172,6 +175,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         truck = rig.truck
         trailer = rig.trailer
         scale = ScaleTicket()
+        scanNoticeState.rigStarted()
         pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
     }
 
@@ -180,6 +184,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         truck = TruckTag()
         trailer = TrailerTag()
         scale = ScaleTicket()
+        scanNoticeState.rigStarted()
         pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
     }
 
@@ -209,19 +214,28 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         onDone: (success: Boolean) -> Unit,
     ) {
         scanRetry.started(module, photoUri)
+        scanNoticeState.scanStarted()
         scanState = ScanUiState.Loading
         viewModelScope.launch {
             val result = sendScan(module, contentResolver, photoUri)
 
             when (result) {
                 is ScanResult.Success -> {
-                    when (module) {
-                        EntryModule.TRUCK -> truck = truck.mergeScanFields(result.fields)
-                        EntryModule.TRAILER -> trailer = trailer.mergeScanFields(result.fields)
-                        EntryModule.SCALE -> scale = scale.mergeScanFields(result.fields)
-                    }
                     scanState = ScanUiState.Idle
-                    refreshCreditBalance()
+                    reportScanDelivered(
+                        module,
+                        result.fields,
+                        truck,
+                        trailer,
+                        scale,
+                        show = {
+                            truck = it.truck
+                            trailer = it.trailer
+                            scale = it.scale
+                            scanNoticeState.scanDelivered(it.notice)
+                        },
+                        refreshBalance = ::refreshCreditBalance,
+                    )
                     onDone(true)
                 }
                 is ScanResult.Failure -> {

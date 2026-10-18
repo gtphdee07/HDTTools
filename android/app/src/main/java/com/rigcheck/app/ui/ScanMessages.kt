@@ -47,6 +47,11 @@ internal object ScanMessages {
     const val NOTHING_READ =
         "A Scan was used and nothing could be read. Type the numbers in, or go back and choose a different photo."
 
+    // A Scan that delivered after the user left its check (#118): the Scan was
+    // charged, its fields were not used.
+    const val RESULT_NOT_USED =
+        "A Scan finished after you left that check, so its result wasn't used. It used a Scan Credit."
+
     fun someNotRead(labels: List<String>): String {
         val names = if (labels.size < 2) labels.joinToString() else labels.dropLast(1).joinToString() + " and " + labels.last()
         val them = if (labels.size == 1) "it" else "them"

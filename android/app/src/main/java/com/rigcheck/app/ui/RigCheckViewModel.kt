@@ -80,6 +80,16 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     var scanState by mutableStateOf<ScanUiState>(ScanUiState.Idle)
         private set
 
+    // One Scan at a time per check, and what becomes of an answer for a check
+    // that has ended (#118). Ending a check clears its loading state at once, so
+    // the next check can scan while the old request is still out.
+    private val scanSession = ScanSession(onLiveScanGone = { if (scanState is ScanUiState.Loading) scanState = ScanUiState.Idle })
+
+    // What a Scan that answered after its check ended tells the user, oldest
+    // first; each may be a spent Scan Credit, so none is dropped for a newer one.
+    var lateScanNotices by mutableStateOf<List<String>>(emptyList())
+        private set
+
     // What the entry screen reached after a delivered Scan tells the user about
     // the fields it did not read (#120); see ScanNoticeState for when it goes.
     val scanNoticeState = ScanNoticeState()
@@ -176,6 +186,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         trailer = rig.trailer
         scale = ScaleTicket()
         scanNoticeState.rigStarted()
+        scanSession.rigStarted()
         pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
     }
 
@@ -185,6 +196,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         trailer = TrailerTag()
         scale = ScaleTicket()
         scanNoticeState.rigStarted()
+        scanSession.rigStarted()
         pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
     }
 
@@ -206,43 +218,53 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     // should navigate to the entry screen for review) or false on failure
     // (caller should surface scanState.Error and stay put - no automatic
     // retry; the user's own retry of the same photo reuses its request id
-    // after a lost answer, so the Worker charges once).
+    // after a lost answer, so the Worker charges once). Does nothing while a
+    // Scan of this check is in flight. An answer that comes after the user
+    // left the check changes nothing and calls no onDone: the user is told
+    // instead (see reportGoneScan).
     fun performScan(
         module: EntryModule,
         contentResolver: ContentResolver,
         photoUri: Uri,
         onDone: (success: Boolean) -> Unit,
     ) {
-        scanRetry.started(module, photoUri)
-        scanNoticeState.scanStarted()
-        scanState = ScanUiState.Loading
         viewModelScope.launch {
-            val result = sendScan(module, contentResolver, photoUri)
-
-            when (result) {
-                is ScanResult.Success -> {
-                    scanState = ScanUiState.Idle
-                    reportScanDelivered(
-                        module,
-                        result.fields,
-                        truck,
-                        trailer,
-                        scale,
-                        show = {
-                            truck = it.truck
-                            trailer = it.trailer
-                            scale = it.scale
-                            scanNoticeState.scanDelivered(it.notice)
-                        },
-                        refreshBalance = ::refreshCreditBalance,
-                    )
-                    onDone(true)
-                }
-                is ScanResult.Failure -> {
-                    showScanFailure(result)
-                    onDone(false)
-                }
-            }
+            scanSession.run(
+                ScanScreen.Chooser(module),
+                onStarted = {
+                    scanRetry.started(module, photoUri)
+                    scanNoticeState.scanStarted()
+                    scanState = ScanUiState.Loading
+                },
+                send = { sendScan(module, contentResolver, photoUri) },
+                onCurrent = { result ->
+                    when (result) {
+                        is ScanResult.Success -> {
+                            scanState = ScanUiState.Idle
+                            reportScanDelivered(
+                                module,
+                                result.fields,
+                                truck,
+                                trailer,
+                                scale,
+                                show = {
+                                    truck = it.truck
+                                    trailer = it.trailer
+                                    scale = it.scale
+                                    scanNoticeState.scanDelivered(it.notice)
+                                },
+                                refreshBalance = ::refreshCreditBalance,
+                            )
+                            onDone(true)
+                        }
+                        is ScanResult.Failure -> {
+                            showScanFailure(result)
+                            onDone(false)
+                        }
+                    }
+                },
+                onGone = ::reportGoneScan,
+            )
         }
     }
 
@@ -252,37 +274,61 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     // scanStandaloneTicket in App.tsx. Uses the same paid EntryModule.SCALE
     // pipeline as a normal scan (this is Android's only OCR path, unlike
     // Web's separate free-tier extraction endpoint), so it consumes a
-    // credit like any other scan.
+    // credit like any other scan. Under the same rules as performScan: one at a
+    // time, and an answer after the user left the Truck Tag screen, or started
+    // another rig, is reported and not used.
     fun performStandaloneScan(
         contentResolver: ContentResolver,
         photoUri: Uri,
         onDone: (success: Boolean) -> Unit,
     ) {
-        scanRetry.startedStandalone(photoUri)
-        scanState = ScanUiState.Loading
         viewModelScope.launch {
-            val result = sendScan(EntryModule.SCALE, contentResolver, photoUri)
-
-            when (result) {
-                is ScanResult.Success -> {
-                    val standalone = standaloneWeightFrom(result.fields)
-                    scanState = ScanUiState.Idle
-                    refreshCreditBalance()
-                    if (standalone != null) {
-                        truck = truck.copy(standaloneWeightLb = standalone)
-                        onDone(true)
-                    } else {
-                        scanState = NO_WEIGHT_ERROR
-                        onDone(false)
+            scanSession.run(
+                ScanScreen.TruckTagEntry,
+                onStarted = {
+                    scanRetry.startedStandalone(photoUri)
+                    scanState = ScanUiState.Loading
+                },
+                send = { sendScan(EntryModule.SCALE, contentResolver, photoUri) },
+                onCurrent = { result ->
+                    when (result) {
+                        is ScanResult.Success -> {
+                            val standalone = standaloneWeightFrom(result.fields)
+                            scanState = ScanUiState.Idle
+                            refreshCreditBalance()
+                            if (standalone != null) {
+                                truck = truck.copy(standaloneWeightLb = standalone)
+                                onDone(true)
+                            } else {
+                                scanState = NO_WEIGHT_ERROR
+                                onDone(false)
+                            }
+                        }
+                        is ScanResult.Failure -> {
+                            showScanFailure(result)
+                            onDone(false)
+                        }
                     }
-                }
-                is ScanResult.Failure -> {
-                    showScanFailure(result)
-                    onDone(false)
-                }
-            }
+                },
+                onGone = ::reportGoneScan,
+            )
         }
     }
+
+    // The screen on show changed (or was shown again, as after turning the
+    // device): a Scan started on another screen is over for its check.
+    fun screenShown(screen: ScanScreen) = scanSession.screenShown(screen)
+
+    fun dismissLateScanNotice() {
+        lateScanNotices = lateScanNotices.drop(1)
+    }
+
+    private fun reportGoneScan(result: ScanResult) = reportLateScan(
+        result,
+        show = { lateScanNotices = lateScanNotices + it },
+        refreshBalance = ::refreshCreditBalance,
+        setBalance = { creditBalance = it },
+    )
 
     private fun showScanFailure(failure: ScanResult.Failure) = reportScanFailure(
         failure,

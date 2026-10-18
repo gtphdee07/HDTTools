@@ -12,6 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,6 +23,8 @@ import com.rigcheck.app.data.APPLE_SIGN_IN_ENABLED
 import com.rigcheck.app.data.AccountState
 import com.rigcheck.app.ui.RigCheckViewModel
 import com.rigcheck.app.ui.ScanNextStep
+import com.rigcheck.app.ui.ScanScreen
+import com.rigcheck.app.ui.components.LateScanDialog
 import com.rigcheck.app.ui.screens.AccountScreen
 import com.rigcheck.app.ui.screens.ChooserScreen
 import com.rigcheck.app.ui.screens.DisclaimerScreen
@@ -68,6 +72,14 @@ fun RigCheckNavHost(
             ScanNextStep.TRY_AGAIN -> viewModel.retryScan(resolver, onTryAgainDone)
             ScanNextStep.CHOOSE_DIFFERENT_PHOTO, ScanNextStep.TYPE_IT_IN -> Unit
         }
+    }
+
+    // A Scan belongs to the screen it started on: tell the view model which
+    // screen is on show, so one started elsewhere is over for its check (#118).
+    // Collecting again after turning the device sends the same screen, which
+    // ends nothing.
+    LaunchedEffect(navController) {
+        navController.currentBackStackEntryFlow.collect { viewModel.screenShown(scanScreenOf(it)) }
     }
 
     NavHost(navController = navController, startDestination = RigCheckRoute.RigPicker) {
@@ -223,4 +235,16 @@ fun RigCheckNavHost(
             )
         }
     }
+
+    // On whichever screen the user is on, so a Scan that answered after they
+    // left its check is never missed. One at a time, oldest first.
+    viewModel.lateScanNotices.firstOrNull()?.let { message ->
+        LateScanDialog(message = message, onDismiss = { viewModel.dismissLateScanNotice() })
+    }
+}
+
+private fun scanScreenOf(entry: NavBackStackEntry): ScanScreen = when {
+    entry.destination.hasRoute<RigCheckRoute.Chooser>() -> ScanScreen.Chooser(entry.toRoute<RigCheckRoute.Chooser>().module)
+    entry.destination.hasRoute<RigCheckRoute.TruckTagEntry>() -> ScanScreen.TruckTagEntry
+    else -> ScanScreen.Elsewhere
 }

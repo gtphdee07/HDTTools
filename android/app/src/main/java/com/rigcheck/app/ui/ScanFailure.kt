@@ -6,7 +6,9 @@ import com.rigcheck.app.data.ScanResult
 // user at a dead end. Which steps follow which failure is the retry rule of
 // docs/research/scan-failure-handling.md (R3): Try again only where a retry is
 // free or correctly priced, a different photo where the same photo would fail
-// again, signing in or buying Scans where the account is the problem.
+// again, signing in or buying Scans where the account is the problem. Typing the
+// numbers in is offered wherever the photo is the problem (typing never needs a
+// Scan), so the way out of a photo loop is a button, not a hint in the message.
 enum class ScanNextStep { SIGN_IN, BUY_SCANS, TRY_AGAIN, CHOOSE_DIFFERENT_PHOTO, TYPE_IT_IN }
 
 // The app's own results when the Scan never reached the Worker.
@@ -34,8 +36,8 @@ fun scanErrorFor(failure: ScanResult.Failure): ScanUiState.Error = when (failure
     "extraction_failed" -> scanError(ScanMessages.EXTRACTION_FAILED, ScanNextStep.TRY_AGAIN)
     "extraction_failed_no_refund" -> scanError(ScanMessages.EXTRACTION_FAILED_NO_REFUND, ScanNextStep.TRY_AGAIN)
     "billing_error" -> scanError(ScanMessages.BILLING_ERROR, ScanNextStep.TRY_AGAIN)
-    "bad_request" -> scanError(ScanMessages.BAD_REQUEST, ScanNextStep.CHOOSE_DIFFERENT_PHOTO)
-    "photo_unsendable" -> scanError(ScanMessages.PHOTO_UNSENDABLE, ScanNextStep.CHOOSE_DIFFERENT_PHOTO)
+    "bad_request" -> scanError(ScanMessages.BAD_REQUEST, ScanNextStep.TYPE_IT_IN, ScanNextStep.CHOOSE_DIFFERENT_PHOTO)
+    "photo_unsendable" -> scanError(ScanMessages.PHOTO_UNSENDABLE, ScanNextStep.TYPE_IT_IN, ScanNextStep.CHOOSE_DIFFERENT_PHOTO)
     "network_error" -> scanError(ScanMessages.NO_CONNECTION, ScanNextStep.TRY_AGAIN)
     "parse_error" -> scanError(ScanMessages.NO_ANSWER, ScanNextStep.TRY_AGAIN)
     "timeout" -> scanError(ScanMessages.TOO_SLOW, ScanNextStep.TRY_AGAIN)

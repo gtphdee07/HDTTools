@@ -1,5 +1,9 @@
 package com.rigcheck.app.ui.screens
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -222,7 +226,7 @@ class TruckTagEntryScreenTest {
     }
 
     @Test
-    fun standaloneScanErrorAfterARejectedRequestOffersADifferentPhotoAndNotTryAgain() {
+    fun standaloneScanErrorAfterARejectedRequestOffersTypingOrADifferentPhotoAndNotTryAgain() {
         composeRule.setContent {
             TruckTagEntryScreen(
                 truck = TruckTag(),
@@ -232,12 +236,13 @@ class TruckTagEntryScreenTest {
             )
         }
 
+        composeRule.onNodeWithText("Type it in").assertIsDisplayed()
         composeRule.onNodeWithText("Choose a different photo").assertIsDisplayed()
         composeRule.onNodeWithText("Try again").assertDoesNotExist()
     }
 
     @Test
-    fun standaloneScanErrorAfterAPhotoThatCannotBeSentOffersADifferentPhotoAndNotTryAgain() {
+    fun standaloneScanErrorAfterAPhotoThatCannotBeSentOffersTypingOrADifferentPhotoAndNotTryAgain() {
         composeRule.setContent {
             TruckTagEntryScreen(
                 truck = TruckTag(),
@@ -247,8 +252,35 @@ class TruckTagEntryScreenTest {
             )
         }
 
+        composeRule.onNodeWithText("Type it in").assertIsDisplayed()
         composeRule.onNodeWithText("Choose a different photo").assertIsDisplayed()
         composeRule.onNodeWithText("Try again").assertDoesNotExist()
+    }
+
+    // The weight fields are already on this screen, so typing it in only closes
+    // the error and leaves them usable.
+    @Test
+    fun typingItInAfterARejectedRequestClosesTheErrorAndLeavesTheFieldsUsable() {
+        val steps = mutableListOf<ScanNextStep>()
+        var current = TruckTag()
+        composeRule.setContent {
+            var scanState by remember { mutableStateOf<ScanUiState>(failed("bad_request")) }
+            TruckTagEntryScreen(
+                truck = current,
+                onTruckChange = { current = it },
+                onContinue = {},
+                scanState = scanState,
+                onDismissStandaloneScanError = { scanState = ScanUiState.Idle },
+                onScanErrorNextStep = { steps += it },
+            )
+        }
+
+        composeRule.onNodeWithText("Type it in").performClick()
+
+        composeRule.onNodeWithText("Scan failed").assertDoesNotExist()
+        assertEquals(emptyList<ScanNextStep>(), steps)
+        composeRule.onNodeWithTag("truck_description").performTextInput("Ford F-450")
+        assertEquals("Ford F-450", current.description)
     }
 
     // The ticket was read and the Scan used, but it held no weight: no Try again,

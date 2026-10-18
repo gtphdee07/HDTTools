@@ -430,10 +430,12 @@ network involved:
   "Sign in", "Buy more Scans", "Try again" or "Choose a different photo" beside
   OK when the failure has that next step (and none otherwise): Try again is
   passed on, Choose a different photo closes the error and opens the Take
-  Photo/Choose from Gallery dialog, and the stand-alone ticket's no-weight
-  answer offers "Type it in" (closes the error) and "Choose a different
-  photo" with no Try again. `ChooserScreenTest` covers the same buttons on its
-  dialog.
+  Photo/Choose from Gallery dialog, and (#126) a rejected request, a photo
+  that cannot be sent and the stand-alone ticket's no-weight answer each offer
+  "Type it in" (closes the error and leaves the fields usable) and "Choose a
+  different photo" with no Try again. `ChooserScreenTest` covers the same
+  buttons on its dialog, where "Type it in" also opens manual entry (the
+  Enter Manually callback) with no photo scanned and no step passed on.
 - `ChooserScreenTest` — the credit chip shows the given balance; Scan
   Photo with credits opens the Take Photo/Choose from Gallery dialog
   (dialog presence and button existence only — no Espresso-Intents, real

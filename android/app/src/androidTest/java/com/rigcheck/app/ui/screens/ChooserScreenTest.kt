@@ -162,21 +162,61 @@ class ChooserScreenTest {
     }
 
     // After a request the service rejected, or a photo that cannot be sent, the
-    // same photo would fail again: a different photo is offered, Try again is not.
+    // same photo would fail again: typing the numbers in or a different photo is
+    // offered, Try again is not.
     @Test
-    fun scanErrorAfterARejectedRequestOffersADifferentPhotoAndNotTryAgain() {
+    fun scanErrorAfterARejectedRequestOffersTypingOrADifferentPhotoAndNotTryAgain() {
         setChooser(creditBalance = 5, scanState = failed("bad_request"))
 
+        composeRule.onNodeWithText("Type it in").assertIsDisplayed()
         composeRule.onNodeWithText("Choose a different photo").assertIsDisplayed()
         composeRule.onNodeWithText("Try again").assertDoesNotExist()
     }
 
     @Test
-    fun scanErrorAfterAPhotoThatCannotBeSentOffersADifferentPhotoAndNotTryAgain() {
+    fun scanErrorAfterAPhotoThatCannotBeSentOffersTypingOrADifferentPhotoAndNotTryAgain() {
         setChooser(creditBalance = 5, scanState = failed("photo_unsendable"))
 
+        composeRule.onNodeWithText("Type it in").assertIsDisplayed()
         composeRule.onNodeWithText("Choose a different photo").assertIsDisplayed()
         composeRule.onNodeWithText("Try again").assertDoesNotExist()
+    }
+
+    // Typing it in is the Enter Manually card's destination, reached from the
+    // dialog: the error closes, nothing is scanned and no step is passed on (so
+    // nothing is spent or retried).
+    @Test
+    fun typingItInAfterARejectedRequestClosesTheErrorAndOpensManualEntryWithoutAScan() {
+        var dismissed = false
+        var manual = 0
+        val scanned = mutableListOf<Uri>()
+        val steps = mutableListOf<ScanNextStep>()
+        setChooser(
+            creditBalance = 5,
+            scanState = failed("bad_request"),
+            onChooseManual = { manual++ },
+            onPhotoScanned = { scanned += it },
+            onDismissScanError = { dismissed = true },
+            onScanErrorNextStep = { steps += it },
+        )
+
+        composeRule.onNodeWithText("Type it in").performClick()
+
+        assert(dismissed) { "the error should be dismissed" }
+        assertEquals(1, manual)
+        assertEquals(emptyList<Uri>(), scanned)
+        assertEquals(emptyList<ScanNextStep>(), steps)
+        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+    }
+
+    @Test
+    fun typingItInAfterAPhotoThatCannotBeSentOpensManualEntry() {
+        var manual = 0
+        setChooser(creditBalance = 5, scanState = failed("photo_unsendable"), onChooseManual = { manual++ })
+
+        composeRule.onNodeWithText("Type it in").performClick()
+
+        assertEquals(1, manual)
     }
 
     @Test

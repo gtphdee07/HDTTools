@@ -40,11 +40,40 @@ def _run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=180)
 
 
+# The old misleading failure: an assertion on the status code, or the refunded error code.
+# Not the bare digits "502": `node --test` prints durations such as `duration_ms 502.0037`.
+MISLEADING_FAILURE = re.compile(r"expected 200|!== 200|extraction_failed")
+
+
 def _assert_install_instruction(output: str) -> None:
     assert "npm install" in output
     assert INSTALL_COMMAND in output
     assert "@anthropic-ai/sdk" in output
-    assert "502" not in output and "extraction_failed" not in output
+    assert not (found := MISLEADING_FAILURE.search(output)), f"misleading failure text: {found.group()!r}"
+
+
+INSTALL_INSTRUCTION_REPORT = (
+    "Run `npm --prefix workers/scan-proxy install` (npm install) to get @anthropic-ai/sdk.\n"
+)
+
+
+@pytest.mark.parametrize(
+    "misleading",
+    [
+        "expected 200, got 502",
+        "expected 200, got 500",
+        "AssertionError: 500 !== 200",
+        "error code extraction_failed",
+    ],
+)
+def test_the_helper_fails_on_the_old_misleading_failure_text(misleading):
+    with pytest.raises(AssertionError):
+        _assert_install_instruction(INSTALL_INSTRUCTION_REPORT + misleading)
+
+
+@pytest.mark.parametrize("timing", ["duration_ms 502.0037", "duration_ms 154.8502", "✖ accountToken.test.ts (180.5027ms)"])
+def test_the_helper_ignores_502_digits_inside_a_duration(timing):
+    _assert_install_instruction(INSTALL_INSTRUCTION_REPORT + timing)
 
 
 def test_every_top_level_proxy_test_file_imports_the_guard_first():

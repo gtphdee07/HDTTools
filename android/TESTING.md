@@ -584,6 +584,24 @@ the soft keyboard took it.**
   itself falling over (seen right after a cold boot with ANRs in Google
   apps). Read the failure text before counting a run.
 
+**Scan-in-flight navigation tests** (`ui/navigation/ScanInFlightNavigationTest.kt`, #118)
+— the real `MainActivity`, nav host and view model, with the view model's Scan
+answered by the test through `RigCheckViewModel.scanSender` (null in the app), so a
+Scan is held open and answered when the test chooses; no Worker, no Scan Credit,
+offline like the rest of this suite. A second Scan while one is out sends
+nothing; a Scan answered on the check it started in fills it and opens the entry
+screen; one answered after **turning the device** (`scenario.recreate()`) still
+opens the entry screen and keeps the app (it used to crash: the answer's callback
+held the NavController of the destroyed activity, now the view model records the
+delivered Scan and the live nav host navigates); one answered after **backing out
+to the Rig Picker** or after **another rig was started** is not used (the rig's
+data is unchanged, nothing opens) and the user is told in the late-Scan dialog;
+the next check can scan while the old Scan is still out; a **late failure** shows
+its own message with OK only (no Try again, no "Scan failed" title). The tests
+fail without the change: breaking the rig-start signal, the screen-change signal
+or the in-flight guard each turns several of them red. `enterNickname` here is the
+#125 recipe (keyboard really closed before a Back).
+
 **Test-support tests** (`testsupport/`) — real-network-free coverage for
 infrastructure the External suite below depends on:
 

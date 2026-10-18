@@ -61,7 +61,7 @@ fun RigCheckNavHost(
     // last photo again, so the screen that started it says what happens when it
     // succeeds. The screens handle the rest themselves: they own the photo
     // choice and the fields to type into.
-    fun followScanNextStep(step: ScanNextStep, resolver: ContentResolver, onTryAgainDone: (success: Boolean) -> Unit) {
+    fun followScanNextStep(step: ScanNextStep, resolver: ContentResolver) {
         viewModel.clearScanError()
         when (step) {
             ScanNextStep.SIGN_IN -> {
@@ -69,7 +69,7 @@ fun RigCheckNavHost(
                 navController.navigate(RigCheckRoute.Paywall)
             }
             ScanNextStep.BUY_SCANS -> navController.navigate(RigCheckRoute.Paywall)
-            ScanNextStep.TRY_AGAIN -> viewModel.retryScan(resolver, onTryAgainDone)
+            ScanNextStep.TRY_AGAIN -> viewModel.retryScan(resolver)
             ScanNextStep.CHOOSE_DIFFERENT_PHOTO, ScanNextStep.TYPE_IT_IN -> Unit
         }
     }
@@ -80,6 +80,15 @@ fun RigCheckNavHost(
     // ends nothing.
     LaunchedEffect(navController) {
         navController.currentBackStackEntryFlow.collect { viewModel.screenShown(scanScreenOf(it)) }
+    }
+
+    // A Scan that delivers goes on to its document's entry screen to be reviewed.
+    // The view model says which; navigating here, with this composition's
+    // controller, is what survives turning the device while the Scan was out.
+    LaunchedEffect(viewModel.deliveredScanModule) {
+        val module = viewModel.deliveredScanModule ?: return@LaunchedEffect
+        navController.navigate(entryRouteFor(module))
+        viewModel.deliveredScanShown()
     }
 
     NavHost(navController = navController, startDestination = RigCheckRoute.RigPicker) {
@@ -103,33 +112,21 @@ fun RigCheckNavHost(
             val route: RigCheckRoute.Chooser = backStackEntry.toRoute()
             val context = LocalContext.current
 
-            fun destinationFor(module: EntryModule) = when (module) {
-                EntryModule.TRUCK -> RigCheckRoute.TruckTagEntry
-                EntryModule.TRAILER -> RigCheckRoute.TrailerTagEntry
-                EntryModule.SCALE -> RigCheckRoute.ScaleTicketEntry
-            }
-
-            // A Scan that delivers goes on to this document's entry screen to be
-            // reviewed; a retry from the error dialog ends the same way.
-            val onScanDone = { success: Boolean ->
-                if (success) navController.navigate(destinationFor(route.module))
-            }
-
             ChooserScreen(
                 module = route.module,
                 creditBalance = viewModel.creditBalance,
                 scanState = viewModel.scanState,
                 onChooseManual = {
                     viewModel.scanNoticeState.enteredManually()
-                    navController.navigate(destinationFor(route.module))
+                    navController.navigate(entryRouteFor(route.module))
                 },
                 onPhotoScanned = { uri ->
-                    viewModel.performScan(route.module, context.contentResolver, uri, onScanDone)
+                    viewModel.performScan(route.module, context.contentResolver, uri)
                 },
                 onNeedCredits = { navController.navigate(RigCheckRoute.Paywall) },
                 onOpenPaywall = { navController.navigate(RigCheckRoute.Paywall) },
                 onDismissScanError = { viewModel.clearScanError() },
-                onScanErrorNextStep = { step -> followScanNextStep(step, context.contentResolver, onScanDone) },
+                onScanErrorNextStep = { step -> followScanNextStep(step, context.contentResolver) },
             )
         }
 
@@ -177,12 +174,12 @@ fun RigCheckNavHost(
                 onPinWeightPctChange = { viewModel.updatePinWeightPct(it) },
                 scanState = viewModel.scanState,
                 onScanStandaloneTicket = { uri ->
-                    viewModel.performStandaloneScan(context.contentResolver, uri) {}
+                    viewModel.performStandaloneScan(context.contentResolver, uri)
                 },
                 onDismissStandaloneScanError = { viewModel.clearScanError() },
                 creditBalance = viewModel.creditBalance,
                 onNeedCredits = { navController.navigate(RigCheckRoute.Paywall) },
-                onScanErrorNextStep = { step -> followScanNextStep(step, context.contentResolver) {} },
+                onScanErrorNextStep = { step -> followScanNextStep(step, context.contentResolver) },
             )
         }
 
@@ -241,6 +238,12 @@ fun RigCheckNavHost(
     viewModel.lateScanNotices.firstOrNull()?.let { message ->
         LateScanDialog(message = message, onDismiss = { viewModel.dismissLateScanNotice() })
     }
+}
+
+private fun entryRouteFor(module: EntryModule): RigCheckRoute = when (module) {
+    EntryModule.TRUCK -> RigCheckRoute.TruckTagEntry
+    EntryModule.TRAILER -> RigCheckRoute.TrailerTagEntry
+    EntryModule.SCALE -> RigCheckRoute.ScaleTicketEntry
 }
 
 private fun scanScreenOf(entry: NavBackStackEntry): ScanScreen = when {

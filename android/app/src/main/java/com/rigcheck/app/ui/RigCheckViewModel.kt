@@ -85,6 +85,17 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     // the next check can scan while the old request is still out.
     private val scanSession = ScanSession(onLiveScanGone = { if (scanState is ScanUiState.Loading) scanState = ScanUiState.Idle })
 
+    // The document whose entry screen a delivered Scan has just filled in, for the
+    // nav host to open and then clear. State here, not a callback from the screen
+    // that started the Scan: that screen's NavController is gone if the device was
+    // turned while the Scan was out, and the answer would navigate on a dead one.
+    var deliveredScanModule by mutableStateOf<EntryModule?>(null)
+        private set
+
+    fun deliveredScanShown() {
+        deliveredScanModule = null
+    }
+
     // What a Scan that answered after its check ended tells the user, oldest
     // first; each may be a spent Scan Credit, so none is dropped for a newer one.
     var lateScanNotices by mutableStateOf<List<String>>(emptyList())
@@ -214,19 +225,17 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
 
     // On success, merges the extracted fields onto the current module's
     // state and refreshes the credit balance (the Worker already charged
-    // it server-side). onDone is called with true on success (caller
-    // should navigate to the entry screen for review) or false on failure
-    // (caller should surface scanState.Error and stay put - no automatic
-    // retry; the user's own retry of the same photo reuses its request id
-    // after a lost answer, so the Worker charges once). Does nothing while a
-    // Scan of this check is in flight. An answer that comes after the user
-    // left the check changes nothing and calls no onDone: the user is told
-    // instead (see reportGoneScan).
+    // it server-side). On success deliveredScanModule is set, which the nav host
+    // turns into the entry screen for review; on failure scanState.Error is set
+    // and the user stays put - no automatic retry; the user's own retry of the
+    // same photo reuses its request id after a lost answer, so the Worker
+    // charges once. Does nothing while a Scan of this check is in flight. An
+    // answer that comes after the user left the check changes nothing and opens
+    // nothing: the user is told instead (see reportGoneScan).
     fun performScan(
         module: EntryModule,
         contentResolver: ContentResolver,
         photoUri: Uri,
-        onDone: (success: Boolean) -> Unit,
     ) {
         viewModelScope.launch {
             scanSession.run(
@@ -255,12 +264,9 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
                                 },
                                 refreshBalance = ::refreshCreditBalance,
                             )
-                            onDone(true)
+                            deliveredScanModule = module
                         }
-                        is ScanResult.Failure -> {
-                            showScanFailure(result)
-                            onDone(false)
-                        }
+                        is ScanResult.Failure -> showScanFailure(result)
                     }
                 },
                 onGone = ::reportGoneScan,
@@ -280,7 +286,6 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     fun performStandaloneScan(
         contentResolver: ContentResolver,
         photoUri: Uri,
-        onDone: (success: Boolean) -> Unit,
     ) {
         viewModelScope.launch {
             scanSession.run(
@@ -298,16 +303,11 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
                             refreshCreditBalance()
                             if (standalone != null) {
                                 truck = truck.copy(standaloneWeightLb = standalone)
-                                onDone(true)
                             } else {
                                 scanState = NO_WEIGHT_ERROR
-                                onDone(false)
                             }
                         }
-                        is ScanResult.Failure -> {
-                            showScanFailure(result)
-                            onDone(false)
-                        }
+                        is ScanResult.Failure -> showScanFailure(result)
                     }
                 },
                 onGone = ::reportGoneScan,
@@ -339,19 +339,24 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
 
     // Sends the photo of the last Scan again, through the same entry point, for
     // the error dialog's "Try again". Does nothing if no Scan was started.
-    fun retryScan(contentResolver: ContentResolver, onDone: (success: Boolean) -> Unit) {
+    fun retryScan(contentResolver: ContentResolver) {
         scanRetry.again(
-            main = { module, photoUri -> performScan(module, contentResolver, photoUri, onDone) },
-            standalone = { photoUri -> performStandaloneScan(contentResolver, photoUri, onDone) },
+            main = { module, photoUri -> performScan(module, contentResolver, photoUri) },
+            standalone = { photoUri -> performStandaloneScan(contentResolver, photoUri) },
         )
     }
+
+    // A way for an instrumented test to answer a Scan itself, so the real nav host
+    // can be driven through a Scan with no Worker and no Scan Credit. Null in the
+    // app, where the Worker is called.
+    internal var scanSender: (suspend (EntryModule, Uri) -> ScanResult)? = null
 
     // The one place a Scan request is sent, for both entry points. The Worker
     // dedupes the RevenueCat charge on the request id, so the same photo keeps
     // its id until an answer settles the attempt (see ScanAttempts): a user's
     // retry after a lost answer is then charged once.
     private suspend fun sendScan(module: EntryModule, contentResolver: ContentResolver, photoUri: Uri): ScanResult =
-        runCatching {
+        scanSender?.invoke(module, photoUri) ?: runCatching {
             scanAttempts.run(module, photoUri.toString()) { clientRequestId ->
                 val token = accountManager.accessToken() ?: return@run NOT_SIGNED_IN
                 // A photo that cannot be opened or decoded fails before anything is sent.

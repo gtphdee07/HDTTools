@@ -31,8 +31,21 @@ verification ledger (#128): a suite passes only for the exact tree it ran at,
 a dirty tree is never vouched for, and a missing or unreadable ledger means
 `run`. A final `To run:` line lists the free suites still owed.
 
+Downstream contexts (#66): a change to an interface's provider side (its `context`)
+also queues the contexts in `shares_with`, and a change to a context also queues the
+contexts that list it under `depends_on`. At the issue level a downstream context runs
+its Major suite (or the interface's own `shares_tests` command where the config gives
+one); at session end it runs its context suite. Docs-only changes (`docs_globs`) add
+nothing.
+
+`--since-verified` plans each context from the last commit the verification ledger
+(#65) holds for it at the chosen level, instead of from --base, so committed but
+unverified work is still planned. A context with no ledger entry, or whose recorded
+commit git can no longer read, is planned from --base. Each file counts only for the
+contexts it changed since their own last verified commit.
+
 Usage: uv run scripts/test_planner.py [--level issue|session|release]
-           [--files PATH ...] [--base REF] [--context NAME ...]
+           [--files PATH ...] [--base REF] [--context NAME ...] [--since-verified]
 Without --files the changed files come from `git diff --name-only <base>`
 (default HEAD). The planner is advisory: it always exits 0.
 """
@@ -63,7 +76,7 @@ class GitError(Exception):
 
 @dataclass
 class Selection:
-    kind: str  # "targeted" | "minor" | "major" | "interface" | "slow" | "device" | "file" | "context" | "application" | "release" | "gate" | "surface"
+    kind: str  # "targeted" | "minor" | "major" | "interface" | "slow" | "device" | "file" | "context" | "downstream" | "application" | "release" | "gate" | "surface"
     command: str
     reason: str
     action: str = "run"  # "run" | "confirm" (owner confirms first; never run unprompted)
@@ -162,6 +175,69 @@ def _is_python_test(path: str) -> bool:
     return path.startswith("tests/") and (fnmatch(name, "test_*.py") or fnmatch(name, "*_test.py"))
 
 
+def _is_docs(path: str, config: dict) -> bool:
+    return _matches(path, config.get("docs_globs", []))
+
+
+def _depends(ctx: dict) -> dict[str, list[str]]:
+    """A context's `depends_on` as {context: file globs}: a list of names means any file of that context;
+    a mapping narrows it to the globs (the files the dependent really imports)."""
+    raw = ctx.get("depends_on", {})
+    return {name: [] for name in raw} if isinstance(raw, list) else raw
+
+
+def _dependents(start: set[str], contexts: dict, path: str | None = None, direct: set[str] | None = None) -> dict[str, str]:
+    """Contexts that depend (`depends_on`, transitively) on any of `start`, each with the context it depends
+    on. A dependency with globs counts only when `path` matches them and the context depended on is in
+    `direct` (the file's own contexts; later hops in the chain are not narrowed by the file)."""
+    found: dict[str, str] = {}
+    frontier = set(start)
+    direct = set(start) if direct is None else direct
+    while True:
+        new: dict[str, str] = {}
+        for name, ctx in contexts.items():
+            if name in frontier:
+                continue
+            for on, globs in _depends(ctx).items():
+                if on in frontier and (on not in direct or path is None or not globs or _matches(path, globs)):
+                    new[name] = on
+                    break
+        if not new:
+            return found
+        found.update(new)
+        frontier |= set(new)
+
+
+def _downstream(owners: set[str], hit: list[dict], contexts: dict, path: str) -> dict[str, str]:
+    """Contexts a change to this file queues, with why: the `shares_with` side of each hit
+    interface whose provider (`context`) changed, and every context that `depends_on` a changed one."""
+    found: dict[str, str] = {}
+    for iface in hit:
+        if iface["context"] in owners:
+            for other in iface.get("shares_with", []):
+                if other in contexts and other not in owners:
+                    found.setdefault(other, f"downstream of interface {iface['name']}")
+    for name, on in _dependents(owners | set(found), contexts, path, direct=owners).items():
+        found.setdefault(name, f"depends on {on}")
+    return found
+
+
+def _reaches(path: str, config: dict) -> set[str]:
+    """Contexts that need re-verifying when this file changes: its owners, every context sharing an
+    interface it belongs to, the contexts a dependency file feeds, and whatever depends on those."""
+    contexts = config["contexts"]
+    python = {n for n, c in contexts.items() if _is_python(c)}
+    reached = _owners(path, contexts)
+    direct = set(reached)
+    for iface in config["interfaces"]:
+        if _matches(path, iface["files"]):
+            reached |= ({iface["context"]} | set(iface.get("shares_with", []))) & set(contexts)
+    if path in config["dependency_files"] or _is_python_test(path):
+        reached |= python
+    reached |= {n for n, c in contexts.items() if path in c.get("dependency_files", [])}
+    return reached | set(_dependents(reached, contexts, path, direct=direct))
+
+
 def plan(
     changed_files: list[str],
     config: dict,
@@ -171,7 +247,10 @@ def plan(
     surfaces: list[dict] | None = None,
     release_contexts: list[str] | None = None,
     file_exists=None,
+    debt: dict[str, set[str]] | None = None,
 ) -> Plan:
+    """`debt` (from --since-verified) maps a changed file to the contexts it is unverified for; a file
+    plans nothing for a context outside its set. Without it every changed file counts for every context."""
     file_exists = file_exists or (lambda p: (REPO_ROOT / p).is_file())
     files = [_normalise(f) for f in changed_files]
     result = Plan(level=level)
@@ -180,33 +259,49 @@ def plan(
         return result
 
     contexts = config["contexts"]
+    docs = [f for f in files if _is_docs(f, config)]
+    files = [f for f in files if f not in docs]
+
+    def allowed(f: str) -> set[str]:
+        return set(contexts) if debt is None else debt.get(f, set())
+
+    python_names = {n for n, c in contexts.items() if _is_python(c)}
     touched: set[str] = set()
     interface_changed: set[str] = set()  # contexts whose public interface changed
     interfaces: list[dict] = []
+    interface_debt: dict[str, set[str]] = {}  # interface name -> contexts it is unverified for
+    downstream: dict[str, str] = {}  # context -> why it is queued by another's change
     for f in files:
         owners = _owners(f, contexts)
         hit = [i for i in config["interfaces"] if _matches(f, i["files"])]
         for iface in hit:
             if iface not in interfaces:
                 interfaces.append(iface)
+            interface_debt.setdefault(iface["name"], set()).update(allowed(f))
             if not owners and iface["context"] in contexts:
                 owners.add(iface["context"])
+        for name, why in _downstream(owners, hit, contexts, f).items():
+            if name in allowed(f):
+                downstream.setdefault(name, why)
+        owners &= allowed(f)
         touched |= owners
         if hit:
             interface_changed |= owners
+    downstream = {n: why for n, why in downstream.items() if n not in touched}
 
     dependency_files = set(config["dependency_files"])
-    python_dependency_changed = any(f in dependency_files for f in files)
-    if python_dependency_changed:
-        touched |= {n for n, c in contexts.items() if _is_python(c)}
-    context_dependency_changed = {
-        n for n, c in contexts.items() if any(f in c.get("dependency_files", []) for f in files)
-    }
-    touched |= context_dependency_changed
+    python_dependency_changed: set[str] = set()  # Python contexts a changed dependency file feeds
+    context_dependency_changed: set[str] = set()
+    for f in files:
+        if f in dependency_files:
+            python_dependency_changed |= python_names & allowed(f)
+        context_dependency_changed |= {n for n, c in contexts.items()
+                                       if f in c.get("dependency_files", []) and n in allowed(f)}
+    touched |= python_dependency_changed | context_dependency_changed
 
     device_touched = [
         n for n, c in contexts.items()
-        if "device" in c and any(_matches(f, c.get("device_covered", [])) for f in files)
+        if "device" in c and any(_matches(f, c.get("device_covered", [])) for f in files if n in allowed(f))
     ]
 
     for f in files:
@@ -218,11 +313,13 @@ def plan(
     slow_groups = config.get("slow", []) if "slow" in markers else []
     if level == "issue":
         _plan_issue(result, files, config, markers, touched, interface_changed, interfaces,
-                    python_dependency_changed, context_dependency_changed, exclude_slow=bool(slow_groups))
+                    python_dependency_changed, context_dependency_changed, exclude_slow=bool(slow_groups),
+                    downstream=downstream, interface_debt=None if debt is None else interface_debt, allowed=allowed)
     else:
         _plan_session(result, files, config, markers, touched, python_dependency_changed,
-                      context_dependency_changed, file_exists, surfaces)
-    _plan_slow(result, files, slow_groups, python_touched=any(_is_python(contexts[n]) for n in touched),
+                      context_dependency_changed, file_exists, surfaces, downstream, allowed)
+    _plan_slow(result, [f for f in files if debt is None or allowed(f) & python_names], slow_groups,
+               python_touched=any(_is_python(contexts[n]) for n in touched),
                python_names=tuple(n for n, c in contexts.items() if _is_python(c)))
 
     for name in device_touched:
@@ -233,8 +330,10 @@ def plan(
     for name in skipped_device:
         result.notes.append(f"{name}: instrumented (device) tests excluded; the diff touches no code they cover")
 
-    if not files:
+    if not changed_files:
         result.notes.append("no changed files; nothing planned")
+    elif docs and not files:
+        result.notes.append("docs-only change; no tests planned")
     elif not result.selections and not result.notes:
         result.notes.append("no test context touched; no tests planned")
     return result
@@ -260,30 +359,28 @@ def _plan_slow(result: Plan, files: list[str], groups: list[dict], *, python_tou
 
 
 def _plan_issue(result, files, config, markers, touched, interface_changed, interfaces,
-                python_dependency_changed, context_dependency_changed, exclude_slow=False) -> None:
+                python_dependency_changed, context_dependency_changed, exclude_slow,
+                downstream, interface_debt, allowed) -> None:
     contexts = config["contexts"]
+    python_names = {n for n, c in contexts.items() if _is_python(c)}
     for f in files:
         if _is_python_test(f):
-            result.add(Selection("targeted", f"uv run pytest {f}", "changed test file, runs first"))
+            if allowed(f) & python_names:
+                result.add(Selection("targeted", f"uv run pytest {f}", "changed test file, runs first"))
             continue
         for name, ctx in contexts.items():
-            if (not _is_python(ctx) and _is_test_file(f, ctx)
+            if (not _is_python(ctx) and _is_test_file(f, ctx) and name in allowed(f)
                     and not _matches(f, ctx.get("live_globs", []))):
                 result.add(Selection("targeted", _fill(ctx["file"], ctx, f), "changed test file, runs first"))
 
-    for name, ctx in contexts.items():  # config order keeps the output stable
-        if name not in touched:
-            continue
-        dependency = (python_dependency_changed and _is_python(ctx)) or name in context_dependency_changed
-        major = dependency or name in interface_changed
-        why = "dependency changed" if dependency else "public interface changed"
+    def add_suite(name: str, major: bool, why: str) -> None:
+        ctx = contexts[name]
         if _is_python(ctx):
             marker = ctx["marker"]
             missing = ({marker} if major else {marker, "minor"}) - markers
             if missing:
                 result.notes.append(f"{name}: marker(s) {sorted(missing)} not declared in pyproject.toml; skipped")
-                continue
-            if major:
+            elif major:
                 result.add(Selection("major", _pytest_marker_run(marker, exclude_slow), f"{name} Major ({why}; includes Minor)"))
             else:
                 result.add(Selection("minor", _pytest_marker_run(f"minor and {marker}", exclude_slow), f"{name} Minor"))
@@ -292,14 +389,30 @@ def _plan_issue(result, files, config, markers, touched, interface_changed, inte
         else:
             result.add(Selection("minor", ctx["commands"]["minor"], f"{name} Minor"))
 
+    def shares_unverified(iface: dict, name: str) -> bool:  # is this interface unverified for the context (always, without --since-verified)
+        return interface_debt is None or name in interface_debt.get(iface["name"], set())
+
+    # An interface can name the one test that covers a sharing context's side; that stands in for its Major suite.
+    precise = {other for iface in interfaces for other in iface.get("shares_with", [])
+               if iface.get("shares_tests", {}).get(other) and shares_unverified(iface, other)}
+    for name in contexts:  # config order keeps the output stable
+        if name in touched:
+            dependency = name in python_dependency_changed or name in context_dependency_changed
+            add_suite(name, dependency or name in interface_changed,
+                      "dependency changed" if dependency else "public interface changed")
+        elif name in downstream and name not in precise:
+            add_suite(name, True, downstream[name])
+
     for iface in interfaces:
-        for test in iface["tests"]:
-            result.add(Selection("interface", f"uv run pytest {test}", f"interface {iface['name']}"))
+        if shares_unverified(iface, iface["context"]):
+            for test in iface["tests"]:
+                result.add(Selection("interface", f"uv run pytest {test}", f"interface {iface['name']}"))
         outside = []
         for other in iface.get("shares_with", []):
             command = iface.get("shares_tests", {}).get(other)
             if other in contexts and command:
-                result.add(Selection("interface", command, f"interface {iface['name']} ({other} side)"))
+                if shares_unverified(iface, other):
+                    result.add(Selection("interface", command, f"interface {iface['name']} ({other} side)"))
             elif other not in contexts:
                 outside.append(other)
         if outside:
@@ -309,20 +422,23 @@ def _plan_issue(result, files, config, markers, touched, interface_changed, inte
 
 
 def _plan_session(result, files, config, markers, touched, python_dependency_changed,
-                  context_dependency_changed, file_exists, surfaces) -> None:
-    """Scope ladder: one small context -> file, one context -> context, several -> application."""
+                  context_dependency_changed, file_exists, surfaces, downstream, allowed) -> None:
+    """Scope ladder: one small context -> file, one context -> context, several -> application.
+    Downstream contexts (#66) add their context run on top; the ladder counts only the contexts the diff touches."""
     contexts = config["contexts"]
     python_names = tuple(n for n, c in contexts.items() if _is_python(c))
     for f in files:
-        if _is_python_test(f):
+        if _is_python_test(f) and set(python_names) & allowed(f):
             result.add(Selection("file", f"uv run pytest {f}", "changed test file", contexts=python_names))
-    if not touched:
+    if not touched and not downstream:
         return
     file_max = config.get("scope", {}).get("file_max_files", DEFAULT_FILE_MAX_FILES)
-    dependency = python_dependency_changed or bool(context_dependency_changed)
-    if len(touched) > 1:
+    dependency = bool(python_dependency_changed) or bool(context_dependency_changed)
+    if not touched:
+        result.scope = "context"
+    elif len(touched) > 1:
         result.scope = "application"
-    elif dependency or sum(1 for f in files if _owners(f, contexts)) > file_max:
+    elif dependency or sum(1 for f in files if _owners(f, contexts) & allowed(f)) > file_max:
         result.scope = "context"
     else:
         result.scope = "file"
@@ -332,6 +448,8 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
             command = ctx.get("application", ctx["context"])
             result.add(Selection("application", command, f"application run ({name}; diff spans {', '.join(sorted(touched))})",
                                  contexts=(name,)))
+    elif not touched:
+        pass  # only downstream contexts, planned below
     elif result.scope == "context":
         (name,) = touched
         result.add(Selection("context", contexts[name]["context"], f"{name} context run (diff is larger than a file)",
@@ -341,7 +459,7 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
         ctx = contexts[name]
         planned_any = False
         for f in files:
-            if _matches(f, ctx.get("live_globs", [])):
+            if name not in allowed(f) or _matches(f, ctx.get("live_globs", [])):
                 continue
             target = f if _is_test_file(f, ctx) or (_is_python(ctx) and _is_python_test(f)) else _test_for(f, ctx, file_exists)
             if target is None:
@@ -355,8 +473,13 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
             planned_any = True
         if not planned_any:
             result.add(Selection("context", ctx["context"], f"{name} context run", contexts=(name,)))
+    if result.scope != "application":  # an application run already covers every context
+        for name in contexts:
+            if name in downstream:
+                result.add(Selection("downstream", contexts[name]["context"], f"{name} context run ({downstream[name]})",
+                                     contexts=(name,)))
     _plan_surfaces(result, config, surfaces, {contexts[n].get("platform") for n in
-                   (contexts if result.scope == "application" else touched)})
+                   (contexts if result.scope == "application" else touched | set(downstream))})
 
 
 def _plan_surfaces(result: Plan, config: dict, surfaces: list[dict] | None, platforms: set) -> None:
@@ -435,12 +558,14 @@ def _affected_contexts(path: str, config: dict) -> set[str] | None:
     contexts = config["contexts"]
     python = {n for n, c in contexts.items() if _is_python(c)}
     hit = _owners(path, contexts)
+    direct = set(hit)
     for iface in config.get("interfaces", []):
         if _matches(path, iface["files"]):
             hit |= ({iface["context"]} | set(iface.get("shares_with", []))) & set(contexts)
     if path in config.get("dependency_files", []):
         hit |= python
     if hit:
+        hit |= set(_dependents(hit, contexts, path, direct=direct))
         return hit | python if hit & python else hit
     if path.startswith(_PYTHON_ONLY_PREFIXES) or path.endswith(".md"):
         return python
@@ -460,6 +585,59 @@ def suite_affected(selection: Selection, changed: list[str], config: dict) -> bo
         if hit is None or hit & wanted:
             return True
     return False
+
+
+def plan_since_verified(
+    config: dict,
+    markers: set[str],
+    *,
+    level: str,
+    diff,
+    verified,
+    base: str,
+    surfaces: list[dict] | None = None,
+    file_exists=None,
+) -> Plan:
+    """Plan each context from the last commit the ledger holds for it at `level` (#66).
+
+    `diff(ref)` lists the files changed from `ref` to the working tree; `verified(context, level)`
+    returns the context's last verified commit or None. A context with no commit, or one `diff` cannot
+    read, is planned from `base`. A file counts only for the contexts it changed since their own commit."""
+    debt: dict[str, set[str]] = {}
+    notes: list[str] = []
+    cache: dict[str, list[str]] = {}
+
+    def changed_from(ref: str) -> list[str]:
+        if ref not in cache:
+            cache[ref] = diff(ref)
+        return cache[ref]
+
+    for name in config["contexts"]:
+        try:
+            ref = verified(name, level)
+        except Exception as exc:  # an unreadable ledger is the same as nothing verified
+            ref = None
+            notes.append(f"{name}: ledger unavailable ({exc})")
+        source = base
+        if ref:
+            try:
+                changed_from(ref)
+                source = ref
+            except GitError:
+                notes.append(f"{name}: last verified commit {ref[:8]} is not readable; planned from {base}")
+        else:
+            notes.append(f"{name}: never verified at the {level} level; planned from {base}")
+        files = [_normalise(f) for f in changed_from(source)]
+        mine = [f for f in files if not _is_docs(f, config) and name in _reaches(f, config)]
+        for f in mine:
+            debt.setdefault(f, set()).add(name)
+        label = source[:8] if source != base else base
+        notes.append(f"{name}: " + (f"{len(mine)} file(s) changed since {label}" if mine else f"nothing to verify since {label}"))
+    result = plan(list(debt), config, markers, level=level, surfaces=surfaces, file_exists=file_exists, debt=debt)
+    result.notes = notes + [n for n in result.notes if n != "no changed files; nothing planned"]
+    if not debt:
+        result.notes.append("every context is verified up to date; nothing planned")
+    return result
 
 
 def changed_files_from_git(base: str) -> list[str]:
@@ -499,15 +677,28 @@ def _live_ledger():
     return lambda command: revision.tree if vl.suite_verdict(command, revision).skip else None
 
 
+def _live_verified(context: str, level: str) -> str | None:
+    """The ledger's last verified commit for a context at a level (#65)."""
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import verification_ledger as vl
+
+    return vl.last_verified(context, level)
+
+
 TITLES = {"issue": "Per-issue", "session": "Session-end", "release": "Release"}
 
 
-def main(argv: list[str] | None = None, *, git=changed_files_from_git, surfaces=_live_surfaces, ledger=_live_ledger) -> int:
+def main(argv: list[str] | None = None, *, git=changed_files_from_git, surfaces=_live_surfaces, ledger=_live_ledger,
+         verified=_live_verified) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--level", choices=LEVELS, default="issue", help="issue (default), session or release")
     parser.add_argument("--files", nargs="*", help="changed files (default: git diff --name-only)")
     parser.add_argument("--base", default="HEAD", help="git ref to diff against (default HEAD)")
     parser.add_argument("--context", nargs="*", help="release level: limit to these contexts")
+    parser.add_argument("--since-verified", action="store_true",
+                        help="plan each context from its last verified commit in the ledger instead of --base")
     args = parser.parse_args(argv)
 
     try:
@@ -518,10 +709,21 @@ def main(argv: list[str] | None = None, *, git=changed_files_from_git, surfaces=
                 surface_states = surfaces()
             except Exception as exc:
                 notes.append(f"surface freshness unavailable ({exc}); surfaces not planned")
-        files = [] if args.level == "release" and args.files is None else (
-            args.files if args.files is not None else git(args.base))
-        result = plan(files, load_config(), load_markers(), level=args.level,
-                      surfaces=surface_states, release_contexts=args.context)
+        since_verified = args.since_verified
+        if since_verified and args.level == "release":
+            notes.append("--since-verified ignored: a release plans everything")
+            since_verified = False
+        elif since_verified and args.files is not None:
+            notes.append("--since-verified ignored: --files names the changed files")
+            since_verified = False
+        if since_verified:
+            result = plan_since_verified(load_config(), load_markers(), level=args.level, diff=git,
+                                         verified=verified, base=args.base, surfaces=surface_states)
+        else:
+            files = [] if args.level == "release" and args.files is None else (
+                args.files if args.files is not None else git(args.base))
+            result = plan(files, load_config(), load_markers(), level=args.level,
+                          surfaces=surface_states, release_contexts=args.context)
         result.notes.extend(notes)
     except Exception as exc:  # advisory: never block
         print(f"Planner could not plan ({exc}); no tests planned. git or config problems never block.")

@@ -20,6 +20,12 @@ Android instrumented (device) tests are planned only when the diff touches
 code they cover, or at release. A stale paid surface is listed as needing
 confirmation, never as something to run.
 
+The `slow` pytest tests (tooling checks that start pytest, npm or Gradle; real
+photo OCR; the Streamlit walkthrough; the Breakdown sweep) are left out of the
+Python suites above and listed on their own, only when the diff touches what
+their config group names (`slow` in scripts/test_planner_config.json), and
+always at release (#129). A bare `uv run pytest` still runs them all.
+
 Usage: uv run scripts/test_planner.py [--level issue|session|release]
            [--files PATH ...] [--base REF] [--context NAME ...]
 Without --files the changed files come from `git diff --name-only <base>`
@@ -42,6 +48,8 @@ PYPROJECT = REPO_ROOT / "pyproject.toml"
 
 LEVELS = ("issue", "session", "release")
 DEFAULT_FILE_MAX_FILES = 2
+# A second `-m` replaces addopts' `-m "not external"`, so each slow run says it again.
+SLOW_PYTEST = 'uv run pytest -n auto -m "slow and not external"'
 
 
 class GitError(Exception):
@@ -50,7 +58,7 @@ class GitError(Exception):
 
 @dataclass
 class Selection:
-    kind: str  # "targeted" | "minor" | "major" | "interface" | "device" | "file" | "context" | "application" | "release" | "gate" | "surface"
+    kind: str  # "targeted" | "minor" | "major" | "interface" | "slow" | "device" | "file" | "context" | "application" | "release" | "gate" | "surface"
     command: str
     reason: str
     action: str = "run"  # "run" | "confirm" (owner confirms first; never run unprompted)
@@ -193,12 +201,14 @@ def plan(
                 result.notes.append(f"{f}: live test; not planned (it runs through the External surface suite)")
                 break
 
+    slow_groups = config.get("slow", []) if "slow" in markers else []
     if level == "issue":
         _plan_issue(result, files, config, markers, touched, interface_changed, interfaces,
-                    python_dependency_changed, context_dependency_changed)
+                    python_dependency_changed, context_dependency_changed, exclude_slow=bool(slow_groups))
     else:
         _plan_session(result, files, config, markers, touched, python_dependency_changed,
                       context_dependency_changed, file_exists, surfaces)
+    _plan_slow(result, files, slow_groups, python_touched=any(_is_python(contexts[n]) for n in touched))
 
     for name in device_touched:
         ctx = contexts[name]
@@ -214,8 +224,27 @@ def plan(
     return result
 
 
+def _pytest_marker_run(expression: str, exclude_slow: bool) -> str:
+    if exclude_slow:
+        return f'uv run pytest -m "{expression} and not slow"'
+    return f'uv run pytest -m "{expression}"' if " " in expression else f"uv run pytest -m {expression}"
+
+
+def _plan_slow(result: Plan, files: list[str], groups: list[dict], *, python_touched: bool) -> None:
+    """List the slow tests of each group whose triggers the diff touches; say so when none is owed."""
+    owed = False
+    for group in groups:
+        hit = next((f for f in files if _matches(f, group["triggers"])), None)
+        if hit is not None:
+            owed = True
+            result.add(Selection("slow", f"{SLOW_PYTEST} {' '.join(group['tests'])}",
+                                 f"slow tests owed: {group['name']} (diff touches {hit})"))
+    if groups and python_touched and not owed:
+        result.notes.append("slow tests left out; the diff touches nothing they check (a bare `uv run pytest` runs them)")
+
+
 def _plan_issue(result, files, config, markers, touched, interface_changed, interfaces,
-                python_dependency_changed, context_dependency_changed) -> None:
+                python_dependency_changed, context_dependency_changed, exclude_slow=False) -> None:
     contexts = config["contexts"]
     for f in files:
         if _is_python_test(f):
@@ -239,9 +268,9 @@ def _plan_issue(result, files, config, markers, touched, interface_changed, inte
                 result.notes.append(f"{name}: marker(s) {sorted(missing)} not declared in pyproject.toml; skipped")
                 continue
             if major:
-                result.add(Selection("major", f"uv run pytest -m {marker}", f"{name} Major ({why}; includes Minor)"))
+                result.add(Selection("major", _pytest_marker_run(marker, exclude_slow), f"{name} Major ({why}; includes Minor)"))
             else:
-                result.add(Selection("minor", f'uv run pytest -m "minor and {marker}"', f"{name} Minor"))
+                result.add(Selection("minor", _pytest_marker_run(f"minor and {marker}", exclude_slow), f"{name} Minor"))
         elif major:
             result.add(Selection("major", ctx["commands"]["major"], f"{name} Major ({why}; includes Minor)"))
         else:
@@ -351,6 +380,8 @@ def _plan_release(result, files, config, surfaces, release_contexts) -> None:
                                  action="confirm" if confirm else "run"))
         if "gate" in ctx:
             result.add(Selection("gate", ctx["gate"], f"{name} deploy keeps the External freshness gate (no full run)"))
+    if config.get("slow"):
+        result.add(Selection("slow", SLOW_PYTEST, "slow tests are always owed at release (tooling checks, real-photo OCR, walkthrough, sweep)"))
     if release_contexts is None:
         result.notes.append("web, streamlit and core have no full-run release; core is covered through the apps that use it")
     platforms = {contexts[n].get("platform") for n in chosen}

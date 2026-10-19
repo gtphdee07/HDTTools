@@ -2,22 +2,56 @@
   "_comment": "Test contexts for scripts/test_planner.py (#60, #61). Context names follow CONTEXT-MAP.md. A context with a 'marker' is a pytest context; one with 'commands' runs shell commands. An interface's 'files' are its public surface; a change to one adds its 'tests' and forces its context's Major suite. Command templates take {rel} (path under the context root), {fqcn} (Kotlin class) and {file}. The non-Python commands are the ones #52 documents; change them here if #52 settles on others.",
   "dependency_files": ["pyproject.toml", "uv.lock"],
   "scope": {"file_max_files": 2},
+  "slow": [
+    {
+      "name": "tooling",
+      "triggers": [
+        "scripts/*", "pyproject.toml",
+        "tests/conftest.py", "tests/_test_command_helpers.py",
+        "web/package.json", "workers/scan-proxy/package.json",
+        "android/build.gradle.kts", "android/settings.gradle.kts", "android/app/build.gradle.kts"
+      ],
+      "tests": ["tests/test_test_planner.py", "tests/test_context_test_commands.py", "tests/test_android_file_command_slow.py"]
+    },
+    {
+      "name": "ocr-photos",
+      "triggers": [
+        "src/hdttools/*_ocr.py", "src/hdttools/ocr_common.py", "src/hdttools/api/main.py", "src/hdttools/api/breakdown.py",
+        "scripts/vehicle_discovery.py", "scripts/pass_pool.py", "scripts/fail_pool.py",
+        "ExampleDocs/*"
+      ],
+      "tests": [
+        "tests/test_real_photo_ocr_accuracy.py", "tests/test_scale_ticket_real_photo.py",
+        "tests/test_pass_pool_regression.py", "tests/test_fail_pool_regression.py"
+      ]
+    },
+    {
+      "name": "streamlit-walkthrough",
+      "triggers": ["streamlit_app/*", "src/hdttools/*_ocr.py", "src/hdttools/ocr_common.py", "ExampleDocs/*"],
+      "tests": ["tests/test_streamlit_app.py"]
+    },
+    {
+      "name": "breakdown-sweep",
+      "triggers": ["src/hdttools/api/breakdown.py"],
+      "tests": ["tests/test_breakdown_combinatorial_sweep.py"]
+    }
+  ],
   "contexts": {
     "core": {
       "marker": "core",
       "paths": ["src/hdttools/", "scripts/"],
       "file": "uv run pytest {file}",
       "test_for": ["tests/test_{stem}.py"],
-      "context": "uv run pytest -m core",
-      "application": "uv run pytest"
+      "context": "uv run pytest -n auto -m \"core and not slow\"",
+      "application": "uv run pytest -n auto -m \"not slow and not external\""
     },
     "streamlit": {
       "marker": "streamlit",
       "paths": ["streamlit_app/"],
       "file": "uv run pytest {file}",
       "test_for": ["tests/test_{stem}.py", "tests/test_streamlit_app.py"],
-      "context": "uv run pytest -m streamlit",
-      "application": "uv run pytest"
+      "context": "uv run pytest -m \"streamlit and not slow\"",
+      "application": "uv run pytest -n auto -m \"not slow and not external\""
     },
     "web": {
       "paths": ["web/"],
@@ -63,7 +97,6 @@
       "context": "android/gradlew -p android testDebugUnitTest",
       "release": [
         {"command": "android/gradlew -p android testDebugUnitTest", "reason": "JVM tests"},
-        {"command": "uv run pytest tests/test_context_test_commands.py tests/test_android_file_command_slow.py", "reason": "documented Android file command really runs one class (#52)"},
         {"command": "android/gradlew -p android connectedDebugAndroidTest", "reason": "instrumented tests (needs a device)"},
         {"command": "powershell android/test-weekly.ps1", "reason": "old weekly suite (live, paid)", "confirm": true}
       ]

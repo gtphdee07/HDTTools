@@ -29,18 +29,19 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
+    "pytest-xdist>=3.8.0",
     "streamlit>=1.61.1",
     "vulture>=2.16",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = '--strict-markers -m "not external"'
+addopts = '--strict-markers --dist loadgroup --maxprocesses=8 -m "not external"'
 markers = [
     "external: live provider calls (billed); run on purpose with `pytest -m external`",
     "anthropic: External suite surface tag (ADR-0008) for the Claude vision API boundary",
     "minor: function and interaction tests; unmarked means Major",
-    "slow: real-photo OCR and the combinatorial sweep",
+    "slow: real-photo OCR, the combinatorial sweep, and the tooling tests that start pytest, npm, Node or Gradle (the planner owes them only when what they check changes)",
     "core: tests for src/hdttools and the scripts/ tooling",
     "streamlit: tests that drive streamlit_app/",
 ]

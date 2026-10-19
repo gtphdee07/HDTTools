@@ -71,13 +71,19 @@ def _android_package_instruction_counts(html: str, package: str) -> tuple[int, i
     )
     if not row_match:
         raise ValueError(f"Package {package!r} not found in the JaCoCo HTML report")
-    segment = row_match.group(1)
+    missed, covered = _jacoco_bar_counts(row_match.group(1))
+    return missed, missed + covered
 
-    missed_match = re.search(r'redbar\.gif"[^>]*title="([\d,]+)"', segment)
-    covered_match = re.search(r'greenbar\.gif"[^>]*title="([\d,]+)"', segment)
+
+def _jacoco_bar_counts(bar_html: str) -> tuple[int, int]:
+    """(missed, covered) instructions from a JaCoCo bar cell: redbar.gif is
+    missed, greenbar.gif is covered, and a fully covered, fully missed or
+    empty row has only one or neither of the two <img> tags."""
+    missed_match = re.search(r'redbar\.gif"[^>]*title="([\d,]+)"', bar_html)
+    covered_match = re.search(r'greenbar\.gif"[^>]*title="([\d,]+)"', bar_html)
     missed = int(missed_match.group(1).replace(",", "")) if missed_match else 0
     covered = int(covered_match.group(1).replace(",", "")) if covered_match else 0
-    return missed, missed + covered
+    return missed, covered
 
 
 # --- Android JVM decision-logic coverage (#130) ---------------------------
@@ -129,17 +135,10 @@ _CLASS_ROW = re.compile(
 
 
 def parse_jacoco_package_classes(package: str, html_text: str) -> list[ClassCoverage]:
-    """One ClassCoverage per el_class row of a JaCoCo package page. Matched
-    by bar image (redbar = missed, greenbar = covered) like
-    _android_package_instruction_counts, since a fully covered or fully
-    missed class has only one of the two <img> tags and an empty class has
-    none."""
+    """One ClassCoverage per el_class row of a JaCoCo package page."""
     rows = []
     for name, bar in _CLASS_ROW.findall(html_text):
-        missed_match = re.search(r'redbar\.gif"[^>]*title="([\d,]+)"', bar)
-        covered_match = re.search(r'greenbar\.gif"[^>]*title="([\d,]+)"', bar)
-        missed = int(missed_match.group(1).replace(",", "")) if missed_match else 0
-        covered = int(covered_match.group(1).replace(",", "")) if covered_match else 0
+        missed, covered = _jacoco_bar_counts(bar)
         rows.append(ClassCoverage(package, html.unescape(name), missed, missed + covered))
     return rows
 

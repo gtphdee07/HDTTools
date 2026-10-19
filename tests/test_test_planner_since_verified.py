@@ -304,6 +304,12 @@ def test_docs_committed_since_the_verified_commit_add_nothing():
     assert plan.selections == []
 
 
+def test_docs_are_not_counted_among_the_files_changed_since_a_contexts_verified_commit():
+    plan = since_verified(Repo(old=["src/CONTEXT.md", "src/database.py"]), ledger(**ALL_AT))
+
+    assert "core: 1 file(s) changed since old" in plan.notes
+
+
 def test_session_end_plans_from_the_verified_commits_with_downstream_contexts():
     repo = Repo(old=["proxy/index.ts"])
 

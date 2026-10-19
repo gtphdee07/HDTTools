@@ -359,10 +359,9 @@ def _plan_slow(result: Plan, files: list[str], groups: list[dict], *, python_tou
 
 
 def _plan_issue(result, files, config, markers, touched, interface_changed, interfaces,
-                python_dependency_changed, context_dependency_changed, exclude_slow=False,
-                downstream=None, interface_debt=None, allowed=lambda f: set()) -> None:
+                python_dependency_changed, context_dependency_changed, exclude_slow,
+                downstream, interface_debt, allowed) -> None:
     contexts = config["contexts"]
-    downstream = downstream or {}
     python_names = {n for n, c in contexts.items() if _is_python(c)}
     for f in files:
         if _is_python_test(f):
@@ -390,12 +389,12 @@ def _plan_issue(result, files, config, markers, touched, interface_changed, inte
         else:
             result.add(Selection("minor", ctx["commands"]["minor"], f"{name} Minor"))
 
-    def reaches(iface: dict, name: str) -> bool:  # is this interface unverified for the context (always, without --since-verified)
+    def shares_unverified(iface: dict, name: str) -> bool:  # is this interface unverified for the context (always, without --since-verified)
         return interface_debt is None or name in interface_debt.get(iface["name"], set())
 
     # An interface can name the one test that covers a sharing context's side; that stands in for its Major suite.
     precise = {other for iface in interfaces for other in iface.get("shares_with", [])
-               if iface.get("shares_tests", {}).get(other) and reaches(iface, other)}
+               if iface.get("shares_tests", {}).get(other) and shares_unverified(iface, other)}
     for name in contexts:  # config order keeps the output stable
         if name in touched:
             dependency = name in python_dependency_changed or name in context_dependency_changed
@@ -405,14 +404,14 @@ def _plan_issue(result, files, config, markers, touched, interface_changed, inte
             add_suite(name, True, downstream[name])
 
     for iface in interfaces:
-        if reaches(iface, iface["context"]):
+        if shares_unverified(iface, iface["context"]):
             for test in iface["tests"]:
                 result.add(Selection("interface", f"uv run pytest {test}", f"interface {iface['name']}"))
         outside = []
         for other in iface.get("shares_with", []):
             command = iface.get("shares_tests", {}).get(other)
             if other in contexts and command:
-                if reaches(iface, other):
+                if shares_unverified(iface, other):
                     result.add(Selection("interface", command, f"interface {iface['name']} ({other} side)"))
             elif other not in contexts:
                 outside.append(other)
@@ -423,11 +422,10 @@ def _plan_issue(result, files, config, markers, touched, interface_changed, inte
 
 
 def _plan_session(result, files, config, markers, touched, python_dependency_changed,
-                  context_dependency_changed, file_exists, surfaces, downstream=None, allowed=lambda f: set()) -> None:
+                  context_dependency_changed, file_exists, surfaces, downstream, allowed) -> None:
     """Scope ladder: one small context -> file, one context -> context, several -> application.
     Downstream contexts (#66) add their context run on top; the ladder counts only the contexts the diff touches."""
     contexts = config["contexts"]
-    downstream = downstream or {}
     python_names = tuple(n for n, c in contexts.items() if _is_python(c))
     for f in files:
         if _is_python_test(f) and set(python_names) & allowed(f):
@@ -630,7 +628,7 @@ def plan_since_verified(
         else:
             notes.append(f"{name}: never verified at the {level} level; planned from {base}")
         files = [_normalise(f) for f in changed_from(source)]
-        mine = [f for f in files if name in _reaches(f, config)]
+        mine = [f for f in files if not _is_docs(f, config) and name in _reaches(f, config)]
         for f in mine:
             debt.setdefault(f, set()).add(name)
         label = source[:8] if source != base else base

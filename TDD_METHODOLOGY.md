@@ -152,9 +152,12 @@ collaborators faked, starts as a **Function** test; if it drives a real
 multi-step sequence sharing `st.session_state` (Streamlit) it's an
 **Interaction** test instead (join `test_streamlit_app.py`); if it
 exercises a file's whole public surface it's a **Module** test. Per
-`tests/TESTING.md`, this suite has no tagged fast subset yet, so today
-Minor and Major both mean "the whole `uv run pytest -q` run" — there's no
-narrower command to reach for. A test graduates from Function/Module to
+`tests/TESTING.md`, the pytest markers split the suite: Minor is
+`uv run pytest -m "minor and core"` (or `"minor and streamlit"`), Major is
+`-m core` (or `-m streamlit`), and the full Python run is
+`uv run pytest -n auto`. Tests marked `slow` are left out of the planner's
+Minor and Major commands and owed only when the diff touches what they
+check (root `TESTING.md`, "Python test commands"). A test graduates from Function/Module to
 **inter-module interface** the moment it starts asserting a contract
 *between* Python and another platform — the existing precedent is
 `test_api.py`'s `test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage`

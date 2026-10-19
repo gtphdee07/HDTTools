@@ -77,7 +77,10 @@ emulator's own log) go to `android/build/suite-loop/<timestamp>/`. It builds
 the APKs once up front and needs the single emulator: no other Android ticket
 may be running. `--driver gradle` runs the literal `gradlew
 connectedDebugAndroidTest` under the same restart loop, `--gpu host`
-reproduces the old aborts, `--restart-every 0` reuses one boot for every run.
+reproduces the old aborts, `--restart-every 0` reuses one boot for every run. The emulator is left
+running when the script ends, and the "longest streak of passes" line skips
+aborted runs, so read the pass count against the run count (5 of 5 passed
+means 5 consecutive).
 The label rules, restart logic and readiness check are tested with fakes in
 `tests/test_android_suite_loop.py`; no emulator is touched there.
 
@@ -105,14 +108,19 @@ that backend:
   host GPU backend, never with the software one" (0 of 15 software runs), not
   traced to a single call. The emulator log shows `adb ... device offline`
   warnings during every boot (its own boot poll), so a short offline period
-  is normal; a run that starts inside it is what Gradle reports.
+  is normal. The ticket's other two modes (`device offline` 22 s after Gradle
+  started with 0 tests run, and `Can't find service: input` on the wake task)
+  did not recur in these runs, so they are not separately explained; the
+  script's readiness wait (three steady polls plus a 20 s settle) is a
+  precaution against them, not something shown necessary.
 - *Warm reuse also degrades the tests.* The second or later suite on one boot
   failed 3 of 4 times on the host GPU (two system crashes, and once 21
   keyboard-dependent navigation tests timing out at 30 s on stale windows, the
   #118 symptom), and the one warm run that passed took 1142 s against 406 to
-  429 s on a fresh boot. On the software GPU 4 warm suites in a row all passed,
-  each in about 255 s (the software GPU is also the faster one here). Restarting before each run is still the
-  rule, since it costs about a minute and removes this class of failure.
+  429 s on a fresh boot. On the software GPU, 4 suites on one boot (3 of them
+  warm) all passed, each in about 255 s (the software GPU is also the faster
+  one here). Restarting before each run is still the rule, since it costs
+  about a minute and removes this class of failure.
 
 Measured 2026-10-19 (emulator 37.1.11, `medium_phone`, API 36 Google Play
 image, host Ryzen 9 3900X / 32 GB), full suite, 132 tests:
@@ -124,7 +132,7 @@ image, host Ryzen 9 3900X / 32 GB), full suite, 132 tests:
 | host + 4 GB RAM | `am instrument` | boot, then reuse | 4 | pass, system crash (watchdog), pass, pass | 406 and 429 s on a fresh boot; 1142 s on the reused one |
 | software | `am instrument` | boot, then reuse | 4 | 4 passed | 252 to 262 s |
 | software | Gradle | every run | 6 | 6 passed | 5 min 10 s to 5 min 50 s (Gradle total) |
-| software | `am instrument` | every run (the script) | 5 | 5 passed, 0 aborted (a clean detached checkout of the branch, built from scratch) | 275 to 308 s |
+| software | `am instrument` | every run (the script) | 5 | 5 passed, 0 aborted (a clean detached checkout of the `ticket-127` branch, built from scratch; its Android sources are identical to `MPSkills`, the branch only adds the script, its tests and this file) | 275 to 308 s |
 
 (After an abort the loop restarts the emulator, so "boot, then reuse" runs 3
 and 4 shared a second boot.)

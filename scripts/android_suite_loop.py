@@ -62,6 +62,10 @@ ABORT_MARKERS = (
     r"Execution failed for task ':app:wakeEmulatorForInstrumentedTests'",
 )
 
+GRADLEW = str(ANDROID_DIR / ("gradlew.bat" if os.name == "nt" else "gradlew"))
+WIN_DETACHED_PROCESS = 0x00000008  # subprocess.DETACHED_PROCESS, which only exists on Windows
+WIN_NEW_PROCESS_GROUP = 0x00000200  # subprocess.CREATE_NEW_PROCESS_GROUP, likewise
+
 AVD = "medium_phone"
 # Software rendering. On the AVD's default host-GPU backend (gfxstream over the
 # host's Vulkan GPU) the system server hung inside a screen capture and was
@@ -101,7 +105,10 @@ def classify_run(output: str, returncode: int, expected_tests: int | None = None
     if failed:
         return Outcome(TEST_FAILED, "tests failed", int(ran.group(1)) if ran else None)
     if not ok:
-        return Outcome(INFRA_ABORT, "no result line in the output")
+        # Often our own "install of X failed" line: quote it so a bad APK isn't
+        # mistaken for a dead emulator.
+        first = next((ln.strip() for ln in output.splitlines() if ln.strip()), "")
+        return Outcome(INFRA_ABORT, f"no result line in the output (starts: {first[:120]})" if first else "no output")
     count = int(ok.group(1))
     if returncode != 0:
         return Outcome(INFRA_ABORT, f"result line present but exit code {returncode}", count)
@@ -161,7 +168,7 @@ class Report:
             f"{self.passed} of {self.runs} runs passed; {self.test_failed} failed a test; "
             f"{self.infra_aborted} aborted for infrastructure reasons "
             f"({self.finished} reached the end of the suite).",
-            f"Longest streak of passes: {self.longest_pass_streak}.",
+            f"Longest streak of passes: {self.longest_pass_streak} (aborted runs neither extend nor end it).",
         ]
         for number, outcome in enumerate(self.outcomes, 1):
             if outcome.kind != PASSED:
@@ -173,7 +180,7 @@ def run_loop(
     runs: int,
     *,
     restart: Callable[[], bool],
-    run_once: Callable[[], tuple[str, int]],
+    run_once: Callable[[int], tuple[str, int]],
     expected_tests: int | None = None,
     restart_every: int = 1,
     out: Callable[[str], None] = print,
@@ -195,7 +202,7 @@ def run_loop(
             out(f"== run {number} of {runs}: reusing the emulator")
         if not needs_restart:
             runs_on_this_emulator += 1
-            output, code = run_once()
+            output, code = run_once(number)
             outcome = classify_run(output, code, expected_tests)
             needs_restart = outcome.kind == INFRA_ABORT or (
                 restart_every > 0 and runs_on_this_emulator >= restart_every
@@ -299,7 +306,8 @@ def restart_emulator(
     else:
         return False
     time.sleep(5)  # let the old qemu process release the AVD's lock files
-    flags = {"creationflags": 0x00000008 | 0x00000200} if os.name == "nt" else {"start_new_session": True}
+    # The emulator must outlive this script's console, and is left running when it exits.
+    flags = {"creationflags": WIN_DETACHED_PROCESS | WIN_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}
     with open(log_path, "ab") as log:
         subprocess.Popen(
             emulator_command(emulator_path, avd=avd, gpu=gpu, extra_args=extra_args),
@@ -332,10 +340,9 @@ def instrument_once(adb: Adb, suite_timeout_s: float) -> tuple[str, int]:
 
 def gradle_once(suite_timeout_s: float) -> tuple[str, int]:
     """The literal documented Gradle command, for comparison runs."""
-    gradlew = str(ANDROID_DIR / ("gradlew.bat" if os.name == "nt" else "gradlew"))
     try:
         proc = subprocess.run(
-            [gradlew, "-p", "android", "connectedDebugAndroidTest"], cwd=REPO_ROOT, capture_output=True,
+            [GRADLEW, "-p", "android", "connectedDebugAndroidTest"], cwd=REPO_ROOT, capture_output=True,
             text=True, errors="replace", timeout=suite_timeout_s,
         )
     except subprocess.TimeoutExpired:
@@ -344,8 +351,7 @@ def gradle_once(suite_timeout_s: float) -> tuple[str, int]:
 
 
 def build_apks() -> None:
-    gradlew = str(ANDROID_DIR / ("gradlew.bat" if os.name == "nt" else "gradlew"))
-    subprocess.run([gradlew, "-p", "android", "assembleDebug", "assembleDebugAndroidTest"], cwd=REPO_ROOT, check=True)
+    subprocess.run([GRADLEW, "-p", "android", "assembleDebug", "assembleDebugAndroidTest"], cwd=REPO_ROOT, check=True)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -371,10 +377,8 @@ def main(argv: list[str] | None = None) -> int:
     emulator = find_sdk_tool("emulator", "emulator")
 
     if args.driver == "instrument":
-        subprocess.run([str(ANDROID_DIR / ("gradlew.bat" if os.name == "nt" else "gradlew")), "--stop"], cwd=REPO_ROOT)
+        subprocess.run([GRADLEW, "--stop"], cwd=REPO_ROOT)
         build_apks()
-
-    number = 0
 
     def restart() -> bool:
         return restart_emulator(
@@ -382,9 +386,7 @@ def main(argv: list[str] | None = None) -> int:
             settle_s=args.settle_s,
         )
 
-    def run_once() -> tuple[str, int]:
-        nonlocal number
-        number += 1
+    def run_once(number: int) -> tuple[str, int]:
         adb("logcat", "-c")
         output, code = (
             instrument_once(adb, args.suite_timeout_s) if args.driver == "instrument" else gradle_once(args.suite_timeout_s)

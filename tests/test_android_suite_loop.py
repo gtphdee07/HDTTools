@@ -97,6 +97,7 @@ class Script:
 
     def __init__(self, outputs, restart_results=None):
         self.events = []
+        self.numbers = []
         self.outputs = list(outputs)
         self.restart_results = list(restart_results or [])
 
@@ -104,8 +105,9 @@ class Script:
         self.events.append("restart")
         return self.restart_results.pop(0) if self.restart_results else True
 
-    def run_once(self):
+    def run_once(self, number):
         self.events.append("run")
+        self.numbers.append(number)
         output, code = self.outputs.pop(0)
         return output, code
 
@@ -158,6 +160,35 @@ def test_a_restart_that_never_boots_counts_as_an_abort_and_no_tests_run():
     assert report.infra_aborted == 1 and report.passed == 1
 
 
+def test_a_run_is_numbered_by_the_loop_so_its_log_matches_the_summary():
+    # Run 1 never booted, so the first suite that ran is run 2: its run-2.log
+    # must be the one the summary's "run 2" line points at.
+    script = Script([(OK_OUTPUT, 0)], restart_results=[False, True])
+    run_loop(script, 2)
+    assert script.numbers == [2]
+
+
+def test_an_install_failure_is_an_abort_that_says_so():
+    outcome = asl.classify_run("install of app-debug.apk failed:\nadb: failed to install: INSTALL_FAILED_X\n", 1)
+    assert outcome.kind == asl.INFRA_ABORT
+    assert "install of app-debug.apk failed" in outcome.reason
+
+
+def test_gradle_output_is_read_by_the_same_rules():
+    # Texts copied from real `connectedDebugAndroidTest` runs on 2026-10-19.
+    passed = "Starting 132 tests on medium_phone(AVD) - 16\nFinished 132 tests on medium_phone(AVD) - 16\nBUILD SUCCESSFUL in 5m 22s\n"
+    assert asl.classify_run(passed, returncode=0).tests == 132
+    assert asl.classify_run(passed, returncode=0).kind == asl.PASSED
+    dropped = (
+        "com.android.ddmlib.AdbCommandRejectedException: device offline\n"
+        "Test run failed to complete. Expected 132 tests, received 13\nBUILD FAILED in 56s\n"
+    )
+    outcome = asl.classify_run(dropped, returncode=1)
+    assert outcome.kind == asl.INFRA_ABORT
+    failing = "ChipTest > someTest[medium_phone(AVD) - 16] FAILED\nThere were failing tests. See the report\nBUILD FAILED\n"
+    assert asl.classify_run(failing, returncode=1).kind == asl.TEST_FAILED
+
+
 def test_the_longest_streak_of_passes_is_reported():
     kinds = [(OK_OUTPUT, 0), (OK_OUTPUT, 0), (FAIL_OUTPUT, 0), (OK_OUTPUT, 0), (OK_OUTPUT, 0), (OK_OUTPUT, 0)]
     report = run_loop(Script(kinds), 6)
@@ -196,7 +227,7 @@ def test_the_summary_names_each_count_and_the_abort_reasons():
 
 def test_the_emulator_is_cold_booted_on_the_software_gpu_by_default():
     # #127: on the host-GPU backend the system server hangs in a screen capture
-    # (watchdog kill) and adb drops; on swangle_indirect 10 of 10 runs finished.
+    # (watchdog kill) and adb drops; on swangle_indirect every run finished.
     command = asl.emulator_command("emu.exe", avd="medium_phone")
     assert command[:3] == ["emu.exe", "-avd", "medium_phone"]
     assert "-no-snapshot" in command

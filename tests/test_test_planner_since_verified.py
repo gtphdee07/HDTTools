@@ -409,3 +409,12 @@ def test_real_config_every_depends_on_names_a_declared_context():
     contexts = REAL["contexts"]
     for name, ctx in contexts.items():
         assert set(ctx.get("depends_on", [])) <= set(contexts), name
+
+
+def test_an_unowned_interface_file_does_not_queue_the_provider_that_is_already_verified():
+    # vectors/cases.json belongs to no context; the interface's provider (core) is verified after
+    # the change, and only the web side is behind. Core's own suite must not be planned.
+    repo = Repo(old=["vectors/cases.json"])
+    verified = ledger(core="new", streamlit="new", web="old", android="new", proxy="new")
+
+    assert commands(since_verified(repo, verified)) == ["web-golden"]

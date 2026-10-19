@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.PreferencesSerializer
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
 import com.rigcheck.app.domain.model.RecentRig
 import com.rigcheck.app.domain.model.TrailerTag
 import com.rigcheck.app.domain.model.TruckTag
@@ -30,14 +29,13 @@ import org.junit.rules.TemporaryFolder
 // device, no Robolectric. DataStore's Okio storage is used rather than its
 // default file storage, whose second write fails on Windows ("Unable to rename
 // ...tmp"; in unit tests its Android build moves the file with File.renameTo
-// because Build.VERSION.SDK_INT is 0). The stored JSON is written straight into the store
-// where a test needs "a Rig saved by an older (or newer) app".
+// because Build.VERSION.SDK_INT is 0). The stored JSON is written straight
+// into the store where a test needs "a Rig saved by an older (or newer) app".
 class RecentRigsRepositoryTest {
     @get:Rule
     val folder = TemporaryFolder()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val storedKey = stringPreferencesKey("recent_rigs")
 
     private lateinit var dataStore: DataStore<Preferences>
     private lateinit var repository: RecentRigsRepository
@@ -57,10 +55,10 @@ class RecentRigsRepositoryTest {
         scope.cancel()
     }
 
-    private suspend fun store(json: String) = dataStore.edit { it[storedKey] = json }
-
     private val truck = TruckTag(name = "F-350", gvwrLb = 11_500.0, frontGawrLb = 5_500.0, rearGawrLb = 6_500.0)
     private val trailer = TrailerTag(name = "Fifth wheel", gvwrLb = 14_000.0, gawrPerAxleLb = 7_000.0, axleCount = 2)
+
+    private suspend fun seedStoredJson(json: String) = dataStore.edit { it[RECENT_RIGS_KEY] = json }
 
     @Test
     fun aSavedRigLoadsBackEqual() = runTest {
@@ -113,7 +111,7 @@ class RecentRigsRepositoryTest {
     fun aStoredRigMissingAFieldTheModelDefaultsLoadsWithTheDefault() = runTest {
         // Neither Rig has the truck's standaloneWeightLb or the trailer's uvwLb,
         // which stand in for a field added after the Rig was saved.
-        store(
+        seedStoredJson(
             """
             [
               {"nickname":"Old","truck":{"name":"F-350","gvwrLb":11500.0},
@@ -134,7 +132,7 @@ class RecentRigsRepositoryTest {
 
     @Test
     fun aStoredRigWithAnUnknownExtraFieldLoadsIgnoringIt() = runTest {
-        store(
+        seedStoredJson(
             """
             [
               {"nickname":"Newer","truck":{"name":"F-350","gcwrLb":24000.0},
@@ -153,14 +151,14 @@ class RecentRigsRepositoryTest {
 
     @Test
     fun corruptStoredJsonLoadsAsAnEmptyList() = runTest {
-        store("{not json")
+        seedStoredJson("{not json")
 
         assertEquals(emptyList<RecentRig>(), repository.recentRigs.first())
     }
 
     @Test
     fun savingOverCorruptStoredJsonStartsAFreshList() = runTest {
-        store("{not json")
+        seedStoredJson("{not json")
 
         val saved = repository.saveRecentRig("Weekender", truck, trailer)
 

@@ -473,6 +473,14 @@ root `TESTING.md`'s "Dashboard" section.
   an account was logged in, a failed RevenueCat login leaves the user signed
   in but not billing-linked until `ensureBillingLinked()` succeeds, and
   failures/exceptions become messages, not crashes.
+- `RecentRigsRepositoryTest.kt` (#131) — saved Rigs through the repository's
+  `DataStore<Preferences>` seam, on a real DataStore in a temporary folder
+  (DataStore's Okio storage, not its default file storage, whose second write
+  fails on Windows): save then load most recent first, capped at five, a
+  nickname in another letter case replaces the old entry; a stored Rig missing
+  a field the model defaults loads with the default and the other Rigs still
+  load; an unknown extra field is ignored; corrupt stored JSON loads as an
+  empty list, and a save over it starts a fresh list.
 - `GoogleSignInTest.kt` (#22) — the Google nonce (Supabase gets the raw
   nonce, Google its SHA-256 hex) and cancel/missing-account messages.
 - `ScanApiClientTest.kt` (#22) — scan requests carry

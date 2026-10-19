@@ -19,7 +19,7 @@ import kotlinx.serialization.json.Json
 private const val MAX_RECENT_RIGS = 5
 
 private val Context.rigCheckDataStore by preferencesDataStore(name = "rigcheck_prefs")
-private val RECENT_RIGS_KEY = stringPreferencesKey("recent_rigs")
+internal val RECENT_RIGS_KEY =stringPreferencesKey("recent_rigs")
 
 // Kotlin port of web/src/recentRigs.ts's exact algorithm (case-insensitive
 // dedupe by nickname, prepend, slice to 5), backed by Preferences DataStore

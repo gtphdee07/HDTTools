@@ -91,14 +91,20 @@ def test_pin_weight_pct_of_exactly_one_does_not_crash():
     # Regression test: found 2026-08-24 via a combinatorial sweep. The
     # axle-reading-estimate branch divides by `1 - pin_weight_pct` - exactly
     # 1.0 (100% of the trailer's weight claimed as pin weight, physically
-    # nonsensical) crashed with ZeroDivisionError. Reaches here unvalidated
-    # from a real caller too (POST /api/breakdown's pin_weight_pct has no
-    # Pydantic range constraint). Deliberately narrow fix - only this exact
-    # value is guarded; a value *above* 1.0 is untouched on purpose, see
-    # test_api.py::test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage.
+    # nonsensical) crashed with ZeroDivisionError. Deliberately narrow fix -
+    # only this exact value is guarded; a value *above* 1.0 (a UI percentage
+    # passed unconverted) is untouched on purpose: it gives a visibly negative
+    # weight, and web/src/breakdown.test.ts guards the divide-by-100.
     items = compute_breakdown(_TRUCK, _TRAILER, _SCALE, pin_weight_pct=1.0)
     total_item = _item(items, "Trailer Total (GVWR)")
     assert total_item["tone"] in {"success", "warning"}
+
+
+def test_a_ui_percentage_passed_unconverted_gives_a_visibly_negative_weight():
+    # 11,380 / (1 - 15) = -813: the mistake of skipping the UI's divide-by-100
+    # is obvious in the output, not a subtly-off number.
+    items = compute_breakdown(_TRUCK, _TRAILER, _SCALE, pin_weight_pct=15)
+    assert _item(items, "Trailer Total (GVWR)")["actualLabel"].startswith("-")
 
 
 def test_trailer_total_estimates_from_gvwr_when_no_scale_reading_at_all():

@@ -314,7 +314,8 @@ def plan(
     if level == "issue":
         _plan_issue(result, files, config, markers, touched, interface_changed, interfaces,
                     python_dependency_changed, context_dependency_changed, exclude_slow=bool(slow_groups),
-                    downstream=downstream, interface_debt=None if debt is None else interface_debt, allowed=allowed)
+                    downstream=downstream, interface_debt=None if debt is None else interface_debt, allowed=allowed,
+                    file_exists=file_exists)
     else:
         _plan_session(result, files, config, markers, touched, python_dependency_changed,
                       context_dependency_changed, file_exists, surfaces, downstream, allowed)
@@ -360,12 +361,13 @@ def _plan_slow(result: Plan, files: list[str], groups: list[dict], *, python_tou
 
 def _plan_issue(result, files, config, markers, touched, interface_changed, interfaces,
                 python_dependency_changed, context_dependency_changed, exclude_slow,
-                downstream, interface_debt, allowed) -> None:
+                downstream, interface_debt, allowed, file_exists) -> None:
     contexts = config["contexts"]
     python_names = {n for n, c in contexts.items() if _is_python(c)}
     for f in files:
         if _is_python_test(f):
-            if allowed(f) & python_names:
+            # a test file the branch deleted is changed but has nothing left to run
+            if allowed(f) & python_names and file_exists(f):
                 result.add(Selection("targeted", f"uv run pytest {f}", "changed test file, runs first"))
             continue
         for name, ctx in contexts.items():
@@ -428,7 +430,7 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
     contexts = config["contexts"]
     python_names = tuple(n for n, c in contexts.items() if _is_python(c))
     for f in files:
-        if _is_python_test(f) and set(python_names) & allowed(f):
+        if _is_python_test(f) and set(python_names) & allowed(f) and file_exists(f):
             result.add(Selection("file", f"uv run pytest {f}", "changed test file", contexts=python_names))
     if not touched and not downstream:
         return

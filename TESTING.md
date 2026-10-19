@@ -220,7 +220,7 @@ and application runs and lists them separately, at issue and session level:
 | Slow tests | Owed when the diff touches |
 |---|---|
 | Tooling checks that start pytest, npm, Node or Gradle (`test_test_planner.py`, `test_context_test_commands.py`, `test_android_file_command_slow.py`) | `scripts/`, `pyproject.toml`, the Web, Scan Proxy and Android build files that define their test commands, `tests/conftest.py`, `tests/_test_command_helpers.py` |
-| Real-photo OCR and pool regressions | the OCR modules (`src/hdttools/*_ocr.py`, `ocr_common.py`), `api/main.py`, `api/breakdown.py`, the pool and discovery scripts, `ExampleDocs/` |
+| Real-photo OCR and pool regressions | the OCR modules (`src/hdttools/*_ocr.py`, `ocr_common.py`), `api/breakdown.py`, the pool and discovery scripts, `ExampleDocs/` |
 | Streamlit walkthrough with real photos | `streamlit_app/`, the OCR modules, `ExampleDocs/` |
 | Breakdown combinatorial sweep | `src/hdttools/api/breakdown.py` |
 
@@ -261,34 +261,25 @@ full parity with Python.
 
 **Also built 2026-08-21**, a narrower fixture for a single risky
 convention rather than full input/output cases:
-`test-vectors/pin_weight_pct_contract.json`, consumed by
-`tests/test_api.py`'s `test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage`
-and `web/src/api.test.ts`. Every UI works in whole percentage points
-(15–25); `/api/breakdown`'s `pin_weight_pct` is the equivalent 0.15–0.25
-fraction, converted at each platform's own thin API-client boundary — a
+`test-vectors/pin_weight_pct_contract.json`, consumed by Web's
+`web/src/breakdown.test.ts`. Every UI works in whole percentage points
+(15–25); the breakdown math takes the equivalent 0.15–0.25 fraction,
+converted at each UI's own thin boundary (Web's `createBreakdown`) — a
 silently-wrong-math risk shape (right field, wrong units, no type error
-anywhere) rather than a missing-field one. This is a genuine interface
-test, not a golden-vector case: it only proves the *contract* (a whole
-number in, that same value ÷ 100 out) holds independently on each side of
-the boundary, not any particular breakdown math.
+anywhere) rather than a missing-field one. It proves the *contract* (a
+whole number in, that same value ÷ 100 out), not any particular breakdown
+math. (Its Python half, a test of the removed FastAPI endpoint, went with
+the app in #135.)
 
-**Also built 2026-08-21**, a third shared fixture, this time a plain key
-list rather than input/output values or a units conversion:
-`test-vectors/breakdown_response_shape_contract.json`, consumed by
-`tests/test_api.py`'s `test_breakdown_response_matches_the_shared_api_contract`
-(real, unmocked endpoint call — the "ground truth" half) and
-`web/src/apiShape.test.ts` (a type-literal check that `types.ts`'s
-`BreakdownItem`/`VerdictInfo` still declare exactly those keys — the
-"does our mirror still match" half). Every `web/` test otherwise mocks
-`fetch`/`./api`, so nothing there ever touches a real Python response; a
-field rename or drop in `schemas.py` would previously have gone uncaught
-by the entire `web/` suite. This is a manually-synced tripwire, not a
-fully-derived contract — see `FUTURE_API_SCHEMA_VALIDATION.md` for the
-Pydantic-JSON-Schema-export approach that would remove the manual-sync
-step entirely, parked for later rather than built now since this covers
-the two highest-traffic shapes (`BreakdownItemOut`/`VerdictOut`) at much
-lower cost; `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut` remain
-uncovered by either approach as of this writing.
+**Response shape.** The keys the UIs read from each breakdown row and from
+the verdict are asserted by the golden-vector runners in Python, Kotlin and
+TypeScript (`label`, `tone`, `badgeLabel`, `pct`, `actualLabel`,
+`limitLabel`, `note`, `estimated`; `status`, `headline`, `subline`), so
+`test-vectors/breakdown_response_shape_contract.json` and Web's
+`apiShape.test.ts` were retired in #135 along with the FastAPI app they
+guarded. Presentation-only keys (`barColor`, `bandBg`, `icon`) need no
+assertion. Kotlin compares raw numbers and the badge text rather than the
+formatted `actualLabel`/`limitLabel` strings.
 
 **Built 2026-10-19 (#115)**, a fourth shared fixture, for what a Scan that
 does not deliver tells the user and how a retry behaves:

@@ -306,7 +306,6 @@ writing.
 | `src/wizard/ReviewStep.test.tsx` | Module | Fake props. Each field renders from `data` (blank when missing); typing calls `onFieldChange(name, isNumber, value)`; the continue button (labelled `module.continueLabel`) calls `onContinue`; the error prop renders. The stand-alone-weight scan section: absent for non-truck modules and absent for the truck module when `onScanStandaloneTicket` isn't passed; its pin-weight slider shows only while `standalone_weight_lb` is unknown, hides once it's set (via `rerender`, not a fresh mount, to prove it's the same data change driving both states); the slider's `onChange` reports the numeric value. Scanning a ticket: shows "Reading…" and disables the button while the promise it's given is pending, re-enables once resolved; a rejection surfaces the scan's own local error text, distinct from the `error` prop — complements `App.interaction.test.tsx`'s standalone-scan case, which only exercises the resolved path. |
 | `src/wizard/ResultsStep.test.tsx` | Module | Fake props. Verdict headline/subline render; each breakdown item's label, badge, actual/rated weight, and note (present vs. `null`, via `rerender`) render correctly; the estimated-figures notice shows when any item is `estimated`, hidden when none are — the one thing `App.interaction.test.tsx` never exercises, since its `RESULT` fixture is always non-estimated; "Run Another Check"/"Back to Dashboard" call `onRestart`/`onGoHome`. |
 | `src/wizard/RigStep.test.tsx` | Module | Fake props. No rig cards when `recentRigs` is empty; each recent rig's nickname and a manufacturer subtitle render when at least one of truck/trailer has one, the subtitle line omitted entirely when neither does; clicking a card calls `onSelectExisting` with that rig; Start New Rig stays disabled for an empty or whitespace-only nickname, enables once typed, and calls `onStartNew` with the **trimmed** nickname — the interface contract a caller (`App.tsx`'s `startNewRig`) relies on to not receive stray whitespace. |
-| `src/apiShape.test.ts` | **Cross-platform interface** | "Option B" from the API-shape-drift discussion (see `FUTURE_API_SCHEMA_VALIDATION.md` for the fuller schema-export "Option C" this stops short of). Doesn't touch a real response — proves `BreakdownItem`/`VerdictInfo`, as currently declared in `types.ts`, have exactly the keys `test-vectors/breakdown_response_shape_contract.json` declares. Paired with `tests/test_api.py`'s `test_breakdown_response_matches_the_shared_api_contract`, which is the half that actually calls the real endpoint. TypeScript's excess-property checking on this file's object literals does real work here: add a field to `BreakdownItem` without adding it to the literal and the build fails (missing property) before this test even runs; remove one without removing it from the literal and the build fails too (excess property) — either way a human is forced to touch this file, and its own assertion then forces the shared contract (and the paired Python test) to be updated too. **Kept deliberately (test audit #57, 2026-10-04)** even though ADR-0007 removed `/api/breakdown` from Web's own deployment: Web no longer calls the endpoint this fixture was named for, but the fixture is still the one place `BreakdownItem`/`VerdictInfo`'s shape is pinned across platforms, so retiring this test would drop the only guard against Web's own types drifting from it. See the in-file comment for the full reasoning. |
 | `src/auth.test.ts` | Function | `createSupabaseAuthClient` (the one line `App.auth.test.tsx` never reaches, since that suite injects its own fake client directly): returns `null` without calling the SDK when either `VITE_SUPABASE_URL` or `VITE_SUPABASE_PUBLISHABLE_KEY` is unset, and, when both are present, returns the auth slice of the client `supabaseClient.ts`'s `getSupabaseClient` builds by calling the (mocked) `createClient` with both values and the PKCE auth option `{ auth: { flowType: 'pkce' } }` (the app shares that one client with the Garage table, so `getSupabaseClient` has no test of its own beyond this). `@supabase/supabase-js` is mocked and env vars are stubbed explicitly via `vi.stubEnv`, so this never depends on `web/.env.local`'s actual contents. |
 | `src/supabaseClient.pkce.test.ts` | Function | The real `@supabase/supabase-js` client (not mocked, `fetch` stubbed) built by `getSupabaseClient`: a session handed over in the URL fragment (`#access_token=...`) is not signed in (#95), and a `?code=` link without this browser's code verifier leaves no session and leaves the code in the URL, which `auth.tsx`'s `takeUnusedLinkProblem` and the Account notice rely on. Each test uses its own project URL so supabase-js's storage key never carries over. |
 | `src/App.garage.test.tsx` | **Interaction** | The account-synced Garage (#28), driven through the real screens with a fake Supabase auth client and an in-memory fake of the account's Garage store. Signed in: a finished check saves its Rig to the account and not to `localStorage`; a Rig saved on one "device" appears on a second; the account's Rigs replace the browser's while signed in and the browser's return after sign-out; a failed add is retried once with the same idempotency key and ends with one Rig; a full Garage shows the cap message, still shows the check and saves nothing; any other save failure says so without blocking the check; reusing a Rig already in a full Garage updates it instead of adding; an update that finds its Rig gone falls back to an add; and an older refresh answering late cannot overwrite a newer list. Signed out: Rigs stay in the browser and the account store is never called. The server's own rules are not here; see `src/garageSchema.test.ts`. |
@@ -321,27 +320,25 @@ writing.
   `api.ts` in isolation — see `src/recentRigs.test.ts` and
   `src/api.test.ts` above.
 - ✅ **Closed 2026-08-21**: the `pin_weight_pct` inter-module interface
-  fixture (`test-vectors/pin_weight_pct_contract.json`, `src/api.test.ts`,
-  `tests/test_api.py`'s matching case) — see the root `TESTING.md`'s
-  cross-platform section.
+  fixture (`test-vectors/pin_weight_pct_contract.json`, now read by
+  `src/breakdown.test.ts`; its Python endpoint case went in #135) — see
+  the root `TESTING.md`'s cross-platform section.
 - ✅ **Closed 2026-08-21**: `ReviewStep`/`UploadStep`/`ResultsStep`
   component-level tests — see the three entries above.
 - ✅ **Closed 2026-08-21**: `RigStep`/`DisclaimerModal`/`History`
   component-level tests, plus the `Dashboard`/`History` verdict-badge bug
   found in the process — see the entries above.
-- ✅ **Partially closed 2026-08-21** ("Option B"): `BreakdownItemOut`/
-  `VerdictOut` — the two highest-traffic response shapes — now have a
-  real cross-platform interface test pair, `src/apiShape.test.ts` and
-  `tests/test_api.py`'s `test_breakdown_response_matches_the_shared_api_contract`,
-  via `test-vectors/breakdown_response_shape_contract.json`.
-- **Still not closed**: `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut`
-  (the three document-type shapes of the `fields` the Scan service
-  returns, plus their nested `TireSpecOut`) have no equivalent contract
-  with Web yet — extending Option B to
-  them would mean three more hand-maintained fixture files, which is
-  exactly the scaling problem that motivated writing up "Option C" (a
-  Pydantic JSON-Schema export, so nothing needs hand-syncing at all) in
-  `FUTURE_API_SCHEMA_VALIDATION.md` rather than starting it now.
+- ✅ **Retired 2026-10-19 (#135)**: the `BreakdownItem`/`VerdictInfo`
+  response-shape pair (`src/apiShape.test.ts` and the Python endpoint
+  test, via `test-vectors/breakdown_response_shape_contract.json`) went
+  with the FastAPI app. The keys the UI reads are asserted by the
+  golden-vector runner in `src/breakdown.test.ts` (and the Python and
+  Kotlin runners).
+- **Still not closed**: the three document-type shapes of the `fields`
+  the Scan service returns (truck tag, trailer tag, scale ticket, plus
+  their nested tire spec) have no contract test with Web; the Worker's
+  `docTypes.ts` schemas are the source of truth for them now that the
+  Python response models are gone.
 - ✅ **Closed 2026-10-04** (test audit #57): `History.tsx`'s filter pills
   and empty state, `Dashboard.tsx`'s rig grid/subtitle join/click
   targets, the Disclaimer gate (`Results` withheld until acknowledged,
@@ -349,8 +346,8 @@ writing.
   `createSupabaseAuthClient` (with and without the Supabase env vars) —
   see `src/screens/History.test.tsx`, `src/screens/Dashboard.test.tsx`,
   the `Disclaimer gate` block in `src/App.interaction.test.tsx`, and the
-  new `src/auth.test.ts` above. `apiShape.test.ts` was reviewed and kept
-  deliberately rather than removed; see its entry above.
+  new `src/auth.test.ts` above. (`apiShape.test.ts`, reviewed and kept
+  then, was retired in #135.)
 - **Deliberately not tested**: `wizard/ProcessingStep.tsx`,
   `components/StepPills.tsx`, `components/PredictiveEstimateNotice.tsx`,
   and the `design-system/` primitives (`Badge`/`Button`/`Card`) — purely

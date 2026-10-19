@@ -1,6 +1,6 @@
 # RigCheck (Streamlit)
 
-Self-contained alternative to the `web/` React/FastAPI app: same wizard
+Self-contained alternative to the `web/` React app: same wizard
 flow (rig → truck tag → trailer tag → scale ticket → results), but a
 single Python process — no separate backend, no HTTP hop. Imports
 `hdttools`'s OCR-parsing and breakdown logic directly.

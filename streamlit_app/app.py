@@ -1,6 +1,6 @@
 """RigCheck - Streamlit frontend.
 
-Self-contained alternative to the React/FastAPI web app: no HTTP hop, no
+Self-contained alternative to the React web app: no HTTP hop, no
 separate server process. Imports the core hdttools OCR-parsing and
 breakdown logic directly and runs everything in this one process.
 
@@ -83,7 +83,7 @@ _PARSERS = {
 # are (module, attribute-name) pairs, resolved via getattr() at call
 # time rather than bound function objects, so a test's
 # monkeypatch.setattr(truck_tag, "extract_truck_tag_fields", ...) still
-# takes effect (same reasoning as hdttools.api.main's matching dict).
+# takes effect.
 _CLAUDE_EXTRACTORS = {
     "truck": (truck_tag, "extract_truck_tag_fields"),
     "trailer": (trailer_tag, "extract_trailer_tag_fields"),

@@ -2,8 +2,7 @@
 Streamlit Community Cloud's Python image doesn't ship tkinter's system
 library (`libtk8.6.so`), so importing `hdttools.scale_ticket`/
 `trailer_tag`/`truck_tag` there crashed the whole app at import time -
-even though `streamlit_app/app.py` and `src/hdttools/api/main.py` never
-call the tkinter-based `review_and_edit`/`select_image_file` functions,
+even though `streamlit_app/app.py` never calls the tkinter-based `review_and_edit`/`select_image_file` functions,
 only the headless `extract_*_fields` ones.
 
 Runs in a real subprocess with `sys.modules["tkinter"] = None` (forces

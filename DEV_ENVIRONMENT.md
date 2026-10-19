@@ -92,7 +92,6 @@ parses the HTML `Total` row directly (see that script's own docstring).
 uv sync                                              # install/sync deps into .venv
 uv run pytest -q                                     # full suite
 uv run pytest --cov --cov-report=term-missing        # with coverage
-uv run uvicorn hdttools.api.main:app --reload --port 8000   # backend API, localhost:8000
 uv run streamlit run streamlit_app/app.py            # Streamlit wizard (self-contained, no backend needed)
 uv run scripts/coverage_gate.py                      # cross-platform coverage gate
 ```

@@ -46,9 +46,8 @@ def compute_breakdown(
 ) -> list[dict]:
     # `1 - pin_weight_pct` is a divisor below (axle-reading-estimate branch) -
     # exactly 1.0 crashed with ZeroDivisionError. Real bug found 2026-08-24
-    # via the combinatorial sweep; reaches here unvalidated from a real
-    # caller too (POST /api/breakdown's BreakdownRequest.pin_weight_pct has
-    # no Pydantic range constraint). Deliberately narrow: only the exact
+    # via the combinatorial sweep; the value reaches here unvalidated from
+    # the UIs' sliders. Deliberately narrow: only the exact
     # zero-divisor case is guarded - a value *above* 1.0 (e.g. a caller
     # sending "15" meaning 15% instead of the fraction 0.15) is left alone
     # on purpose, since it already fails loud with an obviously-wrong

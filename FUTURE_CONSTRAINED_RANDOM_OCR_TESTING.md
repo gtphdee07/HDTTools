@@ -1,8 +1,7 @@
 # Future: constrained-random real-image regression testing for OCR/vision extraction
 
-Written 2026-08-25, originally a parked-topic doc in the same shape as
-`FUTURE_API_SCHEMA_VALIDATION.md` (a design worked out in full, not yet
-built) — **updated same day**: most of this design is now built and
+Written 2026-08-25, originally a parked-topic doc (a design worked out in
+full, not yet built) — **updated same day**: most of this design is now built and
 verified for real (pass-pool, fail-pool, interface-contract suite,
 directory-convention auto-discovery, and Android's own duplicate
 pass-pool/fail-pool — see the "Agreed starting point" list below for
@@ -231,7 +230,7 @@ changes — but no such real photos exist yet.
 The premise this question was originally weighed against turned out to
 be wrong: the pass-pool/fail-pool actually built in Python this session
 (`scripts/pass_pool.py`/`fail_pool.py`) tests **Tesseract**, not Claude
-vision — Python's production app (Streamlit + FastAPI) never calls
+vision — Python's production app (Streamlit; FastAPI then too) never calls
 Claude at all (see `ARCHIVE_WEB_STREAMLIT.md`'s item #16 entry, the
 separately-recorded build-time-switch gap). So there was never a Python Claude-vision path
 for Android to "inherit" from in the first place; Android's real scan

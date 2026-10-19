@@ -33,7 +33,7 @@ its odd tests individually. No test files moved.
 
 | Marker | Meaning |
 |---|---|
-| `external` | Live provider calls (billed). Only `test_claude_vision_external.py`. |
+| `external` | Live provider calls. `test_claude_vision_external.py` (billed) and `test_maven_registries_external.py` (free registry reads, #54; deliberately not marked `core`, so `-m core` stays offline). |
 | `anthropic` | External-suite surface tag (ADR-0008) for the Claude vision API boundary; always paired with `external` on the same tests. |
 | `minor` | Function and interaction tests. **Unmarked for `minor` means Major.** |
 | `slow` | Real-photo OCR and the combinatorial sweep. |
@@ -54,7 +54,8 @@ this suite uses) fail (`test_live_provider_guard.py` checks it).
 | One context | `uv run pytest -m core` / `-m streamlit` | 732 / 19 |
 | Major (everything but external) | `uv run pytest` | 751 |
 | Fast Minor | `uv run pytest -m "minor and not slow"` | 232 |
-| External (live, billed) | `uv run pytest -m external` | 5 |
+| External (live, billed) | `uv run pytest -m external` | 5 billed Claude tests + the 5 free Maven ones below |
+| Maven registry guard (live, free, about 10 s) | `uv run pytest -m external tests/test_maven_registries_external.py` | 5 |
 
 Counts are collected tests at 2026-10-04. `core` and `streamlit` do not overlap, but `test_ocr_output_key_contracts.py` (marked `core`) also
 checks Streamlit's `fields.py`, and `test_live_provider_guard.py` is

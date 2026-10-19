@@ -7,6 +7,14 @@ STABLE release of a watched package was published after that pass, or a
 registry could not be reached. "planned" surfaces are listed but never
 block. A recorded "skipped" run never counts as a pass.
 
+Registries (the "ecosystem" of a registry_packages entry): npm, pypi, and
+"maven" (Maven Central: the newest stable versions are dated from their .pom
+files). "google-maven" (Google
+Maven, e.g. com.android.billingclient:billing) publishes no per-version
+dates, so for it the fallback applies: the surface is stale on ANY change of
+the package's latest stable version against the one recorded at its last
+pass, and the reason says the registry gives no dates.
+
 Usage: uv run scripts/external_freshness.py [--json] [--surface NAME]...
                                             [--platform NAME]
 Exit code is 1 when any active surface is stale, so a release gate can
@@ -25,7 +33,9 @@ import subprocess
 import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
+from xml.etree import ElementTree
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_DIR = Path(__file__).resolve().parent / "external_manifest"
@@ -95,10 +105,74 @@ def fetch_pypi_times(package: str, *, opener=_default_opener, timeout: float = 2
     return times
 
 
-_FETCHERS = {"npm": fetch_npm_times, "pypi": fetch_pypi_times}
+def _default_last_modified(url: str, timeout: float) -> str:
+    """ISO publish time of a repository file, from the Last-Modified header of a HEAD request."""
+    with urllib.request.urlopen(urllib.request.Request(url, method="HEAD"), timeout=timeout) as response:
+        header = response.headers.get("Last-Modified")
+    if not header:
+        raise ValueError(f"no Last-Modified header for {url}")
+    return parsedate_to_datetime(header).isoformat()
 
 
-def fetch_publish_times(ecosystem: str, package: str) -> dict[str, str]:
+# Maven Central: how many of the newest stable versions get a publish time (one HEAD request each).
+_MAVEN_CENTRAL_DATED_VERSIONS = 10
+
+
+def _maven_coordinates(package: str, registry_name: str) -> tuple[str, str]:
+    group, sep, artifact = package.partition(":")
+    if not sep or not group or not artifact or ":" in artifact:
+        raise RegistryError(f"{registry_name} lookup for {package!r} failed: expected 'group:artifact'")
+    return group, artifact
+
+
+def _metadata_versions(metadata: bytes) -> list[str]:
+    root = ElementTree.fromstring(metadata)
+    return [node.text.strip() for node in root.iterfind("./versioning/versions/version") if node.text]
+
+
+def fetch_maven_times(
+    package: str, *, opener=_default_opener, last_modified=_default_last_modified, timeout: float = 20
+) -> dict[str, str]:
+    """Publish time of the newest stable versions on Maven Central ("group:artifact").
+
+    The version list comes from the repository's maven-metadata.xml and each time from the Last-Modified
+    of that version's .pom. Central's search API is not used: it stops indexing new releases (purchases
+    is stuck at 8.20.0, June 2025, while the repository is at 10.x) and stalls on a share of requests.
+    Only the newest few stable versions are dated, to bound the requests, so a back-port patch to an
+    old release line is not seen.
+    """
+    group, artifact = _maven_coordinates(package, "Maven Central")
+    base = f"https://repo1.maven.org/maven2/{group.replace('.', '/')}/{artifact}"
+    try:
+        versions = _metadata_versions(opener(f"{base}/maven-metadata.xml", timeout))
+        if not versions:
+            # Not on Central (it may be on Google Maven): never read that as "no releases, so fresh".
+            raise ValueError("no versions listed")
+        newest = sorted(_stable_versions(dict.fromkeys(versions)), key=_semver_key)[-_MAVEN_CENTRAL_DATED_VERSIONS:]
+        return {v: last_modified(f"{base}/{v}/{artifact}-{v}.pom", timeout) for v in newest}
+    except Exception as exc:
+        raise RegistryError(f"Maven Central lookup for {package} failed: {exc}") from exc
+
+
+def fetch_google_maven_times(package: str, *, opener=_default_opener, timeout: float = 20) -> dict[str, str | None]:
+    """Versions on Google Maven. Its metadata carries no per-version dates, so every time is None."""
+    group, artifact = _maven_coordinates(package, "Google Maven")
+    url = f"https://dl.google.com/dl/android/maven2/{group.replace('.', '/')}/{artifact}/maven-metadata.xml"
+    try:
+        return dict.fromkeys(_metadata_versions(opener(url, timeout)))
+    except Exception as exc:
+        raise RegistryError(f"Google Maven lookup for {package} failed: {exc}") from exc
+
+
+_FETCHERS = {
+    "npm": fetch_npm_times,
+    "pypi": fetch_pypi_times,
+    "maven": fetch_maven_times,
+    "google-maven": fetch_google_maven_times,
+}
+
+
+def fetch_publish_times(ecosystem: str, package: str) -> dict[str, str | None]:
     fetcher = _FETCHERS.get(ecosystem)
     if fetcher is None:
         raise RegistryError(f"no registry fetcher for ecosystem {ecosystem!r}")
@@ -169,13 +243,24 @@ def _evaluate_one(surface: dict, status: dict, git, registry) -> Verdict:
         except RegistryError as exc:
             reasons.append(f"registry unreachable: {exc}")
             continue
-        if stable:
-            versions[pkg["package"]] = max(stable, key=_semver_key)
-        if last_pass is not None:
-            cutoff = _parse(last_pass["timestamp"])
-            newer = sorted((v for v, t in stable.items() if _parse(t) > cutoff), key=_semver_key)
-            if newer:
-                reasons.append(f"{pkg['package']} published after last pass: " + ", ".join(newer))
+        latest = max(stable, key=_semver_key) if stable else None
+        if latest:
+            versions[pkg["package"]] = latest
+        if last_pass is None:
+            continue
+        if any(t is None for t in stable.values()):
+            # No per-version dates (Google Maven): any change of the latest stable version counts.
+            recorded = last_pass.get("versions", {}).get(pkg["package"])
+            if latest and latest != recorded:
+                reasons.append(
+                    f"{pkg['package']}: this registry gives no per-version release dates, so any version change counts; "
+                    f"latest stable is {latest}, last pass recorded {recorded or 'none'}"
+                )
+            continue
+        cutoff = _parse(last_pass["timestamp"])
+        newer = sorted((v for v, t in stable.items() if _parse(t) > cutoff), key=_semver_key)
+        if newer:
+            reasons.append(f"{pkg['package']} published after last pass: " + ", ".join(newer))
 
     return Verdict(name, "stale" if reasons else "fresh", reasons, versions)
 

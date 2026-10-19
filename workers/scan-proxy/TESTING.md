@@ -490,6 +490,6 @@ The same ticket registered the Android side of Supabase sign-in under the
 `SupabaseAccountBackend.kt` is a boundary file, `android/gradle/libs.versions.toml`
 (the `supabase-kt` pin) is a dependency pin, and `android` is one of its
 platforms, so Android's release gate now waits on it. Only the Web suite
-exercises that surface live. The freshness script has no Maven fetcher, so
-`supabase-kt` is not a watched registry package; adding it would leave the
-surface permanently stale until a `maven` ecosystem fetcher exists.
+exercises that surface live. `supabase-kt` is still not a watched registry
+package: the freshness script now has `maven` and `google-maven` fetchers
+(#54), but listing it is a separate manifest change.

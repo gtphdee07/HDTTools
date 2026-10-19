@@ -9,6 +9,10 @@ dev only) so it's report-only: its number is printed but never fails the
 gate. See the root TESTING.md's "Coverage gate" section for the policy
 this implements.
 
+Android's gated number is the exception to "whole-platform": a JVM floor on
+decision-logic classes only (android/coverage-logic.toml), measured with no
+device. The device-based Android numbers are informational.
+
 Each platform's number is its own tool's native metric (Android:
 instruction coverage from JaCoCo; Python: statement coverage from
 coverage.py; Web: statement coverage from Vitest's v8 provider;
@@ -19,9 +23,8 @@ metric is available across all four tools.
 
 Usage: uv run scripts/coverage_gate.py [--refresh]
     --refresh   Re-run every platform's test suite instead of reading an
-                existing report file, if one is present. Slow (the
-                Android suite alone needs a connected device/emulator
-                and several minutes) - the default without --refresh
+                existing report file, if one is present. Slow - the
+                default without --refresh
                 reads whatever report already exists on disk and only
                 falls back to running the suite if no report is found at
                 all.
@@ -34,19 +37,25 @@ import json
 import os
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from coverage_lib import (
+    AndroidLogicScope,
+    load_android_logic_scope,
+    measure_android_logic,
     parse_android_report,
     parse_python_report,
     parse_scan_proxy_output,
     parse_web_report,
+    read_jvm_report,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-ANDROID_REPORT = (
+# The device (Major) suite's report. Informational only since #130 - it no
+# longer gates the release, see get_android_device_result below.
+ANDROID_DEVICE_REPORT = (
     REPO_ROOT
     / "android"
     / "app"
@@ -78,9 +87,19 @@ ANDROID_MERGED_REPORT = (
 PYTHON_REPORT = REPO_ROOT / "coverage.json"
 WEB_REPORT = REPO_ROOT / "web" / "coverage" / "coverage-summary.json"
 
-ANDROID_BASELINE = 71.0
 PYTHON_BASELINE = 79.0
 SCAN_PROXY_BASELINE = 100.0
+
+# Android's gate is a floor on decision logic only, measured from the JVM
+# unit-test report (no device): the allow-list and waiver list live in
+# ANDROID_LOGIC_SCOPE. Everything else - Compose, navigation, view-model
+# wiring, provider wrappers - has no coverage number; device and External
+# tests verify it. Measured about 97% on 2026-10-18 (#130).
+ANDROID_LOGIC_FLOOR = 95.0
+ANDROID_LOGIC_SCOPE = REPO_ROOT / "android" / "coverage-logic.toml"
+ANDROID_JVM_REPORT = (
+    REPO_ROOT / "android" / "app" / "build" / "reports" / "coverage" / "test" / "debug"
+)
 
 # Isolated research spikes that live inside app/src/main/ but are never
 # reachable from production - excluded from Android's coverage number the
@@ -92,6 +111,10 @@ SCAN_PROXY_BASELINE = 100.0
 ANDROID_EXCLUDED_PACKAGES = ("com.rigcheck.app.ui.experiments.cameraoverlay",)
 
 _IS_WINDOWS = os.name == "nt"
+# Absolute: cmd.exe does not look in the working directory when
+# NoDefaultCurrentDirectoryInExePath is set, so a bare "gradlew.bat" is
+# "not recognized".
+_GRADLEW = str(REPO_ROOT / "android" / ("gradlew.bat" if _IS_WINDOWS else "gradlew"))
 
 
 @dataclass
@@ -101,11 +124,17 @@ class PlatformResult:
     baseline: float | None
     gated: bool
     note: str = ""
+    problems: list[str] = field(default_factory=list)  # each one fails a gated platform
+    warnings: list[str] = field(default_factory=list)  # printed, never fail
 
     @property
     def passed(self) -> bool:
         """A report-only or unmeasured platform never fails the gate."""
-        if not self.gated or self.baseline is None or self.percent is None:
+        if not self.gated:
+            return True
+        if self.problems:
+            return False
+        if self.baseline is None or self.percent is None:
             return True
         return self.percent >= self.baseline
 
@@ -123,13 +152,46 @@ def _run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess:
     )
 
 
+def check_android_logic(report_dir: Path, scope: AndroidLogicScope) -> PlatformResult:
+    """Android's gated number: JVM instruction coverage over the allow-listed
+    decision-logic classes only. Pure over an already-built report dir."""
+    measured = measure_android_logic(read_jvm_report(report_dir), scope)
+    problems = []
+    if measured.percent < ANDROID_LOGIC_FLOOR:
+        problems.append(
+            f"decision-logic coverage {measured.percent:.1f}% is below the "
+            f"{ANDROID_LOGIC_FLOOR:.1f}% floor "
+            f"({measured.missed:,} of {measured.total:,} instructions missed)"
+        )
+    for name in measured.stale:
+        problems.append(
+            f"{name} is on the allow list but not in the report (stale list: "
+            f"renamed, moved or deleted?)"
+        )
+    warnings = [
+        f"unclassified (on neither list, add to {ANDROID_LOGIC_SCOPE.name}): {name}"
+        for name in measured.unclassified
+    ]
+    return PlatformResult(
+        "Android",
+        measured.percent,
+        ANDROID_LOGIC_FLOOR,
+        True,
+        note=f"decision logic, JVM report ({measured.total:,} instructions)",
+        problems=problems,
+        warnings=warnings,
+    )
+
+
 def get_android_result(refresh: bool) -> PlatformResult:
-    if refresh or not ANDROID_REPORT.exists():
+    """The gated Android result: a JVM floor on decision logic. Needs no
+    device - only the unit-test coverage report."""
+    if refresh or not (ANDROID_JVM_REPORT / "index.html").exists():
         proc = _run(
             [
-                "gradlew.bat" if _IS_WINDOWS else "./gradlew",
-                "connectedDebugAndroidTest",
-                "createDebugAndroidTestCoverageReport",
+                _GRADLEW,
+                "testDebugUnitTest",
+                "createDebugUnitTestCoverageReport",
             ],
             cwd=REPO_ROOT / "android",
         )
@@ -137,24 +199,40 @@ def get_android_result(refresh: bool) -> PlatformResult:
             return PlatformResult(
                 "Android",
                 None,
-                ANDROID_BASELINE,
+                ANDROID_LOGIC_FLOOR,
                 True,
-                "connectedDebugAndroidTest failed - is a device/emulator "
-                "connected? See android/TESTING.md.\n" + proc.stdout[-2000:],
+                "testDebugUnitTest createDebugUnitTestCoverageReport failed - "
+                "see android/TESTING.md.\n" + proc.stdout[-2000:],
             )
-    if not ANDROID_REPORT.exists():
+    if not (ANDROID_JVM_REPORT / "index.html").exists():
         return PlatformResult(
-            "Android", None, ANDROID_BASELINE, True, f"No report at {ANDROID_REPORT}"
+            "Android", None, ANDROID_LOGIC_FLOOR, True, f"No report at {ANDROID_JVM_REPORT}"
+        )
+    try:
+        scope = load_android_logic_scope(ANDROID_LOGIC_SCOPE)
+        return check_android_logic(ANDROID_JVM_REPORT, scope)
+    except ValueError as error:
+        return PlatformResult("Android", None, ANDROID_LOGIC_FLOOR, True, str(error))
+
+
+def get_android_device_result() -> PlatformResult:
+    """The device (Major) suite's app-wide number - informational only. It
+    no longer gates the release, and never runs Gradle: the report is read
+    if a past connectedDebugAndroidTest run left one, else shown as n/a."""
+    if not ANDROID_DEVICE_REPORT.exists():
+        return PlatformResult(
+            "Android (device)", None, None, False, "no device report - informational only"
         )
     percent = parse_android_report(
-        ANDROID_REPORT.read_text(encoding="utf-8"), exclude_packages=ANDROID_EXCLUDED_PACKAGES
+        ANDROID_DEVICE_REPORT.read_text(encoding="utf-8"),
+        exclude_packages=ANDROID_EXCLUDED_PACKAGES,
     )
-    return PlatformResult("Android", percent, ANDROID_BASELINE, True)
+    return PlatformResult("Android (device)", percent, None, False)
 
 
 def get_android_merged_result(refresh: bool) -> PlatformResult:
     """Major+External merged Android coverage - a second, informational
-    number alongside get_android_result's Major-only (gated) one. Never
+    number alongside get_android_device_result's Major-only one. Never
     fails the release gate (PlatformResult(gated=False), baseline=None) -
     it exists purely to show PaywallScreenKt's real combined coverage,
     since its remaining Major-only gap is exactly the RevenueCat-dependent
@@ -170,7 +248,7 @@ def get_android_merged_result(refresh: bool) -> PlatformResult:
     if refresh or not ANDROID_MERGED_REPORT.exists():
         proc = _run(
             [
-                "gradlew.bat" if _IS_WINDOWS else "./gradlew",
+                _GRADLEW,
                 "jacocoMergedCoverageReport",
             ],
             cwd=REPO_ROOT / "android",
@@ -267,6 +345,7 @@ def main(argv: list[str] | None = None) -> int:
 
     results = [
         get_android_result(args.refresh),
+        get_android_device_result(),
         get_android_merged_result(args.refresh),
         get_python_result(args.refresh),
         get_web_result(args.refresh),
@@ -292,6 +371,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{result.name:<12} {percent_str:>10} {baseline_str:>10}  {status}")
         if result.note:
             print(f"             {result.note}")
+        for line in result.problems:
+            print(f"             FAIL: {line}")
+        for line in result.warnings:
+            print(f"             warning: {line}")
 
     return 1 if any_gated_failure else 0
 

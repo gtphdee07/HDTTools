@@ -288,13 +288,32 @@ purchase-button states) really were the rest of this class's gap.
 camera-overlay spike, same exclusion as the Major-only number above;
 70.83% unfiltered). This second number is informational only —
 `scripts/coverage_gate.py`'s `get_android_merged_result()` returns it as
-a `PlatformResult(gated=False, baseline=None)`, and the release gate
-still checks Major-only against the 71.00% baseline below.
+a `PlatformResult(gated=False, baseline=None)`; like the Major number, it
+gates nothing (see "What gates the release" below).
 
-**These Major-suite numbers (71% app-wide) are the enforced baseline
-`scripts/coverage_gate.py` checks Android against at release time** —
-see the root `TESTING.md`'s "Coverage gate" section; the gate fails only
-on regression below this real baseline, not an arbitrary target.
+### What gates the release (changed in #130)
+
+**The Android coverage gate is a JVM floor on decision logic.** The
+device-based Major numbers above (71% and later 73.5% app-wide) no longer
+gate anything; they and the Major+External merged number stay as
+informational numbers that `scripts/coverage_gate.py` prints.
+
+`scripts/coverage_gate.py` instead reads the JVM report from
+`./gradlew testDebugUnitTest createDebugUnitTestCoverageReport` (about
+20 s, no device) and fails below **95.0%** aggregate instruction coverage
+over the classes listed in `coverage-logic.toml` in this directory — the
+Breakdown and Verdict math, Scan rules, field mapping and account rules,
+where an untested branch is a real risk. It was about 97% when set
+(2026-10-18). The same file lists the classes that are deliberately not
+measured, each with a one-line reason.
+
+**Compose screens, navigation, view-model wiring and provider wrappers
+have no coverage number.** Device tests (Major) and External tests verify
+them. A class in `domain`, `data` or `ui` that is on neither list is
+printed as *unclassified* (a warning); an allow-listed class missing from
+the report fails the gate. Add a new decision-logic class to `allow`, or
+waive it with a reason. See the root `TESTING.md`'s "Coverage gate"
+section.
 
 **Structured pass-rate reporting for the README dashboard** (roadmap
 item #7, new 2026-08-24): needs no new flags or scripts — AGP already

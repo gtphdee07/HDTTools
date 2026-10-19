@@ -1,0 +1,93 @@
+# Which Android classes the JVM coverage floor measures (scripts/coverage_gate.py).
+#
+# Coverage is a map of untested code, not a score. The floor covers the app's
+# decision logic only - Breakdown and Verdict math, Scan rules, field mapping,
+# account rules - because an untested branch there is a real risk and it can be
+# measured in about 20 s with no device. Compose screens, navigation, view-model
+# wiring and provider wrappers carry no number: device and External tests verify
+# them.
+#
+# Names are fully qualified. A name also covers its inner and lambda classes
+# (ScanHttp covers ScanHttp.scan.2.new Callback() {...}) but not a class that
+# merely shares its prefix (ScanApiClient is not ScanApiClientKt).
+#
+# A class in a watched package that is on neither list is printed as
+# "unclassified" - a warning, never a failure. Put it on a list. An allow-listed
+# name that is not in the report fails the gate (stale list).
+
+watched_packages = [
+  "com.rigcheck.app.domain",
+  "com.rigcheck.app.data",
+  "com.rigcheck.app.ui",
+]
+
+allow = [
+  # domain: Breakdown and Verdict math
+  "com.rigcheck.app.domain.BreakdownKt",
+  "com.rigcheck.app.domain.BreakdownItem",
+  "com.rigcheck.app.domain.NumberFormattingKt",
+  "com.rigcheck.app.domain.Row",
+  "com.rigcheck.app.domain.Tone",
+  "com.rigcheck.app.domain.VerdictInfo",
+  "com.rigcheck.app.domain.VerdictInfoKt",
+  "com.rigcheck.app.domain.VerdictStatus",
+  # domain.model: the rig values the math runs on
+  "com.rigcheck.app.domain.model.ScaleTicket",
+  "com.rigcheck.app.domain.model.TrailerTag",
+  "com.rigcheck.app.domain.model.TruckTag",
+  # data: account rules, scan rules, field mapping
+  "com.rigcheck.app.data.Account",
+  "com.rigcheck.app.data.AccountManager",
+  "com.rigcheck.app.data.AccountResult.Failure",
+  "com.rigcheck.app.data.AccountState.SignedIn",
+  "com.rigcheck.app.data.BackendStatus.Authenticated",
+  "com.rigcheck.app.data.ScanApiClientKt",
+  "com.rigcheck.app.data.ScanAttempts",
+  "com.rigcheck.app.data.ScanAttemptsKt",
+  "com.rigcheck.app.data.ScanField",
+  "com.rigcheck.app.data.ScanFieldMappingKt",
+  "com.rigcheck.app.data.ScanHttp",
+  "com.rigcheck.app.data.ScanResult",
+  # ui: scan outcome rules (no Compose, no view-model wiring)
+  "com.rigcheck.app.ui.ScanApplied",
+  "com.rigcheck.app.ui.ScanFailureKt",
+  "com.rigcheck.app.ui.ScanMessages",
+  "com.rigcheck.app.ui.ScanNextStep",
+  "com.rigcheck.app.ui.ScanNotice",
+  "com.rigcheck.app.ui.ScanNoticeKt",
+  "com.rigcheck.app.ui.ScanNoticeState",
+  "com.rigcheck.app.ui.ScanRetry",
+  "com.rigcheck.app.ui.ScanScreen.Chooser",
+  "com.rigcheck.app.ui.ScanSession",
+  "com.rigcheck.app.ui.ScanSessionKt",
+  "com.rigcheck.app.ui.ScanUiState.Error",
+]
+
+# Whole packages with no decisions.
+[waive_packages]
+"com.rigcheck.app.ui.screens" = "Compose screens: verified by device tests"
+"com.rigcheck.app.ui.components" = "Compose components: verified by device tests"
+"com.rigcheck.app.ui.theme" = "Compose theme: no decisions"
+"com.rigcheck.app.ui.navigation" = "Navigation graph: verified by device tests"
+"com.rigcheck.app.ui.experiments" = "Research spikes, unreachable from production"
+"com.rigcheck.app.ui.format" = "Display formatting for Compose: no decisions"
+"com.rigcheck.app.ui.util" = "Android Context helpers: need a device"
+
+# Single classes in a watched package that are deliberately not measured.
+[waive_classes]
+"com.rigcheck.app.ui.RigCheckViewModel" = "View-model wiring (coroutines, Android lifecycle): device and External tests"
+"com.rigcheck.app.data.SupabaseAccountBackend" = "Provider wrapper around the Supabase SDK: External tests"
+"com.rigcheck.app.data.UnavailableAccountBackend" = "Stand-in backend with no logic"
+"com.rigcheck.app.data.RevenueCatManager" = "Provider wrapper around the RevenueCat SDK: External tests"
+"com.rigcheck.app.data.PurchaseCancelledException" = "Exception type with no logic"
+"com.rigcheck.app.data.GoogleSignInKt" = "Provider wrapper around Google Credential Manager: needs a device"
+"com.rigcheck.app.data.GoogleIdentity" = "Provider wrapper value: no logic"
+"com.rigcheck.app.data.GoogleNonce" = "Google sign-in plumbing: needs a device"
+"com.rigcheck.app.data.GoogleAccountMissing" = "Google sign-in exception type: no logic"
+"com.rigcheck.app.data.GoogleSignInCancelled" = "Google sign-in exception type: no logic"
+"com.rigcheck.app.data.PhotoEncodingKt" = "Android Bitmap encoding: needs a device"
+"com.rigcheck.app.data.ScanPhotoStorageKt" = "Android file storage: needs a device"
+"com.rigcheck.app.data.ScanApiClient" = "HTTP client wrapper: External tests; the request rules are in ScanApiClientKt"
+"com.rigcheck.app.data.RecentRigsRepository" = "Waived until the RecentRigsRepository seam ticket moves it to the allow list"
+"com.rigcheck.app.data.RecentRigsRepositoryKt" = "Waived until the RecentRigsRepository seam ticket moves it to the allow list"
+"com.rigcheck.app.domain.model.RecentRig" = "Waived until the RecentRigsRepository seam ticket moves it to the allow list"

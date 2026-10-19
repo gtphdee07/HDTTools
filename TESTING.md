@@ -273,16 +273,28 @@ coverage for all four platforms from their own native coverage tooling
 (JaCoCo for Android, `coverage.py` for Python, Vitest's `coverage-v8`
 provider for Web, Node's `--experimental-test-coverage` for scan-proxy).
 
-**Enforced (baseline-floor, not an arbitrary target)** for Android,
-Python, and scan-proxy — the three platforms with both an established
-real baseline (see `NEXT_STEPS.md` item #8) and a real release-gating
-event today (Android/scan-proxy's shared "before a major Play Store
-push" trigger; Python/Streamlit's suite is what that same push exercises
-on the backend side). The gate fails only if a platform's real coverage
-number drops *below* its last known-good baseline (2026-08-24: Android
-71%, Python 79%, scan-proxy 100%); it never demands an arbitrary
-round-number target, consistent with item #8's "no target percentage
-decided, prioritize by where coverage is lowest" stance.
+**Enforced** for Android, Python, and scan-proxy — the three platforms
+with a real release-gating event today (Android/scan-proxy's shared
+"before a major Play Store push" trigger; Python/Streamlit's suite is
+what that same push exercises on the backend side). Python and
+scan-proxy are baseline floors: the gate fails only if the real number
+drops *below* its last known-good baseline (2026-08-24: Python 79%,
+scan-proxy 100%).
+
+**The Android gate is a JVM floor on decision logic, not an app-wide
+number.** It reads the JVM unit-test JaCoCo report (`./gradlew
+testDebugUnitTest createDebugUnitTestCoverageReport`, about 20 s, no
+device) and fails below **95.0%** instruction coverage over the classes
+listed in `android/coverage-logic.toml` (Breakdown and Verdict math, Scan
+rules, field mapping, account rules; about 97% when it was set, 2026-10-18).
+Compose screens, navigation, view-model wiring and provider wrappers have
+**no coverage number**: device tests and External tests verify them, and
+they are listed as waived with a reason. Coverage is a map of untested
+code, not a score. The gate also fails when an allow-listed class is not in
+the report (a stale list) and names every class in `domain`, `data` or
+`ui` that is on neither list as *unclassified* (a warning, never a
+failure). The device-based Android numbers (Major suite, Major+External
+merged) are still printed, as informational numbers that gate nothing.
 
 **Report-only** for Web — the one platform with no real release event
 yet (no hosting at all today; see `NEXT_STEPS.md`'s "Deliberately not on

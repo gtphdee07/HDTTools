@@ -747,6 +747,16 @@ infrastructure the External suite below depends on:
   doc_type, so a random pick could land on either pool regardless of
   which one the caller wanted), and fail-loud errors on a malformed
   sidecar or an image-less vehicle folder.
+- `ScrollTestSupportTest.kt` (#84) — `scrollToIfScrollable()`, the helper the
+  screen and nav tests use instead of `performScrollTo()`. It scrolls to a node
+  inside a scrolling column, and leaves a node with no scrolling container above
+  it where it is (the plain call throws "Semantic Node has no parent layout with
+  a Scroll SemanticsAction" there, which #76 hit on the buttons pinned below the
+  form). Use it for any node that might sit inside or outside the scroll column.
+  Measured while writing it: a `verticalScroll` column whose content fits the
+  window still exposes the scroll action, so `performScrollTo()` on a node
+  inside the column does not break on a larger screen or smaller font scale
+  (the premise of the ticket as filed); only a node outside the column does.
 
 ### External (instrumented, real RevenueCat) — `.\test-weekly.ps1`
 

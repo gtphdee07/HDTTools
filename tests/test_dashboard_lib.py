@@ -211,10 +211,10 @@ def test_render_dashboard_svg_fits_a_long_external_label_without_overlapping_cov
     # A rough but real check: the external label's start plus a generous
     # per-character width estimate must still land left of where the
     # coverage text starts.
-    assert external_x + len(external_text.text) * 7 < coverage_x
+    assert external_x + len(external_text.text) * 8 < coverage_x
 
 
-# --- surfaces column, python per-context coverage, snapshot rows (#49) ---
+# --- External cell, python per-context coverage, snapshot rows (#49) ---
 
 
 def test_format_surface_cell_all_fresh_is_blue():

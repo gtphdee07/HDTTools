@@ -139,7 +139,7 @@ def render_dashboard_svg(
     # centered-with-a-fixed-offset rendering did (real bug, found from a
     # screenshot of scan-proxy's row: an earlier, unbounded-length raw-date
     # version of this label ran straight into "100.0%").
-    col_widths = [130, 80, 80, 240, 160]
+    col_widths = [130, 80, 80, 260, 160]
     width = sum(col_widths)
     grid_height = meta_height + header_height + row_height * len(rows)
     surface_height = surface_header_height + surface_row_height * len(surface_rows) if surface_rows else 0

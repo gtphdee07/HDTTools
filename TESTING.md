@@ -115,7 +115,8 @@ this is the working summary.
 interface, such as `anthropic`, `revenuecat-rest`, `supabase-auth`,
 `scan-proxy-worker` or `pages-site`. Each has its own last-pass record,
 and each platform keeps owning its own External suite (node, pytest,
-Android instrumentation) with every test tagged with its surface name.
+Android instrumentation), tagging each test with its surface name (node
+and pytest today; Android's surfaces are still `planned`, so it has none).
 `scripts/external_manifest/surfaces/<name>.json` is the one source of
 truth for a surface: its boundary files, dependency pins, watched
 registry packages (npm, PyPI, Maven), maximum paid calls, the platforms
@@ -401,14 +402,16 @@ only, not hidden — see that script's own "not gated" note).
 
 **External never re-runs from the dashboard** — those suites cost real
 money/time (a real Claude call, a booted emulator), and regenerating a
-README graphic shouldn't trigger that. Instead, `scripts/record_external_result.py`
-is called from the *end* of each real External wrapper script and
-persists the per-surface result to the git-tracked
-`scripts/dashboard_data/external_status.json` (see category 5 above). The
-dashboard just reads that file; a surface that has never run reads as
-stale. The old `platform/suite` entries in that file (`android.weekly`,
-`scan_proxy.weekly`, `scan_proxy.release`) are kept as history only and the
-dashboard no longer shows them (#44).
+README graphic shouldn't trigger that. Instead, the per-surface External
+runners (`scripts/external_wrapper.py`, behind the `test-external`
+wrappers) record each surface's result with `scripts/record_external_result.py`
+in the git-tracked `scripts/dashboard_data/external_status.json` (see
+category 5 above). The dashboard just reads that file; a surface that has
+never run reads as stale. The older whole-platform wrappers
+(`android/test-weekly.ps1`, `workers/scan-proxy/test-weekly.ps1`,
+`test-release.ps1`) still write `platform/suite` entries (`android.weekly`,
+`scan_proxy.weekly`, `scan_proxy.release`) into that file; they are history
+only, and the dashboard no longer shows them (#44).
 
 `--refresh` on either `coverage_gate.py` or `generate_dashboard.py`
 forces every already-cached report to be regenerated instead of reused;

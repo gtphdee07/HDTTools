@@ -6,6 +6,7 @@ main checkout, after the skill has re-verified the work independently.
 Usage:
     uv run scripts/ticket_merge.py preflight <N> [--allow-status]
     uv run scripts/ticket_merge.py baseline <N>
+    uv run scripts/ticket_merge.py verdicts <N>
     uv run scripts/ticket_merge.py merge <N>
     uv run scripts/ticket_merge.py close <N> --comment-file FILE
 
@@ -14,7 +15,11 @@ and clean, `ticket-<N>` has commits, and the ticket's latest `STATUS:` comment
 is READY TO MERGE (`--allow-status` accepts PARTIAL/BLOCKED when the owner has
 decided to merge anyway). `baseline` says whether MPSkills has moved since the
 ticket was cut (BASELINE UNCHANGED means the merged tree equals the branch tip, so
-the merged-tree test run can be skipped). `merge` makes a `--no-ff` merge commit on MPSkills,
+the merged-tree test run can be skipped). `verdicts` (#128) gives each suite the session-level plan lists for the ticket a `skip`
+(the verification ledger shows it passed at the branch tip's tree, which `preflight`
+has already tied to the commit /ticket-finish vouched for) or a `rerun` (no recorded
+pass, or the ledger cannot be read); device, stale-External and paid suites print as
+`manual`. `merge` makes a `--no-ff` merge commit on MPSkills,
 aborting cleanly on a conflict. `close` posts FILE (a criterion-to-test table)
 with the merge sha, closes the issue, removes the worktree and deletes the
 branch. On Windows, when git cannot delete the worktree because its path is too
@@ -37,8 +42,9 @@ from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import test_planner as planner  # noqa: E402
 from ticket_common import (  # noqa: E402
-    BASE_BRANCH, Shell, branch_name, gh_issue, git, main_checkout, real_shell, worktree_relpath,
+    BASE_BRANCH, Shell, branch_name, gh_issue, git, main_checkout, real_shell, runs_here, worktree_relpath,
 )
 
 
@@ -117,6 +123,38 @@ def baseline_status(n: int, *, shell: Shell, root: Path) -> tuple[bool, str]:
         "After the merge, run `uv run scripts/test_planner.py --level issue --base HEAD^1` on the merged tree "
         "and run what it lists."
     )
+
+
+def suite_verdicts(
+    n: int, *, shell: Shell, root: Path, config: dict, markers: set[str], ledger, git_state=None,
+    out: Callable[[str], None] = print,
+) -> list[tuple[str, str, str]]:
+    """A `skip` or `rerun` verdict for each suite the session-level plan lists for ticket N (#128).
+
+    The plan is the one /ticket-finish ran (the branch's diff against its merge-base with MPSkills),
+    and a suite is `skip` only when the ledger shows it passed at the branch tip's tree. Anything the
+    ledger cannot vouch for, or cannot be read, is `rerun`. Returns (verdict, command, reason) rows."""
+    branch = branch_name(n)
+    files = [f for f in git(shell, root, "diff", "--name-only", f"{BASE_BRANCH}...{branch}").out.splitlines() if f]
+    plan = planner.plan(files, config, markers, level="session",
+                        file_exists=lambda p: git(shell, root, "cat-file", "-e", f"{branch}:{p}").ok)
+    commit = git(shell, root, "rev-parse", branch)
+    tree = git(shell, root, "rev-parse", f"{branch}^{{tree}}")
+    revision = ledger.Revision(commit.out.strip(), tree.out.strip()) if commit.ok and tree.ok else None
+    rows = []
+    for sel in plan.selections:
+        if not runs_here(sel):
+            rows.append(("manual", sel.command, sel.reason))
+        elif revision is None:
+            rows.append(("rerun", sel.command, f"could not read the tree of {branch}"))
+        else:
+            verdict = ledger.suite_verdict(sel.command, revision, git=git_state)
+            rows.append(("skip" if verdict.skip else "rerun", sel.command, verdict.reason))
+    for verdict, command, reason in rows:
+        out(f"{verdict:<6} {command}    # {reason}")
+    if not rows:
+        out("the session-level plan lists no suite for this branch")
+    return rows
 
 
 def merge(n: int, *, shell: Shell, root: Path, out: Callable[[str], None] = print) -> int:
@@ -252,6 +290,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("ticket", type=int)
     p.add_argument("--allow-status", action="store_true")
     sub.add_parser("baseline").add_argument("ticket", type=int)
+    sub.add_parser("verdicts").add_argument("ticket", type=int)
     sub.add_parser("merge").add_argument("ticket", type=int)
     c = sub.add_parser("close")
     c.add_argument("ticket", type=int)
@@ -267,6 +306,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if reasons else 0
     if args.command == "baseline":
         print(baseline_status(args.ticket, shell=real_shell, root=root)[1])
+        return 0
+    if args.command == "verdicts":
+        import verification_ledger
+
+        suite_verdicts(args.ticket, shell=real_shell, root=root, config=planner.load_config(),
+                       markers=planner.load_markers(), ledger=verification_ledger,
+                       git_state=verification_ledger.RealGit(root))
         return 0
     if args.command == "merge":
         return merge(args.ticket, shell=real_shell, root=root)

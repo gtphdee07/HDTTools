@@ -92,6 +92,13 @@ def test_changed_test_file_runs_first_as_the_targeted_test():
     assert plan.selections[0].kind == "targeted"
 
 
+@pytest.mark.parametrize("level", ["issue", "session"])
+@pytest.mark.parametrize("helper", ["tests/_suite_ledger_helpers.py", "tests/conftest.py", "tests/__init__.py"])
+def test_a_changed_test_helper_is_not_planned_as_a_test_file(helper, level):
+    """pytest collects nothing from a helper module and exits 5, which a finish run reads as a failed suite."""
+    assert not any(helper in command for command in commands(tp.plan([helper], CONFIG, MARKERS, level=level)))
+
+
 def test_files_outside_every_python_context_plan_nothing_and_say_so():
     plan = plan_for(["web/src/app.tsx", "README.md"])
     assert plan.selections == []
@@ -383,6 +390,119 @@ def test_main_session_level_survives_unreadable_surface_freshness(capsys):
 
     assert tp.main(["--level", "session", "--files", "streamlit_app/app.py"], surfaces=broken) == 0
     assert "surface freshness unavailable" in capsys.readouterr().out
+
+
+# --- Skipping repeated runs (#128): the ledger marks each suite passed or run ---
+
+
+def test_each_listed_suite_is_marked_passed_or_run_and_the_run_list_omits_the_passed_ones():
+    plan = plan_all(["web/src/api.ts", "workers/scan-proxy/src/scan.ts", "android/app/src/main/java/app/domain/Breakdown.kt"],
+                    level="session")
+    passed = {"web-test": "a" * 40}
+
+    marks = {v.selection.command: v.passed_tree for v in tp.verdicts(plan, passed.get)}
+
+    assert marks["web-test"] == "a" * 40
+    assert marks["gradle-jvm"] is None
+    assert [s.command for s in tp.run_list(plan, passed.get)] == [c for c in commands(plan) if c != "web-test"]
+
+
+def test_a_suite_that_needs_confirmation_is_never_on_the_run_list_even_when_not_passed():
+    plan = plan_all([], "release", release_contexts=["scan-proxy"])
+
+    listed = [s.command for s in tp.run_list(plan, lambda command: None)]
+
+    assert "proxy-weekly" not in listed and "proxy-test" in listed
+
+
+def test_main_prints_already_passed_at_the_tree_or_run_for_each_suite_and_the_remaining_list(capsys):
+    tree = "abcdef12" + "0" * 32
+    passed = {"npm --prefix web test": tree}
+    tp.main(["--level", "session", "--files", "web/src/api.ts", "workers/scan-proxy/src/index.ts"],
+            surfaces=lambda: [], ledger=lambda: passed.get)
+
+    out = capsys.readouterr().out
+    lines = {line.split("    # ")[0].split(". ", 1)[1]: line for line in out.splitlines() if "    # " in line}
+    assert lines["npm --prefix web test"].endswith("-> already passed at abcdef12")
+    assert lines["npm --prefix workers/scan-proxy test"].endswith("-> run")
+    to_run = next(line for line in out.splitlines() if line.startswith("To run:"))
+    assert "npm --prefix workers/scan-proxy test" in to_run and "npm --prefix web test" not in to_run
+
+
+def test_main_says_nothing_is_left_to_run_when_every_suite_already_passed(capsys):
+    tp.main(["--files", "web/src/api.ts"], surfaces=lambda: [], ledger=lambda: lambda command: "f" * 40)
+
+    assert "To run: nothing" in capsys.readouterr().out
+
+
+def test_main_marks_every_suite_run_when_the_ledger_cannot_be_read(capsys):
+    def broken():
+        raise RuntimeError("ledger is unreadable")
+
+    assert tp.main(["--files", "src/hdttools/database.py"], ledger=broken) == 0
+
+    out = capsys.readouterr().out
+    assert "-> run" in out and "already passed" not in out
+    assert "ledger unavailable" in out
+
+
+def test_a_session_plan_records_which_contexts_each_suite_depends_on():
+    plan = plan_all(["web/src/api.ts", "src/hdttools/database.py"], level="session")
+
+    by_command = {s.command: s.contexts for s in plan.selections}
+
+    assert by_command["web-test"] == ("web",)
+    assert set(by_command["uv run pytest"]) == {"core", "streamlit"}  # one command planned for two contexts
+
+
+WEB_SUITE = tp.Selection("context", "web-test", "web context run", contexts=("web",))
+PYTHON_SUITE = tp.Selection("context", "uv run pytest -m core", "core context run", contexts=("core", "streamlit"))
+
+
+@pytest.mark.parametrize("changed, affected", [
+    (["docs/agents/ticket-skills.md"], False),               # docs only reach Python tests
+    (["README.md"], False),
+    (["tests/test_new.py"], False),                          # tests are Python
+    (["web/src/api.ts"], True),
+    (["workers/scan-proxy/src/scan.ts"], False),
+    (["src/hdttools/database.py"], False),                   # Python code does not change the web suite
+    (["web/src/breakdown.ts"], True),                        # an interface file shared with web
+    (["src/hdttools/api/breakdown.py"], True),               # ...whose other side is Python
+    (["test-vectors/breakdown_cases.json"], True),           # unowned and unknown: could be anything
+    (["docs/x.md", "web/package.json"], True),
+])
+def test_a_web_suite_is_affected_only_by_files_it_can_depend_on(changed, affected):
+    assert tp.suite_affected(WEB_SUITE, changed, ALL) is affected
+
+
+@pytest.mark.parametrize("changed, affected", [
+    (["docs/agents/ticket-skills.md"], True),
+    (["tests/test_new.py"], True),
+    (["pyproject.toml"], True),
+    (["src/hdttools/database.py"], True),
+    (["streamlit_app/app.py"], True),                        # the Python suites share one run
+    (["web/src/api.ts"], True),                              # Python tests scan web and Android sources too
+    (["android/app/src/main/java/app/domain/Breakdown.kt"], True),
+    (["test-vectors/breakdown_cases.json"], True),
+])
+def test_a_python_suite_is_affected_by_any_changed_file(changed, affected):
+    assert tp.suite_affected(PYTHON_SUITE, changed, ALL) is affected
+
+
+def test_a_suite_with_no_known_dependencies_is_affected_by_any_change():
+    assert tp.suite_affected(tp.Selection("targeted", "x", "r"), ["docs/a.md"], ALL) is True
+
+
+def test_the_slow_tooling_tests_are_affected_by_the_non_python_files_that_trigger_them():
+    """The tooling group is triggered by web/package.json and the like, files no Python context owns."""
+    config = {**ALL, "slow": [{"name": "tooling", "triggers": ["scripts/*", "web/package.json"], "tests": ["tests/test_x.py"]}]}
+    plan = tp.plan(["scripts/a.py"], config, MARKERS | {"slow"}, level="session")
+
+    slow = next(s for s in plan.selections if s.kind == "slow")
+
+    assert set(slow.contexts) == {"core", "streamlit"}
+    for changed in ("web/package.json", "scripts/b.py", "android/app/build.gradle.kts"):
+        assert tp.suite_affected(slow, [changed], config) is True, changed
 
 
 # --- Command checks: each planned selection picks what the planner says ---

@@ -20,6 +20,15 @@ from typing import Callable, Sequence
 
 BASE_BRANCH = "MPSkills"
 
+# Planned suite kinds /ticket-finish and /ticket-merge never run for a ticket (#128): they need a device,
+# the owner's go-ahead, or the stale-External bundle at the end of the round.
+NOT_RUN_HERE = ("surface", "device", "gate", "release")
+
+
+def runs_here(selection) -> bool:
+    """Is this planned suite one the ticket scripts run (and the ledger vouches for)?"""
+    return selection.action == "run" and selection.kind not in NOT_RUN_HERE
+
 
 @dataclass(frozen=True)
 class Result:

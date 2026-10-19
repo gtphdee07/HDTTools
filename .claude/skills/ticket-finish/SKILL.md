@@ -16,9 +16,15 @@ Exit 0 means the tree is clean, the branch has commits, and no forbidden file (`
 
 ## 2. Run the required suites
 
-Run `uv run scripts/test_planner.py --base MPSkills --level issue`, then `--level session`; they name what the branch's commits require (rules: `docs/test-audit/rules.md`). `--base MPSkills` matters: the default base, HEAD, sees nothing once work is committed. Run every **free** suite they list, plus the typecheck/lint/build the surface's `TESTING.md` names. Record each command, pass or fail, and the counts.
+Run the **session level only**, once: it already contains the issue-level tests, so a separate issue-level run only repeats the same tests. Do not run the planner by hand and copy commands; let the script do it:
 
-Paid or live suites (`action: confirm` in the plan) run only when the owner has set a budget in this session; otherwise list them under "Not done" with the cost. A failing suite is a result, not something to retry away: find out whether the change broke it.
+```
+uv run scripts/ticket_finish.py suites --json <suites.json>
+```
+
+It plans the session level for the branch's diff against its merge-base with `MPSkills` (rules: `docs/test-audit/rules.md`), looks each suite up in the verification ledger by the **tree hash** of the committed code, and prints `skip` or `run` for it. A suite that already passed at this tree is skipped (an amend or a no-content merge keeps the tree); every other free suite runs, and each pass is recorded against the tree. Use the `--json` entries as the report's `suites`. Then run the typecheck/lint/build the surface's `TESTING.md` names, which the planner does not list.
+
+After a `/code-review` fix, commit and run `suites` again: it re-runs only the suites whose files changed since their last recorded pass and carries the other passes forward. Never re-run a suite by hand to "be sure". The script does not run device tests, stale External surfaces or paid suites; it prints them as `not run here`. Paid or live suites (`action: confirm`) run only when the owner has set a budget in this session; otherwise list them under "Not done" with the cost. A failing suite is a result, not something to retry away: find out whether the change broke it.
 
 ## 3. Criterion-to-test table
 
@@ -26,7 +32,7 @@ Paid or live suites (`action: confirm` in the plan) run only when the owner has 
 
 ## 4. Review
 
-Run `/mattpocock-skills:code-review` against `MPSkills`. Fix real findings (commit, then re-run the affected suites). Record each finding and how it was handled in `review`, including the ones you declined and why.
+Run `/mattpocock-skills:code-review` against `MPSkills`. Fix real findings (commit, then run `ticket_finish.py suites` again; step 2). Record each finding and how it was handled in `review`, including the ones you declined and why.
 
 ## 5. Docs and follow-ups
 

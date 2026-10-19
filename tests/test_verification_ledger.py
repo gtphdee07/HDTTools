@@ -349,6 +349,193 @@ def test_cli_run_splits_the_wrapped_command_after_the_double_dash(ledger_path):
     assert runner.calls == [["uv", "run", "pytest", "-m", "minor"]]
 
 
+# --- Per-suite passes (#128): did suite S pass at tree T? -------------------
+
+SUITE = 'uv run pytest -n auto -m "core and not slow"'
+OTHER_SUITE = "npm --prefix web test"
+
+
+def run_suite(ledger_path, *, git=None, runner=None, command=SUITE, now="t1"):
+    git = git or FakeGit()
+    runner = runner or FakeRunner()
+    code = vl.run_suite_and_record(command.split(), path=ledger_path, git=git, run_command=runner,
+                                   now=now, out=lambda _: None)
+    return code, runner
+
+
+def verdict(ledger_path, commit=SHA_A, tree=None, command=SUITE):
+    return vl.suite_verdict(command, rev(commit, tree), path=ledger_path)
+
+
+def test_a_suite_pass_is_found_again_for_the_same_tree_after_an_amend_or_no_content_merge(ledger_path):
+    run_suite(ledger_path, git=FakeGit(SHA_A, tree=TREE_1))
+
+    # Another commit with the same content: an amend, or a merge commit that changed nothing.
+    assert verdict(ledger_path, SHA_B, TREE_1).skip is True
+
+
+def test_a_suite_pass_is_not_found_after_any_content_change(ledger_path):
+    run_suite(ledger_path, git=FakeGit(SHA_A, tree=TREE_1))
+
+    found = verdict(ledger_path, SHA_B, TREE_2)
+
+    assert found.skip is False
+    assert found.reason.startswith("run")
+
+
+def test_a_suite_pass_is_for_that_suite_only(ledger_path):
+    run_suite(ledger_path, git=FakeGit(SHA_A, tree=TREE_1))
+
+    assert verdict(ledger_path, SHA_A, TREE_1, command=OTHER_SUITE).skip is False
+
+
+def test_the_suite_command_is_matched_ignoring_extra_whitespace(ledger_path):
+    run_suite(ledger_path, git=FakeGit(SHA_A, tree=TREE_1))
+
+    assert verdict(ledger_path, SHA_A, TREE_1, command='  uv run  pytest -n auto -m "core and not slow" ').skip is True
+
+
+@pytest.mark.parametrize("outcome", ["fail", "skipped", "declined"])
+def test_a_failed_skipped_or_declined_suite_is_never_a_pass(ledger_path, outcome):
+    assert vl.record_suite(SUITE, outcome, revision=rev(SHA_A, TREE_1), path=ledger_path) is False
+
+    assert not ledger_path.exists()
+    assert verdict(ledger_path, SHA_A, TREE_1).skip is False
+
+
+def test_a_failed_suite_drops_a_pass_held_for_the_same_tree(ledger_path):
+    run_suite(ledger_path, git=FakeGit(SHA_A, tree=TREE_1))
+
+    assert vl.record_suite(SUITE, "fail", revision=rev(SHA_A, TREE_1), path=ledger_path) is True
+
+    assert verdict(ledger_path, SHA_A, TREE_1).skip is False
+
+
+def test_a_failed_suite_leaves_passes_at_other_trees_alone(ledger_path):
+    run_suite(ledger_path, git=FakeGit(SHA_A, tree=TREE_1))
+
+    vl.record_suite(SUITE, "fail", revision=rev(SHA_B, TREE_2), path=ledger_path)
+
+    assert verdict(ledger_path, SHA_A, TREE_1).skip is True
+
+
+def test_a_record_written_with_a_non_pass_outcome_gives_run_it(ledger_path):
+    ledger_path.write_text(json.dumps({"contexts": {}, "suites": {
+        SUITE: {TREE_1: {"commit": SHA_A, "outcome": "fail", "timestamp": "t"}},
+    }}), encoding="utf-8")
+
+    assert verdict(ledger_path, SHA_A, TREE_1).skip is False
+
+
+def test_a_missing_ledger_gives_run_it(ledger_path):
+    found = verdict(ledger_path)
+
+    assert found.skip is False
+    assert not ledger_path.exists()
+
+
+@pytest.mark.parametrize("text", ["{not json", '{"contexts": {"web": 1}}', '{"contexts": {}, "suites": {"x": 1}}',
+                                  '{"contexts": {}, "suites": {"x": {"t": 1}}}'])
+def test_an_unreadable_or_malformed_ledger_gives_run_it_and_is_left_alone(ledger_path, text):
+    ledger_path.write_text(text, encoding="utf-8")
+
+    found = verdict(ledger_path)
+
+    assert found.skip is False
+    assert "unavailable" in found.reason
+    assert ledger_path.read_text(encoding="utf-8") == text
+
+
+def test_a_ledger_without_a_suites_section_still_loads_and_keeps_its_context_records(ledger_path):
+    run(ledger_path)
+    data = json.loads(ledger_path.read_text(encoding="utf-8"))
+    data.pop("suites", None)
+    ledger_path.write_text(json.dumps(data), encoding="utf-8")
+
+    run_suite(ledger_path, git=FakeGit(SHA_A, tree=TREE_1))
+
+    assert status(ledger_path) == vl.VERIFIED
+    assert verdict(ledger_path, SHA_A, TREE_1).skip is True
+
+
+def test_a_passing_suite_run_records_the_tree_and_a_failing_or_dirty_one_does_not(ledger_path):
+    assert run_suite(ledger_path, git=FakeGit(SHA_A, tree=TREE_1), runner=FakeRunner(code=1))[0] == 1
+    assert run_suite(ledger_path, git=FakeGit(SHA_A, tree=TREE_1, clean=False))[0] == 0
+    assert verdict(ledger_path, SHA_A, TREE_1).skip is False
+
+    assert run_suite(ledger_path, git=FakeGit(SHA_A, tree=TREE_1))[0] == 0
+    assert verdict(ledger_path, SHA_A, TREE_1).skip is True
+
+
+def test_a_suite_run_during_which_the_tree_moved_is_not_recorded(ledger_path):
+    git = FakeGit(SHA_A, tree=TREE_1)
+    runner = FakeRunner(git=git, during=lambda g: setattr(g, "tree_sha", TREE_2))
+
+    run_suite(ledger_path, git=git, runner=runner)
+
+    assert verdict(ledger_path, SHA_A, TREE_1).skip is False
+    assert verdict(ledger_path, SHA_A, TREE_2).skip is False
+
+
+def test_every_tree_a_suite_passed_at_is_kept_so_parallel_tickets_do_not_evict_each_other(ledger_path):
+    run_suite(ledger_path, git=FakeGit(SHA_A, tree=TREE_1), now="t1")
+    run_suite(ledger_path, git=FakeGit(SHA_B, tree=TREE_2), now="t2")
+
+    assert verdict(ledger_path, SHA_A, TREE_1).skip is True
+    assert verdict(ledger_path, SHA_B, TREE_2).skip is True
+    assert vl.last_suite_pass_tree(SUITE, path=ledger_path) == TREE_2
+
+
+def test_only_the_newest_passes_per_suite_are_kept(ledger_path):
+    for i in range(vl.SUITE_PASSES_KEPT + 3):
+        vl.record_suite(SUITE, "pass", revision=rev(SHA_A, f"tree-{i:03}"), path=ledger_path, now=f"t{i:03}")
+
+    assert verdict(ledger_path, SHA_A, "tree-000").skip is False
+    assert verdict(ledger_path, SHA_A, f"tree-{vl.SUITE_PASSES_KEPT + 2:03}").skip is True
+
+
+def test_a_carried_pass_says_where_it_came_from(ledger_path):
+    vl.record_suite(SUITE, "pass", revision=rev(SHA_B, TREE_2), carried_from=TREE_1, path=ledger_path)
+
+    data = json.loads(ledger_path.read_text(encoding="utf-8"))
+    assert data["suites"][SUITE][TREE_2]["carried_from"] == TREE_1
+    assert verdict(ledger_path, SHA_B, TREE_2).skip is True
+
+
+def test_last_suite_pass_tree_is_none_without_a_pass_or_with_an_unreadable_ledger(ledger_path):
+    assert vl.last_suite_pass_tree(SUITE, path=ledger_path) is None
+    ledger_path.write_text("{not json", encoding="utf-8")
+    assert vl.last_suite_pass_tree(SUITE, path=ledger_path) is None
+
+
+def test_cli_suite_runs_the_command_and_check_suite_answers_by_the_current_tree(ledger_path):
+    runner = FakeRunner()
+    git = FakeGit(SHA_A, tree=TREE_1)
+    lines: list[str] = []
+
+    assert vl.main(["check-suite", "uv run pytest"], path=ledger_path, git=git, out=lines.append) == 1
+    assert vl.main(["suite", "--", "uv", "run", "pytest"], path=ledger_path, git=git, run_command=runner,
+                   out=lambda _: None) == 0
+    assert runner.calls == [["uv", "run", "pytest"]]
+    assert vl.main(["check-suite", "uv run pytest"], path=ledger_path, git=git, out=lines.append) == 0
+    git.clean = False
+    assert vl.main(["check-suite", "uv run pytest"], path=ledger_path, git=git, out=lines.append) == 1
+    assert "uncommitted" in lines[-1]
+
+
+def test_a_real_amend_reuses_a_suite_pass_and_a_real_content_change_does_not(throwaway_repo, tmp_path):
+    ledger = tmp_path / "ledger.json"
+    git = vl.RealGit(throwaway_repo)
+    vl.record_suite(SUITE, "pass", git=git, path=ledger)
+
+    _git(throwaway_repo, "commit", "-q", "--amend", "-m", "reworded")
+    assert vl.suite_verdict(SUITE, vl.current_revision(git), path=ledger).skip is True
+
+    (throwaway_repo / "a.txt").write_text("two", encoding="utf-8")
+    _git(throwaway_repo, "commit", "-q", "-am", "content change")
+    assert vl.suite_verdict(SUITE, vl.current_revision(git), path=ledger).skip is False
+
+
 def _git(root, *args):
     import subprocess
 

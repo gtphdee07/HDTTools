@@ -30,6 +30,19 @@ Questions it answers (exit 0 only when verified, so a script can branch on it):
 
 The planner (#66), the session-start report (#67) and the epic gate (#68)
 read the ledger through `status`, `is_verified` and `last_verified`.
+
+Per-suite passes (#128): the same file also remembers, for each suite command,
+every tree it passed at (`suites` section, newest SUITE_PASSES_KEPT per
+command), so /ticket-finish and /ticket-merge can skip a suite that already
+passed on this exact content:
+
+  uv run scripts/verification_ledger.py suite -- uv run pytest -n auto -m "core and not slow"
+  uv run scripts/verification_ledger.py check-suite "uv run pytest ..."
+
+`suite_verdict` answers "did suite S pass at tree T?" and never raises: a
+failed, skipped or declined record, a missing ledger and an unreadable ledger
+all answer "run it". A fail, skip or declined run also drops a pass recorded for
+that same tree, so a flaky suite is not vouched for.
 """
 
 from __future__ import annotations
@@ -54,7 +67,8 @@ LEDGER_NAME = "hdttools-verification-ledger.json"
 LEVELS = planner.LEVELS
 LEDGER_ERROR_EXIT = 125  # not 1 (unverified) or 2 (a wrapped suite's own failure codes)
 COULD_NOT_START_EXIT = 127
-OUTCOMES = ("pass", "fail", "skipped")
+OUTCOMES = ("pass", "fail", "skipped", "declined")  # declined: a paid suite the owner did not approve
+SUITE_PASSES_KEPT = 25  # per suite command, newest first; older trees are forgotten
 
 VERIFIED = "verified"  # the recorded pass is for the tree asked about
 STALE = "stale"  # a pass is recorded, but for a different tree
@@ -128,13 +142,18 @@ def _validate(context: str, level: str) -> None:
 
 def _load(path: Path) -> dict:
     if not path.exists():
-        return {"contexts": {}}
+        return {"contexts": {}, "suites": {}}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise LedgerError(f"verification ledger {path} is unreadable ({exc}); fix or delete it") from exc
     contexts = data.get("contexts") if isinstance(data, dict) else None
     if not isinstance(contexts, dict) or not all(isinstance(v, dict) for v in contexts.values()):
+        raise LedgerError(f"verification ledger {path} has an unexpected shape; fix or delete it")
+    suites = data.setdefault("suites", {})
+    if not isinstance(suites, dict) or not all(
+        isinstance(trees, dict) and all(isinstance(e, dict) for e in trees.values()) for trees in suites.values()
+    ):
         raise LedgerError(f"verification ledger {path} has an unexpected shape; fix or delete it")
     return data
 
@@ -199,12 +218,136 @@ def record(
         "timestamp": now or _now(),
         "command": command,
     }
+    _write(target, data)
+    return True
+
+
+def _write(target: Path, data: dict) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     fd, scratch = tempfile.mkstemp(dir=target.parent, prefix=target.name + ".", suffix=".tmp")
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(json.dumps(data, indent=2, sort_keys=True) + "\n")
     os.replace(scratch, target)
+
+
+def suite_key(command: str) -> str:
+    """A suite is identified by its command line, whitespace-normalised."""
+    return " ".join(command.split())
+
+
+@dataclass(frozen=True)
+class SuiteVerdict:
+    skip: bool  # True only when a pass is recorded for exactly this content
+    reason: str
+    tree: str = ""
+
+
+def suite_verdict(command: str, revision: Revision, *, path: Path | None = None, git=None) -> SuiteVerdict:
+    """Did this suite pass at this tree? Never raises: anything the ledger cannot vouch for
+    (no record, a non-pass record, no ledger, an unreadable ledger, no git) is "run it"."""
+    try:
+        data = _load(path or default_ledger_path(git))
+    except (LedgerError, GitError, OSError) as exc:
+        return SuiteVerdict(False, f"run: ledger unavailable ({exc})")
+    entry = data["suites"].get(suite_key(command), {}).get(revision.tree)
+    if entry is not None and entry.get("outcome") == "pass":
+        return SuiteVerdict(True, f"already passed at tree {revision.tree[:8]}", revision.tree)
+    return SuiteVerdict(False, "run: no recorded pass at this tree")
+
+
+def last_suite_pass_tree(command: str, *, path: Path | None = None, git=None) -> str | None:
+    """The tree of the newest recorded pass of this suite (any tree), or None. Never raises."""
+    try:
+        data = _load(path or default_ledger_path(git))
+    except (LedgerError, GitError, OSError):
+        return None
+    passes = [(e.get("timestamp", ""), tree) for tree, e in data["suites"].get(suite_key(command), {}).items()
+              if e.get("outcome") == "pass"]
+    return max(passes)[1] if passes else None
+
+
+def record_suite(
+    command: str,
+    outcome: str,
+    *,
+    revision: Revision | None = None,
+    carried_from: str | None = None,
+    path: Path | None = None,
+    git=None,
+    now: str | None = None,
+) -> bool:
+    """Remember a suite result for a tree. Only a pass is written; a fail, skipped or declined
+    result writes nothing except dropping a pass already held for the same tree. `carried_from`
+    marks a pass derived from an earlier tree whose relevant files did not change. Returns
+    whether the ledger was written."""
+    if outcome not in OUTCOMES:
+        raise ValueError(f"outcome must be one of {OUTCOMES}, got {outcome!r}")
+    git = git or RealGit()
+    target = path or default_ledger_path(git)
+    data = _load(target)
+    revision = revision or current_revision(git)
+    key = suite_key(command)
+    trees = data["suites"].setdefault(key, {})
+    if outcome != "pass":
+        dropped = trees.pop(revision.tree, None) is not None
+        if not trees:
+            del data["suites"][key]
+        if dropped:
+            _write(target, data)
+        return dropped
+    entry = {"commit": revision.commit, "outcome": "pass", "timestamp": now or _now()}
+    if carried_from:
+        entry["carried_from"] = carried_from
+    trees[revision.tree] = entry
+    for tree in sorted(trees, key=lambda t: (trees[t].get("timestamp", ""), t), reverse=True)[SUITE_PASSES_KEPT:]:
+        del trees[tree]
+    _write(target, data)
     return True
+
+
+def _run_guarded(label, command, *, git, run_command, out, on_pass) -> int:
+    """Runs the command and calls `on_pass(revision)` only if it passed on a clean tree whose
+    HEAD and tree did not move. Returns the command's exit code (127 if it could not start)."""
+    start = current_revision(git)
+    clean = git.is_clean()
+    try:
+        code = run_command(command, cwd=REPO_ROOT).returncode
+    except OSError as exc:
+        out(f"could not start {command[0]!r} ({exc}); {label} not recorded.")
+        return COULD_NOT_START_EXIT
+    if code != 0:
+        out(f"{label}: failed (exit {code}); ledger unchanged.")
+    elif not clean:
+        out(f"{label}: passed, but the tree had uncommitted changes to tracked files; not recorded. Commit, then re-run.")
+    elif current_revision(git) != start or not git.is_clean():
+        out(f"{label}: passed, but HEAD or the tree changed during the run; not recorded. Re-run.")
+    else:
+        on_pass(start)
+        out(f"{label}: verified at {start.commit[:8]} (tree {start.tree[:8]}).")
+    return code
+
+
+def run_suite_and_record(
+    command: list[str],
+    *,
+    path: Path | None = None,
+    git=None,
+    run_command=default_run_command,
+    now: str | None = None,
+    out: Callable[[str], None] = print,
+    key: str | None = None,
+) -> int:
+    """Runs a suite and remembers a pass for the tree it ran at (same guards as run_and_record).
+    `key` is the suite's command line as the planner writes it; splitting it into an argument list
+    loses its quotes, so a caller that split it passes the original to be recorded and looked up."""
+    git = git or RealGit()
+    target = path or default_ledger_path(git)
+    _load(target)  # refuse before running anything if the ledger cannot be updated
+    text = key or " ".join(command)
+    return _run_guarded(
+        text, command, git=git, run_command=run_command, out=out,
+        on_pass=lambda rev: record_suite(text, "pass", revision=rev, path=target, git=git, now=now),
+    )
 
 
 def run_and_record(
@@ -224,24 +367,11 @@ def run_and_record(
     git = git or RealGit()
     target = path or default_ledger_path(git)
     _load(target)  # refuse before running anything if the ledger cannot be updated
-    start = current_revision(git)
-    clean = git.is_clean()
-    try:
-        code = run_command(command, cwd=REPO_ROOT).returncode
-    except OSError as exc:
-        out(f"could not start {command[0]!r} ({exc}); {context}/{level} not recorded.")
-        return COULD_NOT_START_EXIT
-    label = f"{context}/{level}"
-    if code != 0:
-        out(f"{label}: failed (exit {code}); ledger unchanged.")
-    elif not clean:
-        out(f"{label}: passed, but the tree had uncommitted changes to tracked files; not recorded. Commit, then re-run.")
-    elif current_revision(git) != start or not git.is_clean():
-        out(f"{label}: passed, but HEAD or the tree changed during the run; not recorded. Re-run.")
-    else:
-        record(context, level, "pass", command=" ".join(command), revision=start, path=target, git=git, now=now)
-        out(f"{label}: verified at {start.commit[:8]} (tree {start.tree[:8]}).")
-    return code
+    return _run_guarded(
+        f"{context}/{level}", command, git=git, run_command=run_command, out=out,
+        on_pass=lambda rev: record(context, level, "pass", command=" ".join(command), revision=rev,
+                                   path=target, git=git, now=now),
+    )
 
 
 def main(
@@ -260,11 +390,25 @@ def main(
         p.add_argument("--level", required=True, choices=LEVELS)
     sub.choices["run"].add_argument("command", nargs=argparse.REMAINDER, help="after --: the test command to run")
     sub.add_parser("show")
+    sub.add_parser("suite").add_argument("command", nargs=argparse.REMAINDER, help="after --: the suite command to run and remember")
+    sub.add_parser("check-suite").add_argument("command", help="the suite command line, quoted")
     args = parser.parse_args(argv)
 
     git = git or RealGit()
     try:
         target = path or default_ledger_path(git)
+        if args.action == "suite":
+            command = args.command[1:] if args.command[:1] == ["--"] else args.command
+            if not command:
+                parser.error("suite needs a command after --")
+            return run_suite_and_record(command, path=target, git=git, run_command=run_command, out=out)
+        if args.action == "check-suite":
+            if not git.is_clean():
+                out(f"{args.command}: run: uncommitted changes to tracked files, so no recorded pass vouches for this tree")
+                return 1
+            verdict = suite_verdict(args.command, current_revision(git), path=target)
+            out(f"{args.command}: {verdict.reason}")
+            return 0 if verdict.skip else 1
         if args.action == "run":
             command = args.command[1:] if args.command[:1] == ["--"] else args.command
             if not command:

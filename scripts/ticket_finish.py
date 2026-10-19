@@ -5,6 +5,7 @@ the ticket's worktree, after `/implement`.
 
 Usage:
     uv run scripts/ticket_finish.py preflight
+    uv run scripts/ticket_finish.py suites [--json FILE]
     uv run scripts/ticket_finish.py criteria
     uv run scripts/ticket_finish.py post REPORT.json [--dry-run]
 
@@ -21,6 +22,16 @@ lists owner decisions under `## Decisions`, a comment starting `DECISIONS`
 records them. `PARTIAL` and `BLOCKED` are never refused for those reasons, but
 must say what is not done.
 
+`suites` (#128) plans the session level for the branch's diff against its
+merge-base with MPSkills and runs only the free suites the verification ledger
+does not show as passed at the current tree, recording each pass. After a review
+fix a suite whose last pass was at an earlier tree is skipped when no file it
+depends on differs between the two trees (a Python suite counts any change), and
+its pass is carried forward. Stale External surfaces, device tests and paid
+suites are listed, never run here. It prints each suite as `skip` or `run` and
+can write the report's `suites` entries (`--json`); `post` refuses a suite
+reported as skipped that the ledger does not show as passed at the tree.
+
 REPORT.json: {"status", "criteria": [{"criterion", "proven_by"}],
 "suites": [{"command", "passed", "summary"}], "review", "not_done",
 "owner_actions", "followups"}.
@@ -31,6 +42,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
 import sys
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -38,8 +50,9 @@ from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import test_planner as planner  # noqa: E402
 from ticket_common import (  # noqa: E402
-    BASE_BRANCH, Shell, gh_issue, git_out, real_shell, scratch_path, ticket_from_branch,
+    BASE_BRANCH, Shell, gh_issue, git_out, real_shell, runs_here, scratch_path, ticket_from_branch,
 )
 
 STATUSES = ("READY TO MERGE", "PARTIAL", "BLOCKED")
@@ -50,6 +63,89 @@ class SuiteResult:
     command: str
     passed: bool
     summary: str = ""
+    skipped: bool = False  # not run here: the ledger shows it already passed at this tree (#128)
+
+
+@dataclass(frozen=True)
+class Decision:
+    action: str  # "skip" (passed at this tree) | "carry" (earlier pass still holds) | "run"
+    reason: str
+    carried_from: str | None = None
+
+
+def _ledger():
+    """The verification ledger (#65, #128); imported late because it pulls in the release tooling."""
+    import verification_ledger
+
+    return verification_ledger
+
+
+def session_files(shell: Shell, root: Path) -> list[str]:
+    """What the branch changes against the commit it was cut from (merge-base, so a moved MPSkills
+    does not change the plan between /ticket-finish and /ticket-merge)."""
+    return [f for f in git_out(shell, root, "diff", "--name-only", f"{BASE_BRANCH}...HEAD").splitlines() if f]
+
+
+def decide_suite(selection, revision, *, shell: Shell, root: Path, config: dict, ledger, git_state) -> Decision:
+    """Skip a suite that passed at this tree. After a review fix, also skip one whose last recorded pass
+    was at another tree when no file it depends on differs between the two trees; anything unsure runs."""
+    verdict = ledger.suite_verdict(selection.command, revision, git=git_state)
+    if verdict.skip:
+        return Decision("skip", verdict.reason)
+    previous = ledger.last_suite_pass_tree(selection.command, git=git_state)
+    if previous and previous != revision.tree:
+        diff = shell(["git", "diff", "--name-only", "--no-renames", previous, revision.tree], root)  # a rename lists both paths
+        if diff.ok:
+            changed = [f for f in diff.out.splitlines() if f]
+            if not planner.suite_affected(selection, changed, config):
+                return Decision("carry", f"no file it depends on changed since its pass at tree {previous[:8]}", previous)
+            return Decision("run", f"files it depends on changed since its pass at tree {previous[:8]}")
+    return Decision("run", verdict.reason)
+
+
+def run_suites(
+    *,
+    shell: Shell,
+    root: Path,
+    config: dict,
+    markers: set[str],
+    ledger,
+    git_state,
+    run_command,
+    out: Callable[[str], None] = print,
+) -> list[dict]:
+    """Runs the session-level plan for the branch, running only suites the ledger cannot vouch for
+    at the current tree and recording each pass. Returns the report's `suites` entries."""
+    files = session_files(shell, root)
+    plan = planner.plan(files, config, markers, level="session")
+    revision = ledger.current_revision(git_state)
+    results: list[dict] = []
+    for sel in plan.selections:
+        if not runs_here(sel):
+            out(f"not run here: {sel.command}    # {sel.reason}")
+            continue
+        decision = decide_suite(sel, revision, shell=shell, root=root, config=config, ledger=ledger, git_state=git_state)
+        if decision.action != "run":
+            if decision.action == "carry":
+                ledger.record_suite(sel.command, "pass", revision=revision, carried_from=decision.carried_from, git=git_state)
+            out(f"skip: {sel.command}    # {decision.reason}")
+            results.append({"command": sel.command, "passed": True, "skipped": True, "summary": decision.reason})
+            continue
+        out(f"run: {sel.command}    # {decision.reason}")
+        try:
+            code = ledger.run_suite_and_record(shlex.split(sel.command), git=git_state, run_command=run_command, out=out,
+                                               key=sel.command)
+        except (ledger.LedgerError, ledger.GitError) as exc:  # an unreadable ledger means run it, just unrecorded
+            out(f"{exc}; running {sel.command} without recording it.")
+            code = run_command(shlex.split(sel.command), cwd=root).returncode
+        recorded = ledger.suite_verdict(sel.command, revision, git=git_state).skip
+        results.append({
+            "command": sel.command, "passed": code == 0, "skipped": False,
+            "summary": ("passed, recorded at this tree" if recorded else "passed, NOT recorded (see above)") if code == 0 else f"exit {code}",
+        })
+    if not plan.selections:
+        out("the session-level plan lists no suite for this branch")
+    return results
 
 
 def parse_criteria(body: str) -> list[str]:
@@ -154,7 +250,9 @@ def render_comment(*, status, branch, sha, worktree, pushed, criteria, rows, sui
     proven = _proven(rows)
     table = [f"| {_cell(c)} | {_cell(proven.get(c.strip()) or 'NOT PROVEN')} |" for c in criteria]
     ran = "; ".join(
-        f"`{s.command}`: {'PASS' if s.passed else 'FAIL'}" + (f" - {s.summary}" if s.summary else "") for s in suites
+        f"`{s.command}`: {'SKIPPED (already passed at this tree)' if s.skipped else 'PASS' if s.passed else 'FAIL'}"
+        + (f" - {s.summary}" if s.summary else "")
+        for s in suites
     ) or "none"
     return "\n".join(
         [
@@ -211,6 +309,7 @@ def post(
     temp: Path | None = None,
     out: Callable[[str], None] = print,
     dry_run: bool = False,
+    ledger_shows_pass: Callable[[str], bool] | None = None,
 ) -> int:
     branch = git_out(shell, root, "branch", "--show-current")
     n = ticket_from_branch(branch)
@@ -231,8 +330,20 @@ def post(
     if unclear:
         out(f"REFUSED: `passed` must be true or false (not text) for: {', '.join(unclear)}. Nothing was posted.")
         return 1
-    suites = [SuiteResult(s["command"], s["passed"], s.get("summary", "")) for s in raw_suites]
+    unclear = [s["command"] for s in raw_suites if "skipped" in s and not isinstance(s["skipped"], bool)]
+    if unclear:
+        out(f"REFUSED: `skipped` must be true or false for: {', '.join(unclear)}. Nothing was posted.")
+        return 1
+    suites = [SuiteResult(s["command"], s["passed"], s.get("summary", ""), s.get("skipped", False)) for s in raw_suites]
     tree_clean = not git_out(shell, root, "status", "--porcelain")
+    skipped = [s.command for s in suites if s.skipped]
+    if skipped:
+        shows_pass = ledger_shows_pass or _ledger_shows_pass(root)
+        unbacked = [c for c in skipped if not (tree_clean and shows_pass(c))]
+        if unbacked:
+            out("REFUSED: reported as skipped, but the ledger shows no pass at the current tree for: "
+                + ", ".join(f"`{c}`" for c in unbacked) + ". Nothing was posted. Run them (`ticket_finish.py suites`).")
+            return 1
 
     # The tree check is refusals' own; the rest of preflight (commits, forbidden files) guards READY too.
     branch_problems = [r for r in preflight(shell, root)[0] if "uncommitted" not in r]
@@ -282,6 +393,31 @@ def post(
     return 0
 
 
+def _ledger_shows_pass(root: Path) -> Callable[[str], bool]:
+    ledger = _ledger()
+    git_state = ledger.RealGit(root)
+    revision = ledger.current_revision(git_state)
+    return lambda command: ledger.suite_verdict(command, revision, git=git_state).skip
+
+
+def suites_command(root: Path, json_path: Path | None, out: Callable[[str], None] = print) -> int:
+    """`suites`: runs what the session-level plan lists and the ledger cannot vouch for, recording passes."""
+    from release_steps import default_run_command
+
+    if git_out(real_shell, root, "status", "--porcelain"):
+        out("The working tree has uncommitted changes; commit first so a pass can be recorded against the tree.")
+        return 1
+    ledger = _ledger()
+    results = run_suites(
+        shell=real_shell, root=root, config=planner.load_config(), markers=planner.load_markers(),
+        ledger=ledger, git_state=ledger.RealGit(root), run_command=default_run_command, out=out,
+    )
+    if json_path is not None:
+        json_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
+        out(f"Wrote the report's `suites` entries to {json_path}.")
+    return 1 if any(not r["passed"] for r in results) else 0
+
+
 def print_criteria(shell: Shell, root: Path, out: Callable[[str], None] = print) -> int:
     n = ticket_from_branch(git_out(shell, root, "branch", "--show-current"))
     issue = gh_issue(shell, root, n, "number,body,comments") if n else None
@@ -298,6 +434,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("preflight")
     sub.add_parser("criteria")
+    sub.add_parser("suites").add_argument("--json", type=Path, help="write the report's `suites` entries here")
     p = sub.add_parser("post")
     p.add_argument("report", type=Path)
     p.add_argument("--dry-run", action="store_true")
@@ -312,6 +449,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if reasons else 0
     if args.command == "criteria":
         return print_criteria(real_shell, root)
+    if args.command == "suites":
+        return suites_command(root, args.json)
     return post(args.report, shell=real_shell, root=root, dry_run=args.dry_run)
 
 

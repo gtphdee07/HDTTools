@@ -22,8 +22,6 @@ Paste exactly what `/ticket-start N` prints (`/mattpocock-skills:implement #N` a
 
 ```
 Test-round additions:
-- Run single test files and typechecks while you work. Do not run the full suite
-  yourself; /ticket-finish runs it, so a second full run here repeats it.
 - For a full Python run use `uv run pytest -n auto` (about 45 s). The slow tooling
   tests are left out of planner runs unless the diff touches what they check.
 - No live or paid runs. The stale External suites are bundled at the end of the
@@ -32,7 +30,7 @@ Test-round additions:
   adds run time; do not add tests only to raise a coverage number.
 ```
 
-Drop the first bullet once #128 (tree-hash skip) has merged and the printed handoff line says it itself.
+The printed handoff line now says "run single test files and typechecks only; leave the full run to /ticket-finish" itself (#128, tree-hash skip), so that bullet is gone from the additions. Tickets cut before #128 merged still need it pasted.
 
 ### Extra lines for specific tickets
 

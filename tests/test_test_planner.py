@@ -576,6 +576,23 @@ def test_real_config_python_context_and_application_commands_leave_out_slow_test
 
 
 @pytest.mark.slow
+def test_a_bare_uv_run_pytest_still_collects_the_slow_tests():
+    bare = {i.split("::")[0] for i in _collect("uv run pytest")}
+    slow = {i.split("::")[0] for i in _collect('uv run pytest -m "slow and not external"')}
+    assert slow and slow <= bare
+    assert "tests/test_android_file_command_slow.py" in bare
+
+
+def test_the_root_testing_doc_states_the_parallel_command_and_every_slow_group_trigger():
+    doc = (ROOT / "TESTING.md").read_text(encoding="utf-8")
+    section = doc.split("## Python test commands", 1)[1].split("\n## ", 1)[0]
+    assert "uv run pytest -n auto" in section
+    assert tp.SLOW_PYTEST in section
+    for trigger in ("scripts/", "pyproject.toml", "ExampleDocs/", "streamlit_app/", "api/breakdown.py", "_ocr.py"):
+        assert trigger in section, trigger
+
+
+@pytest.mark.slow
 def test_every_slow_marked_test_file_is_named_by_a_real_config_group():
     named = {t for group in tp.load_config()["slow"] for t in group["tests"]}
     marked = {i.split("::")[0] for i in _collect('uv run pytest -m "slow and not external"')}

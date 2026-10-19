@@ -13,7 +13,7 @@ Merged: #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124.
 - `powershell web\test-external.ps1`: `supabase-auth`, `supabase-tables`, `pages-site`, `revenuecat-web-billing` (32 tests, free).
 - `powershell workers\scan-proxy\test-external.ps1 -MaxPaidCalls 4`: `scan-proxy-worker` (1 paid call), `worker-token-verification`, and `anthropic` (3 paid calls). It tested the Worker as deployed; no deploy was made (no Worker source file changed in any merge of the round, the last change was 2026-10-15).
 - To answer the paid prompts from a non-interactive shell use `cmd /c "echo y| powershell -NoProfile -File workers\scan-proxy\test-external.ps1 -MaxPaidCalls N"`. Piping several `'y'` lines from PowerShell answered the second prompt but declined the first (recorded `skipped`, which leaves the surface stale and spends nothing).
-- Known wrapper flaw, not yet a ticket: the Web script runs Web's whole dependency chain, which includes `scan-proxy-worker` and `worker-token-verification`. Their tests live under `workers/scan-proxy`, so Web's wrapper found none tagged and recorded `fail` for both ("No external tests tagged ..."), although they had not run. The Worker script's real run overwrote those records. Run the Worker script after the Web one, or a stale-looking `fail` stays on the dashboard. A fix is for the wrapper to guard only the surfaces whose tests live in its own directory.
+- Known wrapper flaw, filed as #142: the Web script runs Web's whole dependency chain, which includes `scan-proxy-worker` and `worker-token-verification`. Their tests live under `workers/scan-proxy`, so Web's wrapper found none tagged and recorded `fail` for both ("No external tests tagged ..."), although they had not run. The Worker script's real run overwrote those records. Run the Worker script after the Web one, or a stale-looking `fail` stays on the dashboard. A fix is for the wrapper to guard only the surfaces whose tests live in its own directory.
 
 ## The flow for every ticket
 
@@ -59,7 +59,7 @@ Two build lanes can run in parallel; tickets inside a lane share files, so they 
 | Step | Lane A (planner and Python) | Lane B (tooling) |
 |---|---|---|
 | done | #134, #129, #128, #66, #135 | #130, #41, #43, #44, #115 |
-| next | #136 move `breakdown.py` (before #45) | #67 session-start debt report (needs #66, merged) |
+| next | #136 move `breakdown.py` (before #45) | #142 wrapper records fail for a surface it does not own, then #67 session-start debt report (needs #66, merged) |
 | then | #133 session-end command (needs #130 and #66, both merged; also an Android ticket) | |
 
 Android lane (one at a time; the single emulator): done #127, #84, #124. Next #131 and #137 (JVM only, can run beside any other lane), then #75, #39, #40 together (two paid scans, owner confirms first).

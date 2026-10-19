@@ -3,6 +3,7 @@ history, the status file and registry responses all faked."""
 
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -321,12 +322,85 @@ def test_the_moved_token_checks_no_longer_live_untagged_in_the_weekly_file():
     assert "match the shared account-token contract" not in weekly
 
 
-@pytest.mark.parametrize("name", ["supabase-auth", "worker-token-verification"])
+@pytest.mark.parametrize("name", ["supabase-auth", "worker-token-verification", "scan-proxy-worker"])
 def test_the_token_surfaces_boundary_files_and_pins_exist(name):
     # A mistyped path never shows as changed, so the surface would silently stop going stale.
     surface = ef.load_manifest()["surfaces"][name]
     for rel in surface["boundary_files"] + surface["dependency_pins"]:
         assert (ef.REPO_ROOT / rel).is_file(), f"{name}: {rel} does not exist"
+
+
+_WORKER_PACKAGES = {"wrangler", "workerd", "@cloudflare/workers-types"}
+_QUIET_WORKER_REGISTRY = {
+    package: {"9.0.0": "2026-09-01T00:00:00Z", "created": "2020-01-01T00:00:00Z"} for package in _WORKER_PACKAGES
+}
+
+
+def test_scan_proxy_worker_is_in_the_real_manifest_active_with_one_paid_scan():
+    surface = ef.load_manifest()["surfaces"]["scan-proxy-worker"]
+    assert surface["status"] == "active"
+    # Its one billed call is the real scan that proves the response shape and the spend.
+    assert surface["max_paid_calls"] == 1
+    # Android and Web call this Worker, so their release gates wait on it.
+    assert {"scan-proxy", "android", "web"} == set(surface["platforms"])
+    assert {
+        "workers/scan-proxy/src/index.ts",
+        "workers/scan-proxy/src/scan.ts",
+        "workers/scan-proxy/src/request.ts",
+        "workers/scan-proxy/src/http.ts",
+        "workers/scan-proxy/src/docTypes.ts",
+        "workers/scan-proxy/src/idempotencyKey.ts",
+    } <= set(surface["boundary_files"])
+    assert {"workers/scan-proxy/wrangler.toml", "workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json"} <= set(
+        surface["dependency_pins"]
+    )
+    assert {p["package"] for p in surface["registry_packages"]} == _WORKER_PACKAGES
+
+
+def test_the_workers_compatibility_date_lives_in_a_watched_pin_file():
+    surface = ef.load_manifest()["surfaces"]["scan-proxy-worker"]
+    assert "workers/scan-proxy/wrangler.toml" in surface["dependency_pins"]
+    wrangler = (ef.REPO_ROOT / "workers/scan-proxy/wrangler.toml").read_text(encoding="utf-8")
+    assert re.search(r'^compatibility_date\s*=\s*"\d{4}-\d{2}-\d{2}"', wrangler, re.MULTILINE)
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        "workers/scan-proxy/src/index.ts",
+        "workers/scan-proxy/src/scan.ts",
+        "workers/scan-proxy/src/request.ts",
+        "workers/scan-proxy/src/http.ts",
+        "workers/scan-proxy/src/docTypes.ts",
+        "workers/scan-proxy/src/idempotencyKey.ts",
+        "workers/scan-proxy/wrangler.toml",
+        "workers/scan-proxy/package.json",
+        "workers/scan-proxy/package-lock.json",
+    ],
+)
+def test_changing_the_workers_contract_or_pins_makes_scan_proxy_worker_stale(changed):
+    real = ef.load_manifest()
+    recorded = status_with(passed(), name="scan-proxy-worker")
+    quiet = FakeRegistry(_QUIET_WORKER_REGISTRY)
+
+    fresh = ef.evaluate(real, recorded, FakeGit(), quiet, only=["scan-proxy-worker"])[0]
+    stale = ef.evaluate(real, recorded, FakeGit(changed=[changed]), quiet, only=["scan-proxy-worker"])[0]
+
+    assert fresh.state == "fresh"
+    assert stale.state == "stale"
+    assert any(changed in r for r in stale.reasons)
+
+
+@pytest.mark.parametrize("package", sorted(_WORKER_PACKAGES))
+def test_a_new_stable_release_of_a_watched_cloudflare_package_makes_scan_proxy_worker_stale(package):
+    real = ef.load_manifest()
+    recorded = status_with(passed(), name="scan-proxy-worker")
+    released = {**_QUIET_WORKER_REGISTRY, package: {"9.1.0": "2026-10-10T00:00:00Z", "created": "2020-01-01T00:00:00Z"}}
+
+    stale = ef.evaluate(real, recorded, FakeGit(), FakeRegistry(released), only=["scan-proxy-worker"])[0]
+
+    assert stale.state == "stale"
+    assert any(package in r and "9.1.0" in r for r in stale.reasons)
 
 
 def test_npm_fetcher_returns_the_registry_time_map():
@@ -490,7 +564,13 @@ _REQUIRED_PROVIDER_SURFACES = {
 
 
 # Surfaces from the list above that have since gained a tagged External test and flipped to active.
-_SURFACES_NOW_ACTIVE = {"pages-site", "supabase-tables", "revenuecat-web-billing", "worker-token-verification"}
+_SURFACES_NOW_ACTIVE = {
+    "pages-site",
+    "supabase-tables",
+    "revenuecat-web-billing",
+    "worker-token-verification",
+    "scan-proxy-worker",
+}
 
 
 def test_every_required_provider_surface_is_registered_in_the_real_manifest():

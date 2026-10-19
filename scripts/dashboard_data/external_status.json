@@ -17,23 +17,22 @@
   },
   "surfaces": {
     "anthropic": {
-      "commit": "f0f88134d836f26fb366e7c887cc91ac36b38b06",
-      "last_skipped_at": "2026-10-15T14:37:18Z",
+      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-05T02:54:45Z",
+      "timestamp": "2026-10-19T22:09:17Z",
       "versions": {
-        "@anthropic-ai/sdk": "0.131.0",
-        "anthropic": "1.11.0"
+        "@anthropic-ai/sdk": "0.135.0",
+        "anthropic": "1.15.0"
       }
     },
     "pages-site": {
-      "commit": "4145b3222ae8ec6f1d89bf957c524d62bdf4f5e9",
+      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-14T04:55:48Z",
+      "timestamp": "2026-10-19T22:07:00Z",
       "versions": {
-        "wrangler": "4.150.0"
+        "wrangler": "4.151.2"
       }
     },
     "revenuecat-rest": {
@@ -44,37 +43,48 @@
       "versions": {}
     },
     "revenuecat-web-billing": {
-      "commit": "a07eb6202617b17cd451443dddee0dd385fc13c1",
+      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-13T02:14:05Z",
+      "timestamp": "2026-10-19T22:07:00Z",
       "versions": {
-        "@revenuecat/purchases-js": "1.70.0"
+        "@revenuecat/purchases-js": "1.71.0"
+      }
+    },
+    "scan-proxy-worker": {
+      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
+      "passed": true,
+      "result": "pass",
+      "timestamp": "2026-10-19T22:08:25Z",
+      "versions": {
+        "@cloudflare/workers-types": "5.20261019.1",
+        "workerd": "1.20261019.1",
+        "wrangler": "4.151.2"
       }
     },
     "supabase-auth": {
-      "commit": "a07eb6202617b17cd451443dddee0dd385fc13c1",
+      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-13T02:14:05Z",
+      "timestamp": "2026-10-19T22:07:00Z",
       "versions": {
-        "@supabase/supabase-js": "2.117.3"
+        "@supabase/supabase-js": "2.118.0"
       }
     },
     "supabase-tables": {
-      "commit": "4145b3222ae8ec6f1d89bf957c524d62bdf4f5e9",
+      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-14T04:55:48Z",
+      "timestamp": "2026-10-19T22:07:00Z",
       "versions": {
-        "@supabase/supabase-js": "2.117.3"
+        "@supabase/supabase-js": "2.118.0"
       }
     },
     "worker-token-verification": {
-      "commit": "1bdb40ce8758034e2eb84d2c384918b0bd256aef",
+      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-15T14:37:21Z",
+      "timestamp": "2026-10-19T22:08:25Z",
       "versions": {}
     }
   }

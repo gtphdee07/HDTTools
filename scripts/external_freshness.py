@@ -109,9 +109,10 @@ def owner_problems(manifest: dict) -> list[str]:
                 f"{name}: claimed by several wrappers ({', '.join(map(str, owner))}); "
                 f'"owner" must name exactly one of its platforms: {", ".join(platforms)}'
             )
-        elif not owner or not isinstance(owner, str):
+        elif not isinstance(owner, str) or not owner:
+            what = "no owner" if owner is None or owner == "" else f"owner {owner!r} is not a platform name"
             problems.append(
-                f'{name}: no owner. Add an "owner" naming the one platform whose External wrapper runs '
+                f'{name}: {what}. Add an "owner" naming the one platform whose External wrapper runs '
                 f"and records it: {', '.join(platforms)}"
             )
         elif owner not in platforms:

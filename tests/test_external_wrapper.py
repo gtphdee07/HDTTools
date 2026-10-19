@@ -103,6 +103,7 @@ def test_a_stale_surface_owned_elsewhere_is_neither_run_nor_recorded_and_the_own
     assert h.go([stale("w")], owned_elsewhere={"w": "scan-proxy"}) == 0
     assert h.ran == [] and h.recorded == []
     assert any("w" in line and r"workers\scan-proxy\test-external.ps1" in line for line in h.lines)
+    assert "No stale surfaces; nothing to run." not in h.lines  # stale ones exist, just not this wrapper's
 
 
 def test_surfaces_owned_elsewhere_do_not_stop_the_wrapper_running_and_recording_its_own():

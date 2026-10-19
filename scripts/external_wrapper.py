@@ -100,7 +100,10 @@ def execute_plan(
 
     stale = [v for v in verdicts if v.blocking and v.surface not in owned_elsewhere]
     if not stale:
-        out("No stale surfaces; nothing to run.")
+        if any(v.blocking for v in verdicts):
+            out("No stale surfaces of this wrapper's own; nothing to run here.")
+        else:
+            out("No stale surfaces; nothing to run.")
         return 0
 
     if skip:
@@ -258,7 +261,7 @@ def main(
     args = parser.parse_args(argv)
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
 
-    manifest = manifest or external_freshness.load_manifest()
+    manifest = external_freshness.load_manifest() if manifest is None else manifest
     problems = external_freshness.owner_problems(manifest)
     if problems:
         out("The surface manifest is not usable; nothing was run or recorded:")

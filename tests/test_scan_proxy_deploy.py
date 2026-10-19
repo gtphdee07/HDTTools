@@ -66,6 +66,14 @@ def test_a_release_run_that_was_forced_carries_its_reason_to_the_deploy_through_
     assert gate.calls == [(["scan-proxy"], "release run was forced")]
 
 
+def test_arguments_the_gate_does_not_know_still_reach_wrangler():
+    runner = FakeRunner()
+
+    # `npm run deploy -- --dry-run` worked before the gate; --re is not an abbreviation of --reason.
+    assert deploy(["--dry-run", "--re"], FakeGate(0), runner) == 0
+    assert runner.calls == ["npx --no-install wrangler deploy --dry-run --re"]
+
+
 def test_wranglers_own_failure_is_the_deploys_exit_code():
     runner = FakeRunner(exit_codes={"npx --no-install wrangler deploy": 3})
 

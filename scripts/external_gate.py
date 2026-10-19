@@ -156,7 +156,8 @@ class GitPush:
         """None when the diff cannot be computed (a remote commit this clone lacks)."""
         if remote_sha == ZERO_SHA:  # the remote has no such branch: everything is new
             return self._lines("ls-tree", "-r", "--name-only", local_sha)
-        return self._lines("diff", "--name-only", remote_sha, local_sha)
+        # --no-renames: a file moved out of web/ must still list its old path there.
+        return self._lines("diff", "--name-only", "--no-renames", remote_sha, local_sha)
 
 
 def pre_push(

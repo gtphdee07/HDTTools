@@ -335,6 +335,11 @@ def test_changed_paths_reads_the_pushed_diff_from_a_real_repo(tmp_path):
     git = eg.GitPush(cwd=tmp_path)
 
     assert git.changed_paths(first, second) == ["web/b.ts"]
+    # Moving a file out of a gated directory still counts as touching it (no rename detection).
+    _git(tmp_path, "mv", "web/b.ts", "docs/b.ts")
+    _git(tmp_path, "commit", "-q", "-m", "move out")
+    third = _git(tmp_path, "rev-parse", "HEAD")
+    assert sorted(git.changed_paths(second, third)) == ["docs/b.ts", "web/b.ts"]
     # A branch the remote does not have yet: everything is new.
     assert sorted(git.changed_paths(ZERO, second)) == ["docs/a.md", "web/b.ts"]
     # A remote commit this clone does not have: the diff cannot be computed.

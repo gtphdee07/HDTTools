@@ -442,7 +442,12 @@ reason is refused. The reason is recorded in
 `scripts/dashboard_data/external_status.json` on every surface that was blocking,
 and the dashboard's Surfaces cell shows `(N overridden)` until each one's next
 real pass; a failed or skipped run does not clear it. Forcing a gate that would
-have passed records nothing.
+have passed records nothing. The mark is written to the status file of the
+checkout you run from, so it is a tracked-file change to commit; and the gate
+judges that checkout's working tree and status file, so push `MPSkills` from the
+checkout that has it checked out. The mark stays until a real pass even if the
+surface stops looking stale in between (for example a registry that was only
+briefly unreachable).
 
 **`git push --no-verify` bypasses the hook on purpose.** It skips every check and
 records nothing, so the dashboard cannot show it. It is a deliberate act, not an

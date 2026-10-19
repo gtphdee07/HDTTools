@@ -32,15 +32,24 @@ from pathlib import Path
 STATUS_FILE = Path(__file__).resolve().parent / "dashboard_data" / "external_status.json"
 
 
-def record(platform: str, suite: str, exit_code: int, *, now: str | None = None) -> dict:
-    """Updates and returns the full status dict; also writes it to disk."""
-    data = json.loads(STATUS_FILE.read_text(encoding="utf-8")) if STATUS_FILE.exists() else {}
-    data.setdefault(platform, {})[suite] = {
-        "passed": exit_code == 0,
-        "timestamp": now or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-    }
+def _load_status() -> dict:
+    return json.loads(STATUS_FILE.read_text(encoding="utf-8")) if STATUS_FILE.exists() else {}
+
+
+def _save_status(data: dict) -> None:
     STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATUS_FILE.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def record(platform: str, suite: str, exit_code: int, *, now: str | None = None) -> dict:
+    """Updates and returns the full status dict; also writes it to disk."""
+    data = _load_status()
+    data.setdefault(platform, {})[suite] = {"passed": exit_code == 0, "timestamp": now or _utc_now()}
+    _save_status(data)
     return data
 
 
@@ -67,8 +76,8 @@ def record_surface(
     pass/fail, so it can't advance (or erase) the surface's freshness."""
     if outcome not in OUTCOMES:
         raise ValueError(f"outcome must be one of {OUTCOMES}, got {outcome!r}")
-    data = json.loads(STATUS_FILE.read_text(encoding="utf-8")) if STATUS_FILE.exists() else {}
-    timestamp = now or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    data = _load_status()
+    timestamp = now or _utc_now()
     surfaces = data.setdefault("surfaces", {})
 
     if outcome == "skipped" and surfaces.get(surface, {}).get("result") in ("pass", "fail"):
@@ -92,8 +101,7 @@ def record_surface(
     if override_reason:
         entry["override_reason"] = override_reason
 
-    STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STATUS_FILE.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    _save_status(data)
     return data
 
 
@@ -101,13 +109,12 @@ def record_override(surfaces: list[str], reason: str, *, now: str | None = None)
     """Marks surfaces whose release gate was forced past (ADR-0008, scripts/external_gate.py).
     Their results stay as they were, so they still read as stale; the mark lasts until
     a real pass replaces the entry."""
-    data = json.loads(STATUS_FILE.read_text(encoding="utf-8")) if STATUS_FILE.exists() else {}
-    timestamp = now or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    data = _load_status()
+    timestamp = now or _utc_now()
     recorded = data.setdefault("surfaces", {})
     for name in surfaces:
         recorded.setdefault(name, {}).update({"override_reason": reason, "overridden_at": timestamp})
-    STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STATUS_FILE.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    _save_status(data)
     return data
 
 

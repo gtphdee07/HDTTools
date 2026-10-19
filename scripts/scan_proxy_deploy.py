@@ -9,7 +9,8 @@ give a reason:
     npm run deploy -- --force --reason "deploying changed Worker code to test it"
 
 The reason is recorded on each blocking surface and shown on the dashboard as an
-overridden gate until its next real pass. A release run that was itself forced
+overridden gate until its next real pass. Any other argument goes on to
+`wrangler deploy` (for example `npm run deploy -- --dry-run`). A release run that was itself forced
 exports its reason (EXTERNAL_GATE_FORCE_REASON), so the deploy inside it does not
 need asking twice.
 """
@@ -35,21 +36,24 @@ DEPLOY_COMMAND = ["npx", "--no-install", "wrangler", "deploy"]
 def run(
     argv: list[str] | None = None,
     *,
-    gate=external_gate.gate,
+    gate=None,
     run_command=default_run_command,
     environ: Mapping[str, str] | None = None,
     out: Callable[[str], None] = print,
 ) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    # allow_abbrev=False: a wrangler flag such as --re must not be read as --reason.
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter, allow_abbrev=False
+    )
     external_gate.add_force_arguments(parser)
-    args = parser.parse_args(argv)
+    args, wrangler_args = parser.parse_known_args(argv)  # anything else goes on to `wrangler deploy`
     reason = external_gate.force_reason(args, parser, os.environ if environ is None else environ)
 
-    code = gate([PLATFORM], force_reason=reason, out=out)
+    code = (gate or external_gate.gate)([PLATFORM], force_reason=reason, out=out)
     if code != 0:
         out("Worker deploy refused by the External release gate.")
         return code
-    return run_command(DEPLOY_COMMAND, cwd=PROXY_DIR).returncode
+    return run_command([*DEPLOY_COMMAND, *wrangler_args], cwd=PROXY_DIR).returncode
 
 
 def main(argv: list[str] | None = None) -> int:

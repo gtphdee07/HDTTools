@@ -26,6 +26,11 @@ Python suites above and listed on their own, only when the diff touches what
 their config group names (`slow` in scripts/test_planner_config.json), and
 always at release (#129). A bare `uv run pytest` still runs them all.
 
+Each listed suite is marked `already passed at <tree>` or `run` from the
+verification ledger (#128): a suite passes only for the exact tree it ran at,
+a dirty tree is never vouched for, and a missing or unreadable ledger means
+`run`. A final `To run:` line lists the free suites still owed.
+
 Usage: uv run scripts/test_planner.py [--level issue|session|release]
            [--files PATH ...] [--base REF] [--context NAME ...]
 Without --files the changed files come from `git diff --name-only <base>`
@@ -62,6 +67,8 @@ class Selection:
     command: str
     reason: str
     action: str = "run"  # "run" | "confirm" (owner confirms first; never run unprompted)
+    # Contexts whose files can change this suite's result (#128); empty = unknown, so any change counts.
+    contexts: tuple[str, ...] = ()
 
 
 @dataclass
@@ -72,8 +79,12 @@ class Plan:
     notes: list[str] = field(default_factory=list)
 
     def add(self, selection: Selection) -> None:
-        if all(s.command != selection.command for s in self.selections):
-            self.selections.append(selection)
+        for s in self.selections:
+            if s.command == selection.command:
+                # One command planned twice (the shared Python application run): it depends on both.
+                s.contexts = tuple(dict.fromkeys(s.contexts + selection.contexts)) if s.contexts and selection.contexts else ()
+                return
+        self.selections.append(selection)
 
 
 def load_config(path: Path = CONFIG_FILE) -> dict:
@@ -208,11 +219,13 @@ def plan(
     else:
         _plan_session(result, files, config, markers, touched, python_dependency_changed,
                       context_dependency_changed, file_exists, surfaces)
-    _plan_slow(result, files, slow_groups, python_touched=any(_is_python(contexts[n]) for n in touched))
+    _plan_slow(result, files, slow_groups, python_touched=any(_is_python(contexts[n]) for n in touched),
+               python_names=tuple(n for n, c in contexts.items() if _is_python(c)))
 
     for name in device_touched:
         ctx = contexts[name]
-        result.add(Selection("device", ctx["device"], f"{name}: diff touches code the instrumented tests cover (needs a device)"))
+        result.add(Selection("device", ctx["device"], f"{name}: diff touches code the instrumented tests cover (needs a device)",
+                             contexts=(name,)))
     skipped_device = [n for n, c in contexts.items() if "device" in c and n in touched and n not in device_touched]
     for name in skipped_device:
         result.notes.append(f"{name}: instrumented (device) tests excluded; the diff touches no code they cover")
@@ -230,7 +243,7 @@ def _pytest_marker_run(expression: str, exclude_slow: bool) -> str:
     return f'uv run pytest -m "{expression}"' if " " in expression else f"uv run pytest -m {expression}"
 
 
-def _plan_slow(result: Plan, files: list[str], groups: list[dict], *, python_touched: bool) -> None:
+def _plan_slow(result: Plan, files: list[str], groups: list[dict], *, python_touched: bool, python_names: tuple[str, ...] = ()) -> None:
     """List the slow tests of each group whose triggers the diff touches; say so when none is owed."""
     owed = False
     for group in groups:
@@ -238,7 +251,7 @@ def _plan_slow(result: Plan, files: list[str], groups: list[dict], *, python_tou
         if hit is not None:
             owed = True
             result.add(Selection("slow", f"{SLOW_PYTEST} {' '.join(group['tests'])}",
-                                 f"slow tests owed: {group['name']} (diff touches {hit})"))
+                                 f"slow tests owed: {group['name']} (diff touches {hit})", contexts=python_names))
     if groups and python_touched and not owed:
         result.notes.append("slow tests left out; the diff touches nothing they check (a bare `uv run pytest` runs them)")
 
@@ -296,9 +309,10 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
                   context_dependency_changed, file_exists, surfaces) -> None:
     """Scope ladder: one small context -> file, one context -> context, several -> application."""
     contexts = config["contexts"]
+    python_names = tuple(n for n, c in contexts.items() if _is_python(c))
     for f in files:
         if _is_python_test(f):
-            result.add(Selection("file", f"uv run pytest {f}", "changed test file"))
+            result.add(Selection("file", f"uv run pytest {f}", "changed test file", contexts=python_names))
     if not touched:
         return
     file_max = config.get("scope", {}).get("file_max_files", DEFAULT_FILE_MAX_FILES)
@@ -313,10 +327,12 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
     if result.scope == "application":
         for name, ctx in contexts.items():
             command = ctx.get("application", ctx["context"])
-            result.add(Selection("application", command, f"application run ({name}; diff spans {', '.join(sorted(touched))})"))
+            result.add(Selection("application", command, f"application run ({name}; diff spans {', '.join(sorted(touched))})",
+                                 contexts=(name,)))
     elif result.scope == "context":
         (name,) = touched
-        result.add(Selection("context", contexts[name]["context"], f"{name} context run (diff is larger than a file)"))
+        result.add(Selection("context", contexts[name]["context"], f"{name} context run (diff is larger than a file)",
+                             contexts=(name,)))
     else:
         (name,) = touched
         ctx = contexts[name]
@@ -328,13 +344,14 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
             if target is None:
                 if _owners(f, contexts):
                     result.notes.append(f"{name}: no test file found for {f}; running the context instead")
-                    result.add(Selection("context", ctx["context"], f"{name} context run (no file-level test for {f})"))
+                    result.add(Selection("context", ctx["context"], f"{name} context run (no file-level test for {f})",
+                                         contexts=(name,)))
                     planned_any = True
                 continue
-            result.add(Selection("file", _fill(ctx["file"], ctx, target), f"file run: {target}"))
+            result.add(Selection("file", _fill(ctx["file"], ctx, target), f"file run: {target}", contexts=(name,)))
             planned_any = True
         if not planned_any:
-            result.add(Selection("context", ctx["context"], f"{name} context run"))
+            result.add(Selection("context", ctx["context"], f"{name} context run", contexts=(name,)))
     _plan_surfaces(result, config, surfaces, {contexts[n].get("platform") for n in
                    (contexts if result.scope == "application" else touched)})
 
@@ -388,6 +405,57 @@ def _plan_release(result, files, config, surfaces, release_contexts) -> None:
     _plan_surfaces(result, config, surfaces, platforms)
 
 
+@dataclass
+class Verdict:
+    selection: Selection
+    passed_tree: str | None  # the tree the suite already passed at (the current one), else None -> run
+
+
+def verdicts(result: Plan, passed_at) -> list[Verdict]:
+    """Pair each planned suite with the ledger's answer. `passed_at(command)` returns the
+    current tree when the suite already passed at it, else None."""
+    return [Verdict(s, passed_at(s.command)) for s in result.selections]
+
+
+def run_list(result: Plan, passed_at) -> list[Selection]:
+    """What is left to run: free suites the ledger does not show as passed at this tree."""
+    return [v.selection for v in verdicts(result, passed_at) if v.selection.action == "run" and v.passed_tree is None]
+
+
+# Files that never belong to a context's paths but can still change a suite: tests and the docs and
+# skills they read are Python; anything else unowned (shared fixtures, root files) could affect anything.
+_PYTHON_ONLY_PREFIXES = ("tests/", "docs/", ".claude/")
+
+
+def _affected_contexts(path: str, config: dict) -> set[str] | None:
+    """Contexts whose suites the file can change; None means every context."""
+    contexts = config["contexts"]
+    python = {n for n, c in contexts.items() if _is_python(c)}
+    hit = _owners(path, contexts)
+    for iface in config.get("interfaces", []):
+        if _matches(path, iface["files"]):
+            hit |= ({iface["context"]} | set(iface.get("shares_with", []))) & set(contexts)
+    if path in config.get("dependency_files", []):
+        hit |= python
+    if hit:
+        return hit | python if hit & python else hit
+    if path.startswith(_PYTHON_ONLY_PREFIXES) or path.endswith(".md"):
+        return python
+    return None
+
+
+def suite_affected(selection: Selection, changed: list[str], config: dict) -> bool:
+    """Can any of these changed files alter the suite's result? True whenever unsure."""
+    if not selection.contexts:
+        return True
+    wanted = set(selection.contexts)
+    for path in map(_normalise, changed):
+        hit = _affected_contexts(path, config)
+        if hit is None or hit & wanted:
+            return True
+    return False
+
+
 def changed_files_from_git(base: str) -> list[str]:
     try:
         out = subprocess.run(
@@ -410,10 +478,25 @@ def _live_surfaces() -> list[dict] | None:
     return surfaces_from_manifest(manifest, verdicts)
 
 
+def _live_ledger():
+    """`passed_at` backed by the verification ledger (#128): the current tree when the suite already
+    passed at it. A dirty tree is never vouched for; a missing or unreadable ledger answers "run"."""
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import verification_ledger as vl
+
+    real_git = vl.RealGit()
+    if not real_git.is_clean():
+        return lambda command: None
+    revision = vl.current_revision(real_git)
+    return lambda command: revision.tree if vl.suite_verdict(command, revision).skip else None
+
+
 TITLES = {"issue": "Per-issue", "session": "Session-end", "release": "Release"}
 
 
-def main(argv: list[str] | None = None, *, git=changed_files_from_git, surfaces=_live_surfaces) -> int:
+def main(argv: list[str] | None = None, *, git=changed_files_from_git, surfaces=_live_surfaces, ledger=_live_ledger) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--level", choices=LEVELS, default="issue", help="issue (default), session or release")
     parser.add_argument("--files", nargs="*", help="changed files (default: git diff --name-only)")
@@ -438,13 +521,24 @@ def main(argv: list[str] | None = None, *, git=changed_files_from_git, surfaces=
         print(f"Planner could not plan ({exc}); no tests planned. git or config problems never block.")
         return 0
 
+    try:
+        passed_at = ledger()
+    except Exception as exc:  # advisory: no ledger means every suite is "run"
+        passed_at = lambda command: None  # noqa: E731
+        result.notes.append(f"ledger unavailable ({exc}); every suite is marked run")
+
     scope = f", scope: {result.scope}" if result.scope else ""
     print(f"{TITLES[args.level]} test plan (advisory{scope})")
-    for i, sel in enumerate(result.selections, 1):
+    for i, v in enumerate(verdicts(result, passed_at), 1):
+        sel = v.selection
         tag = "" if sel.action == "run" else f"[{sel.action.upper()}] "
-        print(f"  {i}. {tag}{sel.command}    # {sel.reason}")
+        verdict = f"already passed at {v.passed_tree[:8]}" if v.passed_tree else "run"
+        print(f"  {i}. {tag}{sel.command}    # {sel.reason}    -> {verdict}")
     for note in result.notes:
         print(f"  note: {note}")
+    remaining = run_list(result, passed_at)
+    if result.selections:
+        print("To run: " + ("; ".join(s.command for s in remaining) if remaining else "nothing (every free suite already passed at this tree)"))
     return 0
 
 

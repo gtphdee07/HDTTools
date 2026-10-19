@@ -15,6 +15,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -590,3 +591,261 @@ def test_a_suite_result_written_as_text_is_refused_not_read_as_true(worktree, tm
 
     assert code == 1 and "uv run pytest" in out and "true or false" in out
     assert gh.comments == []
+
+
+# --- Each suite runs once per tree (#128): `suites` and the skipped-suite check in `post` ---
+
+vl = _load("verification_ledger")
+planner = _load("test_planner")
+
+SUITE_CONFIG = {
+    "dependency_files": [],
+    "interfaces": [],
+    "contexts": {
+        "core": {"marker": "core", "paths": ["src/hdttools/"], "file": "core-file {file}", "test_for": [],
+                 "context": "core-suite", "application": "core-suite"},
+        "web": {"paths": ["web/"], "commands": {"minor": "web-suite", "major": "web-suite"},
+                "file": "web-file {rel}", "test_for": [], "context": "web-suite"},
+        "proxy": {"paths": ["workers/scan-proxy/"], "commands": {"minor": "proxy-suite", "major": "proxy-suite"},
+                  "file": "proxy-file {rel}", "test_for": [], "context": "proxy-suite"},
+    },
+}
+ALL_SUITES = ["core-suite", "web-suite", "proxy-suite"]
+
+
+class LedgerAt:
+    """The real ledger module, pointed at a ledger file in tmp_path."""
+
+    Revision = vl.Revision
+    LedgerError = vl.LedgerError
+    GitError = vl.GitError
+    current_revision = staticmethod(vl.current_revision)
+
+    def __init__(self, path):
+        self.path = path
+
+    def suite_verdict(self, command, revision, git=None):
+        return vl.suite_verdict(command, revision, path=self.path, git=git)
+
+    def last_suite_pass_tree(self, command, git=None):
+        return vl.last_suite_pass_tree(command, path=self.path, git=git)
+
+    def record_suite(self, command, outcome, **kw):
+        return vl.record_suite(command, outcome, path=self.path, **kw)
+
+    def run_suite_and_record(self, command, **kw):
+        return vl.run_suite_and_record(command, path=self.path, **kw)
+
+
+class Runner:
+    def __init__(self, failing=()):
+        self.failing = set(failing)
+        self.calls: list[str] = []
+
+    def __call__(self, command, cwd=None):
+        text = " ".join(command)
+        self.calls.append(text)
+        return SimpleNamespace(returncode=1 if text in self.failing else 0)
+
+
+@pytest.fixture
+def suite_repo(worktree):
+    """The ticket branch now also changes a web, a scan-proxy and a Python file: three contexts, three suites."""
+    for rel in ("web/src/a.ts", "workers/scan-proxy/src/b.ts", "src/hdttools/c.py"):
+        (worktree / rel).parent.mkdir(parents=True, exist_ok=True)
+        (worktree / rel).write_text("one\n")
+    _git(worktree, "add", ".")
+    _git(worktree, "commit", "-q", "-m", "three contexts")
+    return worktree
+
+
+def _suites(repo, tmp_path, runner, ledger=None):
+    lines: list[str] = []
+    ledger = ledger or LedgerAt(tmp_path / "ledger.json")
+    results = finish.run_suites(shell=common.real_shell, root=repo, config=SUITE_CONFIG, markers={"core", "minor"},
+                                ledger=ledger, git_state=vl.RealGit(repo), run_command=runner, out=lines.append)
+    return {r["command"]: r for r in results}, lines
+
+
+def _commit(repo, rel, text="two\n", message="review fix"):
+    (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+    (repo / rel).write_text(text)
+    _git(repo, "add", rel)
+    _git(repo, "commit", "-q", "-m", message)
+
+
+def test_the_first_run_runs_every_suite_and_records_each_pass_against_the_tree(suite_repo, tmp_path):
+    runner = Runner()
+
+    results, _ = _suites(suite_repo, tmp_path, runner)
+
+    assert sorted(runner.calls) == sorted(ALL_SUITES)
+    assert all(r["passed"] and not r["skipped"] for r in results.values())
+    ledger = LedgerAt(tmp_path / "ledger.json")
+    revision = vl.current_revision(vl.RealGit(suite_repo))
+    assert all(ledger.suite_verdict(c, revision).skip for c in ALL_SUITES)
+
+
+def test_a_second_run_on_the_same_tree_runs_nothing_and_lists_every_suite_as_skipped(suite_repo, tmp_path):
+    _suites(suite_repo, tmp_path, Runner())
+    runner = Runner()
+
+    results, lines = _suites(suite_repo, tmp_path, runner)
+
+    assert runner.calls == []
+    assert all(r["skipped"] and r["passed"] for r in results.values())
+    assert any(line.startswith("skip: core-suite") for line in lines)
+
+
+def test_an_amend_that_changes_no_content_still_skips_every_suite(suite_repo, tmp_path):
+    _suites(suite_repo, tmp_path, Runner())
+    _git(suite_repo, "commit", "-q", "--amend", "-m", "reworded")
+    runner = Runner()
+
+    results, _ = _suites(suite_repo, tmp_path, runner)
+
+    assert runner.calls == []
+    assert all(r["skipped"] for r in results.values())
+
+
+def test_a_failing_suite_is_reported_not_recorded_and_runs_again_while_the_others_stay_skipped(suite_repo, tmp_path):
+    results, _ = _suites(suite_repo, tmp_path, Runner(failing={"web-suite"}))
+    assert results["web-suite"]["passed"] is False and results["web-suite"]["summary"] == "exit 1"
+
+    runner = Runner()
+    results, _ = _suites(suite_repo, tmp_path, runner)
+
+    assert runner.calls == ["web-suite"]
+    assert results["core-suite"]["skipped"] and results["proxy-suite"]["skipped"]
+    assert results["web-suite"]["passed"] and not results["web-suite"]["skipped"]
+
+
+def test_after_a_review_fix_only_the_suites_whose_files_changed_run_again(suite_repo, tmp_path):
+    _suites(suite_repo, tmp_path, Runner())
+    _commit(suite_repo, "web/src/a.ts")
+    runner = Runner()
+
+    results, lines = _suites(suite_repo, tmp_path, runner)
+
+    assert runner.calls == ["web-suite"]
+    assert results["core-suite"]["skipped"] and results["proxy-suite"]["skipped"]
+    assert any(line.startswith("run: web-suite") and "changed since" in line for line in lines)
+
+
+def test_a_docs_only_review_fix_reruns_the_python_suite_and_leaves_the_others_alone(suite_repo, tmp_path):
+    _suites(suite_repo, tmp_path, Runner())
+    _commit(suite_repo, "docs/note.md")
+    runner = Runner()
+
+    _suites(suite_repo, tmp_path, runner)
+
+    assert runner.calls == ["core-suite"]
+
+
+def test_a_changed_file_nobody_owns_reruns_every_suite(suite_repo, tmp_path):
+    _suites(suite_repo, tmp_path, Runner())
+    _commit(suite_repo, "Makefile")
+    runner = Runner()
+
+    _suites(suite_repo, tmp_path, runner)
+
+    assert sorted(runner.calls) == sorted(ALL_SUITES)
+
+
+def test_a_carried_pass_is_found_again_at_the_new_tree_so_the_next_step_can_skip_it(suite_repo, tmp_path):
+    _suites(suite_repo, tmp_path, Runner())
+    _commit(suite_repo, "web/src/a.ts")
+    _suites(suite_repo, tmp_path, Runner())
+    runner = Runner()
+
+    results, _ = _suites(suite_repo, tmp_path, runner)
+
+    assert runner.calls == [] and all(r["skipped"] for r in results.values())
+
+
+def test_a_review_fix_after_a_carried_pass_is_judged_against_the_newest_pass(suite_repo, tmp_path):
+    _suites(suite_repo, tmp_path, Runner())
+    _commit(suite_repo, "docs/note.md", message="docs fix")
+    _suites(suite_repo, tmp_path, Runner())
+    _commit(suite_repo, "web/src/a.ts", message="web fix")
+    runner = Runner()
+
+    _suites(suite_repo, tmp_path, runner)
+
+    assert runner.calls == ["web-suite"]
+
+
+def test_an_unreadable_ledger_runs_every_suite_and_says_it_was_not_recorded(suite_repo, tmp_path):
+    (tmp_path / "ledger.json").write_text("{not json", encoding="utf-8")
+    runner = Runner()
+
+    results, lines = _suites(suite_repo, tmp_path, runner)
+
+    assert sorted(runner.calls) == sorted(ALL_SUITES)
+    assert all(r["passed"] and "NOT recorded" in r["summary"] for r in results.values())
+    assert (tmp_path / "ledger.json").read_text(encoding="utf-8") == "{not json"
+    assert any("without recording" in line for line in lines)
+
+
+def test_a_pass_at_a_tree_git_does_not_know_cannot_be_compared_so_the_suite_runs(suite_repo, tmp_path):
+    ledger = LedgerAt(tmp_path / "ledger.json")
+    vl.record_suite("web-suite", "pass", revision=vl.Revision("a" * 40, "b" * 40), path=ledger.path)
+    runner = Runner()
+
+    _suites(suite_repo, tmp_path, runner, ledger=ledger)
+
+    assert "web-suite" in runner.calls
+
+
+def test_device_and_surface_suites_are_listed_never_run_here(suite_repo, tmp_path):
+    config = {**SUITE_CONFIG, "contexts": {**SUITE_CONFIG["contexts"], "web": {
+        **SUITE_CONFIG["contexts"]["web"], "device": "web-device", "device_covered": ["web/src/*"]}}}
+    runner = Runner()
+    lines: list[str] = []
+
+    finish.run_suites(shell=common.real_shell, root=suite_repo, config=config, markers={"core", "minor"},
+                      ledger=LedgerAt(tmp_path / "ledger.json"), git_state=vl.RealGit(suite_repo),
+                      run_command=runner, out=lines.append)
+
+    assert "web-device" not in runner.calls
+    assert any(line.startswith("not run here: web-device") for line in lines)
+
+
+def test_post_ready_lists_a_skipped_suite_when_the_ledger_shows_its_pass(worktree, tmp_path):
+    suites = [{"command": "uv run pytest", "passed": True, "skipped": True, "summary": "already passed"}]
+    gh = Gh()
+
+    code, _ = _post(worktree, gh, _report(tmp_path, suites=suites), tmp_path, ledger_shows_pass=lambda c: True)
+
+    assert code == 0
+    assert "`uv run pytest`: SKIPPED (already passed at this tree)" in gh.comments[0]
+
+
+def test_post_refuses_a_skipped_suite_the_ledger_does_not_show_as_passed(worktree, tmp_path):
+    suites = [{"command": "uv run pytest", "passed": True, "skipped": True, "summary": "already passed"}]
+    gh = Gh()
+
+    code, out = _post(worktree, gh, _report(tmp_path, suites=suites), tmp_path, ledger_shows_pass=lambda c: False)
+
+    assert code == 1 and "`uv run pytest`" in out and "no pass at the current tree" in out
+    assert gh.comments == []
+
+
+def test_post_refuses_a_skipped_suite_even_for_partial_and_on_a_dirty_tree(worktree, tmp_path):
+    suites = [{"command": "uv run pytest", "passed": True, "skipped": True}]
+    (worktree / "feature.txt").write_text("edited after the commit\n")
+
+    code, out = _post(worktree, Gh(), _report(tmp_path, suites=suites, status="PARTIAL", not_done="x"), tmp_path,
+                      ledger_shows_pass=lambda c: True)
+
+    assert code == 1 and "no pass at the current tree" in out
+
+
+def test_post_asks_the_real_ledger_when_no_check_is_injected(worktree, tmp_path, monkeypatch):
+    monkeypatch.setattr(finish, "_ledger_shows_pass", lambda root: (lambda command: command == "uv run pytest"))
+    suites = [{"command": "uv run pytest", "passed": True, "skipped": True},
+              {"command": "npm test", "passed": True, "skipped": True}]
+
+    code, out = _post(worktree, Gh(), _report(tmp_path, suites=suites), tmp_path)
+
+    assert code == 1 and "`npm test`" in out and "`uv run pytest`" not in out

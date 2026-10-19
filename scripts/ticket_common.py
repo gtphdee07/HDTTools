@@ -20,6 +20,10 @@ from typing import Callable, Sequence
 
 BASE_BRANCH = "MPSkills"
 
+# Planned suite kinds /ticket-finish and /ticket-merge never run for a ticket (#128): they need a device,
+# the owner's go-ahead, or the stale-External bundle at the end of the round.
+NOT_RUN_HERE = ("surface", "device", "gate", "release")
+
 
 @dataclass(frozen=True)
 class Result:

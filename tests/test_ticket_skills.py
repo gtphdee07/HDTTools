@@ -90,8 +90,49 @@ def test_ticket_merge_skill_skips_the_merged_tree_run_unless_the_baseline_moved(
     text = (ROOT / ".claude" / "skills" / "ticket-merge" / "SKILL.md").read_text(encoding="utf-8")
 
     assert "scripts/ticket_merge.py baseline" in text
-    assert "--level issue" in text  # the narrowed worktree re-run
+    assert "--level issue" in text  # the narrowed run on the merged tree when the baseline moved
     assert "BASELINE UNCHANGED" in text
+
+
+def _skill(name: str) -> str:
+    return (ROOT / ".claude" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+
+
+def test_the_finish_skill_runs_the_session_level_only_through_the_ledger_and_not_the_issue_level_too():
+    text = _skill("ticket-finish")
+
+    assert "session level only" in text
+    assert "scripts/ticket_finish.py suites" in text
+    assert "tree hash" in text
+    assert "--level issue" not in text  # the session level contains the issue-level tests
+    assert "--level session" not in text  # the script plans it; copying commands by hand skips the ledger
+    assert "re-runs only the suites whose files changed" in text
+
+
+def test_the_merge_skill_drops_the_blanket_rerun_but_keeps_the_diff_read_criterion_trace_and_mutation_check():
+    text = _skill("ticket-merge")
+    step_two = text.split("## 2.")[1].split("## 3.")[0]
+
+    assert "scripts/ticket_merge.py verdicts" in step_two
+    assert "`skip`" in step_two and "`rerun`" in step_two
+    assert "--level issue" not in step_two  # the old blanket re-run of the planner's list
+    assert "git diff MPSkills...ticket-<N>" in step_two
+    assert "Trace every criterion" in step_two
+    assert "Spot-check by mutation" in step_two
+
+
+def test_the_ticket_skills_doc_explains_the_tree_hash_ledger_for_every_step():
+    text = (ROOT / "docs" / "agents" / "ticket-skills.md").read_text(encoding="utf-8")
+
+    for needle in ("tree hash", "ticket_finish.py suites", "ticket_merge.py verdicts", "session level only",
+                   "single test files and typechecks", "`rerun` for any suite without a recorded pass"):
+        assert needle in text, needle
+
+
+def test_every_script_command_the_skills_and_doc_name_exists_in_its_script():
+    for command, script in (("suites", "ticket_finish.py"), ("verdicts", "ticket_merge.py")):
+        source = (ROOT / "scripts" / script).read_text(encoding="utf-8")
+        assert f'add_parser("{command}")' in source, command
 
 
 def test_every_place_a_session_reads_tells_it_to_ask_decisions_directly_and_record_them():

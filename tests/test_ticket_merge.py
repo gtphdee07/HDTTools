@@ -472,3 +472,165 @@ def test_baseline_command_prints_the_verdict_and_never_fails(repo, monkeypatch, 
 
     assert code == 0
     assert "BASELINE UNCHANGED" in capsys.readouterr().out
+
+
+# --- verdicts (#128): skip a suite the ledger shows passed at the branch tip's tree ---
+
+finish = _load("ticket_finish")
+vl = _load("verification_ledger")
+
+SUITE_CONFIG = {
+    "dependency_files": [],
+    "interfaces": [],
+    "contexts": {
+        "core": {"marker": "core", "paths": ["src/hdttools/"], "file": "core-file {file}", "test_for": [],
+                 "context": "core-suite", "application": "core-suite"},
+        "web": {"paths": ["web/"], "commands": {"minor": "web-suite", "major": "web-suite"},
+                "file": "web-file {rel}", "test_for": [], "context": "web-suite"},
+    },
+}
+
+
+class LedgerAt:
+    """The real ledger module, pointed at a ledger file in tmp_path."""
+
+    Revision = vl.Revision
+    LedgerError = vl.LedgerError
+    GitError = vl.GitError
+    current_revision = staticmethod(vl.current_revision)
+
+    def __init__(self, path):
+        self.path = path
+
+    def suite_verdict(self, command, revision, git=None):
+        return vl.suite_verdict(command, revision, path=self.path, git=git)
+
+    def last_suite_pass_tree(self, command, git=None):
+        return vl.last_suite_pass_tree(command, path=self.path, git=git)
+
+    def record_suite(self, command, outcome, **kw):
+        return vl.record_suite(command, outcome, path=self.path, **kw)
+
+    def run_suite_and_record(self, command, **kw):
+        return vl.run_suite_and_record(command, path=self.path, **kw)
+
+
+class Runner:
+    def __init__(self, failing=()):
+        self.failing = set(failing)
+
+    def __call__(self, command, cwd=None):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(returncode=1 if " ".join(command) in self.failing else 0)
+
+
+@pytest.fixture
+def ticket(repo, tmp_path):
+    """ticket-9 changes a web and a Python file; returns (main checkout, its worktree, ledger)."""
+    wt = repo / ".claude" / "worktrees" / "ticket-9"
+    for rel in ("web/src/a.ts", "src/hdttools/c.py"):
+        (wt / rel).parent.mkdir(parents=True, exist_ok=True)
+        (wt / rel).write_text("one\n")
+    _git(wt, "add", ".")
+    _git(wt, "commit", "-q", "-m", "web and python")
+    return repo, wt, LedgerAt(tmp_path / "ledger.json")
+
+
+def _finish(wt, ledger, runner=None):
+    finish.run_suites(shell=common.real_shell, root=wt, config=SUITE_CONFIG, markers={"core", "minor"}, ledger=ledger,
+                      git_state=vl.RealGit(wt), run_command=runner or Runner(), out=lambda _: None)
+
+
+def _verdicts(repo, ledger, config=SUITE_CONFIG):
+    lines: list[str] = []
+    rows = merge.suite_verdicts(9, shell=common.real_shell, root=repo, config=config, markers={"core", "minor"},
+                                ledger=ledger, git_state=vl.RealGit(repo), out=lines.append)
+    return {command: verdict for verdict, command, _ in rows}, lines
+
+
+def test_every_suite_finish_ran_on_the_branch_tip_is_skipped_at_merge(ticket):
+    repo, wt, ledger = ticket
+    _finish(wt, ledger)
+
+    verdicts, lines = _verdicts(repo, ledger)
+
+    assert verdicts == {"core-suite": "skip", "web-suite": "skip"}
+    assert any(line.startswith("skip   core-suite") and "already passed at tree" in line for line in lines)
+
+
+def test_a_suite_without_a_recorded_pass_is_rerun(ticket):
+    repo, _, ledger = ticket
+
+    verdicts, _ = _verdicts(repo, ledger)
+
+    assert verdicts == {"core-suite": "rerun", "web-suite": "rerun"}
+
+
+def test_a_suite_finish_saw_fail_is_rerun_while_the_ones_that_passed_are_skipped(ticket):
+    repo, wt, ledger = ticket
+    _finish(wt, ledger, Runner(failing={"web-suite"}))
+
+    verdicts, _ = _verdicts(repo, ledger)
+
+    assert verdicts == {"core-suite": "skip", "web-suite": "rerun"}
+
+
+def test_a_commit_after_finish_changes_the_tree_so_every_affected_suite_is_rerun(ticket):
+    repo, wt, ledger = ticket
+    _finish(wt, ledger)
+    (wt / "web" / "src" / "a.ts").write_text("late edit\n")
+    _git(wt, "commit", "-q", "-am", "late edit")
+
+    verdicts, _ = _verdicts(repo, ledger)
+
+    assert verdicts == {"core-suite": "rerun", "web-suite": "rerun"}
+
+
+def test_an_amended_branch_with_the_same_content_is_still_skipped(ticket):
+    repo, wt, ledger = ticket
+    _finish(wt, ledger)
+    _git(wt, "commit", "-q", "--amend", "-m", "reworded")
+
+    verdicts, _ = _verdicts(repo, ledger)
+
+    assert verdicts == {"core-suite": "skip", "web-suite": "skip"}
+
+
+def test_an_unreadable_ledger_reruns_every_suite(ticket):
+    repo, wt, ledger = ticket
+    _finish(wt, ledger)
+    ledger.path.write_text("{not json", encoding="utf-8")
+
+    verdicts, _ = _verdicts(repo, ledger)
+
+    assert verdicts == {"core-suite": "rerun", "web-suite": "rerun"}
+
+
+def test_the_plan_does_not_depend_on_which_commit_mpskills_has_moved_to(ticket):
+    repo, wt, ledger = ticket
+    _finish(wt, ledger)
+    (repo / "other.txt").write_text("other\n")
+    _git(repo, "add", "other.txt")
+    _git(repo, "commit", "-q", "-m", "mpskills moved")
+
+    verdicts, _ = _verdicts(repo, ledger)
+
+    assert verdicts == {"core-suite": "skip", "web-suite": "skip"}
+
+
+def test_device_suites_are_left_for_the_owner_not_given_a_skip_or_rerun(ticket):
+    repo, wt, ledger = ticket
+    config = {**SUITE_CONFIG, "contexts": {**SUITE_CONFIG["contexts"], "web": {
+        **SUITE_CONFIG["contexts"]["web"], "device": "web-device", "device_covered": ["web/src/*"]}}}
+
+    verdicts, _ = _verdicts(repo, ledger, config)
+
+    assert verdicts["web-device"] == "manual"
+
+
+def test_verdicts_command_prints_and_never_fails(repo, monkeypatch, capsys):
+    monkeypatch.chdir(repo)
+
+    assert merge.main(["verdicts", "9"]) == 0
+    assert "no suite" in capsys.readouterr().out

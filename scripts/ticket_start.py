@@ -67,6 +67,7 @@ def check_start(*, state, assignees, open_blockers, android, android_in_flight, 
 HANDOFF_LINE = (
     "Follow docs/agents/session-handoff.md: don't push, don't close the issue, "
     "and finish with a STATUS comment on the ticket. "
+    "While you work, run single test files and typechecks only; leave the full run to /ticket-finish, which runs it once and remembers the pass. "
     "Run a live External suite only if an acceptance criterion names one, and only after the owner approves that run; the merge step covers the rest. "
     "If the ticket has a `## Decisions` section, or needs a decision only the owner can make, ask the owner directly with AskUserQuestion "
     "(up to 4 questions per call) before building on it, then post the questions and answers as a ticket comment starting `DECISIONS`; "
@@ -95,6 +96,7 @@ Run this in the worktree `{worktree_relpath(n)}` (branch `{branch_name(n)}`, cut
 The rules it points to (docs/agents/session-handoff.md):
 
 - Do not push. Do not close the issue.
+- While you work, run single test files and typechecks only. `/ticket-finish` runs the full session-level suites once and remembers each pass by tree hash, so `/ticket-merge` does not repeat them.
 - Do not commit `dashboard.svg`, `scripts/dashboard_data/external_status.json` or `.env*`.
 - `web/.env.local` was copied in for the live External suites. Run one only if an acceptance criterion names it, after the owner approves that run; never print the file.
 - The ticket is already assigned to the owner: that is the claim.

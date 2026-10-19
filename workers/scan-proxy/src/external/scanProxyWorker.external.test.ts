@@ -169,7 +169,9 @@ test("[scan-proxy-worker] response shape and journey: a real scan returns the co
   for (const field of DOC_TYPE_CONFIG.truck_tag.schema.required ?? []) {
     assert.ok(field in body.fields, `the scan result is missing the required field ${field}`);
   }
-  assert.ok(Object.values(body.fields).some((value) => value !== null), "every field came back empty");
+  // The tire entries are always objects, so only the scalar fields show the image was actually read.
+  const readScalars = Object.values(body.fields).filter((value) => value !== null && typeof value !== "object");
+  assert.ok(readScalars.length > 0, "every scalar field came back empty");
 
   assert.equal(await balanceOf(token), before - 1, "a delivered scan must cost exactly one credit");
 });

@@ -13,11 +13,12 @@
     environment for whichever surfaces are stale (scan-proxy-worker needs the
     RevenueCat key and the Supabase test users, and tests whatever is
     deployed: `npm run deploy` first after changing the Worker); a missing
-    key fails the run. -Skip records `skipped` for the stale surfaces instead of running
-    them; a skip never advances freshness, so they stay stale. A paid
-    surface (anthropic, scan-proxy-worker) asks for confirmation before it runs; -MaxPaidCalls
-    sets an independent ceiling instead of trusting the sum of the stale
-    paid surfaces' own declared costs.
+    key fails the run. -Skip records `skipped` for the stale surfaces
+    instead of running them; a skip never advances freshness, so they stay
+    stale. A paid surface (anthropic, scan-proxy-worker) asks for
+    confirmation before it runs; -MaxPaidCalls sets an independent ceiling
+    instead of trusting the sum of the stale paid surfaces' own declared
+    costs.
 
 .PARAMETER MaxPaidCalls
     Independent ceiling for paid calls this run may confirm (default: the

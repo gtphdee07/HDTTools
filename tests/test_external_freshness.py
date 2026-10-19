@@ -341,12 +341,15 @@ def test_scan_proxy_worker_is_in_the_real_manifest_active_with_one_paid_scan():
     assert surface["status"] == "active"
     # Its one billed call is the real scan that proves the response shape and the spend.
     assert surface["max_paid_calls"] == 1
+    # Android and Web call this Worker, so their release gates wait on it.
     assert {"scan-proxy", "android", "web"} == set(surface["platforms"])
     assert {
         "workers/scan-proxy/src/index.ts",
         "workers/scan-proxy/src/scan.ts",
         "workers/scan-proxy/src/request.ts",
         "workers/scan-proxy/src/http.ts",
+        "workers/scan-proxy/src/docTypes.ts",
+        "workers/scan-proxy/src/idempotencyKey.ts",
     } <= set(surface["boundary_files"])
     assert {"workers/scan-proxy/wrangler.toml", "workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json"} <= set(
         surface["dependency_pins"]
@@ -369,6 +372,7 @@ def test_the_workers_compatibility_date_lives_in_a_watched_pin_file():
         "workers/scan-proxy/src/request.ts",
         "workers/scan-proxy/src/http.ts",
         "workers/scan-proxy/src/docTypes.ts",
+        "workers/scan-proxy/src/idempotencyKey.ts",
         "workers/scan-proxy/wrangler.toml",
         "workers/scan-proxy/package.json",
         "workers/scan-proxy/package-lock.json",
@@ -397,12 +401,6 @@ def test_a_new_stable_release_of_a_watched_cloudflare_package_makes_scan_proxy_w
 
     assert stale.state == "stale"
     assert any(package in r and "9.1.0" in r for r in stale.reasons)
-
-
-def test_scan_proxy_worker_is_in_every_release_chain_that_calls_it():
-    manifest = ef.load_manifest()
-    for platform in ("scan-proxy", "android", "web"):
-        assert "scan-proxy-worker" in ef.surfaces_for_platform(manifest, platform)
 
 
 def test_npm_fetcher_returns_the_registry_time_map():

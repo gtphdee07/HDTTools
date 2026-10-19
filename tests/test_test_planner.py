@@ -99,6 +99,16 @@ def test_a_changed_test_helper_is_not_planned_as_a_test_file(helper, level):
     assert not any(helper in command for command in commands(tp.plan([helper], CONFIG, MARKERS, level=level)))
 
 
+@pytest.mark.parametrize("level", ["issue", "session"])
+def test_a_deleted_test_file_is_not_planned_to_run(level):
+    """A branch that deletes a test lists it as changed; pytest on a missing file exits 4, which a finish run reads as a failed suite (#135)."""
+    plan = tp.plan(["tests/test_gone.py", "tests/test_here.py"], CONFIG, MARKERS, level=level,
+                   file_exists=lambda p: p == "tests/test_here.py")
+    joined = " ".join(commands(plan))
+    assert "tests/test_here.py" in joined
+    assert "tests/test_gone.py" not in joined
+
+
 def test_files_outside_every_python_context_plan_nothing_and_say_so():
     plan = plan_for(["web/src/app.tsx", "README.md"])
     assert plan.selections == []

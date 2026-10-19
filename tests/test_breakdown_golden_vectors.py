@@ -6,6 +6,14 @@ pass. A case whose "requires" names a capability this runner doesn't know fails
 loudly rather than being skipped - all three runners (this one, Kotlin, TypeScript)
 share that rule, so a new capability can never be silently ignored.
 
+Every key a UI reads is asserted here: per row `label`, `tone`, `badgeLabel`,
+`pct`, `actualLabel`, `limitLabel`, `note` (plus `estimated`), and for the verdict
+`status`, `headline`, `subline`. The Kotlin and TypeScript runners assert the same
+set (Kotlin compares raw numbers and badge text instead of the formatted label
+strings). That is what retired the separate response-shape fixture (#135). The
+presentation-only keys (`barColor`, `bandBg`, `icon`) are not asserted on purpose:
+they only choose a colour or glyph and carry no figure or wording.
+
 This does not replace tests/test_breakdown.py - that file's hand-written,
 one-scenario-per-test style stays the readable primary regression suite.
 This file exists specifically to keep Python and Kotlin from silently

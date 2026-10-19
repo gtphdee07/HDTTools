@@ -160,9 +160,8 @@ Minor and Major commands and owed only when the diff touches what they
 check (root `TESTING.md`, "Python test commands"). A test graduates from Function/Module to
 **inter-module interface** the moment it starts asserting a contract
 *between* Python and another platform — the existing precedent is
-`test_api.py`'s `test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage`
-and `test_breakdown_response_matches_the_shared_api_contract`, each
-paired with a `web/` test via a shared `test-vectors/*.json` fixture. If
+`test_breakdown_golden_vectors.py`, paired with the Kotlin and TypeScript
+runners via the shared `test-vectors/breakdown_cases.json` fixture. If
 the change touches `compute_breakdown`/`verdict_for` specifically, see
 rule 4 above — the case belongs in `test-vectors/breakdown_cases.json`,
 not only in `test_breakdown.py`.
@@ -212,9 +211,9 @@ Per `web/TESTING.md`, Minor and Major are the same undifferentiated
 `npm test` run today, same as Python — no tagged fast subset exists yet.
 A test graduates to **cross-platform interface** the moment it asserts a
 contract against Python's real response shape rather than a
-hand-maintained fixture — the existing precedent is `api.test.ts`'s
-`pin_weight_pct` case and `apiShape.test.ts`, each paired with a Python
-test via a shared `test-vectors/*.json` file.
+hand-maintained fixture — the existing precedent is the golden-vector
+runner in `breakdown.test.ts`, paired with the Python and Kotlin runners
+via the shared `test-vectors/breakdown_cases.json` file.
 
 **Real-vs-mocked convention, with evidence:** every network call
 (`extractTruckTag`/`extractTrailerTag`/`extractScaleTicket`/

@@ -10,9 +10,6 @@ pre-purchase feature's standalone_weight_lb input.
 
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-
-from hdttools.api import main
 from hdttools.ocr_common import ensure_tesseract_configured, ocr_text, open_image, preprocess_image
 from hdttools.scale_ticket_ocr import _parse_fields
 
@@ -40,24 +37,3 @@ def test_real_ocr_on_the_tow_vehicle_only_photo_extracts_the_weights_correctly()
 
     standalone_from_axles = fields["steer_axle_lb"] + fields["drive_axle_lb"]
     assert standalone_from_axles == fields["gross_weight_lb"]  # no trailer hitched, so these agree
-
-
-def test_real_photo_upload_through_the_actual_api_endpoint():
-    # Unlike test_api.py's client fixture (which deliberately mocks every
-    # OCR/image boundary so that suite doesn't need Tesseract installed),
-    # this hits the real /api/extract/scale-ticket endpoint - real
-    # multipart upload, real Image.open on the raw bytes, real OCR - with
-    # nothing mocked, to prove the FastAPI boundary itself works with an
-    # actual file, not just a `b"fake"` placeholder.
-    with TestClient(main.app) as client:
-        with _PHOTO.open("rb") as f:
-            response = client.post(
-                "/api/extract/scale-ticket",
-                files={"file": ("CatScale-GooseOnly.jpg", f, "image/jpeg")},
-            )
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["steer_axle_lb"] == 5560.0
-    assert body["drive_axle_lb"] == 4420.0
-    assert body["gross_weight_lb"] == 9980.0

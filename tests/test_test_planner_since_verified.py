@@ -401,10 +401,6 @@ def test_real_config_a_scripts_change_does_not_queue_streamlit_which_never_impor
         assert not any("streamlit" in c for c in real_commands(["scripts/coverage_lib.py"], level)), level
 
 
-def test_real_config_the_api_contract_no_longer_queues_web():
-    assert "npm --prefix web test" not in real_commands(["src/hdttools/api/main.py"])
-
-
 def test_real_config_every_depends_on_names_a_declared_context():
     contexts = REAL["contexts"]
     for name, ctx in contexts.items():

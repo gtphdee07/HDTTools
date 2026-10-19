@@ -12,7 +12,7 @@ Core-specific things to check:
 - The categories in `TESTING.md` (function, interaction, module, inter-module): which exist for each Core module, and which modules have none.
 - The golden-vector fixture as the cross-platform interface: does it cover every rule in the breakdown math and each verdict branch; are there rules in Core that the fixture never exercises (so Android and Web ports could drift without any test failing)? Open issues #45 to #48 change this math, so list what they will need.
 - OCR modules: offline tests, real-photo tests, and the live Claude vision test (do not run live ones; report what they need).
-- `src/hdttools/api/` is no longer deployed for Web (ADR-0007): is it still tested, and should it be?
+- `src/hdttools/api/breakdown.py` is the live Python reference for the breakdown math (the FastAPI app beside it was removed in #135): is it tested through the golden vectors and `test_breakdown.py`?
 - Coverage: run the offline coverage pass with `uv run`, and report what the coverage gate enforces today versus the measured numbers.
 - Core's calls to third-party packages and APIs, and which are watched in `scripts/external_manifest/`.
 - Whether the full offline suite can be run per file, per module, and as a whole with one command each.

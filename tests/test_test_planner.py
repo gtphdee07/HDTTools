@@ -666,7 +666,7 @@ def named_test_files(command):
 @pytest.mark.parametrize("level", ["issue", "session"])
 def test_real_config_owes_no_slow_test_for_a_src_hdttools_only_diff(level):
     assert real_slow(["src/hdttools/database.py"], level) == []
-    assert real_slow(["src/hdttools/api/schemas.py", "src/hdttools/models.py"], level) == []
+    assert real_slow(["src/hdttools/models.py", "src/hdttools/scale_ticket.py"], level) == []
 
 
 @pytest.mark.parametrize("level", ["issue", "session"])

@@ -17,7 +17,7 @@
     {
       "name": "ocr-photos",
       "triggers": [
-        "src/hdttools/*_ocr.py", "src/hdttools/ocr_common.py", "src/hdttools/api/main.py", "src/hdttools/api/breakdown.py",
+        "src/hdttools/*_ocr.py", "src/hdttools/ocr_common.py", "src/hdttools/api/breakdown.py",
         "scripts/vehicle_discovery.py", "scripts/pass_pool.py", "scripts/fail_pool.py",
         "ExampleDocs/*"
       ],
@@ -108,7 +108,7 @@
     {
       "name": "ocr-output-keys",
       "context": "core",
-      "files": ["src/hdttools/*_ocr.py", "src/hdttools/api/schemas.py", "streamlit_app/fields.py"],
+      "files": ["src/hdttools/*_ocr.py", "streamlit_app/fields.py"],
       "tests": ["tests/test_ocr_output_key_contracts.py"],
       "shares_with": ["streamlit"]
     },
@@ -122,13 +122,6 @@
         "web": "npm --prefix web test -- src/breakdown.test.ts",
         "android": "android/gradlew -p android testDebugUnitTest --tests com.rigcheck.app.domain.BreakdownGoldenVectorTest"
       }
-    },
-    {
-      "name": "api-contract",
-      "context": "core",
-      "files": ["src/hdttools/api/main.py", "src/hdttools/api/schemas.py", "src/hdttools/api/breakdown.py"],
-      "tests": ["tests/test_api.py"],
-      "shares_with": []
     },
     {
       "name": "reader-entry-points",

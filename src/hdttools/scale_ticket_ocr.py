@@ -39,7 +39,7 @@ from .ocr_common import (
 
 # file_picker/review_form (tkinter) are imported lazily inside
 # read_scale_ticket() below, not here - this keeps _parse_fields() (used
-# by the FastAPI/Streamlit frontends, which never call read_scale_ticket)
+# by the Streamlit frontend, which never calls read_scale_ticket)
 # free of a tkinter dependency that isn't always present on headless
 # hosts (confirmed: Streamlit Community Cloud's Python build lacks it).
 

@@ -1,8 +1,7 @@
 # Future: constrained-random real-image regression testing for OCR/vision extraction
 
-Written 2026-08-25, originally a parked-topic doc in the same shape as
-`FUTURE_API_SCHEMA_VALIDATION.md` (a design worked out in full, not yet
-built) — **updated same day**: most of this design is now built and
+Written 2026-08-25, originally a parked-topic doc (a design worked out in
+full, not yet built) — **updated same day**: most of this design is now built and
 verified for real (pass-pool, fail-pool, interface-contract suite,
 directory-convention auto-discovery, and Android's own duplicate
 pass-pool/fail-pool — see the "Agreed starting point" list below for

@@ -91,11 +91,10 @@ def test_pin_weight_pct_of_exactly_one_does_not_crash():
     # Regression test: found 2026-08-24 via a combinatorial sweep. The
     # axle-reading-estimate branch divides by `1 - pin_weight_pct` - exactly
     # 1.0 (100% of the trailer's weight claimed as pin weight, physically
-    # nonsensical) crashed with ZeroDivisionError. Reaches here unvalidated
-    # from a real caller too (POST /api/breakdown's pin_weight_pct has no
-    # Pydantic range constraint). Deliberately narrow fix - only this exact
-    # value is guarded; a value *above* 1.0 is untouched on purpose, see
-    # test_api.py::test_breakdown_endpoint_pin_weight_pct_is_a_fraction_not_the_ui_percentage.
+    # nonsensical) crashed with ZeroDivisionError. Deliberately narrow fix -
+    # only this exact value is guarded; a value *above* 1.0 (a UI percentage
+    # passed unconverted) is untouched on purpose: it gives a visibly negative
+    # weight, and web/src/breakdown.test.ts guards the divide-by-100.
     items = compute_breakdown(_TRUCK, _TRAILER, _SCALE, pin_weight_pct=1.0)
     total_item = _item(items, "Trailer Total (GVWR)")
     assert total_item["tone"] in {"success", "warning"}

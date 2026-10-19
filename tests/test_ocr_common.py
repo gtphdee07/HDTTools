@@ -1,7 +1,6 @@
 """Function tests for `ocr_common.get_ocr_backend` - the single build/
-env-level flag (`HDTTOOLS_OCR_BACKEND`) both `src/hdttools/api/main.py`
-and `streamlit_app/app.py` read to choose Tesseract-style vs
-Claude-vision-style extraction (roadmap item #16). Default is
+env-level flag (`HDTTOOLS_OCR_BACKEND`) `streamlit_app/app.py` reads to
+choose Tesseract-style vs Claude-vision-style extraction (roadmap item #16). Default is
 "tesseract" so no existing deployment starts requiring
 `ANTHROPIC_API_KEY` without opting in; an invalid value raises loudly
 rather than silently falling back to a default."""

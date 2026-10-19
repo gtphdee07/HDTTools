@@ -29,8 +29,8 @@ or database):
 
 - **Desktop** (`streamlit_app/`) — a single-process Streamlit app, local
   OCR via Tesseract.
-- **Web** (`web/` + `src/hdttools/api/`) — a React frontend talking to a
-  stateless FastAPI backend, local OCR via Tesseract.
+- **Web** (`web/`) — a static React app with its own TypeScript port of the
+  breakdown math; photo scanning goes through the shared Scan service.
 - **Android** (`android/`) — native Kotlin/Compose app. Free offline
   manual entry by default, plus an optional paid Claude-vision "scan
   instead of type" feature (take a photo or pick one from the gallery;
@@ -63,19 +63,15 @@ including deployment notes.
 ## Web
 
 ```
-# Backend (FastAPI), from the repo root
-uv sync
-uv run uvicorn hdttools.api.main:app --reload --port 8000
-
-# Frontend (React + Vite), in a second terminal
+# Frontend (React + Vite), from the repo root
 cd web
 npm install
 npm run dev
 ```
 
-Frontend runs on `http://localhost:5173`, backend on
-`http://localhost:8000` (`/docs` for Swagger UI). Also requires
-Tesseract — see below. See [`web/README.md`](web/README.md) for more.
+Runs on `http://localhost:5173`. There is no backend to start: the math runs
+in the browser. See [`web/README.md`](web/README.md) for the Scan service
+setup and more.
 
 ## Android
 
@@ -187,7 +183,7 @@ narrative history of how it got built.
 - `src/hdttools/scale_ticket_ocr.py`, `truck_tag_ocr.py`, `trailer_tag_ocr.py` — local-OCR alternatives
 - `src/hdttools/review_form.py` — generic GUI review/repair form
 - `src/hdttools/database.py` — SQLite persistence (CLI tool only)
-- `src/hdttools/api/` — stateless FastAPI backend for the web frontend (no persistence)
+- `src/hdttools/api/breakdown.py` — Python reference for the breakdown math (used by the Streamlit app; the golden-vector fixture ties it to the Web and Android ports)
 - `tests/` — pytest suite
 - `web/` — React + Vite frontend (RigCheck Web)
 - `streamlit_app/` — self-contained Streamlit frontend (RigCheck Desktop)

@@ -202,6 +202,18 @@ def test_a_run_on_a_dirty_tree_is_not_recorded(ledger_path):
     assert not ledger_path.exists()
 
 
+def test_a_run_that_started_dirty_is_not_recorded_even_if_the_tree_is_clean_at_the_end(ledger_path):
+    # The suite ran on uncommitted changes, so its pass says nothing about the commit,
+    # even when the command itself cleans the tree up before it finishes.
+    git = FakeGit(SHA_A, clean=False)
+    runner = FakeRunner(git=git, during=lambda g: setattr(g, "clean", True))
+
+    result, _ = run(ledger_path, git=git, runner=runner)
+
+    assert result == 0
+    assert not ledger_path.exists()
+
+
 def test_a_run_during_which_head_moved_is_not_recorded(ledger_path):
     git = FakeGit(SHA_A)
     runner = FakeRunner(git=git, during=lambda g: setattr(g, "head_sha", SHA_B))

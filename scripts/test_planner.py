@@ -156,7 +156,10 @@ def _is_test_file(path: str, ctx: dict) -> bool:
 
 
 def _is_python_test(path: str) -> bool:
-    return path.startswith("tests/") and path.endswith(".py")
+    """A file pytest collects (its default `test_*.py` / `*_test.py`); a helper such as
+    tests/_release_test_helpers.py or conftest.py collects nothing, and pytest exits 5 on it."""
+    name = PurePosixPath(path).name
+    return path.startswith("tests/") and (fnmatch(name, "test_*.py") or fnmatch(name, "*_test.py"))
 
 
 def plan(

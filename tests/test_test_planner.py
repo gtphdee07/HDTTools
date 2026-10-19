@@ -92,6 +92,13 @@ def test_changed_test_file_runs_first_as_the_targeted_test():
     assert plan.selections[0].kind == "targeted"
 
 
+@pytest.mark.parametrize("level", ["issue", "session"])
+@pytest.mark.parametrize("helper", ["tests/_suite_ledger_helpers.py", "tests/conftest.py", "tests/__init__.py"])
+def test_a_changed_test_helper_is_not_planned_as_a_test_file(helper, level):
+    """pytest collects nothing from a helper module and exits 5, which a finish run reads as a failed suite."""
+    assert not any(helper in command for command in commands(tp.plan([helper], CONFIG, MARKERS, level=level)))
+
+
 def test_files_outside_every_python_context_plan_nothing_and_say_so():
     plan = plan_for(["web/src/app.tsx", "README.md"])
     assert plan.selections == []

@@ -25,7 +25,7 @@ SHA_B = "b" * 40
 
 
 class FakeGit:
-    """HEAD and tree state; `on_run` lets a test move HEAD or dirty the tree mid-run."""
+    """HEAD and tree state; FakeRunner(during=...) moves HEAD or dirties the tree mid-run."""
 
     def __init__(self, head=SHA_A, clean=True):
         self.head_sha = head
@@ -121,7 +121,7 @@ def test_a_run_that_cannot_start_is_skipped_and_leaves_the_record_untouched(ledg
 
     result, _ = run(ledger_path, git=FakeGit(SHA_B), runner=FakeRunner(error=FileNotFoundError("npm")))
 
-    assert result != 0
+    assert result == vl.COULD_NOT_START_EXIT
     assert ledger_path.read_text(encoding="utf-8") == before
 
 
@@ -252,3 +252,71 @@ def test_cli_show_lists_every_recorded_entry(ledger_path):
 
     text = "\n".join(lines)
     assert "web" in text and "issue" in text and SHA_A[:8] in text
+
+
+def test_a_ledger_with_a_malformed_context_is_reported_not_crashed(ledger_path):
+    ledger_path.write_text('{"contexts": {"web": 1}}', encoding="utf-8")
+    lines: list[str] = []
+
+    code = vl.main(["show"], path=ledger_path, git=FakeGit(), out=lines.append)
+
+    assert code == vl.LEDGER_ERROR_EXIT
+    assert any("unexpected shape" in line for line in lines)
+
+
+def test_ledger_errors_use_an_exit_code_a_wrapped_suite_does_not(ledger_path):
+    ledger_path.write_text("{not json", encoding="utf-8")
+
+    code = vl.main(["check", "--context", "core", "--level", "issue"],
+                   path=ledger_path, git=FakeGit(), out=lambda _: None)
+
+    assert code == vl.LEDGER_ERROR_EXIT
+    assert code not in (1, 2)
+
+
+def test_cli_run_splits_the_wrapped_command_after_the_double_dash(ledger_path):
+    runner = FakeRunner()
+
+    vl.main(["run", "--context", "core", "--level", "issue", "--", "uv", "run", "pytest", "-m", "minor"],
+            path=ledger_path, git=FakeGit(), run_command=runner, out=lambda _: None)
+
+    assert runner.calls == [["uv", "run", "pytest", "-m", "minor"]]
+
+
+def _git(root, *args):
+    import subprocess
+
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
+                   cwd=root, check=True, capture_output=True)
+
+
+@pytest.fixture
+def throwaway_repo(tmp_path):
+    root = tmp_path / "repo"
+    root.mkdir()
+    _git(root, "init", "-q")
+    (root / "a.txt").write_text("one", encoding="utf-8")
+    _git(root, "add", "a.txt")
+    _git(root, "commit", "-q", "-m", "first")
+    return root
+
+
+def test_real_git_reports_head_and_whether_tracked_files_changed(throwaway_repo):
+    git = vl.RealGit(throwaway_repo)
+    assert len(git.head()) == 40
+    assert git.is_clean() is True
+
+    (throwaway_repo / "untracked.txt").write_text("x", encoding="utf-8")
+    assert git.is_clean() is True  # untracked files do not count
+
+    (throwaway_repo / "a.txt").write_text("two", encoding="utf-8")
+    assert git.is_clean() is False
+
+
+def test_real_git_ledger_is_in_the_git_dir_and_shared_with_a_worktree(throwaway_repo, tmp_path):
+    main = vl.RealGit(throwaway_repo)
+    worktree = tmp_path / "wt"
+    _git(throwaway_repo, "worktree", "add", "-q", "-b", "side", str(worktree))
+
+    assert vl.default_ledger_path(main) == (throwaway_repo / ".git").resolve() / vl.LEDGER_NAME
+    assert vl.default_ledger_path(vl.RealGit(worktree)) == vl.default_ledger_path(main)

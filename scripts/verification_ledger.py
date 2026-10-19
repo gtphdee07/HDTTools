@@ -13,6 +13,12 @@ Rules:
     own exit code is passed through but nothing is recorded.
   - A failed run, a run that could not start and a skipped run leave the
     previous record untouched.
+  - The runner sees only the command's exit code. A command that skips its
+    work and still exits 0 must exit non-zero (or call `record(..., "skipped")`)
+    to avoid being recorded; untracked files are not part of the clean check.
+  - Exit codes: the command's own code from `run`; 1 from `check` when not
+    verified; 125 for a ledger, git or usage error; 127 if the command could
+    not start.
 
 Questions it answers (exit 0 only when verified, so a script can branch on it):
 
@@ -30,6 +36,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
@@ -41,6 +48,8 @@ from release_steps import default_run_command  # noqa: E402
 
 LEDGER_NAME = "hdttools-verification-ledger.json"
 LEVELS = planner.LEVELS
+LEDGER_ERROR_EXIT = 125  # not 1 (unverified) or 2 (a wrapped suite's own failure codes)
+COULD_NOT_START_EXIT = 127
 OUTCOMES = ("pass", "fail", "skipped")
 
 VERIFIED = "verified"  # the recorded pass is at the commit asked about
@@ -57,9 +66,12 @@ class GitError(Exception):
 
 
 class RealGit:
+    def __init__(self, root: Path = REPO_ROOT):
+        self.root = root
+
     def _git(self, *args: str) -> str:
         try:
-            proc = subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True)
+            proc = subprocess.run(["git", *args], cwd=self.root, capture_output=True, text=True)
         except OSError as exc:
             raise GitError(str(exc)) from exc
         if proc.returncode != 0:
@@ -74,7 +86,7 @@ class RealGit:
         return self._git("status", "--porcelain", "--untracked-files=no") == ""
 
     def common_dir(self) -> Path:
-        return (REPO_ROOT / self._git("rev-parse", "--git-common-dir")).resolve()
+        return (self.root / self._git("rev-parse", "--git-common-dir")).resolve()
 
 
 def default_ledger_path(git=None) -> Path:
@@ -101,7 +113,8 @@ def _load(path: Path) -> dict:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise LedgerError(f"verification ledger {path} is unreadable ({exc}); fix or delete it") from exc
-    if not isinstance(data, dict) or not isinstance(data.get("contexts"), dict):
+    contexts = data.get("contexts") if isinstance(data, dict) else None
+    if not isinstance(contexts, dict) or not all(isinstance(v, dict) for v in contexts.values()):
         raise LedgerError(f"verification ledger {path} has an unexpected shape; fix or delete it")
     return data
 
@@ -117,11 +130,14 @@ def last_verified(context: str, level: str, *, path: Path | None = None) -> str 
     return entry["commit"] if entry else None
 
 
-def status(context: str, level: str, commit: str, *, path: Path | None = None) -> str:
-    recorded = last_verified(context, level, path=path)
+def _state(recorded: str | None, commit: str) -> str:
     if recorded is None:
         return UNVERIFIED
     return VERIFIED if recorded == commit else STALE
+
+
+def status(context: str, level: str, commit: str, *, path: Path | None = None) -> str:
+    return _state(last_verified(context, level, path=path), commit)
 
 
 def is_verified(context: str, level: str, commit: str, *, path: Path | None = None) -> bool:
@@ -160,8 +176,9 @@ def record(
         "command": command,
     }
     target.parent.mkdir(parents=True, exist_ok=True)
-    scratch = target.with_name(target.name + ".tmp")
-    scratch.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    fd, scratch = tempfile.mkstemp(dir=target.parent, prefix=target.name + ".", suffix=".tmp")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(json.dumps(data, indent=2, sort_keys=True) + "\n")
     os.replace(scratch, target)
     return True
 
@@ -189,7 +206,7 @@ def run_and_record(
         code = run_command(command, cwd=REPO_ROOT).returncode
     except OSError as exc:
         out(f"could not start {command[0]!r} ({exc}); {context}/{level} not recorded.")
-        return 127
+        return COULD_NOT_START_EXIT
     label = f"{context}/{level}"
     if code != 0:
         out(f"{label}: failed (exit {code}); ledger unchanged.")
@@ -238,17 +255,19 @@ def main(
             return 0 if result == VERIFIED else 1
         data = _load(target)
         head = git.head()
-        entries = [(c, lv, e) for c, levels in sorted(data["contexts"].items())
-                   for lv, e in sorted(levels.items()) if isinstance(e, dict)]
-        if not entries:
+        shown = False
+        for c in sorted(data["contexts"]):
+            for lv in sorted(data["contexts"][c]):
+                e = _entry(data, c, lv)
+                if e:
+                    out(f"{c}/{lv}: {_state(e['commit'], head)}; last pass {e['commit'][:8]} at {e.get('timestamp', '?')}")
+                    shown = True
+        if not shown:
             out("verification ledger is empty")
-        for c, lv, e in entries:
-            state = VERIFIED if e.get("commit") == head else STALE
-            out(f"{c}/{lv}: {state}; last pass {str(e.get('commit', ''))[:8]} at {e.get('timestamp', '?')}")
         return 0
     except (LedgerError, GitError, ValueError) as exc:
         out(str(exc))
-        return 2
+        return LEDGER_ERROR_EXIT
 
 
 if __name__ == "__main__":

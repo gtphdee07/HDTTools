@@ -5,7 +5,7 @@
   "boundary_files": ["android/app/src/main/java/com/rigcheck/app/data/RevenueCatManager.kt"],
   "dependency_pins": ["android/gradle/libs.versions.toml"],
   "registry_packages": [
-    {"ecosystem": "maven", "package": "com.android.billingclient:billing"},
+    {"ecosystem": "google-maven", "package": "com.android.billingclient:billing"},
     {"ecosystem": "maven", "package": "com.revenuecat.purchases:purchases"}
   ],
   "max_paid_calls": 0

@@ -525,3 +525,197 @@ def test_every_real_manifest_entry_is_well_formed():
             assert set(pkg) == {"ecosystem", "package"}, f"{name}: registry_packages entries need exactly ecosystem and package"
             assert isinstance(pkg["ecosystem"], str) and pkg["ecosystem"], f"{name}: ecosystem must be a non-empty string"
             assert isinstance(pkg["package"], str) and pkg["package"], f"{name}: package must be a non-empty string"
+
+
+# --- Maven fetchers (#54) ---------------------------------------------------
+
+MAVEN_PKG = "com.revenuecat.purchases:purchases"
+GOOGLE_PKG = "com.android.billingclient:billing"
+# 2026-10-02T00:00:00Z as epoch milliseconds, the unit Maven Central's search API uses.
+OCT_2_MS = 1790899200000
+
+
+def _central_page(docs, found=None):
+    return json.dumps({"response": {"numFound": len(docs) if found is None else found, "docs": docs}}).encode()
+
+
+def test_maven_fetcher_returns_the_release_time_of_each_version():
+    seen = []
+
+    def fake_open(url, timeout):
+        seen.append(url)
+        return _central_page([{"v": "8.1.0", "timestamp": OCT_2_MS}, {"v": "8.0.0", "timestamp": OCT_2_MS - 86_400_000}])
+
+    times = ef.fetch_maven_times(MAVEN_PKG, opener=fake_open)
+
+    assert {v: ef._parse(t) for v, t in times.items()} == {
+        "8.1.0": ef._parse("2026-10-02T00:00:00Z"),
+        "8.0.0": ef._parse("2026-10-01T00:00:00Z"),
+    }
+    assert len(seen) == 1
+    assert seen[0].startswith("https://search.maven.org/solrsearch/select?")
+    assert "g%3A%22com.revenuecat.purchases%22+AND+a%3A%22purchases%22" in seen[0]
+    assert "core=gav" in seen[0]
+
+
+def test_maven_fetcher_reads_every_page_of_versions():
+    def fake_open(url, timeout):
+        if "start=0" in url:
+            return _central_page([{"v": "8.1.0", "timestamp": OCT_2_MS}], found=2)
+        assert "start=1" in url
+        return _central_page([{"v": "8.0.0", "timestamp": OCT_2_MS}], found=2)
+
+    assert set(ef.fetch_maven_times(MAVEN_PKG, opener=fake_open)) == {"8.1.0", "8.0.0"}
+
+
+def test_maven_fetcher_wraps_network_errors():
+    def boom(url, timeout):
+        raise OSError("no network")
+
+    with pytest.raises(ef.RegistryError):
+        ef.fetch_maven_times(MAVEN_PKG, opener=boom)
+
+
+def test_maven_fetcher_treats_an_unparseable_body_as_a_registry_error():
+    with pytest.raises(ef.RegistryError):
+        ef.fetch_maven_times(MAVEN_PKG, opener=lambda url, timeout: b"<html>rate limited</html>")
+
+
+def test_maven_fetcher_treats_an_unknown_artifact_as_a_registry_error_not_an_empty_release_list():
+    # An artifact Central does not host (it may live on Google Maven) must not read as "no releases, fresh".
+    with pytest.raises(ef.RegistryError):
+        ef.fetch_maven_times(GOOGLE_PKG, opener=lambda url, timeout: _central_page([]))
+
+
+@pytest.mark.parametrize("package", ["purchases", "a:b:c", ":purchases", "com.x:"])
+def test_maven_fetchers_reject_a_package_that_is_not_group_colon_artifact(package):
+    def never(url, timeout):
+        raise AssertionError("no request should be made")
+
+    with pytest.raises(ef.RegistryError):
+        ef.fetch_maven_times(package, opener=never)
+    with pytest.raises(ef.RegistryError):
+        ef.fetch_google_maven_times(package, opener=never)
+
+
+GOOGLE_METADATA = b"""<?xml version='1.0' encoding='UTF-8'?>
+<metadata>
+  <groupId>com.android.billingclient</groupId>
+  <artifactId>billing</artifactId>
+  <versioning>
+    <latest>7.1.1</latest>
+    <versions>
+      <version>7.0.0</version>
+      <version>7.1.0</version>
+      <version>7.1.1</version>
+      <version>8.0.0-rc01</version>
+    </versions>
+  </versioning>
+</metadata>"""
+
+
+def test_google_maven_fetcher_lists_versions_with_no_release_time():
+    seen = []
+
+    def fake_open(url, timeout):
+        seen.append(url)
+        return GOOGLE_METADATA
+
+    assert ef.fetch_google_maven_times(GOOGLE_PKG, opener=fake_open) == {
+        "7.0.0": None, "7.1.0": None, "7.1.1": None, "8.0.0-rc01": None,
+    }
+    assert seen == ["https://dl.google.com/dl/android/maven2/com/android/billingclient/billing/maven-metadata.xml"]
+
+
+def test_google_maven_fetcher_wraps_network_errors():
+    def boom(url, timeout):
+        raise OSError("no network")
+
+    with pytest.raises(ef.RegistryError):
+        ef.fetch_google_maven_times(GOOGLE_PKG, opener=boom)
+
+
+def test_google_maven_fetcher_treats_an_unparseable_body_as_a_registry_error():
+    with pytest.raises(ef.RegistryError):
+        ef.fetch_google_maven_times(GOOGLE_PKG, opener=lambda url, timeout: b"<html>not metadata")
+
+
+def test_the_maven_ecosystems_are_registered_with_the_dispatcher():
+    assert ef._FETCHERS["maven"] is ef.fetch_maven_times
+    assert ef._FETCHERS["google-maven"] is ef.fetch_google_maven_times
+
+
+def maven_surface(ecosystem="maven", package=MAVEN_PKG):
+    return surface(name="android-lib", platforms=["android"], registry_packages=[{"ecosystem": ecosystem, "package": package}])
+
+
+def test_a_maven_release_published_after_the_last_pass_makes_the_surface_stale():
+    times = {MAVEN_PKG: {"8.0.0": "2026-09-01T00:00:00+00:00", "8.1.0": "2026-10-02T00:00:00+00:00"}}
+    v = verdict(status_with(passed(), name="android-lib"), registry=FakeRegistry(times), m=manifest(maven_surface()))
+    assert v.state == "stale"
+    assert any("8.1.0" in r for r in v.reasons)
+    assert v.versions == {MAVEN_PKG: "8.1.0"}
+
+
+def test_a_maven_pre_release_published_after_the_last_pass_is_ignored():
+    times = {MAVEN_PKG: {"8.0.0": "2026-09-01T00:00:00+00:00", "9.0.0-beta01": "2026-10-02T00:00:00+00:00"}}
+    v = verdict(status_with(passed(), name="android-lib"), registry=FakeRegistry(times), m=manifest(maven_surface()))
+    assert v.state == "fresh"
+
+
+def undated_verdict(listed, status_entry):
+    registry = FakeRegistry({GOOGLE_PKG: {v: None for v in listed}})
+    m = manifest(maven_surface("google-maven", GOOGLE_PKG))
+    return verdict(status_with(status_entry, name="android-lib"), registry=registry, m=m)
+
+
+def test_undated_registry_is_fresh_while_the_latest_stable_version_is_the_one_recorded_at_the_pass():
+    v = undated_verdict(["7.0.0", "7.1.1"], passed(versions={GOOGLE_PKG: "7.1.1"}))
+    assert v.state == "fresh"
+    assert v.versions == {GOOGLE_PKG: "7.1.1"}
+
+
+def test_undated_registry_is_stale_on_any_change_of_the_latest_stable_version_and_says_why():
+    v = undated_verdict(["7.1.1", "7.1.2"], passed(versions={GOOGLE_PKG: "7.1.1"}))
+    assert v.state == "stale"
+    reason = next(r for r in v.reasons if GOOGLE_PKG in r)
+    assert "no per-version release dates" in reason
+    assert "7.1.1" in reason and "7.1.2" in reason
+
+
+def test_undated_registry_is_stale_when_the_pass_recorded_no_version_for_the_package():
+    v = undated_verdict(["7.1.1"], passed())
+    assert v.state == "stale"
+    assert any("no per-version release dates" in r for r in v.reasons)
+
+
+def test_undated_registry_ignores_pre_release_versions():
+    v = undated_verdict(["7.1.1", "8.0.0-rc01"], passed(versions={GOOGLE_PKG: "7.1.1"}))
+    assert v.state == "fresh"
+
+
+def test_undated_registry_does_not_make_a_never_passed_surface_any_less_stale():
+    v = undated_verdict(["7.1.1"], {})
+    assert v.state == "stale"
+    assert any("never passed" in r for r in v.reasons)
+    assert v.versions == {GOOGLE_PKG: "7.1.1"}
+
+
+def test_an_unreachable_undated_registry_is_stale():
+    v = verdict(
+        status_with(passed(versions={GOOGLE_PKG: "7.1.1"}), name="android-lib"),
+        registry=FakeRegistry(down=True),
+        m=manifest(maven_surface("google-maven", GOOGLE_PKG)),
+    )
+    assert v.state == "stale"
+    assert any("registry" in r for r in v.reasons)
+
+
+def test_the_real_manifest_names_the_registry_that_hosts_each_android_library():
+    packages = {
+        (p["ecosystem"], p["package"])
+        for name in ("google-play-billing", "revenuecat-android-sdk")
+        for p in ef.load_manifest()["surfaces"][name]["registry_packages"]
+    }
+    # Billing is published on Google Maven only; RevenueCat's SDK is on Maven Central.
+    assert packages == {("google-maven", GOOGLE_PKG), ("maven", MAVEN_PKG)}

@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -67,6 +69,38 @@ class TruckTagEntryScreenTest {
         composeRule.onNodeWithText("No ticket? Estimate pin/hitch weight as 20% of the trailer's weight")
             .performScrollTo()
             .assertIsDisplayed()
+    }
+
+    // #118: the button used to stay tappable while it read "Reading…", so a
+    // second tap sent a second Scan.
+    @Test
+    fun standaloneScanButtonCannotBeTappedWhileAScanIsReading() {
+        var needCredits = 0
+        composeRule.setContent {
+            TruckTagEntryScreen(
+                truck = TruckTag(),
+                onTruckChange = {},
+                onContinue = {},
+                scanState = ScanUiState.Loading,
+                creditBalance = 5,
+                onNeedCredits = { needCredits++ },
+            )
+        }
+
+        composeRule.onNodeWithText("Reading…").performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithTag("scan_standalone_ticket").performClick()
+
+        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+        assertEquals(0, needCredits)
+    }
+
+    @Test
+    fun standaloneScanButtonIsEnabledWhenNoScanIsReading() {
+        composeRule.setContent {
+            TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {}, creditBalance = 5)
+        }
+
+        composeRule.onNodeWithTag("scan_standalone_ticket").performScrollTo().assertIsEnabled()
     }
 
     @Test

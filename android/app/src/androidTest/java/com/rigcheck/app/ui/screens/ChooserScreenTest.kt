@@ -87,6 +87,27 @@ class ChooserScreenTest {
         assert(chose) { "onChooseManual should have fired" }
     }
 
+    // #118: the emulator showed taps reaching the buttons under the spinner, so a
+    // second Scan, or manual entry with the first still out, could be started.
+    @Test
+    fun whileAScanIsInFlightTheLoadingOverlayAbsorbsTapsOnTheButtonsUnderIt() {
+        var chose = 0
+        var needCredits = 0
+        setChooser(
+            creditBalance = 5,
+            scanState = ScanUiState.Loading,
+            onChooseManual = { chose++ },
+            onNeedCredits = { needCredits++ },
+        )
+
+        composeRule.onNodeWithText("Enter Manually").performClick()
+        composeRule.onNodeWithText("Scan Photo").performClick()
+
+        assertEquals("Enter Manually must not fire under the overlay", 0, chose)
+        assertEquals(0, needCredits)
+        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+    }
+
     @Test
     fun scanErrorShowsDialogWithMessageAndDismissesOnOk() {
         var dismissed = false

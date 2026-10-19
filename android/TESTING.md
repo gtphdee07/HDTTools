@@ -384,6 +384,23 @@ root `TESTING.md`'s "Dashboard" section.
   answer the retry carries the same photo and the same `client_request_id`,
   after a refunded failure a new id; with no Scan started it sends nothing; and
   it follows the latest Scan, not an earlier one.
+- `ScanSessionTest.kt` (#118) — one Scan at a time per check, and what becomes
+  of an answer for a check that has ended, over a delayed fake Scan client (each
+  Scan waits on a `CompletableDeferred` the test completes, so the test decides
+  what happens while it is in flight; no network): a second Scan while one is out
+  does nothing and sends nothing; an answer for the check it started in is the
+  current one and frees the lock; starting a rig, or showing another screen
+  (leaving it, or moving on to the next screen of the same rig), sends the
+  answer to `onGone` and never `onCurrent`; showing the same screen again (as
+  after turning the device) ends nothing; the next check can scan while the old
+  Scan is still out, and the old answer neither reaches it nor frees its lock;
+  a late answer reaches `onGone` as it came, delivered or failed; the stand-alone
+  ticket's screen follows the same rules; a Scan whose client throws frees the
+  lock. `LateScanReportTest.kt` (#118) — what the user is told for a late answer
+  (the "result wasn't used, it used a Scan Credit" sentence for a delivered
+  Scan, the failure's own message with no next steps otherwise) and that the
+  balance is read again, or set to 0 after `insufficient_credits`, as for a
+  current Scan. The report is given no way to change the rig.
 
 ### Major (instrumented) — `./gradlew connectedDebugAndroidTest`
 
@@ -445,6 +462,12 @@ network involved:
   message and dismisses on OK, and (#117) a bad request or a photo that cannot
   be sent offers a different photo and not Try again, and a different photo with
   no Scans left goes to the paywall instead of the photo choice.
+  (#118) With a Scan in flight the loading overlay absorbs taps: Enter Manually
+  and Scan Photo under it do nothing. `TruckTagEntryScreenTest` (#118): the
+  stand-alone ticket button is disabled while it reads and enabled otherwise.
+- `LateScanDialogTest` (#118) — the dialog for a Scan that answered after its
+  check ended shows its message with OK only (no Try again, Sign in or photo
+  step), and OK dismisses.
 - `CreditBalanceChipTest` — null shows the "…" not-yet-loaded
   placeholder; 0/1/5 use correct singular/plural wording; `onClick`
   fires when provided.
@@ -560,6 +583,30 @@ the soft keyboard took it.**
   `System has crashed` or `Can't find service: activity` is the emulator
   itself falling over (seen right after a cold boot with ANRs in Google
   apps). Read the failure text before counting a run.
+
+**Scan-in-flight navigation tests** (`ui/navigation/ScanInFlightNavigationTest.kt`, #118)
+— the real `MainActivity`, nav host and view model, with the view model's Scan
+answered by the test through `RigCheckViewModel.scanSender` (null in the app), so a
+Scan is held open and answered when the test chooses; no Worker, no Scan Credit,
+offline like the rest of this suite. A second Scan while one is out sends
+nothing; a Scan answered on the check it started in fills it and opens the entry
+screen; one answered after **turning the device** (`scenario.recreate()`) still
+opens the entry screen and keeps the app (it used to crash: the answer's callback
+held the NavController of the destroyed activity, now the view model records the
+delivered Scan and the live nav host navigates); one answered after **backing out
+to the Rig Picker** or after **another rig was started** is not used (the rig's
+data is unchanged, nothing opens) and the user is told in the late-Scan dialog;
+the next check can scan while the old Scan is still out, and the old Scan's late
+answer leaves the new check's loading state (`scanState` stays `Loading`) and
+error state alone; leaving a check clears its loading state at once; a **late
+failure** shows its own message with OK only (no Try again, no "Scan failed"
+title). The **stand-alone ticket Scan** has its own tests on the Truck Tag
+screen: a second tap sends nothing, an answer on that screen fills
+`standaloneWeightLb`, and one answered after leaving the screen or starting
+another rig is not written and is reported. The tests
+fail without the change: breaking the rig-start signal, the screen-change signal
+or the in-flight guard each turns several of them red. `enterNickname` here is the
+#125 recipe (keyboard really closed before a Back).
 
 **Test-support tests** (`testsupport/`) — real-network-free coverage for
 infrastructure the External suite below depends on:

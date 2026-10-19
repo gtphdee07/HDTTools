@@ -80,6 +80,27 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     var scanState by mutableStateOf<ScanUiState>(ScanUiState.Idle)
         private set
 
+    // One Scan at a time per check, and what becomes of an answer for a check
+    // that has ended (#118). Ending a check clears its loading state at once, so
+    // the next check can scan while the old request is still out.
+    private val scanSession = ScanSession(onLiveScanGone = { if (scanState is ScanUiState.Loading) scanState = ScanUiState.Idle })
+
+    // The document whose entry screen a delivered Scan has just filled in, for the
+    // nav host to open and then clear. State here, not a callback from the screen
+    // that started the Scan: that screen's NavController is gone if the device was
+    // turned while the Scan was out, and the answer would navigate on a dead one.
+    var deliveredScanModule by mutableStateOf<EntryModule?>(null)
+        private set
+
+    fun deliveredScanShown() {
+        deliveredScanModule = null
+    }
+
+    // What a Scan that answered after its check ended tells the user, oldest
+    // first; each may be a spent Scan Credit, so none is dropped for a newer one.
+    var lateScanMessages by mutableStateOf<List<String>>(emptyList())
+        private set
+
     // What the entry screen reached after a delivered Scan tells the user about
     // the fields it did not read (#120); see ScanNoticeState for when it goes.
     val scanNoticeState = ScanNoticeState()
@@ -176,6 +197,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         trailer = rig.trailer
         scale = ScaleTicket()
         scanNoticeState.rigStarted()
+        scanSession.rigStarted()
         pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
     }
 
@@ -185,6 +207,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
         trailer = TrailerTag()
         scale = ScaleTicket()
         scanNoticeState.rigStarted()
+        scanSession.rigStarted()
         pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
     }
 
@@ -202,47 +225,52 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
 
     // On success, merges the extracted fields onto the current module's
     // state and refreshes the credit balance (the Worker already charged
-    // it server-side). onDone is called with true on success (caller
-    // should navigate to the entry screen for review) or false on failure
-    // (caller should surface scanState.Error and stay put - no automatic
-    // retry; the user's own retry of the same photo reuses its request id
-    // after a lost answer, so the Worker charges once).
+    // it server-side). On success deliveredScanModule is set, which the nav host
+    // turns into the entry screen for review; on failure scanState.Error is set
+    // and the user stays put - no automatic retry; the user's own retry of the
+    // same photo reuses its request id after a lost answer, so the Worker
+    // charges once. Does nothing while a Scan of this check is in flight. An
+    // answer that comes after the user left the check changes nothing and opens
+    // nothing: the user is told instead (see reportGoneScan).
     fun performScan(
         module: EntryModule,
         contentResolver: ContentResolver,
         photoUri: Uri,
-        onDone: (success: Boolean) -> Unit,
     ) {
-        scanRetry.started(module, photoUri)
-        scanNoticeState.scanStarted()
-        scanState = ScanUiState.Loading
         viewModelScope.launch {
-            val result = sendScan(module, contentResolver, photoUri)
-
-            when (result) {
-                is ScanResult.Success -> {
-                    scanState = ScanUiState.Idle
-                    reportScanDelivered(
-                        module,
-                        result.fields,
-                        truck,
-                        trailer,
-                        scale,
-                        show = {
-                            truck = it.truck
-                            trailer = it.trailer
-                            scale = it.scale
-                            scanNoticeState.scanDelivered(it.notice)
-                        },
-                        refreshBalance = ::refreshCreditBalance,
-                    )
-                    onDone(true)
-                }
-                is ScanResult.Failure -> {
-                    showScanFailure(result)
-                    onDone(false)
-                }
-            }
+            scanSession.run(
+                ScanScreen.Chooser(module),
+                onStarted = {
+                    scanRetry.started(module, photoUri)
+                    scanNoticeState.scanStarted()
+                    scanState = ScanUiState.Loading
+                },
+                send = { sendScan(module, contentResolver, photoUri) },
+                onCurrent = { result ->
+                    when (result) {
+                        is ScanResult.Success -> {
+                            scanState = ScanUiState.Idle
+                            reportScanDelivered(
+                                module,
+                                result.fields,
+                                truck,
+                                trailer,
+                                scale,
+                                show = {
+                                    truck = it.truck
+                                    trailer = it.trailer
+                                    scale = it.scale
+                                    scanNoticeState.scanDelivered(it.notice)
+                                },
+                                refreshBalance = ::refreshCreditBalance,
+                            )
+                            deliveredScanModule = module
+                        }
+                        is ScanResult.Failure -> showScanFailure(result)
+                    }
+                },
+                onGone = ::reportGoneScan,
+            )
         }
     }
 
@@ -252,37 +280,55 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     // scanStandaloneTicket in App.tsx. Uses the same paid EntryModule.SCALE
     // pipeline as a normal scan (this is Android's only OCR path, unlike
     // Web's separate free-tier extraction endpoint), so it consumes a
-    // credit like any other scan.
+    // credit like any other scan. Under the same rules as performScan: one at a
+    // time, and an answer after the user left the Truck Tag screen, or started
+    // another rig, is reported and not used.
     fun performStandaloneScan(
         contentResolver: ContentResolver,
         photoUri: Uri,
-        onDone: (success: Boolean) -> Unit,
     ) {
-        scanRetry.startedStandalone(photoUri)
-        scanState = ScanUiState.Loading
         viewModelScope.launch {
-            val result = sendScan(EntryModule.SCALE, contentResolver, photoUri)
-
-            when (result) {
-                is ScanResult.Success -> {
-                    val standalone = standaloneWeightFrom(result.fields)
-                    scanState = ScanUiState.Idle
-                    refreshCreditBalance()
-                    if (standalone != null) {
-                        truck = truck.copy(standaloneWeightLb = standalone)
-                        onDone(true)
-                    } else {
-                        scanState = NO_WEIGHT_ERROR
-                        onDone(false)
+            scanSession.run(
+                ScanScreen.TruckTagEntry,
+                onStarted = {
+                    scanRetry.startedStandalone(photoUri)
+                    scanState = ScanUiState.Loading
+                },
+                send = { sendScan(EntryModule.SCALE, contentResolver, photoUri) },
+                onCurrent = { result ->
+                    when (result) {
+                        is ScanResult.Success -> {
+                            val standalone = standaloneWeightFrom(result.fields)
+                            scanState = ScanUiState.Idle
+                            refreshCreditBalance()
+                            if (standalone != null) {
+                                truck = truck.copy(standaloneWeightLb = standalone)
+                            } else {
+                                scanState = NO_WEIGHT_ERROR
+                            }
+                        }
+                        is ScanResult.Failure -> showScanFailure(result)
                     }
-                }
-                is ScanResult.Failure -> {
-                    showScanFailure(result)
-                    onDone(false)
-                }
-            }
+                },
+                onGone = ::reportGoneScan,
+            )
         }
     }
+
+    // The screen on show changed (or was shown again, as after turning the
+    // device): a Scan started on another screen is over for its check.
+    fun screenShown(screen: ScanScreen) = scanSession.screenShown(screen)
+
+    fun dismissLateScanMessage() {
+        lateScanMessages = lateScanMessages.drop(1)
+    }
+
+    private fun reportGoneScan(result: ScanResult) = reportLateScan(
+        result,
+        show = { lateScanMessages = lateScanMessages + it },
+        refreshBalance = ::refreshCreditBalance,
+        setBalance = { creditBalance = it },
+    )
 
     private fun showScanFailure(failure: ScanResult.Failure) = reportScanFailure(
         failure,
@@ -293,19 +339,24 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
 
     // Sends the photo of the last Scan again, through the same entry point, for
     // the error dialog's "Try again". Does nothing if no Scan was started.
-    fun retryScan(contentResolver: ContentResolver, onDone: (success: Boolean) -> Unit) {
+    fun retryScan(contentResolver: ContentResolver) {
         scanRetry.again(
-            main = { module, photoUri -> performScan(module, contentResolver, photoUri, onDone) },
-            standalone = { photoUri -> performStandaloneScan(contentResolver, photoUri, onDone) },
+            main = { module, photoUri -> performScan(module, contentResolver, photoUri) },
+            standalone = { photoUri -> performStandaloneScan(contentResolver, photoUri) },
         )
     }
+
+    // A way for an instrumented test to answer a Scan itself, so the real nav host
+    // can be driven through a Scan with no Worker and no Scan Credit. Null in the
+    // app, where the Worker is called.
+    internal var scanSender: (suspend (EntryModule, Uri) -> ScanResult)? = null
 
     // The one place a Scan request is sent, for both entry points. The Worker
     // dedupes the RevenueCat charge on the request id, so the same photo keeps
     // its id until an answer settles the attempt (see ScanAttempts): a user's
     // retry after a lost answer is then charged once.
     private suspend fun sendScan(module: EntryModule, contentResolver: ContentResolver, photoUri: Uri): ScanResult =
-        runCatching {
+        scanSender?.invoke(module, photoUri) ?: runCatching {
             scanAttempts.run(module, photoUri.toString()) { clientRequestId ->
                 val token = accountManager.accessToken() ?: return@run NOT_SIGNED_IN
                 // A photo that cannot be opened or decoded fails before anything is sent.

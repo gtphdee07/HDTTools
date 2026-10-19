@@ -189,6 +189,8 @@ fun TruckTagEntryScreen(
                     // zero (signed out, or none left) goes to the paywall, which
                     // asks for sign-in first - before any photo is taken.
                     onClick = { if (canStartScan(creditBalance)) showStandaloneSourceDialog = true else onNeedCredits() },
+                    // Off while it reads (#118): a second tap would send a second Scan.
+                    enabled = scanState !is ScanUiState.Loading,
                     modifier = Modifier.testTag("scan_standalone_ticket"),
                 ) {
                     Text(if (scanState is ScanUiState.Loading) "Reading…" else "Scan tow-vehicle-only ticket")

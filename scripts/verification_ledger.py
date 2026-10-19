@@ -8,9 +8,12 @@ command and recording the commit only if that command passed:
   uv run scripts/verification_ledger.py run --context web --level session -- npm --prefix web test
 
 Rules:
-  - A pass is valid only for the commit it ran at. The run must start and end
-    at the same HEAD on a tree with no tracked changes; otherwise the suite's
-    own exit code is passed through but nothing is recorded.
+  - A pass is valid only for the content it ran at. It is recorded with the
+    commit and its tree hash (`git rev-parse HEAD^{tree}`), and looked up by
+    tree: an amend or a merge commit with no content change reuses the pass,
+    any content change loses it. The run must start and end at the same HEAD
+    on a tree with no tracked changes; otherwise the suite's own exit code is
+    passed through but nothing is recorded.
   - A failed run, a run that could not start and a skipped run leave the
     previous record untouched.
   - The runner sees only the command's exit code. A command that skips its
@@ -37,6 +40,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
@@ -52,9 +56,21 @@ LEDGER_ERROR_EXIT = 125  # not 1 (unverified) or 2 (a wrapped suite's own failur
 COULD_NOT_START_EXIT = 127
 OUTCOMES = ("pass", "fail", "skipped")
 
-VERIFIED = "verified"  # the recorded pass is at the commit asked about
-STALE = "stale"  # a pass is recorded, but at a different commit
+VERIFIED = "verified"  # the recorded pass is for the tree asked about
+STALE = "stale"  # a pass is recorded, but for a different tree
 UNVERIFIED = "unverified"  # no pass recorded
+
+
+@dataclass(frozen=True)
+class Revision:
+    """What a pass is about: the commit it ran at and that commit's content (tree)."""
+
+    commit: str
+    tree: str
+
+
+def current_revision(git) -> Revision:
+    return Revision(git.head(), git.tree())
 
 
 class LedgerError(Exception):
@@ -80,6 +96,10 @@ class RealGit:
 
     def head(self) -> str:
         return self._git("rev-parse", "HEAD")
+
+    def tree(self) -> str:
+        """The hash of HEAD's content; an amend or a merge with no content change keeps it."""
+        return self._git("rev-parse", "HEAD^{tree}")
 
     def is_clean(self) -> bool:
         """No changes to tracked files (untracked and ignored files do not count)."""
@@ -121,7 +141,7 @@ def _load(path: Path) -> dict:
 
 def _entry(data: dict, context: str, level: str) -> dict | None:
     entry = data["contexts"].get(context, {}).get(level)
-    return entry if isinstance(entry, dict) and entry.get("commit") else None
+    return entry if isinstance(entry, dict) and entry.get("commit") and entry.get("tree") else None
 
 
 def last_verified(context: str, level: str, *, path: Path | None = None) -> str | None:
@@ -130,19 +150,21 @@ def last_verified(context: str, level: str, *, path: Path | None = None) -> str 
     return entry["commit"] if entry else None
 
 
-def _state(recorded: str | None, commit: str) -> str:
-    if recorded is None:
+def _state(entry: dict | None, revision: Revision) -> str:
+    """A pass holds for any commit with the same tree: an amend keeps it, a content change loses it."""
+    if entry is None:
         return UNVERIFIED
-    return VERIFIED if recorded == commit else STALE
+    return VERIFIED if entry["tree"] == revision.tree else STALE
 
 
-def status(context: str, level: str, commit: str, *, path: Path | None = None) -> str:
-    return _state(last_verified(context, level, path=path), commit)
+def status(context: str, level: str, revision: Revision, *, path: Path | None = None) -> str:
+    entry = _entry(_load(path or default_ledger_path()), context, level)
+    return _state(entry, revision)
 
 
-def is_verified(context: str, level: str, commit: str, *, path: Path | None = None) -> bool:
-    """Is this context verified at this commit, for this level?"""
-    return status(context, level, commit, path=path) == VERIFIED
+def is_verified(context: str, level: str, revision: Revision, *, path: Path | None = None) -> bool:
+    """Is this context verified at this commit's content, for this level?"""
+    return status(context, level, revision, path=path) == VERIFIED
 
 
 def _now() -> str:
@@ -155,7 +177,7 @@ def record(
     outcome: str,
     *,
     command: str = "",
-    commit: str | None = None,
+    revision: Revision | None = None,
     path: Path | None = None,
     git=None,
     now: str | None = None,
@@ -170,8 +192,10 @@ def record(
     data = _load(target)  # an unreadable ledger is an error even for a fail or skip
     if outcome != "pass":
         return False
+    revision = revision or current_revision(git)
     data["contexts"].setdefault(context, {})[level] = {
-        "commit": commit or git.head(),
+        "commit": revision.commit,
+        "tree": revision.tree,
         "timestamp": now or _now(),
         "command": command,
     }
@@ -200,7 +224,7 @@ def run_and_record(
     git = git or RealGit()
     target = path or default_ledger_path(git)
     _load(target)  # refuse before running anything if the ledger cannot be updated
-    start = git.head()
+    start = current_revision(git)
     clean = git.is_clean()
     try:
         code = run_command(command, cwd=REPO_ROOT).returncode
@@ -212,11 +236,11 @@ def run_and_record(
         out(f"{label}: failed (exit {code}); ledger unchanged.")
     elif not clean:
         out(f"{label}: passed, but the tree had uncommitted changes to tracked files; not recorded. Commit, then re-run.")
-    elif git.head() != start or not git.is_clean():
+    elif current_revision(git) != start or not git.is_clean():
         out(f"{label}: passed, but HEAD or the tree changed during the run; not recorded. Re-run.")
     else:
-        record(context, level, "pass", command=" ".join(command), commit=start, path=target, git=git, now=now)
-        out(f"{label}: verified at {start[:8]}.")
+        record(context, level, "pass", command=" ".join(command), revision=start, path=target, git=git, now=now)
+        out(f"{label}: verified at {start.commit[:8]} (tree {start.tree[:8]}).")
     return code
 
 
@@ -249,18 +273,18 @@ def main(
                                   run_command=run_command, out=out)
         if args.action == "check":
             _validate(args.context, args.level)
-            head = git.head()
-            result = status(args.context, args.level, head, path=target)
-            out(f"{args.context}/{args.level}: {result} at {head[:8]}")
+            revision = current_revision(git)
+            result = status(args.context, args.level, revision, path=target)
+            out(f"{args.context}/{args.level}: {result} at {revision.commit[:8]} (tree {revision.tree[:8]})")
             return 0 if result == VERIFIED else 1
         data = _load(target)
-        head = git.head()
+        revision = current_revision(git)
         shown = False
         for c in sorted(data["contexts"]):
             for lv in sorted(data["contexts"][c]):
                 e = _entry(data, c, lv)
                 if e:
-                    out(f"{c}/{lv}: {_state(e['commit'], head)}; last pass {e['commit'][:8]} at {e.get('timestamp', '?')}")
+                    out(f"{c}/{lv}: {_state(e, revision)}; last pass {e['commit'][:8]} (tree {e['tree'][:8]}) at {e.get('timestamp', '?')}")
                     shown = True
         if not shown:
             out("verification ledger is empty")

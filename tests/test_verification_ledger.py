@@ -22,17 +22,28 @@ _spec.loader.exec_module(vl)
 
 SHA_A = "a" * 40
 SHA_B = "b" * 40
+TREE_1 = "1" * 40
+TREE_2 = "2" * 40
+
+
+def tree_of(commit: str) -> str:
+    """A commit's own tree unless a test pins one: distinct commits, distinct content."""
+    return "tree-" + commit[:8]
 
 
 class FakeGit:
     """HEAD and tree state; FakeRunner(during=...) moves HEAD or dirties the tree mid-run."""
 
-    def __init__(self, head=SHA_A, clean=True):
+    def __init__(self, head=SHA_A, clean=True, tree=None):
         self.head_sha = head
+        self.tree_sha = tree or tree_of(head)
         self.clean = clean
 
     def head(self) -> str:
         return self.head_sha
+
+    def tree(self) -> str:
+        return self.tree_sha
 
     def is_clean(self) -> bool:
         return self.clean
@@ -69,8 +80,12 @@ def run(ledger_path, *, git=None, runner=None, context="core", level="session", 
     return result, runner
 
 
-def status(ledger_path, commit=SHA_A, context="core", level="session"):
-    return vl.status(context, level, commit, path=ledger_path)
+def rev(commit=SHA_A, tree=None):
+    return vl.Revision(commit, tree or tree_of(commit))
+
+
+def status(ledger_path, commit=SHA_A, context="core", level="session", tree=None):
+    return vl.status(context, level, rev(commit, tree), path=ledger_path)
 
 
 def test_a_passing_run_records_its_commit_for_the_context_and_level(ledger_path):
@@ -146,14 +161,36 @@ def test_a_pass_is_valid_only_for_the_commit_it_ran_at(ledger_path):
 
     assert status(ledger_path, SHA_A) == vl.VERIFIED
     assert status(ledger_path, SHA_B) == vl.STALE
-    assert vl.is_verified("core", "session", SHA_A, path=ledger_path) is True
-    assert vl.is_verified("core", "session", SHA_B, path=ledger_path) is False
+    assert vl.is_verified("core", "session", rev(SHA_A), path=ledger_path) is True
+    assert vl.is_verified("core", "session", rev(SHA_B), path=ledger_path) is False
+
+
+def test_a_pass_is_found_again_for_the_same_tree_after_an_amend(ledger_path):
+    run(ledger_path, git=FakeGit(SHA_A, tree=TREE_1))
+
+    amended = rev(SHA_B, TREE_1)  # an amend or a no-content merge: new commit, same content
+    assert vl.status("core", "session", amended, path=ledger_path) == vl.VERIFIED
+    assert vl.is_verified("core", "session", amended, path=ledger_path) is True
+
+
+def test_a_pass_is_not_found_after_a_content_change(ledger_path):
+    run(ledger_path, git=FakeGit(SHA_A, tree=TREE_1))
+
+    changed = rev(SHA_B, TREE_2)
+    assert vl.status("core", "session", changed, path=ledger_path) == vl.STALE
+    assert vl.is_verified("core", "session", changed, path=ledger_path) is False
+
+
+def test_a_content_change_back_to_a_recorded_tree_is_verified_again(ledger_path):
+    run(ledger_path, git=FakeGit(SHA_A, tree=TREE_1))
+
+    assert vl.status("core", "session", rev(SHA_B, TREE_1), path=ledger_path) == vl.VERIFIED
 
 
 def test_a_context_never_run_is_unverified_even_with_no_ledger_file(ledger_path):
     assert not ledger_path.exists()
     assert status(ledger_path) == vl.UNVERIFIED
-    assert vl.is_verified("core", "session", SHA_A, path=ledger_path) is False
+    assert vl.is_verified("core", "session", rev(SHA_A), path=ledger_path) is False
     assert vl.last_verified("core", "session", path=ledger_path) is None
 
 
@@ -199,7 +236,7 @@ def test_an_unreadable_ledger_is_reported_and_never_overwritten(ledger_path):
     ledger_path.write_text("{not json", encoding="utf-8")
 
     with pytest.raises(vl.LedgerError):
-        vl.status("core", "session", SHA_A, path=ledger_path)
+        vl.status("core", "session", rev(SHA_A), path=ledger_path)
     with pytest.raises(vl.LedgerError):
         run(ledger_path)
 
@@ -212,6 +249,7 @@ def test_the_ledger_file_holds_commit_time_and_command_per_context_and_level(led
     data = json.loads(ledger_path.read_text(encoding="utf-8"))
     entry = data["contexts"]["android"]["release"]
     assert entry["commit"] == SHA_A
+    assert entry["tree"] == tree_of(SHA_A)
     assert entry["timestamp"] == "2026-10-18T10:00:00Z"
     assert entry["command"] == "gradlew test"
 
@@ -220,6 +258,22 @@ def test_the_default_ledger_lives_inside_the_git_dir_so_it_is_never_tracked(tmp_
     git = SimpleNamespace(common_dir=lambda: tmp_path / ".git")
 
     assert vl.default_ledger_path(git) == tmp_path / ".git" / "hdttools-verification-ledger.json"
+
+
+def test_cli_check_and_show_answer_by_tree_so_a_pass_survives_an_amend(ledger_path):
+    run(ledger_path, git=FakeGit(SHA_A, tree=TREE_1))
+    args = ["check", "--context", "core", "--level", "session"]
+    lines: list[str] = []
+
+    assert vl.main(args, path=ledger_path, git=FakeGit(SHA_B, tree=TREE_1), out=lines.append) == 0
+    assert vl.main(args, path=ledger_path, git=FakeGit(SHA_B, tree=TREE_2), out=lines.append) == 1
+
+    lines.clear()
+    vl.main(["show"], path=ledger_path, git=FakeGit(SHA_B, tree=TREE_1), out=lines.append)
+    assert any("verified" in line and "stale" not in line for line in lines)
+    lines.clear()
+    vl.main(["show"], path=ledger_path, git=FakeGit(SHA_B, tree=TREE_2), out=lines.append)
+    assert any("stale" in line for line in lines)
 
 
 def test_cli_run_passes_the_command_exit_code_through(ledger_path):
@@ -320,3 +374,32 @@ def test_real_git_ledger_is_in_the_git_dir_and_shared_with_a_worktree(throwaway_
 
     assert vl.default_ledger_path(main) == (throwaway_repo / ".git").resolve() / vl.LEDGER_NAME
     assert vl.default_ledger_path(vl.RealGit(worktree)) == vl.default_ledger_path(main)
+
+
+def test_real_git_tree_survives_an_amend_and_changes_with_content(throwaway_repo):
+    git = vl.RealGit(throwaway_repo)
+    first = vl.Revision(git.head(), git.tree())
+
+    _git(throwaway_repo, "commit", "-q", "--amend", "-m", "reworded")
+    amended = vl.Revision(git.head(), git.tree())
+    assert amended.commit != first.commit
+    assert amended.tree == first.tree
+
+    (throwaway_repo / "a.txt").write_text("two", encoding="utf-8")
+    _git(throwaway_repo, "commit", "-q", "-am", "content change")
+    assert git.tree() != first.tree
+
+
+def test_a_real_amend_reuses_a_pass_and_a_real_content_change_does_not(throwaway_repo, tmp_path):
+    git = vl.RealGit(throwaway_repo)
+    ledger = tmp_path / "ledger.json"
+    vl.run_and_record("core", "issue", ["x"], path=ledger, git=git, run_command=FakeRunner(), out=lambda _: None)
+    recorded = vl.Revision(git.head(), git.tree())
+    assert vl.status("core", "issue", recorded, path=ledger) == vl.VERIFIED
+
+    _git(throwaway_repo, "commit", "-q", "--amend", "-m", "reworded")
+    assert vl.status("core", "issue", vl.Revision(git.head(), git.tree()), path=ledger) == vl.VERIFIED
+
+    (throwaway_repo / "a.txt").write_text("two", encoding="utf-8")
+    _git(throwaway_repo, "commit", "-q", "-am", "content change")
+    assert vl.status("core", "issue", vl.Revision(git.head(), git.tree()), path=ledger) == vl.STALE

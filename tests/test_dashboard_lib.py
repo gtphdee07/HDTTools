@@ -284,6 +284,11 @@ def test_format_surface_cell_counts_only_active_surfaces_in_the_score():
     assert (color, label) == ("red", "1/2 (1 planned)")
 
 
+def test_format_surface_cell_shows_an_overridden_gate_and_does_not_count_it_as_fresh():
+    assert dashboard_lib.format_surface_cell(["fresh", "overridden", "planned"]) == ("red", "1/2 (1 planned, 1 overridden)")
+    assert dashboard_lib.format_surface_cell(["fresh", "fresh", "overridden"]) == ("red", "2/3 (1 overridden)")
+
+
 def test_format_surface_cell_only_planned_surfaces_is_red_and_says_so():
     assert dashboard_lib.format_surface_cell(["planned", "planned"]) == ("red", "0/0 (2 planned)")
 

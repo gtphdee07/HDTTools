@@ -48,7 +48,7 @@ One-time per clone:
 git clone https://github.com/gtphdee07/HDTTools.git
 cd HDTTools
 git checkout MPSkills                       # all work happens on MPSkills; never commit to main
-git config core.hooksPath .githooks         # pre-commit hook that refreshes dashboard.svg (never blocks)
+git config core.hooksPath .githooks         # pre-commit refreshes dashboard.svg (never blocks); pre-push is the External release gate (TESTING.md)
 uv sync                                     # Python deps into .venv
 cd web && npm install && cd ..
 cd workers/scan-proxy && npm install && cd ../..
@@ -272,12 +272,17 @@ npx wrangler secret put REVENUECAT_SECRET_KEY
 npm run typecheck && npm run deploy
 ```
 
+`npm run deploy` runs the External release gate first and refuses while a
+scan-proxy surface is stale; see "External release gate" in `TESTING.md` for how
+to unlock it and for `npm run deploy -- --force --reason "..."`.
+
 Anything in `[vars]` (`wrangler.toml`) is plain config and is committed. If you
 use a different RevenueCat project, Supabase project or currency, change those
 values there.
 
 **Web:** push to `MPSkills` (the production branch) and Cloudflare Pages builds
-and publishes within a few minutes. Local build check: `cd web && npm run build`. Anything the
+and publishes within a few minutes. The pre-push hook gates that push when it touches `web/`
+(External release gate, `TESTING.md`). Local build check: `cd web && npm run build`. Anything the
 production bundle needs at build time must be committed in `web/.env.production`
 (public values only).
 

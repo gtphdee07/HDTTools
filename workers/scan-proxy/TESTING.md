@@ -512,7 +512,12 @@ stale) or `npm run test:external`.
 It tests **whatever is deployed** and does not deploy. After a change to a
 boundary file or `wrangler.toml`, run `npm run deploy` first, or the run proves
 the old Worker and records the new commit as passing. (The Weekly suite's
-`pretest:weekly` deploys for itself.)
+`pretest:weekly` deploys for itself.) Since #43 `npm run deploy` runs the External
+release gate and refuses while a surface in the scan-proxy chain is stale, which
+changed Worker code always is until this suite has run against it; deploying it in
+order to test it therefore takes `npm run deploy -- --force --reason "..."`, which
+is recorded and shown on the dashboard until the next real pass (root
+`TESTING.md`, "External release gate").
 
 Needs `REVENUECAT_SECRET_KEY` (a v2 key with Customer information read; it reads
 the balances that prove the spend and the refund) and the `funded` and

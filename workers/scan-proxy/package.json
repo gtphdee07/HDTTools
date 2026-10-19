@@ -13,7 +13,7 @@
     "test:release": "node --test src/release/*.test.ts",
     "test:external": "node src/external/run.ts",
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "uv run ../../scripts/scan_proxy_deploy.py",
     "typecheck": "tsc --noEmit",
     "check:dead-code": "knip"
   },

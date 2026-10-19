@@ -1,0 +1,16 @@
+#!/bin/sh
+# ADR-0008 release gate. Git runs this before a push and writes one line per
+# pushed ref to stdin; the script gates a push of MPSkills (Pages' production
+# branch) whose diff touches web/, workers/scan-proxy/ or android/, and lets
+# every other push through. It reads the recorded External status and the
+# package registries; it never runs a live test.
+#
+# Blocks when a surface in the release's chain is stale, failed, skipped or
+# never run, or a registry cannot be reached. To push anyway, give a reason:
+#   EXTERNAL_GATE_FORCE_REASON="why" git push
+# The reason is recorded and the dashboard shows an overridden gate until each
+# surface's next real pass. `git push --no-verify` skips this hook entirely and
+# records nothing: a deliberate bypass, not an accident.
+# Enable once per clone: git config core.hooksPath .githooks
+root="$(git rev-parse --show-toplevel)" || exit 1
+exec uv run "$root/scripts/external_gate.py" pre-push "$@"

@@ -13,7 +13,13 @@ instead of prompting once the declared maximum would be exceeded.
 
 Entry point: android/release.ps1.
 
-Usage: uv run scripts/android_release.py [--max-paid-calls N]
+After the stale surfaces are re-run, the External release gate
+(scripts/external_gate.py, ADR-0008) must find every surface in Android's
+chain fresh before the weekly suite runs. `--force --reason TEXT` goes past a
+blocked gate; the reason is recorded and shown on the dashboard until each
+surface's next real pass.
+
+Usage: uv run scripts/android_release.py [--max-paid-calls N] [--force --reason TEXT]
 """
 
 from __future__ import annotations
@@ -27,6 +33,7 @@ from pathlib import Path
 from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import external_gate  # noqa: E402
 from paid_call_budget import PaidCallBudget  # noqa: E402
 from release_steps import default_run_command, powershell_command, run_paid_step, run_step, stale_surfaces  # noqa: E402
 
@@ -107,15 +114,25 @@ def run(
     run_command=default_run_command,
     devices: Callable[[], list[str]] | None = None,
     stale: Callable[[], list[str]] | None = None,
+    gate=None,
     out: Callable[[str], None] = print,
 ) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--max-paid-calls", type=int, default=DEFAULT_MAX_PAID_CALLS)
+    external_gate.add_force_arguments(parser)
     args = parser.parse_args(argv)
+    reason = external_gate.force_reason(args, parser, os.environ)
     budget = budget or PaidCallBudget(max_calls=args.max_paid_calls, out=out)
 
     out(f"Android release run (paid-call budget: {args.max_paid_calls})")
 
+    # The weekly suite redeploys the Worker through `npm run deploy`, which runs the gate again;
+    # a forced run hands its reason down so that deploy is not asked twice.
+    with external_gate.exported_force(reason):
+        return _run_steps(budget, run_command, devices, stale, gate or external_gate.gate, reason, out)
+
+
+def _run_steps(budget, run_command, devices, stale, gate, reason, out) -> int:
     code = run_step(JVM_STEP, run_command=run_command, out=out)
     if code != 0:
         return code
@@ -142,6 +159,14 @@ def run(
             return code
     else:
         out("No stale surfaces; skipping the Worker External suite.")
+
+    # The External release gate (ADR-0008): every surface in Android's chain, the Worker's included,
+    # must be fresh before the weekly suite redeploys the Worker. Surfaces only another platform's
+    # suite can refresh (supabase-auth: web/test-external.ps1) stop the release here.
+    code = gate(PLATFORMS, force_reason=reason, out=out)
+    if code != 0:
+        out("Android release stopped by the External release gate.")
+        return code
 
     code = run_paid_step(WEEKLY_STEP, budget=budget, run_command=run_command, out=out)
     if code is not None:

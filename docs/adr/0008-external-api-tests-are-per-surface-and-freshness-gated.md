@@ -34,3 +34,4 @@ RigCheck depends on several remote interfaces: Anthropic, RevenueCat (REST, Andr
 - A package-registry release is only a proxy: a server-side change with no library release goes undetected, by design.
 - The pre-push hook is bypassable with `--no-verify`. That is a deliberate act, not an accident.
 - Registry data must be cached or rate-aware if the hook runs on every qualifying push.
+- The Worker's own surfaces are tested against the deployed Worker, so changed Worker code makes them stale until a deploy that the deploy gate refuses. Decided 2026-10-19 (#43): the gate stays strict and deploying changed code to test it takes `--force --reason`, recorded and shown as an overridden gate. A preview deploy that tests new code without releasing it would remove that routine force; it is not built.

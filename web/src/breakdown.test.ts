@@ -115,7 +115,7 @@ describe('createBreakdown', () => {
     const predictive = GOLDEN.cases.find((c) => c.name === 'rounding_half_way_predictive_truck_estimate')!;
 
     const viaUi = createBreakdown(predictive.truck, predictive.trailer, predictive.scale, PIN_CONTRACT.ui_percent);
-    const direct = computeBreakdown(predictive.truck, predictive.trailer, predictive.scale, PIN_CONTRACT.api_fraction);
+    const direct = computeBreakdown(predictive.truck, predictive.trailer, predictive.scale, PIN_CONTRACT.fraction);
 
     expect(viaUi.breakdownItems).toEqual(direct);
   });

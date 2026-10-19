@@ -100,6 +100,13 @@ def test_pin_weight_pct_of_exactly_one_does_not_crash():
     assert total_item["tone"] in {"success", "warning"}
 
 
+def test_a_ui_percentage_passed_unconverted_gives_a_visibly_negative_weight():
+    # 11,380 / (1 - 15) = -813: the mistake of skipping the UI's divide-by-100
+    # is obvious in the output, not a subtly-off number.
+    items = compute_breakdown(_TRUCK, _TRAILER, _SCALE, pin_weight_pct=15)
+    assert _item(items, "Trailer Total (GVWR)")["actualLabel"].startswith("-")
+
+
 def test_trailer_total_estimates_from_gvwr_when_no_scale_reading_at_all():
     # No scale ticket at all (the pre-purchase/predictive case) - nothing
     # to divide, so fall back to the trailer's rated GVWR instead of the

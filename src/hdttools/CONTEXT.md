@@ -52,7 +52,7 @@ A truck's hitch-receiver limits for bumper-pull towing: maximum tongue weight an
 ## Breakdown
 
 **Breakdown**:
-The ordered list of weight comparisons (Front Axle, Rear Axle, Tow Vehicle Total, Trailer Axle(s), Trailer Total, Combined Rig Weight) produced by comparing each Item's actual weight against its rated limit. This is a *weight-margin report*, not a mechanical failure — the name is established throughout the codebase (`compute_breakdown`, `POST /api/breakdown`) and isn't being revisited, but don't let "breakdown" drift toward meaning "the rig broke down" in any new copy or comments.
+The ordered list of weight comparisons (Front Axle, Rear Axle, Tow Vehicle Total, Trailer Axle(s), Trailer Total, Combined Rig Weight) produced by comparing each Item's actual weight against its rated limit. This is a *weight-margin report*, not a mechanical failure — the name is established throughout the codebase (`compute_breakdown`, `src/hdttools/api/breakdown.py`) and isn't being revisited, but don't let "breakdown" drift toward meaning "the rig broke down" in any new copy or comments.
 
 **Item**:
 One row of a Breakdown (e.g. "Front Axle (Steer)," "Combined Rig Weight") — an actual weight, a rated limit, a Margin, a Tone, and an Estimated flag.

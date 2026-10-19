@@ -230,7 +230,7 @@ changes — but no such real photos exist yet.
 The premise this question was originally weighed against turned out to
 be wrong: the pass-pool/fail-pool actually built in Python this session
 (`scripts/pass_pool.py`/`fail_pool.py`) tests **Tesseract**, not Claude
-vision — Python's production app (Streamlit + FastAPI) never calls
+vision — Python's production app (Streamlit; FastAPI then too) never calls
 Claude at all (see `ARCHIVE_WEB_STREAMLIT.md`'s item #16 entry, the
 separately-recorded build-time-switch gap). So there was never a Python Claude-vision path
 for Android to "inherit" from in the first place; Android's real scan

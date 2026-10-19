@@ -217,8 +217,8 @@ via the shared `test-vectors/breakdown_cases.json` file.
 
 **Real-vs-mocked convention, with evidence:** every network call
 (`extractTruckTag`/`extractTrailerTag`/`extractScaleTicket`/
-`createBreakdown`) is mocked with `vi.mock('./api')` in every test that
-needs one — this suite has no real-backend test at all today (no Web
+`createBreakdown`, which was a network call until the math moved into
+`breakdown.ts`) is mocked with `vi.mock('./api')` in every test that needs one — this suite has no real-backend test at all today (no Web
 External suite exists; `web/TESTING.md` documents this as N/A, not a
 gap, since nothing in `web/` calls a 3rd-party boundary directly).
 `localStorage`/`sessionStorage`, by contrast, are the **real** jsdom

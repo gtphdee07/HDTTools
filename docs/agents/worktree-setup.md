@@ -29,12 +29,12 @@ If your terminal has another checkout's virtual environment active (the prompt s
 ## Then run the offline suites
 
 ```
-uv run pytest
+uv run pytest -n auto
 npm --prefix web test
 npm --prefix workers/scan-proxy test
 ```
 
-None of these makes a live or paid call, and none needs `web/.env.local`. (`uv run pytest` deselects the `external` tests by default, and `tests/conftest.py` fails any other test that reaches the real Anthropic client.) The full Python run takes a couple of minutes because it includes the `slow` real-photo OCR tests, which need Tesseract. Android's own tests are not covered here: it has its own toolchain, and its tickets share one emulator (`docs/agents/session-handoff.md`).
+None of these makes a live or paid call, and none needs `web/.env.local`. (`uv run pytest` deselects the `external` tests by default, and `tests/conftest.py` fails any other test that reaches the real Anthropic client.) The full Python run takes about 40 s with `-n auto` (about 170 s serial, a bare `uv run pytest`) and includes the `slow` tests: real-photo OCR (needs Tesseract) and the tooling checks that start Node and Gradle (`TESTING.md`, "Python test commands"). Android's own tests are not covered here: it has its own toolchain, and its tickets share one emulator (`docs/agents/session-handoff.md`).
 
 ## Local-only files that are not carried into a worktree
 

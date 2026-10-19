@@ -281,7 +281,7 @@ def get_android_merged_result(refresh: bool) -> PlatformResult:
 def get_python_result(refresh: bool) -> PlatformResult:
     if refresh or not PYTHON_REPORT.exists():
         proc = _run(
-            [sys.executable, "-m", "pytest", "--cov", "--cov-report=json", "-q"],
+            [sys.executable, "-m", "pytest", "-n", "auto", "--cov", "--cov-report=json", "-q"],
             cwd=REPO_ROOT,
         )
         if proc.returncode not in (0, 1):

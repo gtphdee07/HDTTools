@@ -128,7 +128,7 @@ def test_planner_exits_zero_even_when_git_fails(capsys):
 
 def test_main_prints_the_planned_commands(capsys):
     tp.main(["--files", "src/hdttools/database.py"])
-    assert 'uv run pytest -m "minor and core"' in capsys.readouterr().out
+    assert 'uv run pytest -m "minor and core and not slow"' in capsys.readouterr().out
 
 
 # --- All contexts, session-end and release levels (#61): fake context map, markers, surfaces ---
@@ -395,8 +395,12 @@ def _pytest_selections(plan):
 def _collect(command: str) -> list[str]:
     args = shlex.split(command)
     assert args[:3] == ["uv", "run", "pytest"]
+    rest = args[3:]
+    if "-n" in rest:  # collecting needs no workers; starting them would only slow the check
+        at = rest.index("-n")
+        rest = rest[:at] + rest[at + 2:]
     out = subprocess.run(
-        [sys.executable, "-m", "pytest", "--collect-only", "-q", *args[3:]],
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", *rest],
         cwd=ROOT, capture_output=True, text=True, check=True,
     ).stdout
     return [line for line in out.splitlines() if "::" in line]
@@ -424,6 +428,7 @@ def test_real_config_interface_tests_exist():
             assert (ROOT / test).is_file(), test
 
 
+@pytest.mark.slow
 def test_every_planned_selection_collects_tests_and_none_are_external(real_plan):
     assert real_plan.selections
     for sel in _pytest_selections(real_plan):
@@ -432,6 +437,7 @@ def test_every_planned_selection_collects_tests_and_none_are_external(real_plan)
         assert not any("test_claude_vision_external" in i for i in ids), sel.command
 
 
+@pytest.mark.slow
 def test_planned_interface_selection_runs_exactly_its_test_file(real_plan):
     sels = [s for s in _pytest_selections(real_plan) if s.kind == "interface"]
     assert sels
@@ -440,11 +446,155 @@ def test_planned_interface_selection_runs_exactly_its_test_file(real_plan):
         assert {i.split("::")[0] for i in _collect(sel.command)} == files
 
 
+@pytest.mark.slow
 def test_minor_selection_is_a_strict_subset_of_the_same_contexts_major():
     minor = set(_collect('uv run pytest -m "minor and core"'))
     major = set(_collect("uv run pytest -m core"))
     assert minor and minor < major
 
 
+@pytest.mark.slow
 def test_streamlit_and_core_selections_do_not_overlap():
     assert not set(_collect("uv run pytest -m streamlit")) & set(_collect("uv run pytest -m core"))
+
+
+# --- Slow tests are owed only when the diff touches what they check (#129) ---
+
+SLOW_CONFIG = {
+    **ALL,
+    "slow": [
+        {"name": "tooling", "triggers": ["scripts/*", "pyproject.toml"], "tests": ["tests/test_tooling.py"]},
+        {"name": "ocr-photos", "triggers": ["src/hdttools/*_ocr.py", "ExampleDocs/*"], "tests": ["tests/test_photos.py", "tests/test_pools.py"]},
+    ],
+}
+SLOW_ALL = tp.SLOW_PYTEST
+TOOLING_OWED = SLOW_ALL + " tests/test_tooling.py"
+PHOTOS_OWED = SLOW_ALL + " tests/test_photos.py tests/test_pools.py"
+
+
+def plan_slow(files, level="issue", **kwargs):
+    kwargs.setdefault("file_exists", lambda p: p in EXISTING_TESTS)
+    return tp.plan(files, SLOW_CONFIG, MARKERS, level=level, **kwargs)
+
+
+def slow_commands(plan):
+    return [s.command for s in plan.selections if s.kind == "slow"]
+
+
+def test_the_python_suites_leave_out_slow_tests_when_the_config_names_slow_groups():
+    assert commands(plan_slow(["src/hdttools/database.py"])) == ['uv run pytest -m "minor and core and not slow"']
+    assert commands(plan_slow(["streamlit_app/app.py"])) == ['uv run pytest -m "minor and streamlit and not slow"']
+    assert commands(plan_slow(["uv.lock"])) == ['uv run pytest -m "core and not slow"', 'uv run pytest -m "streamlit and not slow"']
+
+
+@pytest.mark.parametrize("level", ["issue", "session"])
+def test_a_diff_that_touches_only_src_hdttools_owes_no_slow_test(level):
+    plan = plan_slow(["src/hdttools/database.py", "src/hdttools/models.py"], level)
+    assert slow_commands(plan) == []
+    assert any("slow" in n for n in plan.notes)
+
+
+@pytest.mark.parametrize("level", ["issue", "session"])
+def test_changing_the_planner_owes_the_tooling_tests_and_not_the_photo_ones(level):
+    assert slow_commands(plan_slow(["scripts/test_planner.py"], level)) == [TOOLING_OWED]
+
+
+@pytest.mark.parametrize("level", ["issue", "session"])
+def test_changing_ocr_code_or_a_photo_fixture_owes_the_photo_tests(level):
+    assert slow_commands(plan_slow(["src/hdttools/truck_tag_ocr.py"], level)) == [PHOTOS_OWED]
+    assert slow_commands(plan_slow(["ExampleDocs/AddieTag.jpg"], level)) == [PHOTOS_OWED]
+
+
+def test_a_diff_matching_two_groups_owes_both():
+    assert slow_commands(plan_slow(["pyproject.toml", "ExampleDocs/AddieTag.jpg"], "session")) == [TOOLING_OWED, PHOTOS_OWED]
+
+
+def test_release_lists_every_slow_test_whatever_the_diff():
+    assert slow_commands(plan_slow([], "release")) == [SLOW_ALL]
+    assert slow_commands(plan_slow([], "release", release_contexts=["android"])) == [SLOW_ALL]
+
+
+def test_every_slow_command_repeats_not_external_because_a_second_m_replaces_addopts():
+    assert tp.SLOW_PYTEST.endswith('-m "slow and not external"')
+    for level in ("issue", "session", "release"):
+        for command in slow_commands(plan_slow(["scripts/test_planner.py", "ExampleDocs/GooseTag.jpg"], level)):
+            assert '"slow and not external"' in command
+
+
+def test_a_config_without_slow_groups_plans_no_slow_selection():
+    assert slow_commands(plan_all(["scripts/test_planner.py"])) == []
+    assert slow_commands(plan_all([], "release")) == []
+
+
+# Real config: the criteria of #129 against scripts/test_planner_config.json.
+
+REAL_TOOLING_TESTS = {
+    "tests/test_test_planner.py",
+    "tests/test_context_test_commands.py",
+    "tests/test_android_file_command_slow.py",
+}
+
+
+def real_slow(files, level):
+    return slow_commands(tp.plan(files, tp.load_config(), tp.load_markers(), level=level))
+
+
+def named_test_files(command):
+    return {t for t in shlex.split(command) if t.startswith("tests/")}
+
+
+@pytest.mark.parametrize("level", ["issue", "session"])
+def test_real_config_owes_no_slow_test_for_a_src_hdttools_only_diff(level):
+    assert real_slow(["src/hdttools/database.py"], level) == []
+    assert real_slow(["src/hdttools/api/schemas.py", "src/hdttools/models.py"], level) == []
+
+
+@pytest.mark.parametrize("level", ["issue", "session"])
+@pytest.mark.parametrize("changed", ["scripts/test_planner.py", "scripts/test_planner_config.json", "pyproject.toml"])
+def test_real_config_owes_the_tooling_tests_when_the_planner_or_pyproject_change(level, changed):
+    (command,) = real_slow([changed], level)
+    assert REAL_TOOLING_TESTS <= named_test_files(command)
+
+
+@pytest.mark.parametrize("level", ["issue", "session"])
+@pytest.mark.parametrize("changed", ["src/hdttools/truck_tag_ocr.py", "src/hdttools/ocr_common.py", "ExampleDocs/GooseTag.jpg", "ExampleDocs/golden_fields.json"])
+def test_real_config_owes_the_ocr_tests_when_ocr_code_or_photo_fixtures_change(level, changed):
+    files = set().union(*(named_test_files(c) for c in real_slow([changed], level)))
+    assert {"tests/test_real_photo_ocr_accuracy.py", "tests/test_scale_ticket_real_photo.py", "tests/test_streamlit_app.py"} <= files
+    assert not files & REAL_TOOLING_TESTS
+
+
+def test_real_config_lists_all_slow_tests_at_release():
+    assert real_slow([], "release") == [SLOW_ALL]
+
+
+def test_real_config_python_context_and_application_commands_leave_out_slow_tests():
+    contexts = tp.load_config()["contexts"]
+    for name in ("core", "streamlit"):
+        for key in ("context", "application"):
+            assert "not slow" in contexts[name][key], (name, key)
+
+
+@pytest.mark.slow
+def test_a_bare_uv_run_pytest_still_collects_the_slow_tests():
+    bare = {i.split("::")[0] for i in _collect("uv run pytest")}
+    slow = {i.split("::")[0] for i in _collect('uv run pytest -m "slow and not external"')}
+    assert slow and slow <= bare
+    assert "tests/test_android_file_command_slow.py" in bare
+
+
+def test_the_root_testing_doc_states_the_parallel_command_and_every_slow_group_trigger():
+    doc = (ROOT / "TESTING.md").read_text(encoding="utf-8")
+    section = doc.split("## Python test commands", 1)[1].split("\n## ", 1)[0]
+    assert "uv run pytest -n auto" in section
+    assert tp.SLOW_PYTEST in section
+    for trigger in ("scripts/", "pyproject.toml", "ExampleDocs/", "streamlit_app/", "api/breakdown.py", "_ocr.py"):
+        assert trigger in section, trigger
+
+
+@pytest.mark.slow
+def test_every_slow_marked_test_file_is_named_by_a_real_config_group():
+    named = {t for group in tp.load_config()["slow"] for t in group["tests"]}
+    marked = {i.split("::")[0] for i in _collect('uv run pytest -m "slow and not external"')}
+    assert marked and marked <= named, sorted(marked - named)
+    assert all((ROOT / t).is_file() for t in named)

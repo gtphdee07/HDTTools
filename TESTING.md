@@ -161,6 +161,37 @@ dependency is a broader risk surface (install, licensing, version
 conflicts, unfamiliar failure modes) than the diff's line count alone
 would suggest.
 
+## Python test commands
+
+The full Python run is **`uv run pytest -n auto`** (`pytest-xdist`): about 40 s
+for about 1,100 tests, against about 170 s on one core (measured 2026-10-18, #129).
+Bare `uv run pytest` still runs the same tests serially, slow ones included.
+`addopts` caps `-n auto` at 8 workers (`--maxprocesses=8`): 24 workers
+ran this machine out of memory (failures were "paging file too small",
+`bad_alloc` in Tesseract and a JVM that could not map its heap), and past 8 the run is no faster, because the
+longest serial group sets the floor. `--dist loadgroup` keeps tests that cannot
+share a worker together: those marked `@pytest.mark.xdist_group("gradle")` or
+`("node")` run one after another, so two JVMs or two Node installs never start
+at once. The summary prints `deselected: N` itself, since xdist drops that count.
+
+Tests marked `slow` are expensive and are owed only when the diff touches what
+they check. The planner (`scripts/test_planner.py`, groups under `slow` in
+`scripts/test_planner_config.json`) leaves them out of the Minor, Major, context
+and application runs and lists them separately, at issue and session level:
+
+| Slow tests | Owed when the diff touches |
+|---|---|
+| Tooling checks that start pytest, npm, Node or Gradle (`test_test_planner.py`, `test_context_test_commands.py`, `test_android_file_command_slow.py`) | `scripts/`, `pyproject.toml`, the Web, Scan Proxy and Android build files that define their test commands, `tests/conftest.py`, `tests/_test_command_helpers.py` |
+| Real-photo OCR and pool regressions | the OCR modules (`src/hdttools/*_ocr.py`, `ocr_common.py`), `api/main.py`, `api/breakdown.py`, the pool and discovery scripts, `ExampleDocs/` |
+| Streamlit walkthrough with real photos | `streamlit_app/`, the OCR modules, `ExampleDocs/` |
+| Breakdown combinatorial sweep | `src/hdttools/api/breakdown.py` |
+
+A diff that touches only other `src/hdttools` files owes none of them. At
+**release** level the planner always lists all of them
+(`uv run pytest -n auto -m "slow and not external"`). Any command that gives its
+own `-m` replaces `addopts`' `-m "not external"`, so each slow command repeats
+`not external`.
+
 ## Cross-platform duplication
 
 RigCheck's business logic exists more than once by design (`compute_breakdown`/

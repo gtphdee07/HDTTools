@@ -44,6 +44,10 @@ from tests._test_command_helpers import (
 
 pytestmark = [pytest.mark.core, pytest.mark.minor]
 
+# The checks that start npm, Node or Gradle are `slow`: the planner owes them only when the test commands
+# change (#129). Each tool's checks also share one xdist worker (`-n auto --dist loadgroup`), so two
+# JVMs or two Node installs never run at once.
+
 
 # ---------------------------------------------------------------- Web
 
@@ -61,11 +65,15 @@ def _web_listed(*args: str) -> list[str]:
     return sorted(relative(entry["file"], WEB) for entry in _vitest_json(out))
 
 
+@pytest.mark.slow
+@pytest.mark.xdist_group("node")
 def test_web_file_command_selects_only_that_file():
     assert npm_script(WEB, "test") == "vitest run"
     assert _web_listed(WEB_FILE) == [WEB_FILE]
 
 
+@pytest.mark.slow
+@pytest.mark.xdist_group("node")
 def test_web_file_command_runs_that_file_and_nothing_else():
     out = run([tool("npm"), "test", "--silent", "--", "--reporter=json", WEB_FILE], WEB)
     report = _vitest_json(out)
@@ -73,6 +81,8 @@ def test_web_file_command_runs_that_file_and_nothing_else():
     assert report["numTotalTests"] > 0 and report["numFailedTests"] == 0
 
 
+@pytest.mark.slow
+@pytest.mark.xdist_group("node")
 def test_web_context_command_selects_every_offline_file_and_no_live_one():
     selected = _web_listed()
     on_disk_live = sorted(p.relative_to(WEB).as_posix() for p in (WEB / "src").rglob("*.external.test.ts"))
@@ -108,6 +118,8 @@ def test_proxy_test_script_has_no_pretest_or_posttest_hook():
     assert "pretest" not in scripts and "posttest" not in scripts
 
 
+@pytest.mark.slow
+@pytest.mark.xdist_group("node")
 def test_proxy_context_command_runs_every_top_level_test_file_and_no_other():
     require_proxy_install()  # a missing install fails here with the fix, not as a 502 below (#82)
     # `node --test` only accepts a reporter flag *before* the file list, so appending one to
@@ -132,6 +144,8 @@ def test_proxy_context_command_runs_every_top_level_test_file_and_no_other():
     assert summary["tests"] == sum(per_file_counts.values())
 
 
+@pytest.mark.slow
+@pytest.mark.xdist_group("node")
 def test_proxy_file_command_runs_that_file_and_nothing_else():
     require_proxy_install()
     assert PROXY_FILE_CMD.split() == ["node", "--test", PROXY_FILE]
@@ -145,6 +159,8 @@ def _gradle_tasks(*args: str) -> set[str]:
     return set(re.findall(r"^(:\S+) SKIPPED", gradle(*args, "--dry-run"), flags=re.MULTILINE))
 
 
+@pytest.mark.slow
+@pytest.mark.xdist_group("gradle")
 def test_android_context_command_graph_has_no_device_task():
     unit = _gradle_tasks("testDebugUnitTest")
     assert ":app:testDebugUnitTest" in unit

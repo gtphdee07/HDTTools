@@ -314,6 +314,16 @@ def test_several_refs_in_one_push_are_gated_once_for_the_union_of_platforms():
     assert harness.gated == [["web", "android"]]
 
 
+def test_the_hook_setup_and_the_deliberate_no_verify_bypass_are_documented():
+    root = Path(__file__).resolve().parent.parent
+    section = (root / "TESTING.md").read_text(encoding="utf-8").split("## External release gate", 1)[1].split("\n## ", 1)[0]
+
+    assert "git config core.hooksPath .githooks" in section
+    assert "--no-verify" in section and "on purpose" in section
+    assert eg.FORCE_ENV in section and "--force" in section and "--reason" in section
+    assert "--no-verify" in (root / ".githooks" / "pre-push").read_text(encoding="utf-8")
+
+
 def _git(cwd, *args):
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=True).stdout.strip()
 

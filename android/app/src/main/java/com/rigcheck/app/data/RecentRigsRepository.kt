@@ -1,6 +1,8 @@
 package com.rigcheck.app.data
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -22,8 +24,9 @@ private val RECENT_RIGS_KEY = stringPreferencesKey("recent_rigs")
 // Kotlin port of web/src/recentRigs.ts's exact algorithm (case-insensitive
 // dedupe by nickname, prepend, slice to 5), backed by Preferences DataStore
 // instead of localStorage - one serialized JSON blob, same mental model.
-class RecentRigsRepository(context: Context) {
-    private val dataStore = context.rigCheckDataStore
+class RecentRigsRepository(private val dataStore: DataStore<Preferences>) {
+    constructor(context: Context) : this(context.rigCheckDataStore)
+
     private val json = Json { ignoreUnknownKeys = true }
 
     val recentRigs: Flow<List<RecentRig>> = dataStore.data.map { prefs ->

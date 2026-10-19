@@ -885,9 +885,6 @@ depends on, and the scroll helper the screen and nav tests use:
   tapping them dispatches the correct Android intent or that a real
   capture/pick completes. Low regression risk (well-understood platform
   API); real flows stay covered by manual on-device testing.
-- **`android/app/src/androidTest/java/com/rigcheck/app/ExampleInstrumentedTest.kt`**
-  — the unmodified AGP template test, left in place; harmless, not part
-  of this suite's real coverage.
 - ✅ **Predictive standalone-only truck-side estimate — implemented
   2026-08-21 ("Round 2").** Landed TDD-style: `predictive_truck_estimate`
   was added to `BreakdownGoldenVectorTest.kt`'s `SUPPORTED_CAPABILITIES`

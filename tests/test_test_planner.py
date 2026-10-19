@@ -467,7 +467,7 @@ SLOW_CONFIG = {
         {"name": "ocr-photos", "triggers": ["src/hdttools/*_ocr.py", "ExampleDocs/*"], "tests": ["tests/test_photos.py", "tests/test_pools.py"]},
     ],
 }
-SLOW_ALL = 'uv run pytest -n auto -m "slow and not external"'
+SLOW_ALL = tp.SLOW_PYTEST
 TOOLING_OWED = SLOW_ALL + " tests/test_tooling.py"
 PHOTOS_OWED = SLOW_ALL + " tests/test_photos.py tests/test_pools.py"
 
@@ -512,6 +512,13 @@ def test_a_diff_matching_two_groups_owes_both():
 def test_release_lists_every_slow_test_whatever_the_diff():
     assert slow_commands(plan_slow([], "release")) == [SLOW_ALL]
     assert slow_commands(plan_slow([], "release", release_contexts=["android"])) == [SLOW_ALL]
+
+
+def test_every_slow_command_repeats_not_external_because_a_second_m_replaces_addopts():
+    assert tp.SLOW_PYTEST.endswith('-m "slow and not external"')
+    for level in ("issue", "session", "release"):
+        for command in slow_commands(plan_slow(["scripts/test_planner.py", "ExampleDocs/GooseTag.jpg"], level)):
+            assert '"slow and not external"' in command
 
 
 def test_a_config_without_slow_groups_plans_no_slow_selection():

@@ -171,3 +171,20 @@ def test_from_snapshot_survives_unreadable_surface_data(tmp_path, monkeypatch, c
     text = (tmp_path / "dashboard.svg").read_text(encoding="utf-8")
     assert "no results recorded" in text
     assert "External surfaces" not in text
+
+
+def test_surface_verdicts_never_ask_the_registry_even_when_it_would_answer(monkeypatch):
+    # The dashboard and the commit hook must stay offline and fast: a registry lookup that happens to
+    # succeed would still be a network call, so make any lookup fail the test.
+    import external_freshness as ef
+
+    def refuse(ecosystem, package):
+        raise AssertionError(f"registry asked for {ecosystem}/{package}")
+
+    monkeypatch.setattr(ef, "fetch_publish_times", refuse)
+    manifest = {"surfaces": {"x": {**_surface("x", ["web"]),
+                                   "registry_packages": [{"ecosystem": "npm", "package": "left-pad"}]}}}
+
+    rows = gd.surface_verdicts(manifest, {"surfaces": {"x": PASS}}, _Git())
+
+    assert [r.state for r in rows] == ["fresh"]

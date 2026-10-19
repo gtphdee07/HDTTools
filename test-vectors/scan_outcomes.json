@@ -1,0 +1,227 @@
+{
+  "_readme": "Shared Scan outcomes (workers/scan-proxy/CONTEXT.md, 'Scan outcomes') - THIS FILE is the source of truth for what a Scan that does not deliver (or delivers less than everything) must tell the user and how a retry behaves, not either client. Web (web/src/scanOutcomes.test.ts) and Android (android/.../ui/ScanOutcomesFixtureTest.kt) each load it and check their own behaviour; when one disagrees, fix the client, or change the row here and the glossary entry together. One row per case. Fields: id; case (the number in the glossary table; 12 is split into a-d); appliesTo (clients that have the case); trigger (what happens, which each client maps onto its own harness: worker_error = the Worker answers with that status and code; no_connection; unreadable_reply = an answer that is not the Worker's; no_answer_in_time; unsendable_photo = the client cannot send the photo; no_service_address = web only; delivered = the Worker delivered fields, fieldsRead says how many of the screen's fields it filled; delivered_no_weight = a delivered stand-alone ticket answer with no weight); spent (was a Scan Credit taken: yes | no | unknown); refunded (yes | no | not_applicable); retryKeepsRequestId (does a retry of the same photo send the same client_request_id, true exactly when the answer to the last request is unknown or the Scan was charged and not refunded); offersTryAgain (is a 'Try again' offered); nextStep (the steps the user is offered, from: sign_in, buy_scans, try_again, choose_different_photo, type_it_in; typing the numbers in is always open, so type_it_in is listed only where the client offers it as a step); messageContains (phrases the message the user reads must contain, compared case-insensitively, so Web may say 'scan' where Android says 'Scan'; phrases, not whole sentences, so each client keeps its own punctuation and its own screen's field labels); pending (per client, the row fields not yet built there, each with the ticket that builds it; a pending field is not checked and is listed by the test; the Android or Web ticket that builds it removes it from the list). Checked by: Android checks every field, nextStep exactly. Web checks every field except nextStep, of which it checks only try_again, because Web's other steps are screens and gates, not a list. noticeFieldLists is the one rule for naming the fields a Scan did not read: join with ', ' and ' and ' (A, A and B, A, B and C) and end 'Type it in' for one field, 'Type them in' for more; the labels themselves are each screen's own and are never part of the fixture's sentences except here, where they are made up.",
+  "cases": [
+    {
+      "id": "insufficient_credits",
+      "case": "1",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "worker_error", "status": 402, "code": "insufficient_credits"},
+      "spent": "no",
+      "refunded": "not_applicable",
+      "retryKeepsRequestId": false,
+      "offersTryAgain": false,
+      "nextStep": ["buy_scans"],
+      "messageContains": ["out of scans", "nothing was used"],
+      "pending": {}
+    },
+    {
+      "id": "unauthorized",
+      "case": "2",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "worker_error", "status": 401, "code": "unauthorized"},
+      "spent": "no",
+      "refunded": "not_applicable",
+      "retryKeepsRequestId": false,
+      "offersTryAgain": false,
+      "nextStep": ["sign_in"],
+      "messageContains": ["sign-in has expired", "nothing was used", "sign in again"],
+      "pending": {}
+    },
+    {
+      "id": "auth_unavailable",
+      "case": "3",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "worker_error", "status": 503, "code": "auth_unavailable"},
+      "spent": "no",
+      "refunded": "not_applicable",
+      "retryKeepsRequestId": false,
+      "offersTryAgain": true,
+      "nextStep": ["try_again"],
+      "messageContains": ["couldn't verify your account just now", "nothing was used", "try again in a moment"],
+      "pending": {}
+    },
+    {
+      "id": "extraction_failed",
+      "case": "4",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "worker_error", "status": 502, "code": "extraction_failed"},
+      "spent": "yes",
+      "refunded": "yes",
+      "retryKeepsRequestId": false,
+      "offersTryAgain": true,
+      "nextStep": ["try_again"],
+      "messageContains": ["couldn't read that photo", "was refunded", "trying again uses another scan", "clearer photo", "type the numbers in yourself"],
+      "pending": {}
+    },
+    {
+      "id": "extraction_failed_no_refund",
+      "case": "5",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "worker_error", "status": 502, "code": "extraction_failed_no_refund"},
+      "spent": "yes",
+      "refunded": "no",
+      "retryKeepsRequestId": true,
+      "offersTryAgain": true,
+      "nextStep": ["try_again"],
+      "messageContains": ["couldn't read that photo", "couldn't refund", "won't charge you again", "contact support"],
+      "pending": {}
+    },
+    {
+      "id": "billing_error",
+      "case": "6",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "worker_error", "status": 502, "code": "billing_error"},
+      "spent": "unknown",
+      "refunded": "not_applicable",
+      "retryKeepsRequestId": true,
+      "offersTryAgain": true,
+      "nextStep": ["try_again"],
+      "messageContains": ["couldn't confirm your scan balance", "you may not have been charged", "try again in a moment", "a retry is not charged twice"],
+      "pending": {}
+    },
+    {
+      "id": "bad_request",
+      "case": "7",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "worker_error", "status": 400, "code": "bad_request"},
+      "spent": "no",
+      "refunded": "not_applicable",
+      "retryKeepsRequestId": false,
+      "offersTryAgain": false,
+      "nextStep": ["type_it_in", "choose_different_photo"],
+      "messageContains": ["nothing was used", "try a different photo", "type the numbers in yourself"],
+      "pending": {}
+    },
+    {
+      "id": "unsendable_photo",
+      "case": "8",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "unsendable_photo"},
+      "spent": "no",
+      "refunded": "not_applicable",
+      "retryKeepsRequestId": false,
+      "offersTryAgain": false,
+      "nextStep": ["type_it_in", "choose_different_photo"],
+      "messageContains": ["nothing was used", "type the numbers in yourself"],
+      "pending": {}
+    },
+    {
+      "id": "no_service_address",
+      "case": "9",
+      "appliesTo": ["web"],
+      "trigger": {"kind": "no_service_address"},
+      "spent": "no",
+      "refunded": "not_applicable",
+      "retryKeepsRequestId": false,
+      "offersTryAgain": false,
+      "nextStep": ["type_it_in"],
+      "messageContains": ["scanning is not set up", "nothing was used", "type the numbers in yourself"],
+      "pending": {}
+    },
+    {
+      "id": "no_connection",
+      "case": "10a",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "no_connection"},
+      "spent": "unknown",
+      "refunded": "not_applicable",
+      "retryKeepsRequestId": true,
+      "offersTryAgain": true,
+      "nextStep": ["try_again"],
+      "messageContains": ["couldn't reach the scan service", "you may not have been charged", "check your connection and try again", "a retry is not charged twice"],
+      "pending": {}
+    },
+    {
+      "id": "unreadable_reply",
+      "case": "10b",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "unreadable_reply"},
+      "spent": "unknown",
+      "refunded": "not_applicable",
+      "retryKeepsRequestId": true,
+      "offersTryAgain": true,
+      "nextStep": ["try_again"],
+      "messageContains": ["didn't get a usable answer", "you may not have been charged", "try again", "a retry is not charged twice"],
+      "pending": {}
+    },
+    {
+      "id": "no_answer_in_time",
+      "case": "11",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "no_answer_in_time"},
+      "spent": "unknown",
+      "refunded": "not_applicable",
+      "retryKeepsRequestId": true,
+      "offersTryAgain": true,
+      "nextStep": ["try_again"],
+      "messageContains": ["took too long to answer", "you may not have been charged", "try again", "a retry is not charged twice"],
+      "pending": {}
+    },
+    {
+      "id": "delivered_nothing_read",
+      "case": "12a",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "delivered", "fieldsRead": "none"},
+      "spent": "yes",
+      "refunded": "no",
+      "retryKeepsRequestId": false,
+      "offersTryAgain": false,
+      "nextStep": ["type_it_in", "choose_different_photo"],
+      "messageContains": ["a scan was used and nothing could be read", "type the numbers in", "choose a different photo"],
+      "pending": {}
+    },
+    {
+      "id": "delivered_no_weight",
+      "case": "12b",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "delivered_no_weight"},
+      "spent": "yes",
+      "refunded": "no",
+      "retryKeepsRequestId": false,
+      "offersTryAgain": false,
+      "nextStep": ["type_it_in", "choose_different_photo"],
+      "messageContains": ["couldn't find a weight", "that scan was used", "trying again uses another", "type the weight in"],
+      "pending": {}
+    },
+    {
+      "id": "delivered_some_read",
+      "case": "12c",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "delivered", "fieldsRead": "some"},
+      "spent": "yes",
+      "refunded": "no",
+      "retryKeepsRequestId": false,
+      "offersTryAgain": false,
+      "nextStep": ["type_it_in", "choose_different_photo"],
+      "messageContains": ["a scan was used, but we couldn't read:", "choose a different photo"],
+      "pending": {}
+    },
+    {
+      "id": "delivered_every_field_read",
+      "case": "12d",
+      "appliesTo": ["web", "android"],
+      "trigger": {"kind": "delivered", "fieldsRead": "all"},
+      "spent": "yes",
+      "refunded": "no",
+      "retryKeepsRequestId": false,
+      "offersTryAgain": false,
+      "nextStep": [],
+      "messageContains": [],
+      "pending": {}
+    }
+  ],
+  "noticeFieldLists": [
+    {
+      "labels": ["Alpha"],
+      "message": "A Scan was used, but we couldn't read: Alpha. Type it in, or go back and choose a different photo."
+    },
+    {
+      "labels": ["Alpha", "Beta"],
+      "message": "A Scan was used, but we couldn't read: Alpha and Beta. Type them in, or go back and choose a different photo."
+    },
+    {
+      "labels": ["Alpha", "Beta", "Gamma"],
+      "message": "A Scan was used, but we couldn't read: Alpha, Beta and Gamma. Type them in, or go back and choose a different photo."
+    }
+  ]
+}

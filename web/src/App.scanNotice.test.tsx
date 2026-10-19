@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 const NOTHING_READ = /A Scan was used and nothing could be read\. Type the numbers in, or go back and choose a different photo\./;
-const SOME_UNREAD = /A Scan was used\. We couldn't read:/;
+const SOME_UNREAD = /A Scan was used, but we couldn't read:/;
 
 describe('the review step after a Scan', () => {
   it('says a Scan was used when no field was read, offers no Try again, and still counts the Scan', async () => {
@@ -59,7 +59,7 @@ describe('the review step after a Scan', () => {
 
     const notice = await screen.findByText(SOME_UNREAD);
     expect(notice).toHaveTextContent(
-      "A Scan was used. We couldn't read: Front GAWR (lb), Rear GAWR (lb). Fill those in yourself.",
+      "A Scan was used, but we couldn't read: Front GAWR (lb) and Rear GAWR (lb). Type them in, or go back and choose a different photo.",
     );
     expect(screen.queryByText(NOTHING_READ)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Choose a different photo' })).not.toBeInTheDocument();
@@ -93,7 +93,7 @@ describe('the review step after a Scan', () => {
     await user.click(await screen.findByRole('button', { name: 'Next: Trailer Tag' }));
     await chooseAndExtract(user);
     expect(await screen.findByText(SOME_UNREAD)).toHaveTextContent(
-      "We couldn't read: Unloaded Weight / UVW (lb). Fill those in yourself.",
+      "we couldn't read: Unloaded Weight / UVW (lb). Type it in, or go back and choose a different photo.",
     );
 
     await user.click(screen.getByRole('button', { name: 'Next: Scale Ticket' }));

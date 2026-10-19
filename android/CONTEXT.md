@@ -1,6 +1,6 @@
 # Android
 
-The native Kotlin/Compose app: manual-entry-first, with an optional paid Claude-vision Scan (see Scan Proxy's `CONTEXT.md`) for any of the three documents.
+The native Kotlin/Compose app: manual-entry-first, with an optional paid Claude-vision Scan (see Scan Proxy's `CONTEXT.md`; what the user is told for each way a Scan can end, and when a retry keeps the request id or offers Try again, is its "Scan outcomes" entry, which `ScanOutcomesFixtureTest.kt` checks this app against through `test-vectors/scan_outcomes.json`) for any of the three documents.
 
 Android's `Rig`/`Breakdown`/`Item`/`Tone`/`Verdict` model mirrors Core/Web's shape exactly (`RecentRig.kt`, `BreakdownItem.kt`, `Tone.kt`, `VerdictInfo.kt`) but is its own independent implementation, not a shared library — see `CONTEXT-MAP.md`'s Relationships and ADR-0001. Definitions for those terms live in `src/hdttools/CONTEXT.md`; this file only covers what's genuinely Android-specific.
 

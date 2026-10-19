@@ -143,6 +143,25 @@
       "files": ["workers/scan-proxy/src/index.ts", "workers/scan-proxy/src/request.ts", "workers/scan-proxy/src/types.ts"],
       "tests": [],
       "shares_with": ["android"]
+    },
+    {
+      "name": "scan-outcomes",
+      "context": "scan-proxy",
+      "files": [
+        "test-vectors/scan_outcomes.json",
+        "web/src/api.ts",
+        "web/src/scanError.ts",
+        "web/src/scanNotice.ts",
+        "web/src/scanAttempts.ts",
+        "android/app/src/main/java/com/rigcheck/app/ui/Scan*.kt",
+        "android/app/src/main/java/com/rigcheck/app/data/ScanAttempts.kt"
+      ],
+      "tests": [],
+      "shares_with": ["web", "android"],
+      "shares_tests": {
+        "web": "npm --prefix web test -- src/scanOutcomes.test.ts",
+        "android": "android/gradlew -p android testDebugUnitTest --tests com.rigcheck.app.ui.ScanOutcomesFixtureTest"
+      }
     }
   ]
 }

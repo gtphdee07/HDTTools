@@ -12,15 +12,16 @@ export interface ScanContext {
 type DocType = 'truck_tag' | 'trailer_tag' | 'scale_ticket';
 
 // Messages for the failures the Scan service names (workers/scan-proxy README, "Errors"). Where a scan
-// could not have been charged, or was refunded, the message says so.
+// could not have been charged, or was refunded, the message says so. The words are the "Scan outcomes" of
+// workers/scan-proxy/CONTEXT.md, checked against test-vectors/scan_outcomes.json by scanOutcomes.test.ts.
 const MESSAGES = {
-  insufficient_credits: "You're out of scans.",
-  unauthorized: 'Your sign-in has expired. Sign in again to scan.',
-  auth_unavailable: "We couldn't verify your account just now, so nothing was scanned and you were not charged. Try again in a moment.",
+  insufficient_credits: "You're out of scans. Nothing was used.",
+  unauthorized: 'Your sign-in has expired. Nothing was used. Sign in again to scan.',
+  auth_unavailable: "We couldn't verify your account just now. Nothing was used. Try again in a moment.",
   extraction_failed:
-    "We couldn't read that photo, and your scan was refunded. Try a clearer photo, or type the numbers in yourself.",
+    "We couldn't read that photo, and your scan was refunded. Trying again uses another scan. A clearer photo may work better, or type the numbers in yourself.",
   extraction_failed_no_refund:
-    "We couldn't read that photo, and we couldn't refund your scan automatically. Trying this photo again will not charge you again. If it keeps happening, contact support.",
+    "We couldn't read that photo, and we couldn't refund your scan automatically. Trying this photo again won't charge you again. If it keeps happening, contact support.",
   billing_error:
     "We couldn't confirm your scan balance with the payment service, so nothing was scanned. You may not have been charged. Try again in a moment; a retry is not charged twice.",
 } as const;
@@ -28,10 +29,13 @@ const MESSAGES = {
 // The service's own wording for what it disliked is for developers (e.g. which field), so it is not shown.
 const BAD_REQUEST = "The scan service couldn't take that photo. Nothing was used. Try a different photo, or type the numbers in yourself.";
 
-const NO_ANSWER = "We didn't get a usable answer from the scan service. Try again; a retry is not charged twice.";
+const NO_ANSWER =
+  "We didn't get a usable answer from the scan service. You may not have been charged. Try again; a retry is not charged twice.";
 
-const NO_CONNECTION = "We couldn't reach the scan service. Check your connection and try again. A retry is not charged twice.";
-const TOO_SLOW = 'The scan service took too long to answer. Try again; a retry is not charged twice.';
+const NO_CONNECTION =
+  "We couldn't reach the scan service. You may not have been charged. Check your connection and try again; a retry is not charged twice.";
+const TOO_SLOW =
+  'The scan service took too long to answer. You may not have been charged. Try again; a retry is not charged twice.';
 
 // How long the whole exchange (sending the photo, waiting, reading the reply) may take before it is abandoned.
 // While a scan is in flight the check cannot be left (#103), so without a limit a reply that never comes would
@@ -58,7 +62,7 @@ interface ScanBody {
 
 async function scan<T>(docType: DocType, file: File, context: ScanContext): Promise<T> {
   const endpoint = scanEndpoint();
-  if (!endpoint) throw new ScanError('unavailable', 'Scanning is not set up on this site. You can type the numbers in yourself.');
+  if (!endpoint) throw new ScanError('unavailable', 'Scanning is not set up on this site. Nothing was used. You can type the numbers in yourself.');
 
   const image = await prepareImage(file);
 

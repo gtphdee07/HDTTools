@@ -30,8 +30,8 @@ def parse_android_report(html: str, exclude_packages: tuple[str, ...] = ()) -> f
     Exclusion exists for isolated research spikes that live inside the
     app module's main/ source set but are never reachable from production
     (e.g. ui.experiments.cameraoverlay, item #18) - same spirit as
-    src/experiments/BoundOCR/ being kept outside Python's coverage.py
-    `source` config so an intentionally-unwired experiment doesn't drag
+    an experiment being kept outside Python's coverage.py `source`
+    config so an intentionally-unwired experiment doesn't drag
     down the real, shippable-code number (item #8, found 2026-09-09: the
     camera-overlay spike alone dropped Android's measured coverage from
     71% to 64.28%).

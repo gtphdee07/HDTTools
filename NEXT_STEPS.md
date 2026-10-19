@@ -369,7 +369,7 @@ captured as roadmap items #7-#8 above — check there first.
   without a fix in hand. It would need updating (not removing) once an
   actual auto-crop/guidance fix ships, since some of these 10 photos
   would then be expected to start succeeding.
-  **Investigated for real, 2026-08-26/27 (BoundOCR)**: automated
+  **Investigated for real, 2026-08-26/27 (BoundOCR; code removed 2026-10-18, see `ARCHIVE_WEB_STREAMLIT.md`)**: automated
   auto-crop (contour/quad detection) was built and tested, and failed
   three separate, real ways across two vehicles; hand-crop diagnostics
   also showed OCR *recognition* quality — not just cropping — is a real,

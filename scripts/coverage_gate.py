@@ -103,8 +103,8 @@ ANDROID_JVM_REPORT = (
 
 # Isolated research spikes that live inside app/src/main/ but are never
 # reachable from production - excluded from Android's coverage number the
-# same way src/experiments/BoundOCR/ is excluded from Python's (kept
-# outside coverage.py's `source`). Add a new entry here, not a change to
+# same way Python's coverage.py `source` lists only the shippable
+# packages. Add a new entry here, not a change to
 # the baseline, the moment a new such spike lands - see
 # coverage_lib.parse_android_report's own docstring for the full reasoning
 # (item #8, found 2026-09-09).

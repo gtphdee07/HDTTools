@@ -36,7 +36,7 @@ def test_parse_android_report_raises_when_total_row_is_missing():
 # Real per-package row snippet shape (top-level JaCoCo index.html, item #8
 # 2026-09-09): a package below the exclusion threshold - e.g. an isolated
 # research spike like ui.experiments.cameraoverlay, never reachable from
-# production, same spirit as BoundOCR being kept outside Python's
+# production, same spirit as an experiment being kept outside Python's
 # coverage.py `source` - shouldn't drag down the app-wide real number.
 _REPORT_WITH_TWO_PACKAGES = (
     '<table><tbody>'

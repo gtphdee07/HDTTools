@@ -888,3 +888,24 @@ is entirely in `NEXT_STEPS.md`'s framing — the "✅ Superseded"/"✅ Update"
 annotations that read as "temporary until item #22 ships everywhere"
 were corrected to say explicitly: resolved for Web, permanent and
 accepted for Streamlit.
+
+---
+
+## 🗑️ Removed: BoundOCR research prototype and its three packages — 2026-10-18
+
+**Removed** (owner decision, #59; ticket #134): `src/experiments/BoundOCR`,
+the free/local-OCR research prototype that followed the
+"Real-photo OCR robustness investigation" above, and the three
+dependencies only it or nothing used: `easyocr` (which pulled in `torch`
+and `torchvision`), `pyzbar` and `opencv-python-headless`. The code was
+added in commit `d9ca5dc` (2026-08-27) and is recoverable from git
+history; `uv add <package>` brings a package back.
+
+**The result it recorded stands**: free local OCR could not reliably read
+the real target photos — automated contour/quad auto-crop failed three
+separate ways across two vehicles, Tesseract was near-total garbage
+regardless of crop quality, EasyOCR was better but still blocked by
+small-glyph misreads, and `pyzbar` decoded none of the 10 real photos.
+Full write-up: `ClaudePlans/2026-08-26-boundocr-report-session-summary.md`
+and `NEXT_STEPS.md`. Its 16 tests never ran (`testpaths` is `tests`), so
+the default pytest counts did not change.

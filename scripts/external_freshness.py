@@ -158,7 +158,7 @@ _FETCHERS = {
 }
 
 
-def fetch_publish_times(ecosystem: str, package: str) -> dict[str, str]:
+def fetch_publish_times(ecosystem: str, package: str) -> dict[str, str | None]:
     fetcher = _FETCHERS.get(ecosystem)
     if fetcher is None:
         raise RegistryError(f"no registry fetcher for ecosystem {ecosystem!r}")

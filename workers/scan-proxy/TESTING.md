@@ -493,3 +493,57 @@ platforms, so Android's release gate now waits on it. Only the Web suite
 exercises that surface live. `supabase-kt` is still not a watched registry
 package: the freshness script now has `maven` and `google-maven` fetchers
 (#54), but listing it is a separate manifest change.
+
+## Per-surface External suite: `scan-proxy-worker` (ADR-0008, #41)
+
+The `scan-proxy-worker` surface is the deployed Worker's own contract: the real
+`POST /v1/scan` at its workers.dev URL, the one Android's `ScanApiClient` and
+Web call. Manifest entry `scripts/external_manifest/surfaces/scan-proxy-worker.json`;
+platforms `scan-proxy`/`android`/`web`, so Android's and Web's release gates wait
+on it. Boundary files `index.ts`, `http.ts`, `request.ts`, `scan.ts`,
+`docTypes.ts` and `idempotencyKey.ts`. Pins: `wrangler.toml` (which holds the
+`compatibility_date`, so changing it makes the surface stale), `package.json`
+and `package-lock.json`. Watched registry packages: `wrangler`, `workerd` and
+`@cloudflare/workers-types`. The suite is
+`src/external/scanProxyWorker.external.test.ts`, every test tagged
+`[scan-proxy-worker]`. Run it like the others: `.\test-external.ps1` (only when
+stale) or `npm run test:external`.
+
+It tests **whatever is deployed** and does not deploy. After a change to a
+boundary file or `wrangler.toml`, run `npm run deploy` first, or the run proves
+the old Worker and records the new commit as passing. (The Weekly suite's
+`pretest:weekly` deploys for itself.)
+
+Needs `REVENUECAT_SECRET_KEY` (a v2 key with Customer information read; it reads
+the balances that prove the spend and the refund) and the `funded` and
+`noCredits` Supabase test users' variables, `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_PUBLISHABLE_KEY` (`src/liveToken.ts`, from the environment or
+`web/.env.local`). A missing value fails the run naming it; `-Skip` records
+`skipped` and leaves the surface stale. **Real cost: one billed Claude call and
+one SCAN credit per run** (`max_paid_calls` is 1, enforced by the wrapper's
+paid-call gate, which asks before it runs). Everything else is free. The
+`funded` account loses a credit per run, so top it up in the RevenueCat dashboard
+when its balance runs low (the suite fails with that message at zero).
+
+| ADR-0008 depth | Covered by |
+|---|---|
+| Reachable | The CORS preflight Web's browser sends is answered 204 with the allowed method and headers; any other route or method is the 404 `not_found` envelope. |
+| Authenticated | A signed-in request with an empty body gets past the token check to the 400 request validation. A missing, malformed or tampered token (401) is the `[worker-token-verification]` surface's, not repeated here. |
+| Response shape | A real truck-tag scan returns exactly `ok`, `doc_type` and `fields`, with every field `docTypes.ts` requires and at least one filled in. |
+| Error contracts | Each bad request (not an object, unknown `doc_type`, no image, unsupported `media_type`, malformed `client_request_id`) is a 400 `bad_request` whose message names the problem and leaves the balance unchanged; an account with no credits gets 402 `insufficient_credits` and stays at zero. Invalid or missing user: see the Authenticated row. |
+| Full journey | The real scan spends exactly one credit (balance read from RevenueCat before and after); a truncated image is the one forced failure: 502 `extraction_failed` ("Credit refunded."), and the balance is back where it started. |
+
+One billed call covers both the response-shape and the spend journey, which is
+why the cost is 1 rather than 2.
+
+Review of the existing suites against the four depths (#41): `weekly/
+scan.weekly.test.ts` already runs the no-credit 402, a real truck-tag scan, a
+valid-but-irrelevant image (charged, not refunded) and the truncated-image
+refund, through the deployed Worker. They stay as they are (untagged, redeployed
+by `pretest:weekly`, recorded as `scan_proxy.weekly`) per the ticket's scope
+note. They check the status and body but never read a balance, so neither the
+spend nor the refund was proved before; they cover no bad-request contract, no
+preflight and no 404. The new suite fills those gaps. `release/
+scan.release.test.ts` talks to Anthropic and RevenueCat directly, not the
+Worker, so it does not apply to this surface. Neither older suite feeds the
+freshness record.

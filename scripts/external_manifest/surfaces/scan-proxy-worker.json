@@ -1,13 +1,20 @@
 {
   "name": "scan-proxy-worker",
-  "status": "planned",
+  "status": "active",
   "platforms": ["scan-proxy", "android", "web"],
-  "boundary_files": ["workers/scan-proxy/src/index.ts", "workers/scan-proxy/wrangler.toml"],
+  "boundary_files": [
+    "workers/scan-proxy/src/index.ts",
+    "workers/scan-proxy/src/http.ts",
+    "workers/scan-proxy/src/request.ts",
+    "workers/scan-proxy/src/scan.ts",
+    "workers/scan-proxy/src/docTypes.ts",
+    "workers/scan-proxy/src/idempotencyKey.ts"
+  ],
   "dependency_pins": ["workers/scan-proxy/wrangler.toml", "workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json"],
   "registry_packages": [
     {"ecosystem": "npm", "package": "wrangler"},
     {"ecosystem": "npm", "package": "workerd"},
     {"ecosystem": "npm", "package": "@cloudflare/workers-types"}
   ],
-  "max_paid_calls": 0
+  "max_paid_calls": 1
 }

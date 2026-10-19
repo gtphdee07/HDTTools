@@ -2,6 +2,7 @@
   "name": "google-play-billing",
   "status": "planned",
   "platforms": ["android"],
+  "owner": "android",
   "boundary_files": ["android/app/src/main/java/com/rigcheck/app/data/RevenueCatManager.kt"],
   "dependency_pins": ["android/gradle/libs.versions.toml"],
   "registry_packages": [

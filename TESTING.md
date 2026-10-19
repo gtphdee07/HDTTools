@@ -120,7 +120,24 @@ and pytest today; Android's surfaces are still `planned`, so it has none).
 `scripts/external_manifest/surfaces/<name>.json` is the one source of
 truth for a surface: its boundary files, dependency pins, watched
 registry packages (npm, PyPI, Maven), maximum paid calls, the platforms
-whose release depends on it, and whether it is `active` or `planned`.
+whose release depends on it, its `owner`, and whether it is `active` or
+`planned`.
+
+**Each surface has one owner** (#142): the one platform, among its
+`platforms`, whose wrapper holds its tests, runs it and records it
+(`scan-proxy-worker` is owned by `scan-proxy` although Web and Android
+depend on it). A wrapper runs, guards and records only the surfaces it
+owns. A stale surface in its chain that another platform owns is printed
+with the script that runs it (for example `web\test-external.ps1` says
+`run workers\scan-proxy\test-external.ps1`) and nothing is run or recorded
+for it, so there is no order to run the scripts in and no false `fail`. A
+surface an owned wrapper finds no tagged test for is still recorded `fail`.
+A surface with no `owner`, one that is not among its platforms, or a list
+of owners is a manifest problem: `external_freshness.py` prints it and
+exits 1, and a wrapper refuses to start. Android's release run calls the
+Worker's wrapper for its chain, so it records nothing itself; the
+Android-only surfaces (`planned`, owner `android`) need an Android runner
+before they go `active` (#39, #40).
 
 **Depth, per surface:** reachable and authenticated; response shape
 matches our contract; error contracts; a full user journey. A surface

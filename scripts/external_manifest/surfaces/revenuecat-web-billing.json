@@ -2,6 +2,7 @@
   "name": "revenuecat-web-billing",
   "status": "active",
   "platforms": ["web"],
+  "owner": "web",
   "boundary_files": ["web/src/revenueCatBilling.ts"],
   "dependency_pins": ["web/package.json", "web/package-lock.json"],
   "registry_packages": [

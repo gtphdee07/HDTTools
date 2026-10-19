@@ -2,6 +2,7 @@
   "name": "supabase-auth",
   "status": "active",
   "platforms": ["web", "android"],
+  "owner": "web",
   "boundary_files": [
     "web/src/auth.tsx",
     "android/app/src/main/java/com/rigcheck/app/data/SupabaseAccountBackend.kt"

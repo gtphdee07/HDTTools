@@ -2,6 +2,7 @@
   "name": "pages-site",
   "status": "active",
   "platforms": ["web"],
+  "owner": "web",
   "boundary_files": [
     "web/wrangler.toml",
     "web/.env.production",

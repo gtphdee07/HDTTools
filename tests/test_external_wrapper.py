@@ -28,7 +28,7 @@ class Harness:
         self.recorded = []
         self.lines = []
 
-    def go(self, verdicts, skip=False):
+    def go(self, verdicts, skip=False, owned_elsewhere=None):
         return ew.execute_plan(
             verdicts,
             skip=skip,
@@ -36,6 +36,7 @@ class Harness:
             run_tests=lambda surfaces: (self.ran.append(list(surfaces)) or self.exit_code),
             record=lambda s, o, v: self.recorded.append((s, o, v)),
             out=self.lines.append,
+            owned_elsewhere=owned_elsewhere,
         )
 
 
@@ -86,6 +87,123 @@ def test_untagged_surface_is_recorded_as_fail_and_not_run():
     assert h.go([stale("a")]) == 1
     assert h.ran == []
     assert [(s, o) for s, o, _ in h.recorded] == [("a", "fail")]
+
+
+def test_untagged_surface_the_wrapper_owns_says_no_external_tests_tagged():
+    h = Harness(tagged=())
+    h.go([stale("a")], owned_elsewhere={})
+    assert "No external tests tagged [a]; recording fail." in h.lines
+
+
+# --- surfaces another platform's wrapper owns (#142) ---------------------------------------------
+
+
+def test_a_stale_surface_owned_elsewhere_is_neither_run_nor_recorded_and_the_owning_script_is_named():
+    h = Harness(tagged=())  # the Web wrapper has no tests tagged for the Worker's surfaces
+    assert h.go([stale("w")], owned_elsewhere={"w": "scan-proxy"}) == 0
+    assert h.ran == [] and h.recorded == []
+    assert any("w" in line and r"workers\scan-proxy\test-external.ps1" in line for line in h.lines)
+
+
+def test_surfaces_owned_elsewhere_do_not_stop_the_wrapper_running_and_recording_its_own():
+    h = Harness(tagged=("a",))
+    assert h.go([stale("a"), stale("w")], owned_elsewhere={"w": "scan-proxy"}) == 0
+    assert h.ran == [["a"]]
+    assert [(s, o) for s, o, _ in h.recorded] == [("a", "pass")]
+
+
+def test_an_own_untagged_surface_still_fails_next_to_one_owned_elsewhere():
+    h = Harness(tagged=())
+    assert h.go([stale("a"), stale("w")], owned_elsewhere={"w": "scan-proxy"}) == 1
+    assert [(s, o) for s, o, _ in h.recorded] == [("a", "fail")]
+
+
+def test_skip_records_skipped_only_for_the_surfaces_the_wrapper_owns():
+    h = Harness()
+    assert h.go([stale("a"), stale("w")], skip=True, owned_elsewhere={"w": "scan-proxy"}) == 0
+    assert [(s, o) for s, o, _ in h.recorded] == [("a", "skipped")]
+
+
+def test_a_fresh_surface_owned_elsewhere_adds_no_note():
+    h = Harness()
+    h.go([V("w", "fresh"), stale("a")], owned_elsewhere={"w": "scan-proxy"})
+    assert not any("owned by" in line for line in h.lines)
+
+
+def test_the_note_names_a_fallback_for_an_owner_without_a_known_script():
+    h = Harness()
+    h.go([stale("w")], owned_elsewhere={"w": "android"})
+    assert any("android" in line and "not run or recorded here" in line for line in h.lines)
+
+
+MANIFEST = {
+    "surfaces": {
+        "site": {"name": "site", "platforms": ["web"], "owner": "web"},
+        "auth": {"name": "auth", "platforms": ["web", "android"], "owner": "web"},
+        "worker": {"name": "worker", "platforms": ["scan-proxy", "web", "android"], "owner": "scan-proxy"},
+    }
+}
+
+
+def test_foreign_owners_lists_chain_surfaces_another_platform_owns():
+    assert ew.foreign_owners(MANIFEST, "web") == {"worker": "scan-proxy"}
+    assert ew.foreign_owners(MANIFEST, "scan-proxy") == {}
+
+
+class Run:
+    """One wrapper invocation against a fake manifest, status and runner."""
+
+    def __init__(self, platform, manifest=MANIFEST, tagged=(), status=None):
+        self.ran, self.recorded, self.lines = [], [], []
+        self.code = ew.main(
+            ["--platform", platform, "--tests-dir", "unused", "--cwd", "unused", "--", "cmd"],
+            manifest=manifest,
+            status=status or {},
+            git=ew.external_freshness.GitHistory(),
+            registry=lambda ecosystem, package: {},
+            has_tests=lambda s: s in tagged,
+            run_tests=lambda surfaces: self.ran.append(list(surfaces)) or 0,
+            record=lambda s, o, v: self.recorded.append((s, o)),
+            out=self.lines.append,
+        )
+
+
+def test_the_web_wrapper_records_nothing_for_the_workers_surfaces_and_names_the_worker_script():
+    r = Run("web", tagged=("site", "auth"))
+    assert r.code == 0
+    assert r.ran == [["site", "auth"]]
+    assert sorted(r.recorded) == [("auth", "pass"), ("site", "pass")]
+    assert any("worker" in line and r"workers\scan-proxy\test-external.ps1" in line for line in r.lines)
+
+
+def test_the_worker_wrapper_still_runs_and_records_its_surfaces():
+    r = Run("scan-proxy", tagged=("worker",))
+    assert r.code == 0
+    assert r.ran == [["worker"]]
+    assert r.recorded == [("worker", "pass")]
+
+
+def test_a_surface_a_wrapper_owns_with_no_tagged_tests_is_still_recorded_fail():
+    r = Run("web", tagged=("site",))
+    assert r.code == 1
+    assert ("auth", "fail") in r.recorded
+    assert "No external tests tagged [auth]; recording fail." in r.lines
+
+
+def test_a_manifest_with_an_ownerless_surface_stops_the_wrapper_before_anything_runs():
+    manifest = {"surfaces": {**MANIFEST["surfaces"], "new": {"name": "new", "platforms": ["web"]}}}
+    r = Run("web", manifest=manifest, tagged=("site", "auth", "new"))
+    assert r.code == 1
+    assert r.ran == [] and r.recorded == []
+    assert any("new" in line and "no owner" in line for line in r.lines)
+
+
+def test_a_surface_two_wrappers_claim_stops_the_wrapper_before_anything_runs():
+    manifest = {"surfaces": {**MANIFEST["surfaces"], "two": {"name": "two", "platforms": ["web", "scan-proxy"], "owner": ["web", "scan-proxy"]}}}
+    r = Run("scan-proxy", manifest=manifest, tagged=("worker", "two"))
+    assert r.code == 1
+    assert r.ran == [] and r.recorded == []
+    assert any("two" in line and "several" in line for line in r.lines)
 
 
 def test_mixed_tagged_and_untagged_runs_the_tagged_and_still_fails_overall():

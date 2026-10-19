@@ -4,6 +4,13 @@ platform wrappers (e.g. web/test-external.ps1) are thin shells around this.
 Usage: uv run scripts/external_wrapper.py --platform web --tests-dir web/src/external
            --cwd web [--skip] -- npm run test:external
 
+A wrapper acts only on the surfaces it owns (the manifest's `owner`, #142). A
+stale surface in its chain that another platform owns is reported with the
+script that runs it, and is neither run, guarded nor recorded here: its tests
+live in the owner's tests directory, so a "no tests tagged" fail from this
+wrapper would be false. A manifest with a surface that has no owner, or more
+than one, stops the run before anything is run or recorded.
+
 Only stale surfaces in the platform's dependency chain run. Fresh ones are
 left alone, `--skip` records `skipped` (which never advances freshness), a
 stale surface with no test tagged `[surface]` is recorded as a fail rather
@@ -58,14 +65,40 @@ TAG_FORMATS = {
 }
 
 
+# Each platform's wrapper script, relative to the repo root, for the "run <script>" note.
+WRAPPER_SCRIPTS = {
+    "web": r"web\test-external.ps1",
+    "scan-proxy": r"workers\scan-proxy\test-external.ps1",
+    "core": "test-external.ps1",
+}
+
+
+def foreign_owners(manifest: dict, platform: str) -> dict[str, str]:
+    """The surfaces in `platform`'s dependency chain that another platform's wrapper owns, with
+    their owners. This wrapper reports them when stale but neither runs nor records them."""
+    surfaces = manifest["surfaces"]
+    return {
+        n: surfaces[n]["owner"]
+        for n in external_freshness.surfaces_for_platform(manifest, platform)
+        if surfaces[n].get("owner") != platform
+    }
+
+
 def execute_plan(
-    verdicts, *, skip, has_tests, run_tests, record, out=print, paid_calls=None, budget=None, read_results=None
+    verdicts, *, skip, has_tests, run_tests, record, out=print, paid_calls=None, budget=None, read_results=None,
+    owned_elsewhere=None,
 ) -> int:
+    owned_elsewhere = owned_elsewhere or {}
     for v in verdicts:
         reasons = f": {'; '.join(v.reasons)}" if v.reasons else ""
         out(f"{v.surface} - {v.state}{reasons}")
+        if v.blocking and v.surface in owned_elsewhere:
+            owner = owned_elsewhere[v.surface]
+            script = WRAPPER_SCRIPTS.get(owner)
+            how = f"run {script}" if script else f"run the {owner} External wrapper"
+            out(f"{v.surface} is owned by {owner}: {how}. It is not run or recorded here.")
 
-    stale = [v for v in verdicts if v.blocking]
+    stale = [v for v in verdicts if v.blocking and v.surface not in owned_elsewhere]
     if not stale:
         out("No stale surfaces; nothing to run.")
         return 0
@@ -202,7 +235,12 @@ def budget_for(paid_calls: dict[str, int], max_calls: int | None = None) -> Paid
     return PaidCallBudget(max_calls=max_calls if max_calls is not None else sum(paid_calls.values()))
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None, *, manifest=None, status=None, git=None, registry=None,
+    has_tests=None, run_tests=None, record=None, out=print,
+) -> int:
+    """The keyword arguments replace the manifest, status file, git, registries, test lookup, test
+    runner and recorder, so the whole wrapper can be run against fakes."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--platform", required=True)
     parser.add_argument("--tests-dir", required=True, type=Path)
@@ -220,24 +258,32 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
 
-    manifest = external_freshness.load_manifest()
+    manifest = manifest or external_freshness.load_manifest()
+    problems = external_freshness.owner_problems(manifest)
+    if problems:
+        out("The surface manifest is not usable; nothing was run or recorded:")
+        for problem in problems:
+            out(f"  {problem}")
+        return 1
+
     only = external_freshness.surfaces_for_platform(manifest, args.platform)
+    owned_elsewhere = foreign_owners(manifest, args.platform)
     verdicts = external_freshness.evaluate(
         manifest,
-        external_freshness.load_status(),
-        external_freshness.GitHistory(),
-        external_freshness.fetch_publish_times,
+        status if status is not None else external_freshness.load_status(),
+        git or external_freshness.GitHistory(),
+        registry or external_freshness.fetch_publish_times,
         only,
     )
 
-    paid_calls = paid_calls_for(manifest, only)
+    paid_calls = paid_calls_for(manifest, [n for n in only if n not in owned_elsewhere])
     budget = budget_for(paid_calls, args.max_paid_calls)
 
     tag = TAG_FORMATS[args.tag_style]
     with tempfile.TemporaryDirectory(prefix="hdttools-external-") as tmp:
         results_file = Path(tmp) / "results.xml"
 
-        def run_tests(surfaces: list[str]) -> int:
+        def run_command(surfaces: list[str]) -> int:
             exe = shutil.which(command[0]) or command[0]
             env = {**os.environ, "EXTERNAL_SURFACES": ",".join(surfaces), "EXTERNAL_RESULTS_FILE": str(results_file)}
             return subprocess.run([exe, *command[1:]], cwd=args.cwd, env=env).returncode
@@ -245,14 +291,19 @@ def main(argv: list[str] | None = None) -> int:
         return execute_plan(
             verdicts,
             skip=args.skip,
-            has_tests=tagged_in(args.tests_dir, args.test_glob, tag),
-            run_tests=run_tests,
-            record=lambda surface, outcome, versions: record_external_result.record_surface(
-                surface, outcome, versions=versions
+            has_tests=has_tests or tagged_in(args.tests_dir, args.test_glob, tag),
+            run_tests=run_tests or run_command,
+            record=record
+            or (
+                lambda surface, outcome, versions: record_external_result.record_surface(
+                    surface, outcome, versions=versions
+                )
             ),
+            out=out,
             paid_calls=paid_calls,
             budget=budget,
             read_results=lambda surfaces: read_results_file(results_file, surfaces, tag),
+            owned_elsewhere=owned_elsewhere,
         )
 
 

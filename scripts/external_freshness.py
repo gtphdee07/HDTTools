@@ -19,9 +19,14 @@ Usage: uv run scripts/external_freshness.py [--json] [--surface NAME]...
                                             [--platform NAME]
 Exit code is 1 when any active surface is stale, so a release gate can
 call this directly; it only reads git, the status file and the registries.
+It is also 1 when a surface has no owner, or more than one (see below).
 
 Manifest: scripts/external_manifest/surfaces/<name>.json, one file per
 surface so parallel branches adding surfaces never edit the same file.
+Each surface names its `owner`: the one platform (from its `platforms`)
+whose External wrapper runs and records it. A platform's wrapper reports a
+stale surface in its chain that another platform owns, and runs and records
+nothing for it (#142).
 """
 
 from __future__ import annotations
@@ -88,6 +93,30 @@ def load_manifest(manifest_dir: Path = MANIFEST_DIR) -> dict:
 
 def surfaces_for_platform(manifest: dict, platform: str) -> list[str]:
     return [n for n, s in manifest["surfaces"].items() if platform in s.get("platforms", [])]
+
+
+def owner_problems(manifest: dict) -> list[str]:
+    """Surfaces whose `owner` does not name exactly one of their own platforms. The owner is the one
+    platform whose External wrapper runs and records the surface (the others only report it as stale),
+    so a surface with no owner would be guarded by nobody, and one claimed by two would be run and
+    recorded by both. Planned surfaces count too: they must not become active ownerless."""
+    problems = []
+    for name, surface in manifest["surfaces"].items():
+        owner = surface.get("owner")
+        platforms = surface.get("platforms", [])
+        if isinstance(owner, list):
+            problems.append(
+                f"{name}: claimed by several wrappers ({', '.join(map(str, owner))}); "
+                f'"owner" must name exactly one of its platforms: {", ".join(platforms)}'
+            )
+        elif not owner or not isinstance(owner, str):
+            problems.append(
+                f'{name}: no owner. Add an "owner" naming the one platform whose External wrapper runs '
+                f"and records it: {', '.join(platforms)}"
+            )
+        elif owner not in platforms:
+            problems.append(f"{name}: owner {owner!r} is not one of its platforms: {', '.join(platforms)}")
+    return problems
 
 
 def _default_opener(url: str, timeout: float) -> bytes:
@@ -302,14 +331,17 @@ def load_status(status_file: Path = STATUS_FILE) -> dict:
     return json.loads(status_file.read_text(encoding="utf-8"))
 
 
-def main(argv: list[str] | None = None, *, git=None, registry=None, status_file: Path | None = None) -> int:
+def main(
+    argv: list[str] | None = None, *, git=None, registry=None, status_file: Path | None = None, manifest: dict | None = None
+) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     parser.add_argument("--surface", action="append", help="limit to this surface (repeatable)")
     parser.add_argument("--platform", help="limit to the surfaces in this platform's dependency chain")
     args = parser.parse_args(argv)
 
-    manifest = load_manifest()
+    manifest = manifest or load_manifest()
+    problems = owner_problems(manifest)
     only = args.surface
     if args.platform:
         chain = surfaces_for_platform(manifest, args.platform)
@@ -331,6 +363,7 @@ def main(argv: list[str] | None = None, *, git=None, registry=None, status_file:
                 for v in verdicts
             },
             "stale": stale,
+            "problems": problems,
         }, indent=2))
     else:
         for v in verdicts:
@@ -339,7 +372,9 @@ def main(argv: list[str] | None = None, *, git=None, registry=None, status_file:
             if v.override_reason:
                 note += f" (gate overridden: {v.override_reason})"
             print(f"{v.surface}: {v.state}{note}{suffix}")
-    return 1 if stale else 0
+        for problem in problems:
+            print(f"Manifest problem - {problem}")
+    return 1 if stale or problems else 0
 
 
 if __name__ == "__main__":

@@ -50,12 +50,12 @@ private class FakeAccountBackend(signedIn: Boolean) : AccountBackend {
     // before anything is sent.
     override suspend fun accessToken(): String? = if (statuses.value is BackendStatus.Authenticated) "token" else null
 
-    private val unused = AccountResult.Failure("not used by these tests")
-    override suspend fun signUp(email: String, password: String) = unused
-    override suspend fun signIn(email: String, password: String) = unused
-    override suspend fun signInWithGoogle(idToken: String, rawNonce: String) = unused
-    override suspend fun signInWithApple() = unused
-    override suspend fun requestPasswordReset(email: String) = unused
+    private val notExercised = AccountResult.Failure("not used by these tests")
+    override suspend fun signUp(email: String, password: String) = notExercised
+    override suspend fun signIn(email: String, password: String) = notExercised
+    override suspend fun signInWithGoogle(idToken: String, rawNonce: String) = notExercised
+    override suspend fun signInWithApple() = notExercised
+    override suspend fun requestPasswordReset(email: String) = notExercised
 }
 
 // #124: what the Scan error dialog's "Sign in" and "Buy more Scans" buttons do once

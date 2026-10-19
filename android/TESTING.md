@@ -747,8 +747,15 @@ rejected token closes the dialog, ends the session once and shows the sign-in sc
 "Sign in" with no token shows the sign-in screen and ends nothing; "Buy more Scans"
 closes the dialog and shows the Paywall for the signed-in user (the account label is
 on it); OK on each of those dialogs only closes it, with the user still signed in and
-on the same screen. Breaking the `signOut()` call, the Paywall navigation or the
-`clearScanError()` call in `followScanNextStep` turns the matching tests red.
+on the same screen. Seen to go red on the emulator: dropping the `signOut()` call
+fails the two rejected-token tests, dropping the Paywall navigation for Buy more
+Scans fails the two buy tests, and dropping `clearScanError()` fails every Sign in
+and Buy more Scans test, because the tests check that `scanState` is `Idle`: the
+dialog's screen leaves the composition on its own when another screen opens, so a
+dialog that is merely off screen proves nothing (the error would come back when the
+user did). Not covered: OK on the
+`not_signed_in` dialog (the same OK handler as the other two), and the buttons are
+not tapped through the photo picker; the tests start the Scan on the view model.
 
 **Test-support tests** (`testsupport/`, Major suite) — real-network-free
 coverage for test infrastructure: the fixture pool the External suite below

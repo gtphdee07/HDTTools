@@ -62,8 +62,8 @@ installs both APKs and runs the Major suite with `adb shell am instrument`
 (the weekly class excluded, as the Gradle task excludes it). It then labels
 each run from its output and prints, per run and in total:
 
-- **passed**: `OK (N tests)`, the count in the run's line (the suite is 132
-  tests; `--expected-tests 132` fails a run that ends with another count);
+- **passed**: `OK (N tests)`, the count in the run's line (the suite is 142
+  tests as of #124; `--expected-tests 142` fails a run that ends with another count);
 - **test-failed**: the suite reached its end and a test failed;
 - **infra-abort**: the emulator, `adb` or the system server died (`device
   offline`, `device ... not found`, `System has crashed`, `Can't find service`,
@@ -741,6 +741,30 @@ another rig is not written and is reported. The tests
 fail without the change: breaking the rig-start signal, the screen-change signal
 or the in-flight guard each turns several of them red. `enterNickname` here is the
 #125 recipe (keyboard really closed before a Back).
+
+**Scan error next-step tests** (`ui/navigation/ScanErrorNextStepNavigationTest.kt`,
+#124) — what the dialog's "Sign in" and "Buy more Scans" buttons do once tapped
+(`followScanNextStep` in `RigCheckNavHost.kt`), through the real nav host and view
+model, for both Scan buttons (Scan Photo on the Chooser, "Scan tow-vehicle-only
+ticket" on the Truck Tag screen). The Scan fails the way the Worker's answer would
+(`scanSender` returns the `unauthorized` or `insufficient_credits` failure), or by
+itself for `not_signed_in` (no token, so the real send never reaches the Worker).
+The account is a `FakeAccountBackend` passed to the view model's internal
+constructor (the app uses the one-argument constructor, which picks Supabase), signed
+in or out, counting the sessions it was asked to end. Per button: "Sign in" after a
+rejected token closes the dialog, ends the session once and shows the sign-in screen;
+"Sign in" with no token shows the sign-in screen and ends nothing; "Buy more Scans"
+closes the dialog and shows the Paywall for the signed-in user (the account label is
+on it); OK on each of those dialogs only closes it, with the user still signed in and
+on the same screen. Seen to go red on the emulator: dropping the `signOut()` call
+fails the two rejected-token tests, dropping the Paywall navigation for Buy more
+Scans fails the two buy tests, and dropping `clearScanError()` fails every Sign in
+and Buy more Scans test, because the tests check that `scanState` is `Idle`: the
+dialog's screen leaves the composition on its own when another screen opens, so a
+dialog that is merely off screen proves nothing (the error would come back when the
+user did). Not covered: OK on the
+`not_signed_in` dialog (the same OK handler as the other two), and the buttons are
+not tapped through the photo picker; the tests start the Scan on the view model.
 
 **Test-support tests** (`testsupport/`, Major suite) — real-network-free
 coverage for test infrastructure: the fixture pool the External suite below

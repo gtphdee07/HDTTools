@@ -531,41 +531,60 @@ def test_every_real_manifest_entry_is_well_formed():
 
 MAVEN_PKG = "com.revenuecat.purchases:purchases"
 GOOGLE_PKG = "com.android.billingclient:billing"
-# 2026-10-02T00:00:00Z as epoch milliseconds, the unit Maven Central's search API uses.
-OCT_2_MS = 1790899200000
+CENTRAL_BASE = "https://repo1.maven.org/maven2/com/revenuecat/purchases/purchases"
 
 
-def _central_page(docs, found=None):
-    return json.dumps({"response": {"numFound": len(docs) if found is None else found, "docs": docs}}).encode()
+def central_metadata(*versions):
+    items = "".join(f"<version>{v}</version>" for v in versions)
+    return f"<metadata><versioning><versions>{items}</versions></versioning></metadata>".encode()
 
 
-def test_maven_fetcher_returns_the_release_time_of_each_version():
-    seen = []
+class FakeCentral:
+    """repo1.maven.org: the version list from maven-metadata.xml, publish times from each .pom's Last-Modified.
 
-    def fake_open(url, timeout):
-        seen.append(url)
-        return _central_page([{"v": "8.1.0", "timestamp": OCT_2_MS}, {"v": "8.0.0", "timestamp": OCT_2_MS - 86_400_000}])
+    Live finding (#54): Central's search API (search.maven.org) stops indexing releases and stalls on a
+    share of requests, so it is not used; the repository files are the source of truth.
+    """
 
-    times = ef.fetch_maven_times(MAVEN_PKG, opener=fake_open)
+    def __init__(self, released, listed=None):
+        self.released = released  # version -> ISO time of its .pom
+        self.listed = list(released) if listed is None else listed
+        self.dated = []  # versions whose .pom time was asked for
 
-    assert {v: ef._parse(t) for v, t in times.items()} == {
-        "8.1.0": ef._parse("2026-10-02T00:00:00Z"),
-        "8.0.0": ef._parse("2026-10-01T00:00:00Z"),
-    }
-    assert len(seen) == 1
-    assert seen[0].startswith("https://search.maven.org/solrsearch/select?")
-    assert "g%3A%22com.revenuecat.purchases%22+AND+a%3A%22purchases%22" in seen[0]
-    assert "core=gav" in seen[0]
+    def open(self, url, timeout):
+        assert url == f"{CENTRAL_BASE}/maven-metadata.xml", url
+        return central_metadata(*self.listed)
+
+    def last_modified(self, url, timeout):
+        version = url.rsplit("/", 2)[1]
+        assert url == f"{CENTRAL_BASE}/{version}/purchases-{version}.pom", url
+        self.dated.append(version)
+        return self.released[version]
 
 
-def test_maven_fetcher_reads_every_page_of_versions():
-    def fake_open(url, timeout):
-        if "start=0" in url:
-            return _central_page([{"v": "8.1.0", "timestamp": OCT_2_MS}], found=2)
-        assert "start=1" in url
-        return _central_page([{"v": "8.0.0", "timestamp": OCT_2_MS}], found=2)
+def fetch_central(central, **kwargs):
+    return ef.fetch_maven_times(MAVEN_PKG, opener=central.open, last_modified=central.last_modified, **kwargs)
 
-    assert set(ef.fetch_maven_times(MAVEN_PKG, opener=fake_open)) == {"8.1.0", "8.0.0"}
+
+def test_maven_fetcher_returns_the_publish_time_of_each_version():
+    central = FakeCentral({"8.1.0": "2026-10-02T00:00:00+00:00", "8.0.0": "2026-10-01T00:00:00+00:00"})
+    assert fetch_central(central) == {"8.1.0": "2026-10-02T00:00:00+00:00", "8.0.0": "2026-10-01T00:00:00+00:00"}
+
+
+def test_maven_fetcher_dates_only_the_newest_stable_versions_and_skips_pre_releases():
+    released = {f"8.{n}.0": f"2026-09-{n:02d}T00:00:00+00:00" for n in range(1, 16)}
+    central = FakeCentral(released, listed=[*released, "9.0.0-beta01"])
+
+    times = fetch_central(central)
+
+    newest = [f"8.{n}.0" for n in range(6, 16)]
+    assert sorted(times, key=ef._semver_key) == newest
+    assert sorted(central.dated, key=ef._semver_key) == newest  # one request per dated version, none for the rest
+
+
+def test_maven_fetcher_with_only_pre_releases_has_no_stable_versions():
+    central = FakeCentral({}, listed=["1.0.0-beta01"])
+    assert fetch_central(central) == {}
 
 
 def test_maven_fetcher_wraps_network_errors():
@@ -581,10 +600,58 @@ def test_maven_fetcher_treats_an_unparseable_body_as_a_registry_error():
         ef.fetch_maven_times(MAVEN_PKG, opener=lambda url, timeout: b"<html>rate limited</html>")
 
 
-def test_maven_fetcher_treats_an_unknown_artifact_as_a_registry_error_not_an_empty_release_list():
+def test_maven_fetcher_treats_an_artifact_with_no_versions_as_a_registry_error_not_an_empty_release_list():
     # An artifact Central does not host (it may live on Google Maven) must not read as "no releases, fresh".
     with pytest.raises(ef.RegistryError):
-        ef.fetch_maven_times(GOOGLE_PKG, opener=lambda url, timeout: _central_page([]))
+        fetch_central(FakeCentral({}, listed=[]))
+
+
+def test_maven_fetcher_treats_a_pom_it_cannot_date_as_a_registry_error():
+    central = FakeCentral({"8.0.0": "2026-10-01T00:00:00+00:00"})
+
+    def no_pom(url, timeout):
+        raise OSError("404")
+
+    with pytest.raises(ef.RegistryError):
+        ef.fetch_maven_times(MAVEN_PKG, opener=central.open, last_modified=no_pom)
+
+
+def test_default_last_modified_reads_the_header_of_a_head_request(monkeypatch):
+    sent = []
+
+    class FakeResponse:
+        headers = {"Last-Modified": "Fri, 20 Jun 2025 08:47:08 GMT"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def fake_urlopen(request, timeout):
+        sent.append(request)
+        return FakeResponse()
+
+    monkeypatch.setattr(ef.urllib.request, "urlopen", fake_urlopen)
+
+    assert ef._default_last_modified("https://example.test/x.pom", 5) == "2025-06-20T08:47:08+00:00"
+    assert sent[0].get_method() == "HEAD"
+
+
+def test_default_last_modified_without_the_header_is_an_error(monkeypatch):
+    class NoHeader:
+        headers = {}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(ef.urllib.request, "urlopen", lambda request, timeout: NoHeader())
+
+    with pytest.raises(ValueError):
+        ef._default_last_modified("https://example.test/x.pom", 5)
 
 
 @pytest.mark.parametrize("package", ["purchases", "a:b:c", ":purchases", "com.x:"])

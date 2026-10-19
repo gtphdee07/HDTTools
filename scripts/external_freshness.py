@@ -8,7 +8,8 @@ registry could not be reached. "planned" surfaces are listed but never
 block. A recorded "skipped" run never counts as a pass.
 
 Registries (the "ecosystem" of a registry_packages entry): npm, pypi, and
-"maven" (Maven Central, which dates every version). "google-maven" (Google
+"maven" (Maven Central: the newest stable versions are dated from their .pom
+files). "google-maven" (Google
 Maven, e.g. com.android.billingclient:billing) publishes no per-version
 dates, so for it the fallback applies: the surface is stale on ANY change of
 the package's latest stable version against the one recorded at its last
@@ -29,10 +30,10 @@ import argparse
 import json
 import re
 import subprocess
-import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -104,8 +105,17 @@ def fetch_pypi_times(package: str, *, opener=_default_opener, timeout: float = 2
     return times
 
 
-_MAVEN_CENTRAL_PAGE = 200
-_MAVEN_CENTRAL_MAX_PAGES = 20
+def _default_last_modified(url: str, timeout: float) -> str:
+    """ISO publish time of a repository file, from the Last-Modified header of a HEAD request."""
+    with urllib.request.urlopen(urllib.request.Request(url, method="HEAD"), timeout=timeout) as response:
+        header = response.headers.get("Last-Modified")
+    if not header:
+        raise ValueError(f"no Last-Modified header for {url}")
+    return parsedate_to_datetime(header).isoformat()
+
+
+# Maven Central: how many of the newest stable versions get a publish time (one HEAD request each).
+_MAVEN_CENTRAL_DATED_VERSIONS = 10
 
 
 def _maven_coordinates(package: str, registry_name: str) -> tuple[str, str]:
@@ -115,28 +125,33 @@ def _maven_coordinates(package: str, registry_name: str) -> tuple[str, str]:
     return group, artifact
 
 
-def fetch_maven_times(package: str, *, opener=_default_opener, timeout: float = 20) -> dict[str, str]:
-    """Release time of every version on Maven Central, from its search API ("group:artifact")."""
+def _metadata_versions(metadata: bytes) -> list[str]:
+    root = ElementTree.fromstring(metadata)
+    return [node.text.strip() for node in root.iterfind("./versioning/versions/version") if node.text]
+
+
+def fetch_maven_times(
+    package: str, *, opener=_default_opener, last_modified=_default_last_modified, timeout: float = 20
+) -> dict[str, str]:
+    """Publish time of the newest stable versions on Maven Central ("group:artifact").
+
+    The version list comes from the repository's maven-metadata.xml and each time from the Last-Modified
+    of that version's .pom. Central's search API is not used: it stops indexing new releases (purchases
+    is stuck at 8.20.0, June 2025, while the repository is at 10.x) and stalls on a share of requests.
+    Only the newest few stable versions are dated, to bound the requests, so a back-port patch to an
+    old release line is not seen.
+    """
     group, artifact = _maven_coordinates(package, "Maven Central")
-    query = urllib.parse.quote_plus(f'g:"{group}" AND a:"{artifact}"')
-    times: dict[str, str] = {}
+    base = f"https://repo1.maven.org/maven2/{group.replace('.', '/')}/{artifact}"
     try:
-        start = 0
-        for _ in range(_MAVEN_CENTRAL_MAX_PAGES):
-            url = f"https://search.maven.org/solrsearch/select?q={query}&core=gav&rows={_MAVEN_CENTRAL_PAGE}&start={start}&wt=json"
-            body = json.loads(opener(url, timeout))["response"]
-            for doc in body["docs"]:
-                released = datetime.fromtimestamp(doc["timestamp"] / 1000, tz=timezone.utc)
-                times[doc["v"]] = released.isoformat()
-            start += len(body["docs"])
-            if not body["docs"] or start >= body["numFound"]:
-                break
+        versions = _metadata_versions(opener(f"{base}/maven-metadata.xml", timeout))
+        if not versions:
+            # Not on Central (it may be on Google Maven): never read that as "no releases, so fresh".
+            raise ValueError("no versions listed")
+        newest = sorted(_stable_versions(dict.fromkeys(versions)), key=_semver_key)[-_MAVEN_CENTRAL_DATED_VERSIONS:]
+        return {v: last_modified(f"{base}/{v}/{artifact}-{v}.pom", timeout) for v in newest}
     except Exception as exc:
         raise RegistryError(f"Maven Central lookup for {package} failed: {exc}") from exc
-    if not times:
-        # Not on Central (it may be on Google Maven): never read that as "no releases, so fresh".
-        raise RegistryError(f"Maven Central has no versions of {package}")
-    return times
 
 
 def fetch_google_maven_times(package: str, *, opener=_default_opener, timeout: float = 20) -> dict[str, str | None]:
@@ -144,8 +159,7 @@ def fetch_google_maven_times(package: str, *, opener=_default_opener, timeout: f
     group, artifact = _maven_coordinates(package, "Google Maven")
     url = f"https://dl.google.com/dl/android/maven2/{group.replace('.', '/')}/{artifact}/maven-metadata.xml"
     try:
-        root = ElementTree.fromstring(opener(url, timeout))
-        return {node.text.strip(): None for node in root.iterfind("./versioning/versions/version") if node.text}
+        return dict.fromkeys(_metadata_versions(opener(url, timeout)))
     except Exception as exc:
         raise RegistryError(f"Google Maven lookup for {package} failed: {exc}") from exc
 

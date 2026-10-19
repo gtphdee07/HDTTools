@@ -62,8 +62,8 @@ installs both APKs and runs the Major suite with `adb shell am instrument`
 (the weekly class excluded, as the Gradle task excludes it). It then labels
 each run from its output and prints, per run and in total:
 
-- **passed**: `OK (N tests)`, the count in the run's line (the suite is 132
-  tests; `--expected-tests 132` fails a run that ends with another count);
+- **passed**: `OK (N tests)`, the count in the run's line (the suite is 142
+  tests as of #124; `--expected-tests 142` fails a run that ends with another count);
 - **test-failed**: the suite reached its end and a test failed;
 - **infra-abort**: the emulator, `adb` or the system server died (`device
   offline`, `device ... not found`, `System has crashed`, `Can't find service`,

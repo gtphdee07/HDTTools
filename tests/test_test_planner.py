@@ -109,6 +109,16 @@ def test_a_deleted_test_file_is_not_planned_to_run(level):
     assert "tests/test_gone.py" not in joined
 
 
+@pytest.mark.parametrize("level", ["issue", "session"])
+def test_a_deleted_web_test_file_is_not_planned_to_run(level):
+    """Same as the Python case above for a Web test (#135 deleted web/src/apiShape.test.ts): `npm test -- <missing file>` finds nothing and fails."""
+    plan = tp.plan(["web/src/gone.test.ts", "web/src/here.test.ts"], ALL, MARKERS, level=level,
+                   file_exists=lambda p: p == "web/src/here.test.ts")
+    joined = " ".join(commands(plan))
+    assert "here.test.ts" in joined
+    assert "gone.test.ts" not in joined
+
+
 def test_files_outside_every_python_context_plan_nothing_and_say_so():
     plan = plan_for(["web/src/app.tsx", "README.md"])
     assert plan.selections == []

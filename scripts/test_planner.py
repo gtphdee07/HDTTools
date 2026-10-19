@@ -371,7 +371,7 @@ def _plan_issue(result, files, config, markers, touched, interface_changed, inte
                 result.add(Selection("targeted", f"uv run pytest {f}", "changed test file, runs first"))
             continue
         for name, ctx in contexts.items():
-            if (not _is_python(ctx) and _is_test_file(f, ctx) and name in allowed(f)
+            if (not _is_python(ctx) and _is_test_file(f, ctx) and name in allowed(f) and file_exists(f)
                     and not _matches(f, ctx.get("live_globs", []))):
                 result.add(Selection("targeted", _fill(ctx["file"], ctx, f), "changed test file, runs first"))
 
@@ -463,6 +463,8 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
         for f in files:
             if name not in allowed(f) or _matches(f, ctx.get("live_globs", [])):
                 continue
+            if (_is_test_file(f, ctx) or (_is_python(ctx) and _is_python_test(f))) and not file_exists(f):
+                continue  # a test the branch deleted has nothing left to run
             target = f if _is_test_file(f, ctx) or (_is_python(ctx) and _is_python_test(f)) else _test_for(f, ctx, file_exists)
             if target is None:
                 if _owners(f, contexts):

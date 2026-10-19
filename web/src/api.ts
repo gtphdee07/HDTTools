@@ -23,11 +23,11 @@ const MESSAGES = {
   extraction_failed_no_refund:
     "We couldn't read that photo, and we couldn't refund your scan automatically. Trying this photo again won't charge you again. If it keeps happening, contact support.",
   billing_error:
-    "We couldn't confirm your scan balance with the payment service, so nothing was scanned. You may not have been charged. Try again in a moment; a retry is not charged twice.",
+    "We couldn't confirm your scan balance with the payment service, so nothing was read. You may not have been charged. Try again in a moment; a retry is not charged twice.",
 } as const;
 
 // The service's own wording for what it disliked is for developers (e.g. which field), so it is not shown.
-const BAD_REQUEST = "The scan service couldn't take that photo. Nothing was used. Try a different photo, or type the numbers in yourself.";
+const BAD_REQUEST = "We couldn't use that photo. Nothing was used. Try a different photo, or type the numbers in yourself.";
 
 const NO_ANSWER =
   "We didn't get a usable answer from the scan service. You may not have been charged. Try again; a retry is not charged twice.";

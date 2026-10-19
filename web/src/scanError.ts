@@ -21,7 +21,7 @@ export type ScanErrorCode =
 
 // A delivered stand-alone ticket answer with no weight in it: the Scan was charged and is not refunded.
 export const NO_WEIGHT_MESSAGE =
-  "We read the ticket but couldn't find a weight. That Scan was used, and trying again uses another. You can also type the weight in.";
+  "We read the ticket but couldn't find a weight. That Scan was used, and trying again uses another. Type the weight in, or choose a different photo.";
 
 // Outcomes where sending the same photo again cannot help: a delivered answer (a retry is another paid Scan
 // that reads the same), a refusal that repeats, or a photo that cannot be sent. After these the next step is

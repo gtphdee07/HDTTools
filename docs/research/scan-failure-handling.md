@@ -6,6 +6,7 @@ Research for #111 (parent #15). Documentation and local reading only: no live Sc
 - Terms follow the glossary: **Scan**, **Scan Credit**, **Spend / Refund** (`workers/scan-proxy/CONTEXT.md`), **Account token**, **Idempotency Key**. "Scan failed" means any case where the user pays attention to a Scan and does not end up with the fields they expected.
 - Every claim about code cites `file:line`; every claim about the Worker's contract cites the document. A claim I inferred and did not read in code or see in a test is marked **(unverified)**.
 - Out of scope, as the ticket says: Streamlit, what the Worker charges or refunds, any code change.
+- **Since written (2026-10-19):** drafts A to H were filed and built (#115 to #122). The agreed words and rules now live in the "Scan outcomes" entry of `workers/scan-proxy/CONTEXT.md` and the fixture `test-vectors/scan_outcomes.json`, which both clients are tested against (#115); the audit and gap tables below describe the code as it was at `dd041c1` and are kept as the record, not as current behaviour.
 
 ## Contents
 

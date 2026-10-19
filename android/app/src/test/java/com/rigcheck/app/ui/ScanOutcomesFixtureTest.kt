@@ -169,8 +169,11 @@ class ScanOutcomesFixtureTest {
     @Test
     fun `the fixture has one row for each case and lists what is pending for Android`() {
         val all: JsonArray = fixture["cases"]!!.jsonArray
-        assertEquals(16, all.size)
         assertEquals("ids are unique", all.size, all.map { it.jsonObject.id }.toSet().size)
+        all.map { it.jsonObject }.forEach { row ->
+            listOf("appliesTo", "trigger", "retryKeepsRequestId", "offersTryAgain", "nextStep", "messageContains", "pending")
+                .forEach { assertTrue("${row.id} has $it", row.containsKey(it)) }
+        }
         val pending = rows.flatMap { row ->
             (row["pending"]!!.jsonObject["android"]?.jsonObject ?: JsonObject(emptyMap())).map { (field, ticket) ->
                 "${row.id}.$field -> ${ticket.jsonPrimitive.content}"

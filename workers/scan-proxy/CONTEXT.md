@@ -23,7 +23,7 @@ The key RevenueCat receives with a Spend (and, with a `-refund` suffix, its Refu
 **Scan outcomes**:
 Every way a Scan can end without the user getting all the fields they expected, what the user is told, and how a retry behaves. Written here once because the words and rules lived in each client and drifted (#111, #115). Decided 2026-10-14 (#111, D1 to D10); research in `docs/research/scan-failure-handling.md`. The rows are also the shared fixture `test-vectors/scan_outcomes.json`, which Web (`web/src/scanOutcomes.test.ts`) and Android (`ScanOutcomesFixtureTest.kt`) each load and check their own behaviour against, as both do for `test-vectors/breakdown_cases.json`. Change a row here and in the fixture together; a client that disagrees with a row fails its test. Each client keeps its own strings in one place (Web: `api.ts`, `scanImage.ts`, `scanError.ts`, `scanNotice.ts`; Android: `ScanMessages.kt`, with `ScanFailure.kt` and `ScanNotice.kt`); there is no shared code table, since the clients are in different languages.
 
-Every message says, in this order, whether a Scan Credit was used, whether it was refunded, whether a retry costs another, and the next step. A message may word a sentence its own way, and Web may write "scan" where Android writes "Scan"; the fixture pins the phrases in the last column below.
+Every message says whether a Scan Credit was used, whether it was refunded, whether a retry costs another, and the next step (the order is not pinned). A message may word a sentence its own way, and Web may write "scan" where Android writes "Scan"; the fixture pins the phrases in the last column below.
 
 | # | Case | Spent | Refunded | Retry keeps the request id | Try again | Next step |
 | --- | --- | --- | --- | --- | --- | --- |

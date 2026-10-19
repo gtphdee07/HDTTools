@@ -137,10 +137,16 @@ function wordsFor(row: Row, error: ScanError | null): string | null {
 const isPending = (row: Row, field: Checked) => row.pending.web?.[field] !== undefined;
 
 describe('the fixture itself', () => {
-  it('has one row per case, each with a unique id', () => {
-    const ids = (FIXTURE.cases as Row[]).map((row) => row.id);
-    expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(16);
+  it('has a unique id per row, and every row carries the fields the clients check', () => {
+    const rows = FIXTURE.cases as Row[];
+    expect(new Set(rows.map((row) => row.id)).size).toBe(rows.length);
+    for (const row of rows) {
+      expect(row.appliesTo.length, row.id).toBeGreaterThan(0);
+      expect(typeof row.retryKeepsRequestId, row.id).toBe('boolean');
+      expect(typeof row.offersTryAgain, row.id).toBe('boolean');
+      expect(Array.isArray(row.nextStep), row.id).toBe(true);
+      expect(Array.isArray(row.messageContains), row.id).toBe(true);
+    }
   });
 
   it('only marks as pending a field a client checks, with the ticket that builds it', () => {

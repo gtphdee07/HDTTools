@@ -17,8 +17,9 @@ disclaimer before results.
 ![RigCheck test status](dashboard.svg)
 
 Per-context test status: Minor/Major pass-rate and coverage (measured
-when the suites were last run, date and commit in the header), the old
-External suites, and per-surface External freshness. The pre-commit hook
+when the suites were last run, date and commit in the header) and External
+coverage per surface (fresh, stale, failed, skipped, overridden or planned),
+as a column per platform and a list of every surface. The pre-commit hook
 refreshes the graphic from saved results; `uv run
 scripts/generate_dashboard.py` re-measures. See `TESTING.md`'s "Dashboard"
 section.

@@ -59,6 +59,7 @@ class Verdict:
     reasons: list[str] = field(default_factory=list)
     versions: dict[str, str] = field(default_factory=dict)
     override_reason: str | None = None  # the reason the release gate was forced past this stale surface
+    attempt: str | None = None  # why a stale surface has no pass: "fail" | "skipped" | None (never run, or changed since)
 
     @property
     def blocking(self) -> bool:
@@ -66,8 +67,13 @@ class Verdict:
 
     @property
     def display_state(self) -> str:
-        """What the dashboard shows: a stale surface the gate was forced past reads "overridden"."""
-        return "overridden" if self.state == "stale" and self.override_reason else self.state
+        """What the dashboard shows. A stale surface reads "overridden" when the gate was forced
+        past it, else "failed" or "skipped" when its latest run was one of those, else "stale"."""
+        if self.state != "stale":
+            return self.state
+        if self.override_reason:
+            return "overridden"
+        return {"fail": "failed", "skipped": "skipped"}.get(self.attempt, "stale")
 
 
 def load_manifest(manifest_dir: Path = MANIFEST_DIR) -> dict:
@@ -269,7 +275,20 @@ def _evaluate_one(surface: dict, status: dict, git, registry) -> Verdict:
             reasons.append(f"{pkg['package']} published after last pass: " + ", ".join(newer))
 
     override = entry.get("override_reason") if entry and reasons else None
-    return Verdict(name, "stale" if reasons else "fresh", reasons, versions, override)
+    return Verdict(name, "stale" if reasons else "fresh", reasons, versions, override, _latest_attempt(entry))
+
+
+def _latest_attempt(entry: dict | None) -> str | None:
+    """"fail" or "skipped" when the surface's most recent run was one of those. A skip never
+    replaces a recorded pass or fail (record_external_result), so it shows as a later last_skipped_at."""
+    if not entry:
+        return None
+    if entry.get("result") == "fail":
+        return "fail"
+    skipped_at = entry.get("last_skipped_at")
+    if entry.get("result") == "skipped" or (skipped_at and skipped_at > entry.get("timestamp", "")):
+        return "skipped"
+    return None
 
 
 def evaluate(manifest: dict, status: dict, git, registry, only: list[str] | None = None) -> list[Verdict]:

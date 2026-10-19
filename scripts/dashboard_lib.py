@@ -20,19 +20,17 @@ a `<failure>`/`<error>` child on each `<testcase>`.
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal, NamedTuple
 
-_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
-
-Color = Literal["blue", "green", "yellow", "red"]
+Color = Literal["blue", "green", "yellow", "red", "grey"]
 
 _COLOR_HEX = {
     "blue": "#2563eb",
     "green": "#16a34a",
     "yellow": "#ca8a04",
     "red": "#dc2626",
+    "grey": "#8b949e",
 }
 
 
@@ -87,64 +85,44 @@ def parse_junit_xml(paths: str | Path | list[str | Path]) -> tuple[int, int]:
     return total_passed, total_tests
 
 
-def format_external_cell(
-    statuses: list[dict],
-    *,
-    now: str | None = None,
-) -> tuple[Color, str] | None:
-    """Combines one or more recorded External-suite statuses (each
-    {"passed": bool, "timestamp": str}) into one dashboard cell.
-
-    A platform with two real External suites (scan-proxy: through-our-
-    service + direct-provider-boundary) is scored as passed/total via the
-    same color_for_percent banding the rest of the dashboard uses, for
-    visual consistency - not a separate ad hoc pass/fail look. The label
-    shows the *age* (in days) of the oldest given timestamp, not the raw
-    date - relative age is the "how stale is this data" signal a reader
-    actually wants at a glance, and unlike a raw date (which can run
-    arbitrarily long once External has been recorded a while - a real
-    layout bug this caused once already) an age in days stays short
-    forever. The graphic's own generation date lives once in the header
-    instead (render_dashboard_svg's `generated` argument) - it answers a
-    different question (when was this SVG built) than this cell does
-    (when was this specific External suite last actually verified), so
-    one doesn't replace the other. None (not an empty list) means "never
-    recorded" - a genuinely different state from "recorded and failing."
-    `now` is injectable for tests; defaults to the real current time.
-    """
-    if not statuses:
-        return None
-    passed_count = sum(1 for s in statuses if s["passed"])
-    percent = passed_count / len(statuses) * 100
-    oldest = min(s["timestamp"] for s in statuses)
-    oldest_dt = datetime.strptime(oldest, _TIMESTAMP_FORMAT).replace(tzinfo=timezone.utc)
-    now_dt = (
-        datetime.strptime(now, _TIMESTAMP_FORMAT).replace(tzinfo=timezone.utc)
-        if now is not None
-        else datetime.now(timezone.utc)
-    )
-    age_days = max(0, (now_dt - oldest_dt).days)
-    return color_for_percent(percent), f"{passed_count}/{len(statuses)} ({age_days}d)"
-
-
 class PlatformRow(NamedTuple):
     name: str
     minor: tuple[Color, str] | None  # (color, label) - e.g. ("green", "31/32")
     major: tuple[Color, str] | None
-    external: tuple[Color, str] | None  # None = never recorded, or N/A
+    external: tuple[Color, str] | None  # this platform's External surfaces (format_surface_cell); None = it has none
     coverage: tuple[float, Color] | None  # None = no data (e.g. report failed)
     coverage_gated: bool = True  # False = real number shown, but report-only
-    surfaces: tuple[Color, str] | None = None  # per-surface External freshness; None = no surfaces
 
 
-_CATEGORY_LABELS = ("Minor", "Major", "External", "Surfaces", "Coverage")
+class SurfaceRow(NamedTuple):
+    name: str
+    state: str  # an external_freshness display_state, see SURFACE_STATE_COLOR
+    platforms: tuple[str, ...]  # the platforms whose release depends on this surface
+
+
+_CATEGORY_LABELS = ("Minor", "Major", "External", "Coverage")
+
+# One colour per state a surface can show (ADR-0008). Planned is grey: it is not covered, so it
+# must never look like a pass or a fail.
+SURFACE_STATE_COLOR: dict[str, Color] = {
+    "fresh": "blue",
+    "stale": "yellow",
+    "skipped": "yellow",
+    "failed": "red",
+    "overridden": "red",
+    "planned": "grey",
+}
 
 
 def render_dashboard_svg(
-    rows: list[PlatformRow], generated: str, results_note: str = ""
+    rows: list[PlatformRow],
+    generated: str,
+    results_note: str = "",
+    surface_rows: list[SurfaceRow] | tuple[SurfaceRow, ...] = (),
 ) -> str:
     """Renders a small grid: a "Graphic generated" meta line, one row per
-    platform, one column per category plus coverage. Pure string
+    platform, one column per category plus coverage, then (when given) a
+    list of every External surface with its state. Pure string
     templating - no image library dependency. `generated` is a caller-
     supplied date string (e.g. "2026-08-24") - not computed internally,
     so this stays a pure, deterministic function to test.
@@ -152,16 +130,20 @@ def render_dashboard_svg(
     meta_height = 22
     row_height = 44
     header_height = 36
-    # External's real labels ("1/1 (12d)") are longer than Minor/Major's
-    # ("31/31") - left-aligned rendering (below) means each column's own
-    # width just needs to fit its own longest realistic content; it can
-    # never overflow into the next column's text the way
+    surface_header_height = 30
+    surface_row_height = 22
+    # External's real labels ("2/5 (2 planned, 1 overridden)") are longer
+    # than Minor/Major's ("31/31") - left-aligned rendering (below) means
+    # each column's own width just needs to fit its own longest realistic
+    # content; it can never overflow into the next column's text the way
     # centered-with-a-fixed-offset rendering did (real bug, found from a
     # screenshot of scan-proxy's row: an earlier, unbounded-length raw-date
     # version of this label ran straight into "100.0%").
-    col_widths = [130, 80, 80, 170, 150, 160]
+    col_widths = [130, 80, 80, 240, 160]
     width = sum(col_widths)
-    height = meta_height + header_height + row_height * len(rows)
+    grid_height = meta_height + header_height + row_height * len(rows)
+    surface_height = surface_header_height + surface_row_height * len(surface_rows) if surface_rows else 0
+    height = grid_height + surface_height
 
     def cell_x(col: int) -> int:
         return sum(col_widths[:col])
@@ -188,7 +170,7 @@ def render_dashboard_svg(
             f'<text x="{cell_x(0) + 8}" y="{y + row_height // 2 + 5}" '
             f'fill="#c9d1d9">{row.name}</text>'
         )
-        cells = [row.minor, row.major, row.external, row.surfaces]
+        cells = [row.minor, row.major, row.external]
         for col, cell in enumerate(cells, start=1):
             left = cell_x(col) + 8
             cy = y + row_height // 2
@@ -204,7 +186,7 @@ def render_dashboard_svg(
             svg_parts.append(
                 f'<text x="{left + 21}" y="{cy + 5}" fill="#c9d1d9">{label}</text>'
             )
-        coverage_col = 5
+        coverage_col = 4
         cx = cell_x(coverage_col) + 8
         cy = y + row_height // 2
         if row.coverage is None:
@@ -219,29 +201,52 @@ def render_dashboard_svg(
                 f"{percent:.1f}%{suffix}</text>"
             )
 
+    if surface_rows:
+        svg_parts.extend(_surface_list_parts(surface_rows, grid_height, surface_header_height,
+                                             surface_row_height, col_widths))
+
     svg_parts.append("</svg>")
     return "\n".join(svg_parts)
 
 
+def _surface_list_parts(surface_rows, top, header_height, row_height, col_widths) -> list[str]:
+    """SVG for the per-surface block: name, state (a planned surface says it is
+    not covered) and the platforms that depend on it, one line each."""
+    name_x, state_x, platforms_x = 28, 28 + col_widths[0] + 100, 28 + col_widths[0] + 100 + 180
+    parts = [
+        f'<text x="8" y="{top + header_height - 10}" fill="#c9d1d9" font-weight="bold">'
+        "External surfaces</text>"
+    ]
+    for index, row in enumerate(surface_rows):
+        cy = top + header_height + index * row_height + row_height // 2
+        label = "planned - not covered" if row.state == "planned" else row.state
+        parts.append(f'<circle cx="14" cy="{cy}" r="5" fill="{_COLOR_HEX[SURFACE_STATE_COLOR[row.state]]}"/>')
+        parts.append(f'<text x="{name_x}" y="{cy + 4}" fill="#c9d1d9">{row.name}</text>')
+        parts.append(f'<text x="{state_x}" y="{cy + 4}" fill="#c9d1d9">{label}</text>')
+        parts.append(f'<text x="{platforms_x}" y="{cy + 4}" fill="#8b949e">{", ".join(row.platforms)}</text>')
+    return parts
+
+
 def format_surface_cell(states: list[str]) -> tuple[Color, str] | None:
-    """One platform's External-surface cell from its surfaces' freshness
-    states ("fresh" | "stale" | "planned" | "overridden", as
+    """One platform's External cell from its surfaces' states ("fresh" |
+    "stale" | "failed" | "skipped" | "overridden" | "planned", as
     external_freshness's display_state reports them). Only active surfaces
-    (fresh, stale or overridden) count toward the score; planned ones and
-    surfaces whose release gate was forced past are shown as counts so what
-    is not covered stays visible (ADR-0008). An overridden surface is stale
-    until a real pass. None means the platform has no surfaces at all.
+    (everything but planned) count toward the score, and only fresh ones
+    pass; planned, overridden, failed and skipped surfaces are also shown as
+    counts so what is not covered stays visible (ADR-0008). None means the
+    platform has no surfaces at all.
     """
     active = [s for s in states if s != "planned"]
     planned = len(states) - len(active)
-    overridden = sum(1 for s in active if s == "overridden")
     if not states:
         return None
     if not active:
         return "red", f"0/0 ({planned} planned)"
     fresh = sum(1 for s in active if s == "fresh")
     color = color_for_percent(fresh / len(active) * 100)
-    notes = [f"{n} {word}" for n, word in ((planned, "planned"), (overridden, "overridden")) if n]
+    counts = ((planned, "planned"), *((sum(1 for s in active if s == word), word)
+                                      for word in ("overridden", "failed", "skipped")))
+    notes = [f"{n} {word}" for n, word in counts if n]
     suffix = f" ({', '.join(notes)})" if notes else ""
     return color, f"{fresh}/{len(active)}{suffix}"
 
@@ -265,8 +270,8 @@ def snapshot_entry(
     coverage_gated: bool,
 ) -> dict:
     """JSON-able measured results for one platform (the part of a row that
-    comes from running suites, as opposed to the External columns, which
-    are always read live)."""
+    comes from running suites, as opposed to the External column, which
+    is always read live)."""
     return {
         "minor": list(minor) if minor else None,
         "major": list(major) if major else None,
@@ -279,10 +284,9 @@ def row_from_snapshot(
     name: str,
     entry: dict | None,
     external: tuple[Color, str] | None,
-    surfaces: tuple[Color, str] | None,
 ) -> PlatformRow:
-    """A dashboard row from a stored snapshot entry plus live External
-    cells. A platform missing from the snapshot renders n/a."""
+    """A dashboard row from a stored snapshot entry plus the live External
+    cell. A platform missing from the snapshot renders n/a."""
     entry = entry or {}
     pair = lambda v: tuple(v) if v else None  # noqa: E731
     return PlatformRow(
@@ -292,7 +296,6 @@ def row_from_snapshot(
         external=external,
         coverage=pair(entry.get("coverage")),
         coverage_gated=entry.get("coverage_gated", True),
-        surfaces=surfaces,
     )
 
 

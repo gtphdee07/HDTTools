@@ -2,9 +2,10 @@
 (roadmap item #7, reworked for the change-driven test approach, #49).
 
 One row per context in CONTEXT-MAP.md (Core, Streamlit, Web, Android,
-Scan Proxy). Per row: real Minor/Major pass-rate, real coverage, the
-legacy External suites' last recorded result, and per-surface External
-freshness (ADR-0008). Python's Minor and Major are real now: pytest
+Scan Proxy). Per row: real Minor/Major pass-rate, real coverage and the
+External surfaces' freshness (ADR-0008); below the grid, one line per
+External surface with its state (fresh, stale, failed, skipped,
+overridden or planned). Python's Minor and Major are real now: pytest
 markers (#50) split the shared suite per context, so Core and Streamlit
 each get `-m "minor and <ctx>"` and `-m <ctx>` runs.
 
@@ -14,10 +15,11 @@ Two kinds of data, deliberately handled differently:
   A normal run (or --refresh) measures them and saves them to
   scripts/dashboard_data/test_results.json together with the date and
   commit. The header of the graphic shows when they were measured.
-- **External columns** are never measured here (real money/time) and are
-  always read live: the legacy suites from external_status.json, the
-  surfaces from the freshness script's manifest + status + git (registries
-  are not contacted, so a new upstream release is not reflected here).
+- **External** is never measured here (real money/time) and is always
+  read live: the surfaces from the freshness script's manifest + status +
+  git (registries are not contacted, so a new upstream release is not
+  reflected here). The old platform+suite entries in external_status.json
+  are history and are not shown.
 
 --from-snapshot runs nothing: it rebuilds the graphic from the saved
 measured results plus the live External cells. The pre-commit hook
@@ -48,7 +50,6 @@ import dashboard_lib  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DASHBOARD_SVG = REPO_ROOT / "dashboard.svg"
-EXTERNAL_STATUS_FILE = REPO_ROOT / "scripts" / "dashboard_data" / "external_status.json"
 SNAPSHOT_FILE = REPO_ROOT / "scripts" / "dashboard_data" / "test_results.json"
 
 PLATFORMS = ("Core", "Streamlit", "Web", "Android", "Scan Proxy")
@@ -244,44 +245,37 @@ def head_commit() -> str:
         return ""
 
 
-def surface_states() -> dict[str, list[str]]:
-    """Freshness state of each surface by platform, from the manifest,
-    recorded status and git only. Registries are not contacted (the
-    dashboard and the commit hook must stay offline and fast), so a new
-    upstream release shows up in `external_freshness.py`, not here."""
+def surface_verdicts(manifest=None, status=None, git=None) -> list[dashboard_lib.SurfaceRow]:
+    """Every surface's state (fresh, stale, failed, skipped, overridden or
+    planned), from the manifest, recorded status and git only. Registries
+    are not contacted (the dashboard and the commit hook must stay offline
+    and fast), so a new upstream release shows up in `external_freshness.py`,
+    not here. The platform+suite entries in the status file are history and
+    are never read."""
     import external_freshness as ef
 
-    manifest = ef.load_manifest()
-    verdicts = {
-        v.surface: v.display_state
-        for v in ef.evaluate(manifest, ef.load_status(), ef.GitHistory(), lambda _eco, _pkg: {})
-    }
+    manifest = ef.load_manifest() if manifest is None else manifest
+    status = ef.load_status() if status is None else status
+    git = ef.GitHistory() if git is None else git
+    return [
+        dashboard_lib.SurfaceRow(v.surface, v.display_state, tuple(manifest["surfaces"][v.surface].get("platforms", [])))
+        for v in ef.evaluate(manifest, status, git, lambda _eco, _pkg: {})
+    ]
+
+
+def states_by_platform(surface_rows: list[dashboard_lib.SurfaceRow]) -> dict[str, list[str]]:
     by_platform: dict[str, list[str]] = {}
-    for name, surface in manifest["surfaces"].items():
-        for platform in surface.get("platforms", []):
-            by_platform.setdefault(platform, []).append(verdicts[name])
+    for row in surface_rows:
+        for platform in row.platforms:
+            by_platform.setdefault(platform, []).append(row.state)
     return by_platform
 
 
-def legacy_external_cell(platform: str, status: dict):
-    """The old per-suite External status (Android weekly; scan-proxy weekly
-    and release). They keep their own scripts and entries (ADR-0008)."""
-    if platform == "Android":
-        suites = [status["android"]["weekly"]] if "weekly" in status.get("android", {}) else []
-    elif platform == "Scan Proxy":
-        suites = [status["scan_proxy"][s] for s in ("weekly", "release")
-                  if s in status.get("scan_proxy", {})]
-    else:
-        return None
-    return dashboard_lib.format_external_cell(suites)
-
-
-def build_rows(entries: dict, status: dict, surfaces: dict[str, list[str]]) -> list:
+def build_rows(entries: dict, surfaces: dict[str, list[str]]) -> list:
     return [
         dashboard_lib.row_from_snapshot(
             name,
             entries.get(name),
-            legacy_external_cell(name, status),
             dashboard_lib.format_surface_cell(surfaces.get(SURFACE_PLATFORM.get(name, ""), [])),
         )
         for name in PLATFORMS
@@ -310,19 +304,19 @@ def main(argv: list[str] | None = None) -> int:
         SNAPSHOT_FILE.write_text(json.dumps(snapshot, indent=2) + "\n", encoding="utf-8")
 
     try:
-        surfaces = surface_states()
+        surface_rows = surface_verdicts()
     except Exception as exc:  # the graphic must still render without surface data
-        print(f"Surface freshness unavailable ({exc}); Surfaces column left n/a")
-        surfaces = {}
+        print(f"Surface freshness unavailable ({exc}); External column left n/a")
+        surface_rows = []
 
-    rows = build_rows(snapshot.get("platforms", {}), load_json(EXTERNAL_STATUS_FILE), surfaces)
+    rows = build_rows(snapshot.get("platforms", {}), states_by_platform(surface_rows))
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    svg = dashboard_lib.render_dashboard_svg(rows, generated, dashboard_lib.results_note(snapshot))
+    svg = dashboard_lib.render_dashboard_svg(rows, generated, dashboard_lib.results_note(snapshot), surface_rows)
     DASHBOARD_SVG.write_text(svg, encoding="utf-8")
     print(f"Wrote {DASHBOARD_SVG}")
     for row in rows:
         print(f"  {row.name}: minor={row.minor} major={row.major} external={row.external} "
-              f"surfaces={row.surfaces} coverage={row.coverage}")
+              f"coverage={row.coverage}")
     if merged is not None:
         percent = f"{merged.percent:.2f}%" if merged.percent is not None else "n/a"
         print(f"  Android (Major+External, informational): {percent}")

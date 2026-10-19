@@ -194,6 +194,40 @@ def test_a_forced_gate_leaves_the_surface_stale_but_shows_the_override():
     assert v.display_state == "overridden"
 
 
+def test_a_failed_last_run_is_shown_as_failed_not_just_stale():
+    v = verdict(status_with({"result": "fail", "passed": False, "timestamp": PASS_TS, "commit": "abc"}))
+    assert v.state == "stale"
+    assert v.display_state == "failed"
+
+
+def test_a_skipped_record_with_no_pass_is_shown_as_skipped_and_stays_blocking():
+    v = verdict(status_with({"result": "skipped", "passed": False, "timestamp": PASS_TS, "commit": "abc"}))
+    assert v.display_state == "skipped"
+    assert v.blocking is True
+
+
+def test_a_skip_after_a_pass_shows_skipped_only_while_the_surface_is_stale():
+    entry = passed(ts="2026-09-01T00:00:00Z", last_skipped_at="2026-10-03T00:00:00Z")
+    stale = verdict(status_with(entry), git=FakeGit(changed=["web/src/auth.tsx"]))
+    assert (stale.state, stale.display_state) == ("stale", "skipped")
+    fresh = verdict(status_with(entry))
+    assert (fresh.state, fresh.display_state) == ("fresh", "fresh")
+
+
+def test_a_pass_after_an_old_skip_does_not_read_as_skipped():
+    entry = passed(ts="2026-10-05T00:00:00Z", last_skipped_at="2026-10-03T00:00:00Z")
+    v = verdict(status_with(entry), git=FakeGit(changed=["web/src/auth.tsx"]))
+    assert v.display_state == "stale"
+
+
+def test_a_failure_outranks_a_later_skip_and_an_override_outranks_both():
+    failed = {"result": "fail", "passed": False, "timestamp": PASS_TS, "commit": "abc",
+              "last_skipped_at": "2026-10-03T00:00:00Z"}
+    assert verdict(status_with(failed)).display_state == "failed"
+    forced = verdict(status_with({**failed, "override_reason": "hotfix"}))
+    assert forced.display_state == "overridden"
+
+
 def test_a_fresh_surface_shows_no_override():
     v = verdict(status_with(passed()))
     assert v.state == "fresh"

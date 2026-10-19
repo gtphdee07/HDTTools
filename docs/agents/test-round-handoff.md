@@ -1,6 +1,24 @@
 # Test-first round: how to run each ticket
 
-Working notes for the test-first round (map #49, decisions on #58 and #59, written 2026-10-19). They are temporary: delete this file when the round ends. The general flow is in [ticket-skills.md](ticket-skills.md); this file holds what is specific to the round.
+Working notes for the test-first round (map #49, decisions on #58 and #59, written 2026-10-19, updated after the lane A, lane B and first Android merges). They are temporary: delete this file when the round ends. The general flow is in [ticket-skills.md](ticket-skills.md); this file holds what is specific to the round.
+
+## Where the round stands
+
+Merged: #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124. Nothing is in build. Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #141 (rename `src/hdttools/api/`).
+
+**Nothing since #128 has been pushed.** About 35 local commits on `MPSkills` wait. Two things hold the push:
+
+- The pre-push gate from #43 is live in the main checkout. A push of `MPSkills` that touches `web/`, `workers/scan-proxy/` or `android/` is refused while an External surface is stale. At the last check seven were stale: `anthropic`, `pages-site`, `revenuecat-web-billing`, `scan-proxy-worker` (never passed), `supabase-auth`, `supabase-tables`, `worker-token-verification`; `revenuecat-rest` was fresh and two Android surfaces are planned (they never block). `uv run scripts/external_freshness.py` lists them. The honest ways through are a real run of the stale suites, or `EXTERNAL_GATE_FORCE_REASON="why" git push` (records an override on the dashboard; commit the changed `scripts/dashboard_data/external_status.json` from the main checkout).
+- #115 changed Web's user-facing scan wording, and Web goes live on push. Read the texts in the "Scan outcomes" entry of `workers/scan-proxy/CONTEXT.md` before pushing.
+
+**External sanity run (decided 2026-10-19): run the stale suites now, before more tickets, to find anything the merges broke.** From the main checkout, nothing else running:
+
+1. `uv run scripts/external_freshness.py` to see what is stale.
+2. `powershell web\test-external.ps1` (the free Web surfaces).
+3. `powershell workers\scan-proxy\test-external.ps1 -MaxPaidCalls 4` (the paid ones: `anthropic` up to 3 calls, `scan-proxy-worker` 1). It asks before each paid surface. `scan-proxy-worker` tests whatever Worker is deployed; if the Worker needs the merged code first, `npm run deploy -- --force --reason "..."` from `workers/scan-proxy` is a live deploy and the owner's call.
+4. Commit `scripts/dashboard_data/external_status.json` on `MPSkills` (the hook regenerates `dashboard.svg`); ask before pushing.
+
+A failing surface is a finding, not something to re-run until green. Only a real pass advances freshness; a `-Skip` leaves a surface stale. Surfaces go stale again when later tickets change their watched files, so a short re-run at the end of the round is still expected.
 
 ## The flow for every ticket
 
@@ -10,57 +28,53 @@ Working notes for the test-first round (map #49, decisions on #58 and #59, writt
 | 2. Build | a new `claude` session inside `.claude/worktrees/ticket-N` | you | paste the printed prompt, then the additions below |
 | 3. Finish | the same worktree session | you | `/ticket-finish` |
 | 4. Merge | main checkout (the merge session) | you type it, Claude carries it out | `/ticket-merge N` (add `--allow-status` to go past a `PARTIAL`) |
-| 5. Push | main checkout | Claude asks first | never automatic; pushing `MPSkills` deploys Web |
+| 5. Push | main checkout | Claude asks first | never automatic; pushing `MPSkills` deploys Web, and the gate above applies |
 
 - A new build session for every ticket. The merge session can be cleared when convenient: the state lives in GitHub, git and `docs/agents/`.
 - Start the next ticket in a lane only after the previous one is merged, so it is cut from the updated `MPSkills`.
-- After a merge Claude runs the planner's list on the merged tree only when the baseline moved (another ticket merged since this one was cut).
+- After a merge Claude runs the planner's list on the merged tree when the baseline moved (another ticket merged since this one was cut). Since #128 the merge step also asks the ledger which suites already passed at the branch tip's tree and skips those.
+- A merge review that finds a gap in the tests asks for one added test, commits it on the branch and posts its own `STATUS: READY TO MERGE` naming the new commit.
 
 ## What to paste: the printed prompt plus these additions
 
-Paste exactly what `/ticket-start N` prints (`/mattpocock-skills:implement #N` and the handoff line: don't push, don't close the issue, finish with a STATUS comment, live External suites only when a criterion names one, `## Decisions` asked with AskUserQuestion). Then add:
+Paste exactly what `/ticket-start N` prints (`/mattpocock-skills:implement #N` and the handoff line: don't push, don't close the issue, finish with a STATUS comment, run single test files only and leave the full run to `/ticket-finish`, live External suites only when a criterion names one, `## Decisions` asked with AskUserQuestion). Then add:
 
 ```
 Test-round additions:
-- For a full Python run use `uv run pytest -n auto` (about 45 s). The slow tooling
-  tests are left out of planner runs unless the diff touches what they check.
-- No live or paid runs. The stale External suites are bundled at the end of the
-  round and run from the main checkout.
+- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
+  The slow tooling tests are left out of planner runs unless the diff touches
+  what they check.
+- No live or paid runs. External suites are run by the owner from the main checkout.
 - Judge each test by whether it would find or prevent a real bug and whether it
   adds run time; do not add tests only to raise a coverage number.
 ```
 
-The printed handoff line now says "run single test files and typechecks only; leave the full run to /ticket-finish" itself (#128, tree-hash skip), so that bullet is gone from the additions. Tickets cut before #128 merged still need it pasted.
-
 ### Extra lines for specific tickets
 
-- **Planner tickets (#128, #66, #133, #136):** "These change `scripts/test_planner.py` and `scripts/test_planner_config.json`, as do the other planner tickets. If another planner ticket merged since you were cut, rebase before finishing."
-- **Lockfile tickets (#135):** "This changes `pyproject.toml` and `uv.lock`. Run `uv lock` after any rebase."
+- **Planner tickets (#133, #136):** "These change `scripts/test_planner.py` and `scripts/test_planner_config.json`, as did #128, #66 and #135. If another planner ticket merged since you were cut, rebase before finishing."
 - **Android tickets (#131, #137, #133):** "If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The JVM coverage floor is 95% over the allow-listed decision logic."
-- **Starting the Android lane while #43 is assigned:** `/ticket-start #127 --emulator-free 43` (the script reads "Android" in #43's title as an emulator ticket; it is not). It also guesses Android only from an Android title or an `android/` file path, so start #84 and #40 with `--android`.
-- **Emulator tickets (#127, #84, #124, and #75, #39, #40):** "This needs the single emulator; no other Android ticket may be running. Reboot a long-running emulator before the suite."
-- **#41-style External tickets:** the live run is deferred to the bundle; the ticket's session must not run it.
+- **Emulator tickets (#75, #39, #40):** "This needs the single emulator; no other Android ticket may be running. Start it with `-gpu swangle_indirect` (the AVD default host graphics caused the aborts #127 traced), or use `uv run scripts/android_suite_loop.py --runs N --expected-tests <count>` for a repeat-run count; it cold-boots per run. The instrumented suite is 142 tests at the last merge."
+- **Starting an Android ticket:** `/ticket-start` guesses Android only from an Android title or an `android/` file path in the body, so start #40 with `--android` (its text names neither). If an assigned ticket is wrongly counted as holding the emulator (its title says Android but it never uses it), name it with `--emulator-free <M>`.
+- **#41-style External tickets:** the live run is the owner's; the ticket's session must not run it.
 
 ## Order of work (lanes)
 
-Two build lanes run in parallel; tickets inside a lane share files, so they go one at a time.
+Two build lanes can run in parallel; tickets inside a lane share files, so they go one at a time.
 
-| Step | Lane A (lockfile and planner) | Lane B (External and coverage) |
+| Step | Lane A (planner and Python) | Lane B (tooling) |
 |---|---|---|
-| done | #134, #129 | #130, #41 |
-| now | **#128** tree-hash skip | **#43** pre-push gate |
-| next | #66 planner from last-verified | #44 dashboard |
-| then | #135 remove the FastAPI app | #115 shared Scan outcomes fixture |
-| then | #133 session-end command (needs #130 and #66) | #67 session-start debt report (needs #66) |
-| then | #136 move `breakdown.py` (needs #135, after the planner tickets, before #45) | |
+| done | #134, #129, #128, #66, #135 | #130, #41, #43, #44, #115 |
+| next | #136 move `breakdown.py` (before #45) | #67 session-start debt report (needs #66, merged) |
+| then | #133 session-end command (needs #130 and #66, both merged; also an Android ticket) | |
 
-Android lane (emulator, free now that #118 is merged): #127, then #84, then #124; #131 and #137 (JVM only) alongside; then #75, #39, #40 together (two paid scans, owner confirms first).
+Android lane (one at a time; the single emulator): done #127, #84, #124. Next #131 and #137 (JVM only, can run beside any other lane), then #75, #39, #40 together (two paid scans, owner confirms first).
 
-Last: #105 (after the owner's dashboard step), #64 (docs refresh), then one bundled run of the stale External suites (`uv run scripts/external_freshness.py` first; run from the main checkout; ask before each live run and before pushing). Optional: #132. Deferred: #68, #69, #70, #72, #100.
+Last: #105 (after the owner's dashboard step), #64 (docs refresh), then a final run of whichever External surfaces went stale again (`uv run scripts/external_freshness.py` first; from the main checkout; ask before each live run and before pushing). Optional: #132. Deferred: #68, #69, #70, #72, #100.
 
 ## Things to remember
 
-- Once #43 lands, a stale External surface blocks a push that touches `web/`, `workers/scan-proxy/` or `android/`. `scan-proxy-worker` is stale until its first recorded run, which costs one paid scan. Plan the bundled run before or soon after #43 merges.
-- `--maxprocesses=8` caps `-n auto` because 24 workers ran this machine out of memory.
-- A leftover empty `.claude/worktrees/ticket-N` folder after a merge means a session is still open in it; close the session, then `rmdir` it (Windows long paths: see the notes in [worktree-setup.md](worktree-setup.md)).
+- `--maxprocesses=8` caps `-n auto` because 24 workers ran this machine out of memory. Even at 8, the Python suite occasionally errors in tests that create a real git repo (`git init` or `git worktree add` exits 3221225773 or "WinError 1455: paging file too small") when the emulator, Gradle and other sessions are up. About 3 in 16 runs. It is memory, not a regression; re-run, and consider a lower worker count with the emulator running.
+- Set the `medium_phone` AVD's Graphics to Software in Device Manager (the file is `G:\Android\EmulatorHome\avd\medium_phone.avd\config.ini`, `hw.gpu.mode`). Not yet confirmed done. The loop script does not depend on it; a plain `gradlew connectedDebugAndroidTest` or `android/release.ps1` against a default-graphics emulator can still abort.
+- The emulator that `android_suite_loop.py` starts holds its `emulator.log` open, which blocks deleting the ticket worktree folder after `/ticket-merge`. Restart or close the emulator, then `rmdir` the leftovers. At the last check these empty folders remained under `.claude/worktrees/`: 84, 115, 118, 124, 126, 129, 135 (see [worktree-setup.md](worktree-setup.md) for the Windows long-path steps).
+- The planner now treats `*.md`, `docs/*` and `ClaudePlans/*` as docs-only (plans nothing), follows `shares_with` and `depends_on` links to downstream contexts (a Core source change also queues Streamlit's tests), and does not list a deleted test file. `--since-verified` plans from each context's last verified commit in the ledger. Config choices on #66 are recorded in its DECISIONS comment.
 - Open follow-up from the #130 merge: one more test case for the prefix-matching direction in `scripts/coverage_lib.py` (allow `ScanApiClient`, leave `ScanApiClientKt` unlisted); add it when a ticket next touches that file.

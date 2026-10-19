@@ -103,30 +103,68 @@ device layer).
 
 ### 5. External tests
 
-Verifies a real 3rd-party boundary (RevenueCat, Anthropic) hasn't
-silently changed — a fundamentally different question than any internal
-contract category 4 checks, since nothing internal to this codebase can
-prove a *provider's* behavior is still what it was. Two trigger
-conditions, not one:
+Verifies a real remote interface (Anthropic, RevenueCat, Supabase, the
+deployed Worker and Pages site) hasn't silently changed — a fundamentally
+different question than any internal contract category 4 checks, since
+nothing internal to this codebase can prove a *provider's* behavior is
+still what it was. Real calls, dedicated test accounts, never mocked.
+The model is in `docs/adr/0008-external-api-tests-are-per-surface-and-freshness-gated.md`;
+this is the working summary.
 
-- **(a) Diff-driven** — same logic as category 4: a **Major** change
-  (below) that touches boundary-calling code (e.g. `revenuecat.ts`,
-  `claude.ts`, `RevenueCatManager.kt`) also runs the External suite for
-  that boundary. Not a separate thing to remember — it's folded into
-  "what a Major change on this module requires."
-- **(b) Event-driven** — independent of any diff: release-gated (before
-  pushing a major update), a 3rd-party SDK/API version bump, or explicit
-  suspicion of drift. This is what used to be called "Weekly"/"Release"
-  (scan-proxy) or "Weekly" (Android) — see "Event-based tiers, not
-  time-cadence tiers" below for why those names were retired.
+**The unit is a surface**, not a platform or a suite: one provider
+interface, such as `anthropic`, `revenuecat-rest`, `supabase-auth`,
+`scan-proxy-worker` or `pages-site`. Each has its own last-pass record,
+and each platform keeps owning its own External suite (node, pytest,
+Android instrumentation), tagging each test with its surface name (node
+and pytest today; Android's surfaces are still `planned`, so it has none).
+`scripts/external_manifest/surfaces/<name>.json` is the one source of
+truth for a surface: its boundary files, dependency pins, watched
+registry packages (npm, PyPI, Maven), maximum paid calls, the platforms
+whose release depends on it, and whether it is `active` or `planned`.
+
+**Depth, per surface:** reachable and authenticated; response shape
+matches our contract; error contracts; a full user journey. A surface
+whose ticket says one of these does not apply records why.
+
+**When to re-run it — freshness, not a calendar.** A surface is *stale*
+when a commit since its last real pass touched its boundary files or
+dependency pins, or any watched package published a new stable release
+after that pass (whether or not we upgraded), or a registry cannot be
+reached. `uv run scripts/external_freshness.py` prints the verdicts and
+the stale list; each platform's wrapper passes that list to its runner's
+native filter, so only stale surfaces re-run. This replaces the older
+"diff-driven plus event-driven" pair: a Major change that touches
+boundary code makes the surface stale through its boundary files, and a
+dependency bump or a provider release does the same through the pins and
+the registries. Nothing is on a timer. A provider that changes its web
+API without publishing a library release is out of scope, by design.
+
+**What a surface can read as** (shown on the dashboard, see below):
+
+| State | Meaning |
+|---|---|
+| fresh | last real pass is newer than every boundary-file change and registry release |
+| stale | never passed, or something it depends on changed since its last pass |
+| failed | its latest real run failed |
+| skipped | its latest run was an explicit skip: a skip is recorded, never advances the timestamp and never counts as a pass, so the surface stays stale |
+| overridden | stale, and the release gate was forced past it with a reason (until its next real pass) |
+| planned | listed in the manifest but not yet testable; shown as not covered and never blocking |
+
+A missing secret, account or device **fails** the run; only an explicit
+skip flag records `skipped`. Each paid surface has a maximum call count
+in the manifest, enforced by a shared counter that aborts the run.
+`scripts/record_external_result.py --surface NAME --outcome pass|fail|skipped`
+records the result (outcome, time, registry versions seen, our commit SHA);
+the old `platform/suite` entries in `external_status.json` are history
+only, ignored by the gate and not shown on the dashboard. The release
+gate that reads all this is in "External release gate" below.
 
 Where a platform's real boundary has two genuinely different scopes —
 through-our-own-deployed-service vs. direct-provider-boundary — those
-are two suites *within* External, not two separate categories and not
-kept as separately named tiers. `scan-proxy` is the concrete example:
-its real-network suite against the deployed Worker itself, and its
-real-network suite calling RevenueCat/Anthropic directly, are both
-External, distinguished by scope not by name.
+are different surfaces, not different tiers. `scan-proxy` is the
+concrete example: `scan-proxy-worker` (the deployed Worker itself) and
+`anthropic`/`revenuecat-rest` (the providers it calls) are separate
+surfaces with separate records.
 
 ## Regression scoping: Minor vs. Major
 
@@ -272,12 +310,12 @@ now, used identically on every platform**:
   1-3, plus category 4 if an interface is shared). This is what "Daily"
   (both platforms) used to mean — same tests, same commands, new name.
 - **External** (category 5, above) — real, live calls to a genuine
-  3rd-party boundary. This is what "Weekly" (Android, scan-proxy) and
-  "Release" (scan-proxy) used to mean, now unified as External's two
-  trigger conditions rather than two more separately-named tiers. Where
-  a platform has two real scopes (through-our-service vs.
-  direct-provider-boundary — scan-proxy's old Weekly-vs-Release split),
-  those are External's two suites, not two tiers.
+  3rd-party boundary, per surface, run when the surface is stale. This is
+  what "Weekly" (Android, scan-proxy) and "Release" (scan-proxy) used to
+  mean, now unified as surfaces and their freshness rather than two more
+  separately-named tiers. Where a platform has two real scopes
+  (through-our-service vs. direct-provider-boundary — scan-proxy's old
+  Weekly-vs-Release split), those are separate surfaces, not two tiers.
 
 **Why the time-cadence names were dropped**: "Daily"/"Weekly" never
 actually ran on a real cadence in practice, confirmed 2026-08-21 —
@@ -292,9 +330,9 @@ really governing these tiers all along.
 **Applied uniformly across all four platforms**, including Web and
 Python/Streamlit, even though neither ever had tier language before —
 see `web/TESTING.md`'s and `tests/TESTING.md`'s own "Event-based tiers"
-sections. Neither currently has a real External suite (no direct
-3rd-party boundary call exists in either today), which is a fact about
-what those platforms do, not a gap in the model.
+sections. Python/Streamlit's only real External test is Core's Claude
+vision call (the `anthropic` surface); Web has its own External suite
+(`supabase-auth`, `pages-site`, `supabase-tables`, `revenuecat-web-billing`).
 
 ## Coverage gate
 
@@ -364,16 +402,16 @@ only, not hidden — see that script's own "not gated" note).
 
 **External never re-runs from the dashboard** — those suites cost real
 money/time (a real Claude call, a booted emulator), and regenerating a
-README graphic shouldn't trigger that. Instead, `scripts/record_external_result.py`
-is called from the *end* of each real External wrapper script
+README graphic shouldn't trigger that. Instead, the per-surface External
+runners (`scripts/external_wrapper.py`, behind the `test-external`
+wrappers) record each surface's result with `scripts/record_external_result.py`
+in the git-tracked `scripts/dashboard_data/external_status.json` (see
+category 5 above). The dashboard just reads that file; a surface that has
+never run reads as stale. The older whole-platform wrappers
 (`android/test-weekly.ps1`, `workers/scan-proxy/test-weekly.ps1`,
-`workers/scan-proxy/test-release.ps1` — all three, whenever they're
-actually run for real) and persists the result to the git-tracked
-`scripts/dashboard_data/external_status.json`. The dashboard just reads
-that file — a platform's External cell shows `n/a` until its wrapper has
-actually been run at least once. `workers/scan-proxy/test-weekly.ps1` is
-new as of this work — before it existed, that suite only ever ran via
-bare `npm run test:weekly`, with no way to record a result anywhere.
+`test-release.ps1`) still write `platform/suite` entries (`android.weekly`,
+`scan_proxy.weekly`, `scan_proxy.release`) into that file; they are history
+only, and the dashboard no longer shows them (#44).
 
 `--refresh` on either `coverage_gate.py` or `generate_dashboard.py`
 forces every already-cached report to be regenerated instead of reused;
@@ -391,8 +429,8 @@ release gate's floor applies to the combined Python number. The new
 **Surfaces** column shows fresh/active External surfaces per platform
 (planned ones as a count), computed from the manifest, recorded status
 and git; registries are not contacted, so a new upstream release shows
-in `external_freshness.py`, not here. The legacy External column is
-unchanged and still read from `external_status.json`.
+in `external_freshness.py`, not here. (#44 below merged it with the old
+External column.)
 
 Measured results are saved to `scripts/dashboard_data/test_results.json`
 (date and commit; the graphic's header shows them) by any run that
@@ -409,6 +447,21 @@ and commit in the header until someone runs the generator without
 `--from-snapshot`. Android's device tier and coverage need a connected
 device and show `n/a` without one. Python's expected failures (xfail)
 count as not passed, as before.
+
+### Dashboard update, 2026-10-19 (#44): per-surface External status
+
+The old per-suite External column is gone; the **External** column is now
+the surface cell (`fresh/active`, then counts of what is not fresh:
+`2/5 (1 planned, 1 failed)`). Below the platform grid, an **External
+surfaces** list shows every surface in the manifest on its own line:
+a coloured dot (fresh blue, stale and skipped yellow, failed and
+overridden red, planned grey), the surface name, its state and the
+platforms whose release depends on it. A planned surface reads
+`planned - not covered`. The states are the ones in category 5 above;
+`failed` and `skipped` are new to the graphic (they used to read plainly
+as stale). The graphic is built from the manifest, the recorded
+per-surface status and git only, so it stays offline; the old
+`platform/suite` entries are never read.
 
 ## External release gate (ADR-0008, #43)
 
@@ -440,7 +493,7 @@ passes a hook no flags), `npm run deploy -- --force --reason "why"`, or
 `-Force -Reason "why"` on the two `release.ps1` scripts. `--force` without a
 reason is refused. The reason is recorded in
 `scripts/dashboard_data/external_status.json` on every surface that was blocking,
-and the dashboard's Surfaces cell shows `(N overridden)` until each one's next
+and the dashboard's External cell shows `(N overridden)` until each one's next
 real pass; a failed or skipped run does not clear it. Forcing a gate that would
 have passed records nothing. The mark is written to the status file of the
 checkout you run from, so it is a tracked-file change to commit; and the gate

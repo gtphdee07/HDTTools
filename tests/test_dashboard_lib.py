@@ -2,7 +2,6 @@
 
 import sys
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -116,64 +115,6 @@ def test_parse_junit_xml_raises_when_report_has_neither_schema(tmp_path):
         dashboard_lib.parse_junit_xml(xml_path)
 
 
-# --- format_external_cell ---
-
-
-def test_format_external_cell_returns_none_when_never_recorded():
-    assert dashboard_lib.format_external_cell([]) is None
-
-
-def test_format_external_cell_single_suite_passed_is_blue():
-    color, label = dashboard_lib.format_external_cell(
-        [{"passed": True, "timestamp": "2026-08-24T16:50:57Z"}],
-        now="2026-08-24T18:00:00Z",
-    )
-    assert color == "blue"
-    assert label == "1/1 (0d)"
-
-
-def test_format_external_cell_single_suite_failed_is_red():
-    color, label = dashboard_lib.format_external_cell(
-        [{"passed": False, "timestamp": "2026-08-20T00:00:00Z"}],
-        now="2026-08-24T00:00:00Z",
-    )
-    assert color == "red"
-    assert label == "0/1 (4d)"
-
-
-def test_format_external_cell_combines_two_suites_and_uses_the_older_age():
-    color, label = dashboard_lib.format_external_cell(
-        [
-            {"passed": True, "timestamp": "2026-08-24T00:00:00Z"},
-            {"passed": True, "timestamp": "2026-08-20T00:00:00Z"},
-        ],
-        now="2026-08-24T00:00:00Z",
-    )
-    assert color == "blue"
-    assert label == "2/2 (4d)"
-
-
-def test_format_external_cell_one_of_two_failed_is_red():
-    """50% falls below the '>80' yellow band, so it's red, not yellow."""
-    color, _ = dashboard_lib.format_external_cell(
-        [
-            {"passed": True, "timestamp": "2026-08-24T00:00:00Z"},
-            {"passed": False, "timestamp": "2026-08-24T00:00:00Z"},
-        ],
-        now="2026-08-24T00:00:00Z",
-    )
-    assert color == "red"
-
-
-def test_format_external_cell_defaults_now_to_the_real_current_time():
-    """Without an explicit `now`, a just-recorded status is ~0 days old -
-    proves the default path (real datetime.now()) works, not just the
-    injectable-`now` path every other test uses."""
-    just_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    _, label = dashboard_lib.format_external_cell([{"passed": True, "timestamp": just_now}])
-    assert label == "1/1 (0d)"
-
-
 # --- render_dashboard_svg ---
 
 
@@ -252,17 +193,18 @@ def test_render_dashboard_svg_still_shows_a_real_percent_for_report_only_coverag
 def test_render_dashboard_svg_fits_a_long_external_label_without_overlapping_coverage():
     """Regression test for the real layout bug found from a screenshot:
     a long External label ran into the Coverage column's text."""
+    label = dashboard_lib.format_surface_cell(["fresh", "planned", "overridden", "planned"])[1]
     row = dashboard_lib.PlatformRow(
         name="scan-proxy",
         minor=("blue", "9/9"),
         major=("blue", "57/57"),
-        external=("blue", "1/1 (0d)"),
+        external=("red", label),
         coverage=(100.0, "blue"),
     )
     svg = dashboard_lib.render_dashboard_svg([row], generated="2026-08-24")
     root = ET.fromstring(svg)
     texts = root.findall(".//{http://www.w3.org/2000/svg}text")
-    external_text = next(t for t in texts if t.text == "1/1 (0d)")
+    external_text = next(t for t in texts if t.text == label)
     coverage_text = next(t for t in texts if t.text == "100.0%")
     external_x = int(external_text.get("x"))
     coverage_x = int(coverage_text.get("x"))
@@ -272,7 +214,7 @@ def test_render_dashboard_svg_fits_a_long_external_label_without_overlapping_cov
     assert external_x + len(external_text.text) * 8 < coverage_x
 
 
-# --- surfaces column, python per-context coverage, snapshot rows (#49) ---
+# --- External cell, python per-context coverage, snapshot rows (#49) ---
 
 
 def test_format_surface_cell_all_fresh_is_blue():
@@ -287,6 +229,12 @@ def test_format_surface_cell_counts_only_active_surfaces_in_the_score():
 def test_format_surface_cell_shows_an_overridden_gate_and_does_not_count_it_as_fresh():
     assert dashboard_lib.format_surface_cell(["fresh", "overridden", "planned"]) == ("red", "1/2 (1 planned, 1 overridden)")
     assert dashboard_lib.format_surface_cell(["fresh", "fresh", "overridden"]) == ("red", "2/3 (1 overridden)")
+
+
+def test_format_surface_cell_counts_failed_and_skipped_surfaces_as_not_fresh():
+    assert dashboard_lib.format_surface_cell(["fresh", "failed", "skipped", "planned"]) == (
+        "red", "1/3 (1 planned, 1 failed, 1 skipped)")
+    assert dashboard_lib.format_surface_cell(["fresh"] * 9 + ["skipped"]) == ("yellow", "9/10 (1 skipped)")
 
 
 def test_format_surface_cell_only_planned_surfaces_is_red_and_says_so():
@@ -311,17 +259,17 @@ def test_python_percent_for_no_matching_files_is_none():
     assert dashboard_lib.python_percent_for({"files": {}}, "src/hdttools/") is None
 
 
-def test_snapshot_entry_round_trips_into_a_row_with_live_external_cells():
+def test_snapshot_entry_round_trips_into_a_row_with_live_external_cell():
     entry = dashboard_lib.snapshot_entry(("green", "9/10"), None, (86.1, "yellow"), False)
-    row = dashboard_lib.row_from_snapshot("Core", entry, ("blue", "1/1 (3d)"), ("blue", "2/2"))
+    row = dashboard_lib.row_from_snapshot("Core", entry, ("blue", "2/2"))
     assert row.minor == ("green", "9/10") and row.major is None
     assert row.coverage == (86.1, "yellow") and row.coverage_gated is False
-    assert row.external == ("blue", "1/1 (3d)") and row.surfaces == ("blue", "2/2")
+    assert row.external == ("blue", "2/2")
 
 
 def test_row_from_snapshot_missing_platform_renders_everything_n_a():
-    row = dashboard_lib.row_from_snapshot("Web", None, None, None)
-    assert (row.minor, row.major, row.coverage, row.external, row.surfaces) == (None,) * 5
+    row = dashboard_lib.row_from_snapshot("Web", None, None)
+    assert (row.minor, row.major, row.coverage, row.external) == (None,) * 4
 
 
 def test_results_note_shows_the_measured_date_and_short_commit():
@@ -333,8 +281,62 @@ def test_results_note_without_a_snapshot_says_no_results():
     assert "no results" in dashboard_lib.results_note(None)
 
 
-def test_render_dashboard_svg_shows_surfaces_column_and_results_note():
-    row = dashboard_lib.PlatformRow("Web", None, None, None, None, surfaces=("yellow", "1/2 (3 planned)"))
+def test_render_dashboard_svg_shows_the_external_column_and_results_note():
+    row = dashboard_lib.PlatformRow("Web", None, None, ("yellow", "1/2 (3 planned)"), None)
     svg = dashboard_lib.render_dashboard_svg([row], "2026-10-04", " | tests run: 2026-10-03")
     ET.fromstring(svg)
-    assert "Surfaces" in svg and "1/2 (3 planned)" in svg and "tests run: 2026-10-03" in svg
+    assert "External" in svg and "1/2 (3 planned)" in svg and "tests run: 2026-10-03" in svg
+    assert "Surfaces" not in svg
+
+
+# --- per-surface list (#44) ---
+
+_ALL_STATES = ("fresh", "stale", "failed", "skipped", "overridden", "planned")
+
+
+def _surface_rows():
+    return [
+        dashboard_lib.SurfaceRow(f"surface-{state}", state, ("web", "scan-proxy") if state == "fresh" else ("web",))
+        for state in _ALL_STATES
+    ]
+
+
+def _svg_texts(svg):
+    root = ET.fromstring(svg)  # raises if not well-formed
+    return [t.text for t in root.findall(".//{http://www.w3.org/2000/svg}text")]
+
+
+def test_per_surface_list_shows_every_surface_with_its_state():
+    svg = dashboard_lib.render_dashboard_svg([_sample_row()], "2026-10-19", surface_rows=_surface_rows())
+    texts = _svg_texts(svg)
+    assert "External surfaces" in texts
+    for state in _ALL_STATES:
+        assert f"surface-{state}" in texts
+        assert any(t and t.startswith(state) for t in texts), state
+
+
+def test_per_surface_list_says_a_planned_surface_is_not_covered():
+    svg = dashboard_lib.render_dashboard_svg([_sample_row()], "2026-10-19", surface_rows=_surface_rows())
+    assert "planned - not covered" in _svg_texts(svg)
+    assert "fresh - not covered" not in _svg_texts(svg)
+
+
+def test_per_surface_list_names_the_platforms_that_depend_on_each_surface():
+    svg = dashboard_lib.render_dashboard_svg([_sample_row()], "2026-10-19", surface_rows=_surface_rows())
+    assert "web, scan-proxy" in _svg_texts(svg)
+
+
+def test_per_surface_list_gives_each_state_its_own_dot_colour_and_planned_is_grey():
+    svg = dashboard_lib.render_dashboard_svg([], "2026-10-19", surface_rows=_surface_rows())
+    dots = [c.get("fill") for c in ET.fromstring(svg).findall(".//{http://www.w3.org/2000/svg}circle")]
+    assert len(dots) == len(_ALL_STATES)
+    assert dots[-1] == "#8b949e"  # planned is grey, never a pass or fail colour
+    assert dots[0] != dots[2]  # fresh and failed do not look alike
+
+
+def test_no_surface_rows_means_no_surface_section_and_the_graphic_is_shorter():
+    plain = dashboard_lib.render_dashboard_svg([_sample_row()], "2026-10-19")
+    listed = dashboard_lib.render_dashboard_svg([_sample_row()], "2026-10-19", surface_rows=_surface_rows())
+    assert "External surfaces" not in _svg_texts(plain)
+    height = lambda s: int(ET.fromstring(s).get("height"))  # noqa: E731
+    assert height(listed) > height(plain)

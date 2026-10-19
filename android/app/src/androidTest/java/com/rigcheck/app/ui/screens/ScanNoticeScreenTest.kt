@@ -8,12 +8,12 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.domain.model.ScaleTicket
 import com.rigcheck.app.domain.model.TrailerTag
 import com.rigcheck.app.domain.model.TruckTag
+import com.rigcheck.app.testsupport.scrollToIfScrollable
 import com.rigcheck.app.ui.ScanMessages
 import com.rigcheck.app.ui.ScanNotice
 import com.rigcheck.app.ui.applyScan
@@ -88,7 +88,7 @@ class ScanNoticeScreenTest {
         showTruck(applied.truck, applied.notice)
         composeRule.onNodeWithTag("scan_notice").assertIsDisplayed()
 
-        composeRule.onNodeWithTag("truck_description").performScrollTo().performTextInput("Ford F-450")
+        composeRule.onNodeWithTag("truck_description").scrollToIfScrollable().performTextInput("Ford F-450")
 
         composeRule.onNodeWithTag("scan_notice").assertDoesNotExist()
     }

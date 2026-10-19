@@ -733,8 +733,9 @@ fail without the change: breaking the rig-start signal, the screen-change signal
 or the in-flight guard each turns several of them red. `enterNickname` here is the
 #125 recipe (keyboard really closed before a Back).
 
-**Test-support tests** (`testsupport/`) — real-network-free coverage for
-infrastructure the External suite below depends on:
+**Test-support tests** (`testsupport/`, Major suite) — real-network-free
+coverage for test infrastructure: the fixture pool the External suite below
+depends on, and the scroll helper the screen and nav tests use:
 
 - `ScanFixturePoolTest.kt` — `ScanFixturePool`'s directory-convention
   discovery (item #13's Android pass-pool/fail-pool, mirroring
@@ -747,6 +748,20 @@ infrastructure the External suite below depends on:
   doc_type, so a random pick could land on either pool regardless of
   which one the caller wanted), and fail-loud errors on a malformed
   sidecar or an image-less vehicle folder.
+- `ScrollTestSupportTest.kt` (#84) — `scrollToIfScrollable()`, the helper the
+  screen and nav tests use instead of `performScrollTo()`. It scrolls to a node
+  inside a scrolling column, and leaves a node with no scrolling container above
+  it where it is (the plain call throws "Semantic Node has no parent layout with
+  a Scroll SemanticsAction" there, which #76 hit on the buttons pinned below the
+  form). Use it for any node that might sit inside or outside the scroll column.
+  Measured while writing it, on Compose BOM 2026.02.01: a `verticalScroll`
+  column whose content fits the window still exposes the scroll action. Plain
+  `performScrollTo()` passed on a node in a fitting column, and on
+  `TruckTagEntryScreen`'s `scan_standalone_ticket` with `LocalDensity` set to 1
+  so the whole form fits (a throwaway probe, not kept: it passes with or without
+  the helper, so it could not fail). So a node inside the column does not break
+  on a larger screen or smaller font scale (the premise of #84 as filed); only
+  a node outside the column does. Recheck after a Compose BOM upgrade.
 
 ### External (instrumented, real RevenueCat) — `.\test-weekly.ps1`
 

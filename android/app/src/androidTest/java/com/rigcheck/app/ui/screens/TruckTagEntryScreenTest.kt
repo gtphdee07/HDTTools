@@ -11,11 +11,11 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.data.ScanResult
 import com.rigcheck.app.domain.model.TruckTag
+import com.rigcheck.app.testsupport.scrollToIfScrollable
 import com.rigcheck.app.ui.NO_WEIGHT_ERROR
 import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanUiState
@@ -65,9 +65,9 @@ class TruckTagEntryScreenTest {
             TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {}, pinWeightPct = 20)
         }
 
-        composeRule.onNodeWithTag("scan_standalone_ticket").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("scan_standalone_ticket").scrollToIfScrollable().assertIsDisplayed()
         composeRule.onNodeWithText("No ticket? Estimate pin/hitch weight as 20% of the trailer's weight")
-            .performScrollTo()
+            .scrollToIfScrollable()
             .assertIsDisplayed()
     }
 
@@ -87,7 +87,7 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Reading…").performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithText("Reading…").scrollToIfScrollable().assertIsNotEnabled()
         composeRule.onNodeWithTag("scan_standalone_ticket").performClick()
 
         composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
@@ -100,7 +100,7 @@ class TruckTagEntryScreenTest {
             TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {}, creditBalance = 5)
         }
 
-        composeRule.onNodeWithTag("scan_standalone_ticket").performScrollTo().assertIsEnabled()
+        composeRule.onNodeWithTag("scan_standalone_ticket").scrollToIfScrollable().assertIsEnabled()
     }
 
     @Test
@@ -114,7 +114,7 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithTag("scan_standalone_ticket").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("scan_standalone_ticket").scrollToIfScrollable().assertIsDisplayed()
         composeRule.onNodeWithText("No ticket? Estimate pin/hitch weight as 20% of the trailer's weight")
             .assertDoesNotExist()
     }
@@ -125,7 +125,7 @@ class TruckTagEntryScreenTest {
             TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {}, creditBalance = 3)
         }
 
-        composeRule.onNodeWithTag("scan_standalone_ticket").performScrollTo().performClick()
+        composeRule.onNodeWithTag("scan_standalone_ticket").scrollToIfScrollable().performClick()
 
         composeRule.onNodeWithText("Take Photo").assertIsDisplayed()
         composeRule.onNodeWithText("Choose from Gallery").assertIsDisplayed()
@@ -148,7 +148,7 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithTag("scan_standalone_ticket").performScrollTo().performClick()
+        composeRule.onNodeWithTag("scan_standalone_ticket").scrollToIfScrollable().performClick()
 
         assert(neededCredits) { "onNeedCredits should have fired for a 0-credit user" }
         composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
@@ -167,7 +167,7 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithTag("scan_standalone_ticket").performScrollTo().performClick()
+        composeRule.onNodeWithTag("scan_standalone_ticket").scrollToIfScrollable().performClick()
 
         assert(neededCredits) { "onNeedCredits should have fired when no balance is loaded" }
         composeRule.onNodeWithText("Take Photo").assertDoesNotExist()

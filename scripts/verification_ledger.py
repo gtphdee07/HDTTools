@@ -1,0 +1,255 @@
+"""Verification ledger (#65; spec #51): the last commit whose suites passed,
+per context and level (issue, session, release).
+
+The ledger is a local JSON file inside the git directory, shared by every
+worktree and never tracked. Only this runner writes it, by running a test
+command and recording the commit only if that command passed:
+
+  uv run scripts/verification_ledger.py run --context web --level session -- npm --prefix web test
+
+Rules:
+  - A pass is valid only for the commit it ran at. The run must start and end
+    at the same HEAD on a tree with no tracked changes; otherwise the suite's
+    own exit code is passed through but nothing is recorded.
+  - A failed run, a run that could not start and a skipped run leave the
+    previous record untouched.
+
+Questions it answers (exit 0 only when verified, so a script can branch on it):
+
+  uv run scripts/verification_ledger.py check --context web --level session
+  uv run scripts/verification_ledger.py show
+
+The planner (#66), the session-start report (#67) and the epic gate (#68)
+read the ledger through `status`, `is_verified` and `last_verified`.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Callable
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import test_planner as planner  # noqa: E402
+from release_steps import default_run_command  # noqa: E402
+
+LEDGER_NAME = "hdttools-verification-ledger.json"
+LEVELS = planner.LEVELS
+OUTCOMES = ("pass", "fail", "skipped")
+
+VERIFIED = "verified"  # the recorded pass is at the commit asked about
+STALE = "stale"  # a pass is recorded, but at a different commit
+UNVERIFIED = "unverified"  # no pass recorded
+
+
+class LedgerError(Exception):
+    pass
+
+
+class GitError(Exception):
+    pass
+
+
+class RealGit:
+    def _git(self, *args: str) -> str:
+        try:
+            proc = subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True)
+        except OSError as exc:
+            raise GitError(str(exc)) from exc
+        if proc.returncode != 0:
+            raise GitError(proc.stderr.strip() or f"git {' '.join(args)} failed")
+        return proc.stdout.strip()
+
+    def head(self) -> str:
+        return self._git("rev-parse", "HEAD")
+
+    def is_clean(self) -> bool:
+        """No changes to tracked files (untracked and ignored files do not count)."""
+        return self._git("status", "--porcelain", "--untracked-files=no") == ""
+
+    def common_dir(self) -> Path:
+        return (REPO_ROOT / self._git("rev-parse", "--git-common-dir")).resolve()
+
+
+def default_ledger_path(git=None) -> Path:
+    """Inside the shared git directory: one ledger for all worktrees, never tracked."""
+    return (git or RealGit()).common_dir() / LEDGER_NAME
+
+
+def known_contexts() -> list[str]:
+    return list(planner.load_config()["contexts"])
+
+
+def _validate(context: str, level: str) -> None:
+    if level not in LEVELS:
+        raise ValueError(f"unknown level {level!r}; expected one of {', '.join(LEVELS)}")
+    contexts = known_contexts()
+    if context not in contexts:
+        raise ValueError(f"unknown context {context!r}; expected one of {', '.join(contexts)}")
+
+
+def _load(path: Path) -> dict:
+    if not path.exists():
+        return {"contexts": {}}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise LedgerError(f"verification ledger {path} is unreadable ({exc}); fix or delete it") from exc
+    if not isinstance(data, dict) or not isinstance(data.get("contexts"), dict):
+        raise LedgerError(f"verification ledger {path} has an unexpected shape; fix or delete it")
+    return data
+
+
+def _entry(data: dict, context: str, level: str) -> dict | None:
+    entry = data["contexts"].get(context, {}).get(level)
+    return entry if isinstance(entry, dict) and entry.get("commit") else None
+
+
+def last_verified(context: str, level: str, *, path: Path | None = None) -> str | None:
+    """The commit of the last recorded pass, or None."""
+    entry = _entry(_load(path or default_ledger_path()), context, level)
+    return entry["commit"] if entry else None
+
+
+def status(context: str, level: str, commit: str, *, path: Path | None = None) -> str:
+    recorded = last_verified(context, level, path=path)
+    if recorded is None:
+        return UNVERIFIED
+    return VERIFIED if recorded == commit else STALE
+
+
+def is_verified(context: str, level: str, commit: str, *, path: Path | None = None) -> bool:
+    """Is this context verified at this commit, for this level?"""
+    return status(context, level, commit, path=path) == VERIFIED
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def record(
+    context: str,
+    level: str,
+    outcome: str,
+    *,
+    command: str = "",
+    commit: str | None = None,
+    path: Path | None = None,
+    git=None,
+    now: str | None = None,
+) -> bool:
+    """Writes the ledger only for a pass; a fail or skip changes nothing.
+    Returns whether the ledger was written."""
+    _validate(context, level)
+    if outcome not in OUTCOMES:
+        raise ValueError(f"outcome must be one of {OUTCOMES}, got {outcome!r}")
+    git = git or RealGit()
+    target = path or default_ledger_path(git)
+    data = _load(target)  # an unreadable ledger is an error even for a fail or skip
+    if outcome != "pass":
+        return False
+    data["contexts"].setdefault(context, {})[level] = {
+        "commit": commit or git.head(),
+        "timestamp": now or _now(),
+        "command": command,
+    }
+    target.parent.mkdir(parents=True, exist_ok=True)
+    scratch = target.with_name(target.name + ".tmp")
+    scratch.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(scratch, target)
+    return True
+
+
+def run_and_record(
+    context: str,
+    level: str,
+    command: list[str],
+    *,
+    path: Path | None = None,
+    git=None,
+    run_command=default_run_command,
+    now: str | None = None,
+    out: Callable[[str], None] = print,
+) -> int:
+    """Runs the command and records a pass at the commit it started on.
+    Returns the command's exit code (non-zero if it could not start)."""
+    _validate(context, level)
+    git = git or RealGit()
+    target = path or default_ledger_path(git)
+    _load(target)  # refuse before running anything if the ledger cannot be updated
+    start = git.head()
+    clean = git.is_clean()
+    try:
+        code = run_command(command, cwd=REPO_ROOT).returncode
+    except OSError as exc:
+        out(f"could not start {command[0]!r} ({exc}); {context}/{level} not recorded.")
+        return 127
+    label = f"{context}/{level}"
+    if code != 0:
+        out(f"{label}: failed (exit {code}); ledger unchanged.")
+    elif not clean:
+        out(f"{label}: passed, but the tree had uncommitted changes to tracked files; not recorded. Commit, then re-run.")
+    elif git.head() != start or not git.is_clean():
+        out(f"{label}: passed, but HEAD or the tree changed during the run; not recorded. Re-run.")
+    else:
+        record(context, level, "pass", command=" ".join(command), commit=start, path=target, git=git, now=now)
+        out(f"{label}: verified at {start[:8]}.")
+    return code
+
+
+def main(
+    argv: list[str] | None = None,
+    *,
+    path: Path | None = None,
+    git=None,
+    run_command=default_run_command,
+    out: Callable[[str], None] = print,
+) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = parser.add_subparsers(dest="action", required=True)
+    for name in ("run", "check"):
+        p = sub.add_parser(name)
+        p.add_argument("--context", required=True)
+        p.add_argument("--level", required=True, choices=LEVELS)
+    sub.choices["run"].add_argument("command", nargs=argparse.REMAINDER, help="after --: the test command to run")
+    sub.add_parser("show")
+    args = parser.parse_args(argv)
+
+    git = git or RealGit()
+    try:
+        target = path or default_ledger_path(git)
+        if args.action == "run":
+            command = args.command[1:] if args.command[:1] == ["--"] else args.command
+            if not command:
+                parser.error("run needs a command after --")
+            return run_and_record(args.context, args.level, command, path=target, git=git,
+                                  run_command=run_command, out=out)
+        if args.action == "check":
+            _validate(args.context, args.level)
+            head = git.head()
+            result = status(args.context, args.level, head, path=target)
+            out(f"{args.context}/{args.level}: {result} at {head[:8]}")
+            return 0 if result == VERIFIED else 1
+        data = _load(target)
+        head = git.head()
+        entries = [(c, lv, e) for c, levels in sorted(data["contexts"].items())
+                   for lv, e in sorted(levels.items()) if isinstance(e, dict)]
+        if not entries:
+            out("verification ledger is empty")
+        for c, lv, e in entries:
+            state = VERIFIED if e.get("commit") == head else STALE
+            out(f"{c}/{lv}: {state}; last pass {str(e.get('commit', ''))[:8]} at {e.get('timestamp', '?')}")
+        return 0
+    except (LedgerError, GitError, ValueError) as exc:
+        out(str(exc))
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

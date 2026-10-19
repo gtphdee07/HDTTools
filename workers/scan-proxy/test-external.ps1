@@ -12,7 +12,8 @@
     Needs REVENUECAT_SECRET_KEY/ANTHROPIC_API_KEY in this shell's
     environment for whichever surfaces are stale (scan-proxy-worker needs the
     RevenueCat key and the Supabase test users, and tests whatever is
-    deployed: `npm run deploy` first after changing the Worker); a missing
+    deployed: `npm run deploy -- --force --reason "..."` first after changing
+    the Worker, since the deploy gate refuses while it is stale); a missing
     key fails the run. -Skip records `skipped` for the stale surfaces
     instead of running them; a skip never advances freshness, so they stay
     stale. A paid surface (anthropic, scan-proxy-worker) asks for

@@ -58,10 +58,16 @@ class Verdict:
     state: str  # "fresh" | "stale" | "planned"
     reasons: list[str] = field(default_factory=list)
     versions: dict[str, str] = field(default_factory=dict)
+    override_reason: str | None = None  # the reason the release gate was forced past this stale surface
 
     @property
     def blocking(self) -> bool:
         return self.state == "stale"
+
+    @property
+    def display_state(self) -> str:
+        """What the dashboard shows: a stale surface the gate was forced past reads "overridden"."""
+        return "overridden" if self.state == "stale" and self.override_reason else self.state
 
 
 def load_manifest(manifest_dir: Path = MANIFEST_DIR) -> dict:
@@ -262,7 +268,8 @@ def _evaluate_one(surface: dict, status: dict, git, registry) -> Verdict:
         if newer:
             reasons.append(f"{pkg['package']} published after last pass: " + ", ".join(newer))
 
-    return Verdict(name, "stale" if reasons else "fresh", reasons, versions)
+    override = entry.get("override_reason") if entry and reasons else None
+    return Verdict(name, "stale" if reasons else "fresh", reasons, versions, override)
 
 
 def evaluate(manifest: dict, status: dict, git, registry, only: list[str] | None = None) -> list[Verdict]:
@@ -310,6 +317,8 @@ def main(argv: list[str] | None = None, *, git=None, registry=None, status_file:
         for v in verdicts:
             suffix = f": {'; '.join(v.reasons)}" if v.reasons else ""
             note = " (planned, not blocking)" if v.state == "planned" else ""
+            if v.override_reason:
+                note += f" (gate overridden: {v.override_reason})"
             print(f"{v.surface}: {v.state}{note}{suffix}")
     return 1 if stale else 0
 

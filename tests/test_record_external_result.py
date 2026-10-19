@@ -189,3 +189,29 @@ def test_cli_surface_mode_records_and_legacy_positional_mode_still_works(tmp_pat
     assert on_disk["surfaces"]["s"]["versions"] == {"p": "1.0.0"}
     assert on_disk["surfaces"]["s"]["override_reason"] == "why"
     assert on_disk["android"]["weekly"]["passed"] is True
+
+
+def test_record_override_marks_each_surface_without_changing_its_result(tmp_path, monkeypatch):
+    earlier = {"result": "fail", "passed": False, "timestamp": "2026-09-01T00:00:00Z", "commit": "old", "versions": {}}
+    _fresh_status(tmp_path, monkeypatch, {"surfaces": {"failed": earlier}})
+
+    data = record_external_result.record_override(["failed", "never-run"], "hotfix", now="2026-10-03T00:00:00Z")
+
+    assert data["surfaces"]["failed"] == {**earlier, "override_reason": "hotfix", "overridden_at": "2026-10-03T00:00:00Z"}
+    # A surface with no record yet gets only the override, so it still reads as never passed.
+    assert data["surfaces"]["never-run"] == {"override_reason": "hotfix", "overridden_at": "2026-10-03T00:00:00Z"}
+
+
+def test_a_failed_or_skipped_run_keeps_the_override_but_only_a_pass_clears_it(tmp_path, monkeypatch):
+    marked = {"override_reason": "hotfix", "overridden_at": "2026-10-02T00:00:00Z"}
+    _fresh_status(tmp_path, monkeypatch, {"surfaces": {"s": marked}})
+
+    failed = record_external_result.record_surface("s", "fail", commit="a", now="2026-10-03T00:00:00Z")
+    assert failed["surfaces"]["s"]["override_reason"] == "hotfix"
+
+    skipped = record_external_result.record_surface("s", "skipped", commit="b", now="2026-10-04T00:00:00Z")
+    assert skipped["surfaces"]["s"]["override_reason"] == "hotfix"
+
+    passed = record_external_result.record_surface("s", "pass", commit="c", now="2026-10-05T00:00:00Z")
+    assert "override_reason" not in passed["surfaces"]["s"]
+    assert "overridden_at" not in passed["surfaces"]["s"]

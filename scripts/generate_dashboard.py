@@ -253,7 +253,7 @@ def surface_states() -> dict[str, list[str]]:
 
     manifest = ef.load_manifest()
     verdicts = {
-        v.surface: v.state
+        v.surface: v.display_state
         for v in ef.evaluate(manifest, ef.load_status(), ef.GitHistory(), lambda _eco, _pkg: {})
     }
     by_platform: dict[str, list[str]] = {}

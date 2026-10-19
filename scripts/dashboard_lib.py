@@ -225,20 +225,24 @@ def render_dashboard_svg(
 
 def format_surface_cell(states: list[str]) -> tuple[Color, str] | None:
     """One platform's External-surface cell from its surfaces' freshness
-    states ("fresh" | "stale" | "planned", as external_freshness reports
-    them). Only active surfaces (fresh or stale) count toward the score;
-    planned ones are shown as a count so what is not covered stays
-    visible (ADR-0008). None means the platform has no surfaces at all.
+    states ("fresh" | "stale" | "planned" | "overridden", as
+    external_freshness's display_state reports them). Only active surfaces
+    (fresh, stale or overridden) count toward the score; planned ones and
+    surfaces whose release gate was forced past are shown as counts so what
+    is not covered stays visible (ADR-0008). An overridden surface is stale
+    until a real pass. None means the platform has no surfaces at all.
     """
     active = [s for s in states if s != "planned"]
     planned = len(states) - len(active)
+    overridden = sum(1 for s in active if s == "overridden")
     if not states:
         return None
     if not active:
         return "red", f"0/0 ({planned} planned)"
     fresh = sum(1 for s in active if s == "fresh")
     color = color_for_percent(fresh / len(active) * 100)
-    suffix = f" ({planned} planned)" if planned else ""
+    notes = [f"{n} {word}" for n, word in ((planned, "planned"), (overridden, "overridden")) if n]
+    suffix = f" ({', '.join(notes)})" if notes else ""
     return color, f"{fresh}/{len(active)}{suffix}"
 
 

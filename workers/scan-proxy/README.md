@@ -196,7 +196,9 @@ npx wrangler secret put REVENUECAT_SECRET_KEY
 # 5. Run locally against real secrets.
 npm run dev
 
-# 6. Ship it.
+# 6. Ship it. This runs the External release gate first and refuses while a
+#    scan-proxy surface is stale (root TESTING.md, "External release gate");
+#    `npm run deploy -- --force --reason "why"` goes past it and records why.
 npm run deploy
 ```
 

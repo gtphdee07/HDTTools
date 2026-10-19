@@ -410,6 +410,48 @@ and commit in the header until someone runs the generator without
 device and show `n/a` without one. Python's expected failures (xfail)
 count as not passed, as before.
 
+## External release gate (ADR-0008, #43)
+
+A release needs every External surface in its chain fresh (`uv run
+scripts/external_freshness.py` says which are not). `scripts/external_gate.py`
+turns that into a block. It only reads the recorded status, git and the package
+registries; it never runs a live test. It blocks on a stale, failed, skipped or
+never-run surface and when a registry cannot be reached. Planned surfaces never
+block. It runs in four places:
+
+| Where | Gates | Chain |
+|---|---|---|
+| `.githooks/pre-push` | a push to `MPSkills` (Pages' production branch) whose diff touches `web/`, `workers/scan-proxy/` or `android/`; any other push, including a docs-only one, passes without contacting a registry | the touched directory's platform: web, scan-proxy, android |
+| `npm run deploy` in `workers/scan-proxy/` (`scripts/scan_proxy_deploy.py`, also used by `pretest:weekly` and `android/test-weekly.ps1`) | the Worker deploy | scan-proxy |
+| `workers/scan-proxy/release.ps1` | before the release and weekly suites, the latter deploys | scan-proxy |
+| `android/release.ps1` | before the weekly suite, which deploys the Worker | android, which includes the Worker's surfaces |
+
+**Setup.** `git config core.hooksPath .githooks` once per clone (the same setting
+as the pre-commit hook), and `uv` on the PATH, since the hook runs `uv run`. No
+other install. If the hook cannot run, the push fails rather than slipping through.
+
+**Unlocking a blocked gate.** Run the External suite that covers each named
+surface (`web\test-external.ps1`, `workers\scan-proxy\test-external.ps1`) and
+try again. The Worker's own surfaces are tested against the deployed Worker, so
+deploying changed Worker code in order to test it is the case that needs a force.
+
+**Forcing it needs a reason.** `EXTERNAL_GATE_FORCE_REASON="why" git push` (git
+passes a hook no flags), `npm run deploy -- --force --reason "why"`, or
+`-Force -Reason "why"` on the two `release.ps1` scripts. `--force` without a
+reason is refused. The reason is recorded in
+`scripts/dashboard_data/external_status.json` on every surface that was blocking,
+and the dashboard's Surfaces cell shows `(N overridden)` until each one's next
+real pass; a failed or skipped run does not clear it. Forcing a gate that would
+have passed records nothing.
+
+**`git push --no-verify` bypasses the hook on purpose.** It skips every check and
+records nothing, so the dashboard cannot show it. It is a deliberate act, not an
+accident, and the only way past the hook without a recorded reason. A push also
+skips the hook when it runs from a machine without `core.hooksPath` set.
+
+Not done: the registries are asked on every qualifying push (about a dozen
+requests; an unreachable one blocks) with no cache.
+
 ## Status of this repo against the framework
 
 This framework was defined 2026-08-20, after most of this repo's existing

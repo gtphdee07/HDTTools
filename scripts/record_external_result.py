@@ -45,6 +45,7 @@ def record(platform: str, suite: str, exit_code: int, *, now: str | None = None)
 
 
 OUTCOMES = ("pass", "fail", "skipped")
+OVERRIDE_KEYS = ("override_reason", "overridden_at")
 
 
 def _head_commit() -> str:
@@ -74,6 +75,7 @@ def record_surface(
         entry = surfaces[surface]
         entry["last_skipped_at"] = timestamp
     else:
+        previous = surfaces.get(surface, {})
         entry = {
             "result": outcome,
             "passed": outcome == "pass",
@@ -83,10 +85,27 @@ def record_surface(
         }
         if outcome == "skipped":
             entry["last_skipped_at"] = timestamp
+        if outcome != "pass":
+            # Only a real pass ends an overridden gate (record_override).
+            entry.update({k: previous[k] for k in OVERRIDE_KEYS if k in previous})
         surfaces[surface] = entry
     if override_reason:
         entry["override_reason"] = override_reason
 
+    STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    STATUS_FILE.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return data
+
+
+def record_override(surfaces: list[str], reason: str, *, now: str | None = None) -> dict:
+    """Marks surfaces whose release gate was forced past (ADR-0008, scripts/external_gate.py).
+    Their results stay as they were, so they still read as stale; the mark lasts until
+    a real pass replaces the entry."""
+    data = json.loads(STATUS_FILE.read_text(encoding="utf-8")) if STATUS_FILE.exists() else {}
+    timestamp = now or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    recorded = data.setdefault("surfaces", {})
+    for name in surfaces:
+        recorded.setdefault(name, {}).update({"override_reason": reason, "overridden_at": timestamp})
     STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATUS_FILE.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return data

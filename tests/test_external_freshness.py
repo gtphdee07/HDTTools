@@ -185,6 +185,22 @@ def test_skipped_record_alone_never_counts_as_a_pass():
     assert any("never passed" in r for r in v.reasons)
 
 
+def test_a_forced_gate_leaves_the_surface_stale_but_shows_the_override():
+    # The gate marks a surface it was forced past (scripts/external_gate.py); the surface does not become fresh.
+    marked = {"override_reason": "hotfix", "overridden_at": "2026-10-03T00:00:00Z"}
+    v = verdict(status_with(marked))
+    assert v.state == "stale"
+    assert v.override_reason == "hotfix"
+    assert v.display_state == "overridden"
+
+
+def test_a_fresh_surface_shows_no_override():
+    v = verdict(status_with(passed()))
+    assert v.state == "fresh"
+    assert v.override_reason is None
+    assert v.display_state == "fresh"
+
+
 def test_skip_after_a_pass_does_not_advance_freshness():
     entry = passed(ts="2026-09-01T00:00:00Z", last_skipped_at="2026-10-03T00:00:00Z")
     times = {PKG: {"2.101.0": "2026-09-15T00:00:00Z"}}

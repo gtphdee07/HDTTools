@@ -11,13 +11,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests._release_test_helpers import FakeRunner, always_confirm, never_confirm
+from tests._release_test_helpers import FakeGate, FakeRunner, always_confirm, never_confirm
 
 pytestmark = [pytest.mark.core, pytest.mark.minor]
 
 _SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(_SCRIPTS))
-for name in ("paid_call_budget", "release_steps", "android_release"):
+for name in ("paid_call_budget", "external_freshness", "record_external_result", "external_gate", "release_steps", "android_release"):
     spec = importlib.util.spec_from_file_location(name, _SCRIPTS / f"{name}.py")
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
@@ -25,6 +25,13 @@ for name in ("paid_call_budget", "release_steps", "android_release"):
 
 pcb = sys.modules["paid_call_budget"]
 ar = sys.modules["android_release"]
+eg = sys.modules["external_gate"]
+
+
+@pytest.fixture(autouse=True)
+def _gate_passes_unless_a_test_says_otherwise(monkeypatch):
+    # The default gate reads the real status file and the registries; no test here may reach them.
+    monkeypatch.setattr(eg, "gate", FakeGate(0))
 
 
 def test_happy_path_runs_every_step_in_order():
@@ -42,6 +49,47 @@ def test_happy_path_runs_every_step_in_order():
         "test-weekly.ps1",
     ]
     assert budget.spent == 2
+
+
+def test_the_gate_covers_androids_chain_and_runs_before_the_weekly_suite_deploys_the_worker():
+    runner = FakeRunner()
+    gate = FakeGate(0, log=runner.calls)
+    budget = pcb.PaidCallBudget(max_calls=2, confirm=always_confirm, out=lambda _: None)
+
+    ar.run(
+        [], budget=budget, run_command=runner, devices=lambda: ["emulator-5554"], stale=lambda: ["x"], gate=gate,
+        out=lambda _: None,
+    )
+
+    assert runner.calls[-3:] == ["test-external.ps1", "gate", "test-weekly.ps1"]
+    # Android's chain includes the Worker's surfaces.
+    assert gate.calls == [(["android", "scan-proxy"], None)]
+
+
+def test_a_blocked_gate_stops_the_release_before_the_weekly_suite():
+    runner = FakeRunner()
+    budget = pcb.PaidCallBudget(max_calls=2, confirm=always_confirm, out=lambda _: None)
+
+    code = ar.run(
+        [], budget=budget, run_command=runner, devices=lambda: ["emulator-5554"], stale=lambda: [], gate=FakeGate(1),
+        out=lambda _: None,
+    )
+
+    assert code == 1
+    assert "test-weekly.ps1" not in runner.calls
+    assert budget.spent == 0
+
+
+def test_forcing_an_android_release_passes_the_reason_to_the_gate():
+    gate = FakeGate(0)
+    budget = pcb.PaidCallBudget(max_calls=2, confirm=always_confirm, out=lambda _: None)
+
+    ar.run(
+        ["--force", "--reason", "hotfix"], budget=budget, run_command=FakeRunner(), devices=lambda: ["emulator-5554"],
+        stale=lambda: [], gate=gate, out=lambda _: None,
+    )
+
+    assert gate.calls == [(["android", "scan-proxy"], "hotfix")]
 
 
 def test_no_device_fails_the_run_rather_than_skipping():

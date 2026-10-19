@@ -9,16 +9,6 @@ Usage:
     uv run scripts/ticket_finish.py criteria
     uv run scripts/ticket_finish.py post REPORT.json [--dry-run]
 
-`suites` (#128) plans the session level for the branch's diff against its
-merge-base with MPSkills and runs only the free suites the verification ledger
-does not show as passed at the current tree, recording each pass. After a review
-fix a suite whose last pass was at an earlier tree is skipped when no file it
-depends on differs between the two trees, and its pass is carried forward. Stale
-External surfaces, device tests and paid suites are listed, never run here. It
-prints each suite as `skip` or `run` and can write the report's `suites`
-entries (`--json`); `post` refuses a suite reported as skipped that the ledger
-does not show as passed at the tree.
-
 `preflight` exits 1 when the tree is dirty, the branch has no commits ahead of
 MPSkills, or a commit carries a file a feature branch must not (dashboard.svg,
 external_status.json, `.env*`). `criteria` prints the issue's acceptance
@@ -31,6 +21,16 @@ report passed, each acceptance criterion names a test, and, when the ticket
 lists owner decisions under `## Decisions`, a comment starting `DECISIONS`
 records them. `PARTIAL` and `BLOCKED` are never refused for those reasons, but
 must say what is not done.
+
+`suites` (#128) plans the session level for the branch's diff against its
+merge-base with MPSkills and runs only the free suites the verification ledger
+does not show as passed at the current tree, recording each pass. After a review
+fix a suite whose last pass was at an earlier tree is skipped when no file it
+depends on differs between the two trees (a Python suite counts any change), and
+its pass is carried forward. Stale External surfaces, device tests and paid
+suites are listed, never run here. It prints each suite as `skip` or `run` and
+can write the report's `suites` entries (`--json`); `post` refuses a suite
+reported as skipped that the ledger does not show as passed at the tree.
 
 REPORT.json: {"status", "criteria": [{"criterion", "proven_by"}],
 "suites": [{"command", "passed", "summary"}], "review", "not_done",
@@ -52,7 +52,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import test_planner as planner  # noqa: E402
 from ticket_common import (  # noqa: E402
-    BASE_BRANCH, NOT_RUN_HERE, Shell, gh_issue, git_out, real_shell, scratch_path, ticket_from_branch,
+    BASE_BRANCH, Shell, gh_issue, git_out, real_shell, runs_here, scratch_path, ticket_from_branch,
 )
 
 STATUSES = ("READY TO MERGE", "PARTIAL", "BLOCKED")
@@ -94,7 +94,7 @@ def decide_suite(selection, revision, *, shell: Shell, root: Path, config: dict,
         return Decision("skip", verdict.reason)
     previous = ledger.last_suite_pass_tree(selection.command, git=git_state)
     if previous and previous != revision.tree:
-        diff = shell(["git", "diff", "--name-only", previous, revision.tree], root)
+        diff = shell(["git", "diff", "--name-only", "--no-renames", previous, revision.tree], root)  # a rename lists both paths
         if diff.ok:
             changed = [f for f in diff.out.splitlines() if f]
             if not planner.suite_affected(selection, changed, config):
@@ -121,7 +121,7 @@ def run_suites(
     revision = ledger.current_revision(git_state)
     results: list[dict] = []
     for sel in plan.selections:
-        if sel.action != "run" or sel.kind in NOT_RUN_HERE:
+        if not runs_here(sel):
             out(f"not run here: {sel.command}    # {sel.reason}")
             continue
         decision = decide_suite(sel, revision, shell=shell, root=root, config=config, ledger=ledger, git_state=git_state)

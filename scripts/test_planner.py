@@ -448,6 +448,9 @@ def suite_affected(selection: Selection, changed: list[str], config: dict) -> bo
     """Can any of these changed files alter the suite's result? True whenever unsure."""
     if not selection.contexts:
         return True
+    contexts = config["contexts"]
+    if any(_is_python(contexts[n]) for n in selection.contexts if n in contexts):
+        return True  # Python tests read web, Android, fixture and doc files too (wording scans, the tooling checks)
     wanted = set(selection.contexts)
     for path in map(_normalise, changed):
         hit = _affected_contexts(path, config)

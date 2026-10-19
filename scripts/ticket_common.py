@@ -25,6 +25,11 @@ BASE_BRANCH = "MPSkills"
 NOT_RUN_HERE = ("surface", "device", "gate", "release")
 
 
+def runs_here(selection) -> bool:
+    """Is this planned suite one the ticket scripts run (and the ledger vouches for)?"""
+    return selection.action == "run" and selection.kind not in NOT_RUN_HERE
+
+
 @dataclass(frozen=True)
 class Result:
     code: int

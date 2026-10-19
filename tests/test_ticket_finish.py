@@ -15,9 +15,10 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
+
+from tests._suite_ledger_helpers import LedgerAt as _LedgerAt, Runner, suite_config
 
 pytestmark = [pytest.mark.core, pytest.mark.minor]
 
@@ -598,54 +599,12 @@ def test_a_suite_result_written_as_text_is_refused_not_read_as_true(worktree, tm
 vl = _load("verification_ledger")
 planner = _load("test_planner")
 
-SUITE_CONFIG = {
-    "dependency_files": [],
-    "interfaces": [],
-    "contexts": {
-        "core": {"marker": "core", "paths": ["src/hdttools/"], "file": "core-file {file}", "test_for": [],
-                 "context": "core-suite", "application": "core-suite"},
-        "web": {"paths": ["web/"], "commands": {"minor": "web-suite", "major": "web-suite"},
-                "file": "web-file {rel}", "test_for": [], "context": "web-suite"},
-        "proxy": {"paths": ["workers/scan-proxy/"], "commands": {"minor": "proxy-suite", "major": "proxy-suite"},
-                  "file": "proxy-file {rel}", "test_for": [], "context": "proxy-suite"},
-    },
-}
+SUITE_CONFIG = suite_config()
 ALL_SUITES = ["core-suite", "web-suite", "proxy-suite"]
 
 
-class LedgerAt:
-    """The real ledger module, pointed at a ledger file in tmp_path."""
-
-    Revision = vl.Revision
-    LedgerError = vl.LedgerError
-    GitError = vl.GitError
-    current_revision = staticmethod(vl.current_revision)
-
-    def __init__(self, path):
-        self.path = path
-
-    def suite_verdict(self, command, revision, git=None):
-        return vl.suite_verdict(command, revision, path=self.path, git=git)
-
-    def last_suite_pass_tree(self, command, git=None):
-        return vl.last_suite_pass_tree(command, path=self.path, git=git)
-
-    def record_suite(self, command, outcome, **kw):
-        return vl.record_suite(command, outcome, path=self.path, **kw)
-
-    def run_suite_and_record(self, command, **kw):
-        return vl.run_suite_and_record(command, path=self.path, **kw)
-
-
-class Runner:
-    def __init__(self, failing=()):
-        self.failing = set(failing)
-        self.calls: list[str] = []
-
-    def __call__(self, command, cwd=None):
-        text = " ".join(command)
-        self.calls.append(text)
-        return SimpleNamespace(returncode=1 if text in self.failing else 0)
+def LedgerAt(path):  # noqa: N802 - reads like the class it builds
+    return _LedgerAt(vl, path)
 
 
 @pytest.fixture
@@ -727,9 +686,21 @@ def test_after_a_review_fix_only_the_suites_whose_files_changed_run_again(suite_
 
     results, lines = _suites(suite_repo, tmp_path, runner)
 
-    assert runner.calls == ["web-suite"]
-    assert results["core-suite"]["skipped"] and results["proxy-suite"]["skipped"]
+    # The Python suite reruns too (its tests read web sources); the scan-proxy suite cannot depend on web/.
+    assert sorted(runner.calls) == ["core-suite", "web-suite"]
+    assert results["proxy-suite"]["skipped"]
     assert any(line.startswith("run: web-suite") and "changed since" in line for line in lines)
+
+
+def test_a_file_moved_from_one_context_to_another_reruns_both_contexts_suites(suite_repo, tmp_path):
+    _suites(suite_repo, tmp_path, Runner())
+    _git(suite_repo, "mv", "web/src/a.ts", "workers/scan-proxy/src/moved.ts")
+    _git(suite_repo, "commit", "-q", "-m", "move it")
+    runner = Runner()
+
+    _suites(suite_repo, tmp_path, runner)
+
+    assert {"web-suite", "proxy-suite"} <= set(runner.calls)
 
 
 def test_a_docs_only_review_fix_reruns_the_python_suite_and_leaves_the_others_alone(suite_repo, tmp_path):
@@ -772,7 +743,7 @@ def test_a_review_fix_after_a_carried_pass_is_judged_against_the_newest_pass(sui
 
     _suites(suite_repo, tmp_path, runner)
 
-    assert runner.calls == ["web-suite"]
+    assert sorted(runner.calls) == ["core-suite", "web-suite"]  # proxy carried across both fixes
 
 
 def test_an_unreadable_ledger_runs_every_suite_and_says_it_was_not_recorded(suite_repo, tmp_path):

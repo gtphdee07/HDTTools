@@ -44,7 +44,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import test_planner as planner  # noqa: E402
 from ticket_common import (  # noqa: E402
-    BASE_BRANCH, NOT_RUN_HERE, Shell, branch_name, gh_issue, git, main_checkout, real_shell, worktree_relpath,
+    BASE_BRANCH, Shell, branch_name, gh_issue, git, main_checkout, real_shell, runs_here, worktree_relpath,
 )
 
 
@@ -143,7 +143,7 @@ def suite_verdicts(
     revision = ledger.Revision(commit.out.strip(), tree.out.strip()) if commit.ok and tree.ok else None
     rows = []
     for sel in plan.selections:
-        if sel.action != "run" or sel.kind in NOT_RUN_HERE:
+        if not runs_here(sel):
             rows.append(("manual", sel.command, sel.reason))
         elif revision is None:
             rows.append(("rerun", sel.command, f"could not read the tree of {branch}"))

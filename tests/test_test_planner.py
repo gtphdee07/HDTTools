@@ -474,11 +474,11 @@ def test_a_web_suite_is_affected_only_by_files_it_can_depend_on(changed, affecte
     (["pyproject.toml"], True),
     (["src/hdttools/database.py"], True),
     (["streamlit_app/app.py"], True),                        # the Python suites share one run
-    (["web/src/api.ts"], False),
-    (["android/app/src/main/java/app/domain/Breakdown.kt"], False),
+    (["web/src/api.ts"], True),                              # Python tests scan web and Android sources too
+    (["android/app/src/main/java/app/domain/Breakdown.kt"], True),
     (["test-vectors/breakdown_cases.json"], True),
 ])
-def test_a_python_suite_is_affected_by_python_docs_tests_and_unknown_files_but_not_other_contexts_code(changed, affected):
+def test_a_python_suite_is_affected_by_any_changed_file(changed, affected):
     assert tp.suite_affected(PYTHON_SUITE, changed, ALL) is affected
 
 
@@ -486,15 +486,16 @@ def test_a_suite_with_no_known_dependencies_is_affected_by_any_change():
     assert tp.suite_affected(tp.Selection("targeted", "x", "r"), ["docs/a.md"], ALL) is True
 
 
-def test_the_slow_tooling_tests_depend_on_every_python_context():
-    config = {**ALL, "slow": [{"name": "tooling", "triggers": ["scripts/*"], "tests": ["tests/test_x.py"]}]}
+def test_the_slow_tooling_tests_are_affected_by_the_non_python_files_that_trigger_them():
+    """The tooling group is triggered by web/package.json and the like, files no Python context owns."""
+    config = {**ALL, "slow": [{"name": "tooling", "triggers": ["scripts/*", "web/package.json"], "tests": ["tests/test_x.py"]}]}
     plan = tp.plan(["scripts/a.py"], config, MARKERS | {"slow"}, level="session")
 
     slow = next(s for s in plan.selections if s.kind == "slow")
 
     assert set(slow.contexts) == {"core", "streamlit"}
-    assert tp.suite_affected(slow, ["web/src/api.ts"], config) is False
-    assert tp.suite_affected(slow, ["scripts/b.py"], config) is True
+    for changed in ("web/package.json", "scripts/b.py", "android/app/build.gradle.kts"):
+        assert tp.suite_affected(slow, [changed], config) is True, changed
 
 
 # --- Command checks: each planned selection picks what the planner says ---

@@ -18,6 +18,8 @@ from pathlib import Path
 
 import pytest
 
+from tests._suite_ledger_helpers import LedgerAt as _LedgerAt, Runner, suite_config
+
 pytestmark = [pytest.mark.core, pytest.mark.minor]
 
 _SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
@@ -479,50 +481,11 @@ def test_baseline_command_prints_the_verdict_and_never_fails(repo, monkeypatch, 
 finish = _load("ticket_finish")
 vl = _load("verification_ledger")
 
-SUITE_CONFIG = {
-    "dependency_files": [],
-    "interfaces": [],
-    "contexts": {
-        "core": {"marker": "core", "paths": ["src/hdttools/"], "file": "core-file {file}", "test_for": [],
-                 "context": "core-suite", "application": "core-suite"},
-        "web": {"paths": ["web/"], "commands": {"minor": "web-suite", "major": "web-suite"},
-                "file": "web-file {rel}", "test_for": [], "context": "web-suite"},
-    },
-}
+SUITE_CONFIG = suite_config("core", "web")
 
 
-class LedgerAt:
-    """The real ledger module, pointed at a ledger file in tmp_path."""
-
-    Revision = vl.Revision
-    LedgerError = vl.LedgerError
-    GitError = vl.GitError
-    current_revision = staticmethod(vl.current_revision)
-
-    def __init__(self, path):
-        self.path = path
-
-    def suite_verdict(self, command, revision, git=None):
-        return vl.suite_verdict(command, revision, path=self.path, git=git)
-
-    def last_suite_pass_tree(self, command, git=None):
-        return vl.last_suite_pass_tree(command, path=self.path, git=git)
-
-    def record_suite(self, command, outcome, **kw):
-        return vl.record_suite(command, outcome, path=self.path, **kw)
-
-    def run_suite_and_record(self, command, **kw):
-        return vl.run_suite_and_record(command, path=self.path, **kw)
-
-
-class Runner:
-    def __init__(self, failing=()):
-        self.failing = set(failing)
-
-    def __call__(self, command, cwd=None):
-        from types import SimpleNamespace
-
-        return SimpleNamespace(returncode=1 if " ".join(command) in self.failing else 0)
+def LedgerAt(path):  # noqa: N802 - reads like the class it builds
+    return _LedgerAt(vl, path)
 
 
 @pytest.fixture

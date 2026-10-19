@@ -294,3 +294,21 @@ def test_readiness_gives_up_at_the_timeout():
     adb = FakeAdb({**READY, ("get-state",): (1, "error: device offline\n")})
     ok = asl.wait_until_ready(adb, consecutive=3, timeout_s=300, poll_s=1, sleep=lambda _: None, now=lambda: next(clock))
     assert ok is False
+
+
+def test_the_suite_command_leaves_out_the_weekly_class_and_clears_its_marker():
+    # The Gradle task excludes PaywallScreenWeeklyTest (it needs the network and a funded test user);
+    # a raw `am instrument` runs it unless told not to, and would label its failure a real test failure.
+    calls = []
+
+    def adb(*args, timeout=None):
+        calls.append(args)
+        return (0, "Success\n") if args[0] == "install" else (0, "OK (132 tests)\n")
+
+    text, code = asl.instrument_once(adb, suite_timeout_s=60)
+
+    assert (code, text) == (0, "OK (132 tests)\n")
+    (instrument,) = [c for c in calls if c[:3] == ("shell", "am", "instrument")]
+    assert instrument[instrument.index("-e") + 1 : instrument.index("-e") + 3] == ("notClass", asl.WEEKLY_CLASS)
+    assert ("shell", "rm", "-f", asl.WEEKLY_MARKER) in calls
+    assert calls.index(("shell", "rm", "-f", asl.WEEKLY_MARKER)) < calls.index(instrument)

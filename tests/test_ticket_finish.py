@@ -656,6 +656,28 @@ def test_a_second_run_on_the_same_tree_runs_nothing_and_lists_every_suite_as_ski
     assert any(line.startswith("skip: core-suite") for line in lines)
 
 
+def test_a_suite_command_with_quotes_is_recorded_as_the_planner_writes_it_so_the_next_run_skips_it(suite_repo, tmp_path):
+    """Splitting `-m "core and not slow"` into arguments drops the quotes; the pass must still be found by the plan's text."""
+    quoted = 'core-suite -m "core and not slow"'
+    config = suite_config()
+    config["contexts"]["core"] = {**config["contexts"]["core"], "context": quoted, "application": quoted}
+    ledger = LedgerAt(tmp_path / "ledger.json")
+
+    def run(runner):
+        lines: list[str] = []
+        results = finish.run_suites(shell=common.real_shell, root=suite_repo, config=config, markers={"core", "minor"},
+                                    ledger=ledger, git_state=vl.RealGit(suite_repo), run_command=runner, out=lines.append)
+        return {r["command"]: r for r in results}
+
+    first, second = Runner(), Runner()
+    run(first)
+    results = run(second)
+
+    assert 'core-suite -m core and not slow' in first.calls  # the runner got the unquoted argument list
+    assert second.calls == []
+    assert results[quoted]["skipped"] is True
+
+
 def test_an_amend_that_changes_no_content_still_skips_every_suite(suite_repo, tmp_path):
     _suites(suite_repo, tmp_path, Runner())
     _git(suite_repo, "commit", "-q", "--amend", "-m", "reworded")

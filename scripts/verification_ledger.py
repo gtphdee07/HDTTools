@@ -335,12 +335,15 @@ def run_suite_and_record(
     run_command=default_run_command,
     now: str | None = None,
     out: Callable[[str], None] = print,
+    key: str | None = None,
 ) -> int:
-    """Runs a suite and remembers a pass for the tree it ran at (same guards as run_and_record)."""
+    """Runs a suite and remembers a pass for the tree it ran at (same guards as run_and_record).
+    `key` is the suite's command line as the planner writes it; splitting it into an argument list
+    loses its quotes, so a caller that split it passes the original to be recorded and looked up."""
     git = git or RealGit()
     target = path or default_ledger_path(git)
     _load(target)  # refuse before running anything if the ledger cannot be updated
-    text = " ".join(command)
+    text = key or " ".join(command)
     return _run_guarded(
         text, command, git=git, run_command=run_command, out=out,
         on_pass=lambda rev: record_suite(text, "pass", revision=rev, path=target, git=git, now=now),

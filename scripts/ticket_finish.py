@@ -133,7 +133,8 @@ def run_suites(
             continue
         out(f"run: {sel.command}    # {decision.reason}")
         try:
-            code = ledger.run_suite_and_record(shlex.split(sel.command), git=git_state, run_command=run_command, out=out)
+            code = ledger.run_suite_and_record(shlex.split(sel.command), git=git_state, run_command=run_command, out=out,
+                                               key=sel.command)
         except (ledger.LedgerError, ledger.GitError) as exc:  # an unreadable ledger means run it, just unrecorded
             out(f"{exc}; running {sel.command} without recording it.")
             code = run_command(shlex.split(sel.command), cwd=root).returncode

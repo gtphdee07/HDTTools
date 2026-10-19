@@ -194,6 +194,21 @@ def test_the_summary_names_each_count_and_the_abort_reasons():
     assert report.summary().count("\n") >= 2
 
 
+def test_the_emulator_is_cold_booted_on_the_software_gpu_by_default():
+    # #127: on the host-GPU backend the system server hangs in a screen capture
+    # (watchdog kill) and adb drops; on swangle_indirect 10 of 10 runs finished.
+    command = asl.emulator_command("emu.exe", avd="medium_phone")
+    assert command[:3] == ["emu.exe", "-avd", "medium_phone"]
+    assert "-no-snapshot" in command
+    assert command[command.index("-gpu") + 1] == "swangle_indirect"
+
+
+def test_the_gpu_mode_and_extra_flags_can_be_overridden_for_comparison_runs():
+    command = asl.emulator_command("emu.exe", avd="a", gpu="host", extra_args=["-memory", "4096"])
+    assert command[command.index("-gpu") + 1] == "host"
+    assert command[-2:] == ["-memory", "4096"]
+
+
 class FakeAdb:
     """Fake adb: `adb(*args)` returns (exit code, stdout). An answer that is
     callable is called with how many times that same command has run."""

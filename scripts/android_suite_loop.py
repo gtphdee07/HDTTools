@@ -63,6 +63,10 @@ ABORT_MARKERS = (
 )
 
 AVD = "medium_phone"
+# Software rendering. On the AVD's default host-GPU backend (gfxstream over the
+# host's Vulkan GPU) the system server hung inside a screen capture and was
+# killed by its watchdog, and adb dropped; see android/TESTING.md.
+GPU = "swangle_indirect"
 APP_PACKAGE = "com.rigcheck.app"
 RUNNER = f"{APP_PACKAGE}.test/{APP_PACKAGE}.CustomTestRunner"
 # The Gradle task excludes this class (app/build.gradle.kts notClass); a raw
@@ -276,8 +280,12 @@ def make_adb(adb_path: str, timeout_s: float = 60) -> Adb:
     return adb
 
 
+def emulator_command(emulator_path: str, *, avd: str, gpu: str = GPU, extra_args: list[str] | None = None) -> list[str]:
+    return [emulator_path, "-avd", avd, "-no-snapshot", "-no-boot-anim", "-gpu", gpu, *(extra_args or [])]
+
+
 def restart_emulator(
-    adb: Adb, emulator_path: str, *, avd: str, extra_args: list[str], log_path: Path, settle_s: float
+    adb: Adb, emulator_path: str, *, avd: str, gpu: str, extra_args: list[str], log_path: Path, settle_s: float
 ) -> bool:
     """Kill the running emulator (if any), cold-boot a fresh one, wait until it
     is steadily ready and let it settle. False if it never came up."""
@@ -294,7 +302,7 @@ def restart_emulator(
     flags = {"creationflags": 0x00000008 | 0x00000200} if os.name == "nt" else {"start_new_session": True}
     with open(log_path, "ab") as log:
         subprocess.Popen(
-            [emulator_path, "-avd", avd, "-no-snapshot", "-no-boot-anim", *extra_args],
+            emulator_command(emulator_path, avd=avd, gpu=gpu, extra_args=extra_args),
             stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, **flags,
         )
     adb("wait-for-device", timeout=240)
@@ -347,6 +355,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--expected-tests", type=int, default=None, help="fail a run that finishes with another count")
     parser.add_argument("--restart-every", type=int, default=1, help="runs per emulator boot (0: boot once); default 1")
     parser.add_argument("--avd", default=AVD)
+    parser.add_argument("--gpu", default=GPU, help="emulator -gpu mode; 'host' reproduces the #127 aborts")
     parser.add_argument("--emulator-arg", action="append", default=[], help="extra emulator flag, e.g. -memory")
     parser.add_argument("--settle-s", type=float, default=20, help="pause after the emulator is steadily ready")
     parser.add_argument("--suite-timeout-s", type=float, default=2400)
@@ -369,7 +378,7 @@ def main(argv: list[str] | None = None) -> int:
 
     def restart() -> bool:
         return restart_emulator(
-            adb, emulator, avd=args.avd, extra_args=args.emulator_arg, log_path=log_dir / "emulator.log",
+            adb, emulator, avd=args.avd, gpu=args.gpu, extra_args=args.emulator_arg, log_path=log_dir / "emulator.log",
             settle_s=args.settle_s,
         )
 

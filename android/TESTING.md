@@ -19,6 +19,7 @@ names changed.
 | One file | `./gradlew testDebugUnitTest --tests com.rigcheck.app.domain.BreakdownTest` (run from `android/`) |
 | Whole context (JVM, no device) | `./gradlew testDebugUnitTest` |
 | Full release | `.\release.ps1` (run from `android/`) |
+| Instrumented suite N times in a row | `uv run scripts/android_suite_loop.py --runs 5` (run from the repo root; needs the emulator, see below) |
 
 From PowerShell use `.\gradlew` (or `gradlew.bat`) instead of `./gradlew`.
 Both run the JVM unit tests only; no emulator or device is needed. Device
@@ -46,6 +47,109 @@ order, the missing-device failure and the confirmation/counting/abort
 behaviour are unit-tested with a fake runner and a fake device list in
 `tests/test_android_release.py` and `tests/test_paid_call_budget.py` — no
 real device, deploy or network call happens in those tests.
+
+### Running the instrumented suite N times in a row (#127)
+
+```
+uv run scripts/android_suite_loop.py --runs 5        # from the repo root
+```
+
+The one supported way to get a "full suite N times in a row" count. Before
+every run it kills the emulator and cold-boots a fresh one on the software GPU
+(`-gpu swangle_indirect -no-snapshot`), waits until `adb` and the input,
+activity, package and window services have answered three polls in a row,
+installs both APKs and runs the Major suite with `adb shell am instrument`
+(the weekly class excluded, as the Gradle task excludes it). It then labels
+each run from its output and prints, per run and in total:
+
+- **passed**: `OK (N tests)`, the count in the run's line (the suite is 132
+  tests; `--expected-tests 132` fails a run that ends with another count);
+- **test-failed**: the suite reached its end and a test failed;
+- **infra-abort**: the emulator, `adb` or the system server died (`device
+  offline`, `device ... not found`, `System has crashed`, `Can't find service`,
+  `INSTRUMENTATION_ABORTED`, `Test run failed to complete`, a shell hang, no
+  result line at all). An abort is thrown away, not counted against the app
+  (a test that failed because the system server was dying is an abort too).
+
+Exit code 0: every run passed; 1: a real test failed; 2: only aborts. Output
+and per-run logs (`run-N.log`, the emulator's `logcat`, `/proc/meminfo`, the
+emulator's own log) go to `android/build/suite-loop/<timestamp>/`. It builds
+the APKs once up front and needs the single emulator: no other Android ticket
+may be running. `--driver gradle` runs the literal `gradlew
+connectedDebugAndroidTest` under the same restart loop, `--gpu host`
+reproduces the old aborts, `--restart-every 0` reuses one boot for every run. The emulator is left
+running when the script ends, and the "longest streak of passes" line skips
+aborted runs, so read the pass count against the run count (5 of 5 passed
+means 5 consecutive).
+The label rules, restart logic and readiness check are tested with fakes in
+`tests/test_android_suite_loop.py`; no emulator is touched there.
+
+**Why the Gradle runs lost the device (#127).** It is the emulator's graphics
+backend, not Gradle, adb, the wake task or RAM. The AVD's default (`hw.gpu.mode=auto`)
+resolves to `gfxstream` on the host's Vulkan GPU (here an NVIDIA RTX 3070;
+the emulator log says `Guest Angle is still unstable for API > 35`). With
+that backend:
+
+- *The mid-suite hang is the system server being killed by its own
+  watchdog.* In both warm runs that crashed, `logcat` shows `Watchdog: ***
+  WATCHDOG KILLING SYSTEM PROCESS: Blocked in monitor
+  com.android.server.wm.WindowManagerService ... for 60s`, and the stack of
+  the blocked animation thread is `ScreenCapture.nativeCaptureLayers` called
+  from `TaskSnapshotController` (the screenshot Android takes of a task when
+  it leaves the screen). That native call into the graphics stack never
+  returned, so the window manager lock was never released, and the tests in
+  flight saw `Activity never becomes requested state DESTROYED` and then
+  `INSTRUMENTATION_ABORTED: System has crashed`. Giving the emulator 4 GB
+  instead of 2 GB RAM (`-memory 4096`) did not change it, so it is not memory.
+- *`device offline` is the emulator dropping the adb transport a minute or two
+  after boot, mid-suite.* Two of four Gradle runs on a freshly booted host-GPU
+  emulator ended `device offline` after 11 and 14 tests (`logcat` just stops).
+  No watchdog line is logged, so this one is shown only as "happens with the
+  host GPU backend, never with the software one" (0 of 15 software runs), not
+  traced to a single call. The emulator log shows `adb ... device offline`
+  warnings during every boot (its own boot poll), so a short offline period
+  is normal. The ticket's other two modes (`device offline` 22 s after Gradle
+  started with 0 tests run, and `Can't find service: input` on the wake task)
+  did not recur in these runs, so they are not separately explained; the
+  script's readiness wait (three steady polls plus a 20 s settle) is a
+  precaution against them, not something shown necessary.
+- *Warm reuse also degrades the tests.* The second or later suite on one boot
+  failed 3 of 4 times on the host GPU (two system crashes, and once 21
+  keyboard-dependent navigation tests timing out at 30 s on stale windows, the
+  #118 symptom), and the one warm run that passed took 1142 s against 406 to
+  429 s on a fresh boot. On the software GPU, 4 suites on one boot (3 of them
+  warm) all passed, each in about 255 s (the software GPU is also the faster
+  one here). Restarting before each run is still the rule, since it costs
+  about a minute and removes this class of failure.
+
+Measured 2026-10-19 (emulator 37.1.11, `medium_phone`, API 36 Google Play
+image, host Ryzen 9 3900X / 32 GB), full suite, 132 tests:
+
+| Emulator GPU | Driver | Restart | Runs | Result | Suite time |
+|---|---|---|---|---|---|
+| host (AVD default) | Gradle | every run | 4 | 2 passed, 2 `device offline` after 11 and 14 tests | the 2 passes took 7 and 7.5 min (Gradle total) |
+| host | `am instrument` | boot, then reuse | 4 | pass, system crash (watchdog), pass, 21 keyboard failures | 389 and 436 s on a fresh boot; 1566 s on the reused one |
+| host + 4 GB RAM | `am instrument` | boot, then reuse | 4 | pass, system crash (watchdog), pass, pass | 406 and 429 s on a fresh boot; 1142 s on the reused one |
+| software | `am instrument` | boot, then reuse | 4 | 4 passed | 252 to 262 s |
+| software | Gradle | every run | 6 | 6 passed | 5 min 10 s to 5 min 50 s (Gradle total) |
+| software | `am instrument` | every run (the script) | 5 | 5 passed, 0 aborted (a clean detached checkout of the `ticket-127` branch, built from scratch; its Android sources are identical to `MPSkills`, the branch only adds the script, its tests and this file) | 275 to 308 s |
+
+(After an abort the loop restarts the emulator, so "boot, then reuse" runs 3
+and 4 shared a second boot.)
+
+**Rules that follow.**
+
+- Start the emulator for any instrumented run on the software GPU: `emulator
+  -avd medium_phone -gpu swangle_indirect -no-snapshot`, or set the AVD's
+  Graphics to "Software" in Device Manager (that edits the AVD outside this
+  repo; the script does not touch it and passes `-gpu` itself). A
+  `connectedDebugAndroidTest` or `release.ps1` run against an emulator started
+  from the AVD's default settings can still hit the aborts above.
+- For a repeat-run count use the script, not a hand loop of
+  `connectedDebugAndroidTest`. Reboot a long-running emulator before a suite;
+  do not run suites back to back on one boot.
+- Read an aborted run before counting it: the label's reason line quotes
+  the first matching text, and `run-N.log` has the rest.
 
 ## Categories
 
@@ -601,7 +705,9 @@ the soft keyboard took it.**
 - *Not this flake.* A run that dies mid-way with `INSTRUMENTATION_ABORTED`,
   `System has crashed` or `Can't find service: activity` is the emulator
   itself falling over (seen right after a cold boot with ANRs in Google
-  apps). Read the failure text before counting a run.
+  apps). Read the failure text before counting a run. The cause (the host-GPU
+  emulator backend) and the way to avoid it are under "Running the
+  instrumented suite N times in a row (#127)" above.
 
 **Scan-in-flight navigation tests** (`ui/navigation/ScanInFlightNavigationTest.kt`, #118)
 — the real `MainActivity`, nav host and view model, with the view model's Scan

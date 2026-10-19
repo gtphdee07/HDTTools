@@ -39,6 +39,7 @@ Drop the first bullet once #128 (tree-hash skip) has merged and the printed hand
 - **Planner tickets (#128, #66, #133, #136):** "These change `scripts/test_planner.py` and `scripts/test_planner_config.json`, as do the other planner tickets. If another planner ticket merged since you were cut, rebase before finishing."
 - **Lockfile tickets (#135):** "This changes `pyproject.toml` and `uv.lock`. Run `uv lock` after any rebase."
 - **Android tickets (#131, #137, #133):** "If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The JVM coverage floor is 95% over the allow-listed decision logic."
+- **Starting the Android lane while #43 is assigned:** `/ticket-start #127 --emulator-free 43` (the script reads "Android" in #43's title as an emulator ticket; it is not). It also guesses Android only from an Android title or an `android/` file path, so start #84 and #40 with `--android`.
 - **Emulator tickets (#127, #84, #124, and #75, #39, #40):** "This needs the single emulator; no other Android ticket may be running. Reboot a long-running emulator before the suite."
 - **#41-style External tickets:** the live run is deferred to the bundle; the ticket's session must not run it.
 

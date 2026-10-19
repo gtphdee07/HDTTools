@@ -14,7 +14,7 @@ uv run scripts/ticket_start.py <N>
 
 It reads the ticket and stops, having changed nothing, when the ticket is closed, has an open blocker (native dependency or `## Blocked by`), has an assignee, already has a `ticket-<N>` branch or worktree, or (Android) another assigned open Android ticket holds the single emulator. Otherwise it assigns the ticket to the owner, cuts `.claude/worktrees/ticket-<N>` from `MPSkills`, runs `scripts/worktree_setup.py --copy-env` inside it (so the gitignored `web/.env.local` comes along), and writes the directions to `%TEMP%\hdttools-status\ticket-<N>.md`.
 
-It guesses Android from the title or an `android/` path in the body. If it guessed wrong, re-run with `--android` or `--not-android`.
+It guesses Android from the title or an `android/` path in the body. If it guessed wrong, re-run with `--android` or `--not-android`. If an assigned ticket is wrongly counted as holding the emulator (its title says Android but it never uses the emulator, like #43's release gate), name it with `--emulator-free <M>`.
 
 ## 2. If it stopped
 

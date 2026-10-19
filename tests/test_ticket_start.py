@@ -218,6 +218,26 @@ def test_busy_android_emulator_stops_an_android_ticket(repo, tmp_path):
     assert gh.wrote() == []
 
 
+def test_a_ticket_named_emulator_free_does_not_occupy_the_emulator(repo, tmp_path):
+    # #43 is titled "...Android release checks" but never touches the emulator
+    other = {"number": 61, "title": "Gate: Android release checks", "body": "", "assignees": [{"login": "x"}]}
+    gh = Gh(_issue(title="Android: fix scan"), others=[other])
+
+    code, _, _ = _start(repo, gh, tmp_path, emulator_free=[61])
+
+    assert code == 0
+
+
+def test_emulator_free_names_only_the_tickets_given(repo, tmp_path):
+    held = {"number": 61, "title": "Android: camera", "body": "", "assignees": [{"login": "x"}]}
+    gate = {"number": 43, "title": "Android release checks", "body": "", "assignees": [{"login": "x"}]}
+    gh = Gh(_issue(title="Android: fix scan"), others=[held, gate])
+
+    code, out, _ = _start(repo, gh, tmp_path, emulator_free=[43])
+
+    assert code == 1 and "#61" in out and "#43" not in out
+
+
 def test_an_unassigned_android_ticket_does_not_occupy_the_emulator(repo, tmp_path):
     other = {"number": 61, "title": "Android: camera", "body": "", "assignees": []}
     gh = Gh(_issue(title="Android: fix scan"), others=[other])

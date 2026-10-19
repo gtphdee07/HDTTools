@@ -2,12 +2,13 @@
 
 Backs the /ticket-start skill (docs/agents/ticket-skills.md).
 
-Usage: uv run scripts/ticket_start.py <N> [--android | --not-android]
+Usage: uv run scripts/ticket_start.py <N> [--android | --not-android] [--emulator-free M ...]
 
 Stops with the reasons, having changed nothing, when the ticket is closed, has
 an open blocker or an assignee, already has a `ticket-<N>` branch or worktree,
 or (an Android ticket) another assigned open Android ticket holds the single
-emulator. Otherwise it assigns the ticket to the owner (`@me`), creates
+emulator (`--emulator-free M` says assigned ticket M never touches it, e.g. a release
+gate whose title merely says Android). Otherwise it assigns the ticket to the owner (`@me`), creates
 `.claude/worktrees/ticket-<N>` on a new `ticket-<N>` branch cut from
 `MPSkills` (never from whatever is checked out), runs
 scripts/worktree_setup.py inside it, writes the session's directions to
@@ -23,7 +24,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -114,10 +115,11 @@ def _open_blockers(shell: Shell, root: Path, n: int, body: str) -> list[int]:
     return sorted(found)
 
 
-def _android_in_flight(shell: Shell, root: Path, n: int) -> list[int]:
+def _android_in_flight(shell: Shell, root: Path, n: int, emulator_free: Sequence[int] = ()) -> list[int]:
     r = shell(["gh", "issue", "list", "--state", "open", "--limit", "200", "--json", "number,title,body,assignees"], root)
     others = json.loads(r.out) if r.ok and r.out.strip() else []
-    return sorted(o["number"] for o in others if o["number"] != n and o.get("assignees") and is_android_ticket(o))
+    skip = {n, *emulator_free}
+    return sorted(o["number"] for o in others if o["number"] not in skip and o.get("assignees") and is_android_ticket(o))
 
 
 def _already_exists(shell: Shell, root: Path, n: int) -> list[str]:
@@ -145,6 +147,7 @@ def start(
     out: Callable[[str], None] = print,
     setup: Callable[[Path], int] = _run_setup,
     android: bool | None = None,
+    emulator_free: Sequence[int] = (),
 ) -> int:
     issue = gh_issue(shell, root, n)
     if issue is None:
@@ -157,7 +160,7 @@ def start(
         assignees=[a["login"] for a in issue.get("assignees", [])],
         open_blockers=_open_blockers(shell, root, n, issue.get("body") or ""),
         android=is_android,
-        android_in_flight=_android_in_flight(shell, root, n) if is_android else [],
+        android_in_flight=_android_in_flight(shell, root, n, emulator_free) if is_android else [],
         already_exists=_already_exists(shell, root, n),
     )
     if reasons:
@@ -200,13 +203,17 @@ def main(argv: list[str] | None = None) -> int:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--android", dest="android", action="store_const", const=True, help="treat as an Android ticket")
     group.add_argument("--not-android", dest="android", action="store_const", const=False, help="treat as not Android")
+    parser.add_argument(
+        "--emulator-free", type=int, nargs="+", default=[], metavar="M",
+        help="assigned ticket(s) that never use the emulator, so they do not hold it",
+    )
     args = parser.parse_args(argv)
 
     root = main_checkout(real_shell, Path.cwd())
     if root is None:
         print("Not inside a git repository.", file=sys.stderr)
         return 1
-    return start(args.ticket, shell=real_shell, root=root, android=args.android)
+    return start(args.ticket, shell=real_shell, root=root, android=args.android, emulator_free=args.emulator_free)
 
 
 if __name__ == "__main__":

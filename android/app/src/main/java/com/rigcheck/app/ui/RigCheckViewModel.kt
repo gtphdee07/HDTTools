@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.rigcheck.app.data.AccountBackend
 import com.rigcheck.app.data.AccountManager
 import com.rigcheck.app.data.AccountResult
 import com.rigcheck.app.data.AccountState
@@ -55,7 +56,15 @@ sealed interface ScanUiState {
 // in-progress truck/trailer/scale data survives navigating back and forth.
 // disclaimerAcknowledged is deliberately never persisted - session/process-
 // scoped only, per ANDROID_DESIGN_BRIEF.md ("shown once per app session").
-class RigCheckViewModel(application: Application) : AndroidViewModel(application) {
+//
+// The account backend is a parameter so an instrumented test can be signed in
+// or out without Supabase; the app always uses the one-argument constructor.
+class RigCheckViewModel internal constructor(
+    application: Application,
+    accountBackend: AccountBackend,
+) : AndroidViewModel(application) {
+    constructor(application: Application) : this(application, SupabaseAccountBackend.get() ?: UnavailableAccountBackend)
+
     private val recentRigsRepository = RecentRigsRepository(application)
 
     val recentRigs: StateFlow<List<RecentRig>> = recentRigsRepository.recentRigs
@@ -121,7 +130,7 @@ class RigCheckViewModel(application: Application) : AndroidViewModel(application
     // The shared account (#22). Free manual entry never touches it; only
     // buying and scanning need a signed-in account.
     private val accountManager = AccountManager(
-        backend = SupabaseAccountBackend.get() ?: UnavailableAccountBackend,
+        backend = accountBackend,
         billing = RevenueCatManager,
         scope = viewModelScope,
     )

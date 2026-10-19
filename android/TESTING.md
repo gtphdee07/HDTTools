@@ -733,6 +733,23 @@ fail without the change: breaking the rig-start signal, the screen-change signal
 or the in-flight guard each turns several of them red. `enterNickname` here is the
 #125 recipe (keyboard really closed before a Back).
 
+**Scan error next-step tests** (`ui/navigation/ScanErrorNextStepNavigationTest.kt`,
+#124) — what the dialog's "Sign in" and "Buy more Scans" buttons do once tapped
+(`followScanNextStep` in `RigCheckNavHost.kt`), through the real nav host and view
+model, for both Scan buttons (Scan Photo on the Chooser, "Scan tow-vehicle-only
+ticket" on the Truck Tag screen). The Scan fails the way the Worker's answer would
+(`scanSender` returns the `unauthorized` or `insufficient_credits` failure), or by
+itself for `not_signed_in` (no token, so the real send never reaches the Worker).
+The account is a `FakeAccountBackend` passed to the view model's internal
+constructor (the app uses the one-argument constructor, which picks Supabase), signed
+in or out, counting the sessions it was asked to end. Per button: "Sign in" after a
+rejected token closes the dialog, ends the session once and shows the sign-in screen;
+"Sign in" with no token shows the sign-in screen and ends nothing; "Buy more Scans"
+closes the dialog and shows the Paywall for the signed-in user (the account label is
+on it); OK on each of those dialogs only closes it, with the user still signed in and
+on the same screen. Breaking the `signOut()` call, the Paywall navigation or the
+`clearScanError()` call in `followScanNextStep` turns the matching tests red.
+
 **Test-support tests** (`testsupport/`, Major suite) — real-network-free
 coverage for test infrastructure: the fixture pool the External suite below
 depends on, and the scroll helper the screen and nav tests use:

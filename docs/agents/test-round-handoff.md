@@ -6,19 +6,14 @@ Working notes for the test-first round (map #49, decisions on #58 and #59, writt
 
 Merged: #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124. Nothing is in build. Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #141 (rename `src/hdttools/api/`).
 
-**Nothing since #128 has been pushed.** About 35 local commits on `MPSkills` wait. Two things hold the push:
+**Nothing since #128 has been pushed.** About 38 local commits on `MPSkills` wait. The pre-push gate from #43 is live in the main checkout: a push of `MPSkills` that touches `web/`, `workers/scan-proxy/` or `android/` is refused while an External surface is stale. **It passes now** (checked 2026-10-19 after the run below: `uv run scripts/external_gate.py check --platform web --platform scan-proxy --platform android` reports 10 surfaces, none stale). Before pushing, read the texts in the "Scan outcomes" entry of `workers/scan-proxy/CONTEXT.md`: #115 changed Web's user-facing scan wording, and Web goes live on push. Later tickets that change watched files will make surfaces stale again; `uv run scripts/external_freshness.py` says which. The honest ways through a stale gate are a real run, or `EXTERNAL_GATE_FORCE_REASON="why" git push` (records an override on the dashboard; commit the changed `scripts/dashboard_data/external_status.json`).
 
-- The pre-push gate from #43 is live in the main checkout. A push of `MPSkills` that touches `web/`, `workers/scan-proxy/` or `android/` is refused while an External surface is stale. At the last check seven were stale: `anthropic`, `pages-site`, `revenuecat-web-billing`, `scan-proxy-worker` (never passed), `supabase-auth`, `supabase-tables`, `worker-token-verification`; `revenuecat-rest` was fresh and two Android surfaces are planned (they never block). `uv run scripts/external_freshness.py` lists them. The honest ways through are a real run of the stale suites, or `EXTERNAL_GATE_FORCE_REASON="why" git push` (records an override on the dashboard; commit the changed `scripts/dashboard_data/external_status.json` from the main checkout).
-- #115 changed Web's user-facing scan wording, and Web goes live on push. Read the texts in the "Scan outcomes" entry of `workers/scan-proxy/CONTEXT.md` before pushing.
+**External sanity run, done 2026-10-19, owner-approved (4 paid calls ceiling):** all seven stale surfaces passed and are recorded in `external_status.json` (commit 95ae133).
 
-**External sanity run (decided 2026-10-19): run the stale suites now, before more tickets, to find anything the merges broke.** From the main checkout, nothing else running:
-
-1. `uv run scripts/external_freshness.py` to see what is stale.
-2. `powershell web\test-external.ps1` (the free Web surfaces).
-3. `powershell workers\scan-proxy\test-external.ps1 -MaxPaidCalls 4` (the paid ones: `anthropic` up to 3 calls, `scan-proxy-worker` 1). It asks before each paid surface. `scan-proxy-worker` tests whatever Worker is deployed; if the Worker needs the merged code first, `npm run deploy -- --force --reason "..."` from `workers/scan-proxy` is a live deploy and the owner's call.
-4. Commit `scripts/dashboard_data/external_status.json` on `MPSkills` (the hook regenerates `dashboard.svg`); ask before pushing.
-
-A failing surface is a finding, not something to re-run until green. Only a real pass advances freshness; a `-Skip` leaves a surface stale. Surfaces go stale again when later tickets change their watched files, so a short re-run at the end of the round is still expected.
+- `powershell web\test-external.ps1`: `supabase-auth`, `supabase-tables`, `pages-site`, `revenuecat-web-billing` (32 tests, free).
+- `powershell workers\scan-proxy\test-external.ps1 -MaxPaidCalls 4`: `scan-proxy-worker` (1 paid call), `worker-token-verification`, and `anthropic` (3 paid calls). It tested the Worker as deployed; no deploy was made (no Worker source file changed in any merge of the round, the last change was 2026-10-15).
+- To answer the paid prompts from a non-interactive shell use `cmd /c "echo y| powershell -NoProfile -File workers\scan-proxy\test-external.ps1 -MaxPaidCalls N"`. Piping several `'y'` lines from PowerShell answered the second prompt but declined the first (recorded `skipped`, which leaves the surface stale and spends nothing).
+- Known wrapper flaw, not yet a ticket: the Web script runs Web's whole dependency chain, which includes `scan-proxy-worker` and `worker-token-verification`. Their tests live under `workers/scan-proxy`, so Web's wrapper found none tagged and recorded `fail` for both ("No external tests tagged ..."), although they had not run. The Worker script's real run overwrote those records. Run the Worker script after the Web one, or a stale-looking `fail` stays on the dashboard. A fix is for the wrapper to guard only the surfaces whose tests live in its own directory.
 
 ## The flow for every ticket
 
@@ -44,7 +39,7 @@ Test-round additions:
 - For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
   The slow tooling tests are left out of planner runs unless the diff touches
   what they check.
-- No live or paid runs. External suites are run by the owner from the main checkout.
+- No live or paid runs. External suites are run from the main checkout with the owner's go-ahead.
 - Judge each test by whether it would find or prevent a real bug and whether it
   adds run time; do not add tests only to raise a coverage number.
 ```

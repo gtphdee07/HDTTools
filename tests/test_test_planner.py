@@ -38,7 +38,7 @@ CONFIG = {
         {
             "name": "golden-vectors",
             "context": "core",
-            "files": ["src/hdttools/api/breakdown.py"],
+            "files": ["src/hdttools/breakdown.py"],
             "tests": ["tests/test_breakdown_golden_vectors.py"],
             "shares_with": ["android", "web"],
         },
@@ -65,7 +65,7 @@ def test_a_streamlit_change_plans_the_streamlit_minor_suite():
 
 
 def test_public_interface_change_adds_major_and_the_interface_tests():
-    plan = plan_for(["src/hdttools/api/breakdown.py"])
+    plan = plan_for(["src/hdttools/breakdown.py"])
     assert commands(plan) == [
         "uv run pytest -m core",
         "uv run pytest tests/test_breakdown_golden_vectors.py",
@@ -140,7 +140,7 @@ def test_a_marker_missing_from_the_marker_set_is_skipped_with_a_note():
 
 
 def test_planner_exits_zero_whatever_it_plans(capsys):
-    for files in (["uv.lock"], ["src/hdttools/api/breakdown.py"], [], ["nonsense/x.bin"]):
+    for files in (["uv.lock"], ["src/hdttools/breakdown.py"], [], ["nonsense/x.bin"]):
         assert tp.main(["--files", *files]) == 0
     assert "uv run pytest" in capsys.readouterr().out
 
@@ -212,7 +212,7 @@ ALL = {
     "interfaces": [
         {
             "name": "golden-vectors", "context": "core",
-            "files": ["src/hdttools/api/breakdown.py", "web/src/breakdown.ts"],
+            "files": ["src/hdttools/breakdown.py", "web/src/breakdown.ts"],
             "tests": ["tests/test_breakdown_golden_vectors.py"],
             "shares_with": ["android", "web"],
             "shares_tests": {"web": "web-test -- src/breakdown.test.ts", "android": "gradle-jvm --tests Golden"},
@@ -256,7 +256,7 @@ def test_a_python_dependency_change_does_not_touch_the_non_python_contexts():
 
 
 def test_issue_level_shared_interface_plans_the_sharing_contexts_side():
-    out = commands(plan_all(["src/hdttools/api/breakdown.py"]))
+    out = commands(plan_all(["src/hdttools/breakdown.py"]))
     assert "web-test -- src/breakdown.test.ts" in out
     assert "gradle-jvm --tests Golden" in out
 
@@ -487,7 +487,7 @@ PYTHON_SUITE = tp.Selection("context", "uv run pytest -m core", "core context ru
     (["workers/scan-proxy/src/scan.ts"], False),
     (["src/hdttools/database.py"], False),                   # Python code does not change the web suite
     (["web/src/breakdown.ts"], True),                        # an interface file shared with web
-    (["src/hdttools/api/breakdown.py"], True),               # ...whose other side is Python
+    (["src/hdttools/breakdown.py"], True),               # ...whose other side is Python
     (["test-vectors/breakdown_cases.json"], True),           # unowned and unknown: could be anything
     (["docs/x.md", "web/package.json"], True),
 ])
@@ -551,7 +551,7 @@ def real_plan():
     config = tp.load_config()
     markers = tp.load_markers()
     return tp.plan(
-        ["src/hdttools/api/breakdown.py", "src/hdttools/database.py", "streamlit_app/fields.py"],
+        ["src/hdttools/breakdown.py", "src/hdttools/database.py", "streamlit_app/fields.py"],
         config, markers,
     )
 
@@ -728,7 +728,7 @@ def test_the_root_testing_doc_states_the_parallel_command_and_every_slow_group_t
     section = doc.split("## Python test commands", 1)[1].split("\n## ", 1)[0]
     assert "uv run pytest -n auto" in section
     assert tp.SLOW_PYTEST in section
-    for trigger in ("scripts/", "pyproject.toml", "ExampleDocs/", "streamlit_app/", "api/breakdown.py", "_ocr.py"):
+    for trigger in ("scripts/", "pyproject.toml", "ExampleDocs/", "streamlit_app/", "hdttools/breakdown.py", "_ocr.py"):
         assert trigger in section, trigger
 
 

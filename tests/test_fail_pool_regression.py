@@ -29,7 +29,7 @@ from pathlib import Path
 
 import pytest
 
-from hdttools.api.breakdown import compute_breakdown, verdict_for
+from hdttools.breakdown import compute_breakdown, verdict_for
 from hdttools.ocr_common import ensure_tesseract_configured, ocr_text, open_image, preprocess_image
 from hdttools.truck_tag_ocr import _parse_fields as _parse_truck_tag
 

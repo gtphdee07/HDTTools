@@ -13,7 +13,7 @@ the web/Streamlit skip-image feature: a blank rig no longer silently
 reports "Safe to Tow".
 """
 
-from hdttools.api.breakdown import compute_breakdown, verdict_for
+from hdttools.breakdown import compute_breakdown, verdict_for
 
 import pytest
 

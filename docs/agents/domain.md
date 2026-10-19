@@ -24,7 +24,7 @@ Multi-context repo (presence of `CONTEXT-MAP.md` at the root). This project is R
 │   ├── CONTEXT.md                     ← React + Vite + TS frontend
 │   └── docs/adr/
 ├── src/hdttools/
-│   ├── CONTEXT.md                     ← shared OCR/breakdown core (breakdown reference math in src/hdttools/api/)
+│   ├── CONTEXT.md                     ← shared OCR/breakdown core (breakdown reference math in src/hdttools/breakdown.py)
 │   └── docs/adr/
 ├── streamlit_app/
 │   ├── CONTEXT.md                     ← free public-service demo (Tesseract-only, permanently)

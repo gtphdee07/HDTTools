@@ -18,7 +18,7 @@ exact tool paths. Use it as an example, not as truth for a new machine.
 | Scan service (Worker) | `workers/scan-proxy/` | Cloudflare Workers | `npm run deploy` (wrangler) |
 | Web app | `web/` | Browser (static) | Cloudflare Pages, push-to-deploy from GitHub |
 | Streamlit demo | `streamlit_app/` | Streamlit Community Cloud | Push-to-deploy from GitHub (branch `main`) |
-| Core library, tests, tooling | `src/hdttools/`, `scripts/`, `tests/` | Your machine | Not deployed. The FastAPI app that was in `src/hdttools/api/` was removed (ADR-0007, #135). |
+| Core library, tests, tooling | `src/hdttools/`, `scripts/`, `tests/` | Your machine | Not deployed. The FastAPI app that was in the `api` package was removed (ADR-0007, #135). |
 
 Outside services the pieces depend on (each has dashboard settings that live
 **outside git**, see section 5): Supabase (accounts), RevenueCat (purchases and

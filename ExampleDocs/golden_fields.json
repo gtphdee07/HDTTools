@@ -87,7 +87,7 @@
       "pin_weight_pct": 0.20,
       "expected_verdict_status": "fail",
       "expected_verdict_headline": "Not Safe to Tow",
-      "_verdict_note": "Computed for real via compute_breakdown/verdict_for (src/hdttools/api/breakdown.py) against this rig's exact golden values (all four photos scanned, including the standalone ticket), 2026-08-24 - not hand-guessed. With the standalone reading present, compute_breakdown uses its more precise tongue-weight branch (not the pin_weight_pct estimate): Tow Vehicle Total (steer+drive=14720 vs GVWR 14000, 720 lb over) and Trailer Total (19680 axle + 4740 lb tongue weight = 24420 vs GVWR 23500, 920 lb over, estimated=false) both exceed their limits; every other row passes. Without the standalone reading, Trailer Total would instead be an estimated 24600 (1100 lb over) via the pin_weight_pct branch - same overall fail verdict either way, different specific numbers."
+      "_verdict_note": "Computed for real via compute_breakdown/verdict_for (src/hdttools/breakdown.py) against this rig's exact golden values (all four photos scanned, including the standalone ticket), 2026-08-24 - not hand-guessed. With the standalone reading present, compute_breakdown uses its more precise tongue-weight branch (not the pin_weight_pct estimate): Tow Vehicle Total (steer+drive=14720 vs GVWR 14000, 720 lb over) and Trailer Total (19680 axle + 4740 lb tongue weight = 24420 vs GVWR 23500, 920 lb over, estimated=false) both exceed their limits; every other row passes. Without the standalone reading, Trailer Total would instead be an estimated 24600 (1100 lb over) via the pin_weight_pct branch - same overall fail verdict either way, different specific numbers."
     }
   ]
 }

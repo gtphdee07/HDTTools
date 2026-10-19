@@ -30,7 +30,7 @@ from recent_rigs import load_recent_rigs, save_recent_rig
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from hdttools import scale_ticket, scale_ticket_ocr, trailer_tag, trailer_tag_ocr, truck_tag, truck_tag_ocr  # noqa: E402
-from hdttools.api.breakdown import DEFAULT_PIN_WEIGHT_PCT, compute_breakdown, verdict_for  # noqa: E402
+from hdttools.breakdown import DEFAULT_PIN_WEIGHT_PCT, compute_breakdown, verdict_for  # noqa: E402
 from hdttools.ocr_common import ensure_tesseract_configured, get_ocr_backend, ocr_text, preprocess_image  # noqa: E402
 
 st.set_page_config(page_title="RigCheck", page_icon="🚚")

@@ -7,7 +7,7 @@ import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-// Kotlin port of src/hdttools/api/breakdown.py (the single source of truth,
+// Kotlin port of src/hdttools/breakdown.py (the single source of truth,
 // itself already a port of web/src/calc.ts) — keep the three in sync, and
 // keep SUPPORTED_CAPABILITIES in
 // BreakdownGoldenVectorTest.kt updated as this port gains capabilities.

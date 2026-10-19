@@ -113,6 +113,17 @@ val adbExecutable: File = run {
     if (candidate.exists()) candidate else File(sdkDir, "platform-tools/adb")
 }
 
+// The unit tests read the shared fixtures in test-vectors/ by path at run
+// time, so Gradle does not know a changed fixture matters: without this,
+// editing one leaves testDebugUnitTest "UP-TO-DATE" and the tests that check
+// the app against it do not run (found while checking that
+// ScanOutcomesFixtureTest fails when a row disagrees).
+tasks.withType<Test>().configureEach {
+    inputs.dir(rootProject.layout.projectDirectory.dir("../test-vectors"))
+        .withPropertyName("sharedTestVectors")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 // Exec (not a doLast { project.exec {...} } block) - the latter isn't
 // configuration-cache compatible, since task actions can't safely close
 // over `project`. A single adb shell invocation runs both commands

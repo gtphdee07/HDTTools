@@ -18,8 +18,14 @@ export function scanNoticeFor(module: ModuleDef, data: Record<string, unknown>):
   return { kind: 'some-unread', fields: unread.map((f) => f.label) };
 }
 
+// "A", "A and B", "A, B and C". The same rule as Android's, pinned by test-vectors/scan_outcomes.json.
+const joinLabels = (labels: string[]) =>
+  labels.length < 2 ? labels.join('') : `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+
 export function scanNoticeText(notice: ScanNotice): string {
-  return notice.kind === 'nothing-read'
-    ? 'A Scan was used and nothing could be read. Type the numbers in, or go back and choose a different photo.'
-    : `A Scan was used. We couldn't read: ${notice.fields.join(', ')}. Fill those in yourself.`;
+  if (notice.kind === 'nothing-read') {
+    return 'A Scan was used and nothing could be read. Type the numbers in, or go back and choose a different photo.';
+  }
+  const them = notice.fields.length === 1 ? 'it' : 'them';
+  return `A Scan was used, but we couldn't read: ${joinLabels(notice.fields)}. Type ${them} in, or go back and choose a different photo.`;
 }

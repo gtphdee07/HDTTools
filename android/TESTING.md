@@ -447,6 +447,15 @@ root `TESTING.md`'s "Dashboard" section.
   section and `ARCHIVE_TESTING.md` (repo root) for what running this the
   first time found (several generations of drift, including a live bug
   this exact mechanism proved and then verified fixed).
+- `ScanOutcomesFixtureTest.kt` — runs the shared
+  `test-vectors/scan_outcomes.json` rows (the "Scan outcomes" entry of
+  `workers/scan-proxy/CONTEXT.md`) against the real `scanErrorFor`,
+  `ScanAttempts` and `applyScan`: the words the user reads contain each row's
+  phrases, a retry of the same photo keeps or changes the request id as the row
+  says, Try again is offered only where the row says, and the next steps are
+  exactly the row's. A row field marked pending for Android in the fixture is
+  not checked and is printed by the last test, which names the ticket that
+  builds it. Web runs the same file (`web/src/scanOutcomes.test.ts`).
 - `RevenueCatManagerTest.kt` — the balance-cache-invalidation bug fixed
   2026-08-18: `getScanCreditBalance()` must call
   `invalidateVirtualCurrenciesCache()` before reading the balance, not

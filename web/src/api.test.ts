@@ -133,7 +133,7 @@ describe('what the user is told when a scan does not deliver', () => {
       body: { ok: false, code: 'auth_unavailable', message: 'x' },
       code: 'auth_unavailable',
       lostResponse: false,
-      message: /not charged/i,
+      message: /nothing was used/i,
     },
     {
       name: 'an extraction that failed and was refunded',

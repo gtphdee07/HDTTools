@@ -3,7 +3,7 @@ import type { HistoryEntry, RecentRig, Screen, WizardState } from './types';
 import { MODULES } from './mockData';
 import { extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
 import type { ScanContext } from './api';
-import { ScanError, needsDifferentPhoto, photoRefused } from './scanError';
+import { NO_WEIGHT_MESSAGE, ScanError, needsDifferentPhoto, photoRefused } from './scanError';
 import { ScanAttempts } from './scanAttempts';
 import { scanNoticeFor } from './scanNotice';
 import { useScanAccess } from './scanAccess';
@@ -260,10 +260,7 @@ function App() {
         : extracted.gross_weight_lb;
     if (standalone == null) {
       // The service delivered, so this Scan was charged (see Scan Proxy's CONTEXT.md); a retry is a new one.
-      throw new ScanError(
-        'no_weight',
-        "We read the ticket but couldn't find a weight. That Scan was used, and trying again uses another. You can also type the weight in.",
-      );
+      throw new ScanError('no_weight', NO_WEIGHT_MESSAGE);
     }
     setWizard((w) => ({ ...w, truck: { ...w.truck, standalone_weight_lb: standalone } }));
   };

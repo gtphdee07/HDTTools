@@ -290,6 +290,18 @@ the two highest-traffic shapes (`BreakdownItemOut`/`VerdictOut`) at much
 lower cost; `TruckTagOut`/`TrailerTagOut`/`ScaleTicketOut` remain
 uncovered by either approach as of this writing.
 
+**Built 2026-10-19 (#115)**, a fourth shared fixture, for what a Scan that
+does not deliver tells the user and how a retry behaves:
+`test-vectors/scan_outcomes.json`, one row per case, written up as "Scan
+outcomes" in `workers/scan-proxy/CONTEXT.md`. Consumed by
+`web/src/scanOutcomes.test.ts` and `android/.../ui/ScanOutcomesFixtureTest.kt`.
+Each row names the phrases the message must contain, whether a retry keeps the
+request id, and whether Try again is offered; the fixture is the source of
+truth and each client keeps its own strings. A row field not yet built in a
+client is marked pending for it in the fixture, with the ticket that builds it;
+the test skips and lists it. Changing the fixture changes both clients' queued
+tests (`scripts/test_planner_config.json`, interface `scan-outcomes`).
+
 ## Event-based tiers, not time-cadence tiers
 
 Retired 2026-08-24 (full narrative in `ARCHIVE_TESTING.md`): `android/TESTING.md` used to

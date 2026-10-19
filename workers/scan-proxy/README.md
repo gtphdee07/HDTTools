@@ -36,9 +36,18 @@ access token — see **Auth** below). Any `app_user_id` in the body is ignored.
 - `402` `insufficient_credits` — no credits left, nothing was charged
 - `502` `extraction_failed` — Claude couldn't read the image (including a
   timed-out call); the credit was refunded
-- `502` `billing_error` — couldn't reach RevenueCat, including a timed-out
-  request (spending never happened, so nothing to refund)
+- `502` `extraction_failed_no_refund` — Claude couldn't read the image and the
+  refund failed too, so the credit was **charged and not given back**; a retry
+  with the same `client_request_id` is not charged again (see Idempotency below)
+- `502` `billing_error` — couldn't confirm the balance with RevenueCat: it
+  answered with an error, was unreachable, or the spend threw or timed out.
+  **The user may or may not have been charged**, because RevenueCat can apply a
+  spend and still time out before answering; nothing was read either way. A
+  retry with the same `client_request_id` is charged at most once.
 - `400` `bad_request` — malformed request
+
+What a client tells the user for each of these, and when a retry keeps the
+request id, is the "Scan outcomes" entry in `CONTEXT.md`.
 
 **CORS.** The Web app calls this endpoint from the browser, from another
 origin. `OPTIONS /v1/scan` is answered `204` without authentication, and every

@@ -21,13 +21,16 @@ these are genuinely different metrics, not normalized to one, since each
 is what that platform's own TESTING.md already documents and no single
 metric is available across all four tools.
 
-Usage: uv run scripts/coverage_gate.py [--refresh]
-    --refresh   Re-run every platform's test suite instead of reading an
-                existing report file, if one is present. Slow - the
-                default without --refresh
-                reads whatever report already exists on disk and only
-                falls back to running the suite if no report is found at
-                all.
+Usage: uv run scripts/coverage_gate.py [--refresh | --android-logic]
+    --refresh        Re-run every platform's test suite instead of reading an
+                     existing report file, if one is present. Slow - the
+                     default without --refresh
+                     reads whatever report already exists on disk and only
+                     falls back to running the suite if no report is found at
+                     all.
+    --android-logic  Only Android's decision-logic floor, read from the JVM
+                     report already on disk (the session-end command's second
+                     step, scripts/android_session_end.py).
 """
 
 from __future__ import annotations
@@ -183,10 +186,11 @@ def check_android_logic(report_dir: Path, scope: AndroidLogicScope) -> PlatformR
     )
 
 
-def get_android_result(refresh: bool) -> PlatformResult:
+def get_android_result(refresh: bool, build: bool = True) -> PlatformResult:
     """The gated Android result: a JVM floor on decision logic. Needs no
-    device - only the unit-test coverage report."""
-    if refresh or not (ANDROID_JVM_REPORT / "index.html").exists():
+    device - only the unit-test coverage report. `build=False` only reads the
+    report, for a caller that has just built it (android_session_end.py)."""
+    if build and (refresh or not (ANDROID_JVM_REPORT / "index.html").exists()):
         proc = _run(
             [
                 _GRADLEW,
@@ -341,16 +345,25 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Re-run every platform's suite instead of reading an existing report",
     )
+    parser.add_argument(
+        "--android-logic",
+        action="store_true",
+        help="Check only Android's decision-logic floor, from the JVM report already on "
+        "disk (never builds it, never touches the other platforms)",
+    )
     args = parser.parse_args(argv)
 
-    results = [
-        get_android_result(args.refresh),
-        get_android_device_result(),
-        get_android_merged_result(args.refresh),
-        get_python_result(args.refresh),
-        get_web_result(args.refresh),
-        get_scan_proxy_result(args.refresh),
-    ]
+    if args.android_logic:
+        results = [get_android_result(False, build=False)]
+    else:
+        results = [
+            get_android_result(args.refresh),
+            get_android_device_result(),
+            get_android_merged_result(args.refresh),
+            get_python_result(args.refresh),
+            get_web_result(args.refresh),
+            get_scan_proxy_result(args.refresh),
+        ]
 
     print(f"{'Platform':<12} {'Coverage':>10} {'Baseline':>10}  Status")
     print("-" * 55)

@@ -90,9 +90,36 @@
       "platform": "android",
       "dependency_files": ["android/gradle/libs.versions.toml", "android/app/build.gradle.kts", "android/build.gradle.kts"],
       "test_globs": ["android/app/src/test/*"],
-      "device_covered": ["android/app/src/main/java/com/rigcheck/app/ui/*", "android/app/src/androidTest/*"],
+      "device_covered": [
+        "android/app/src/main/java/com/rigcheck/app/ui/*",
+        "android/app/src/main/java/com/rigcheck/app/MainActivity.kt",
+        "android/app/src/main/AndroidManifest.xml",
+        "android/app/src/androidTest/*"
+      ],
+      "device_free": [
+        "android/app/src/main/java/com/rigcheck/app/ui/Scan*.kt",
+        "android/app/src/main/java/com/rigcheck/app/ui/format/*",
+        "android/app/src/androidTest/*WeeklyTest.kt"
+      ],
+      "device_full": [
+        "android/app/src/main/java/com/rigcheck/app/ui/navigation/RigCheckNavHost.kt",
+        "android/app/src/main/java/com/rigcheck/app/ui/RigCheckViewModel.kt",
+        "android/app/src/main/java/com/rigcheck/app/MainActivity.kt",
+        "android/app/src/main/AndroidManifest.xml"
+      ],
+      "device_classes": {
+        "command": "android/gradlew -p android connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class={fqcn}",
+        "map": [
+          {"from": "android/app/src/main/java/com/rigcheck/app/ui/screens/*Screen.kt",
+           "test": "android/app/src/androidTest/java/com/rigcheck/app/ui/screens/{stem}Test.kt"},
+          {"from": "android/app/src/main/java/com/rigcheck/app/ui/components/*.kt",
+           "test": "android/app/src/androidTest/java/com/rigcheck/app/ui/components/{stem}Test.kt"},
+          {"from": "android/app/src/androidTest/*Test.kt", "test": "{file}"}
+        ]
+      },
       "commands": {"minor": "android/gradlew -p android testDebugUnitTest", "major": "android/gradlew -p android testDebugUnitTest"},
       "device": "android/gradlew -p android connectedDebugAndroidTest",
+      "session_end": "uv run scripts/android_session_end.py",
       "file": "android/gradlew -p android testDebugUnitTest --tests {fqcn}",
       "test_for": ["{dir}/{stem}Test.kt"],
       "dir_rewrite": ["src/main/", "src/test/"],

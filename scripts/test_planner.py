@@ -16,9 +16,13 @@ release, the External surface manifest, then prints the plan for a level
   release  everything for each releasable context (Android, Scan Proxy),
            the Web freshness gate, and every surface of those contexts.
 
+Android's session level is its device-free session-end command (`session_end`, #133).
 Android instrumented (device) tests are planned only when the diff touches
-code they cover, or at release. A stale paid surface is listed as needing
-confirmation, never as something to run.
+code they cover, or at release: the class-level command for the screens and
+components the diff touches (`device_classes`), the full suite when it touches
+navigation, the view model, the activity, the manifest or anything the mapping
+cannot place, and the full suite once at release. A stale paid surface is listed
+as needing confirmation, never as something to run.
 
 The `slow` pytest tests (tooling checks that start pytest, npm or Gradle; real
 photo OCR; the Streamlit walkthrough; the Breakdown sweep) are left out of the
@@ -299,10 +303,11 @@ def plan(
                                        if f in c.get("dependency_files", []) and n in allowed(f)}
     touched |= python_dependency_changed | context_dependency_changed
 
-    device_touched = [
-        n for n, c in contexts.items()
-        if "device" in c and any(_matches(f, c.get("device_covered", [])) for f in files if n in allowed(f))
-    ]
+    device_runs = {
+        n: _device_commands(c, [f for f in files if n in allowed(f)], file_exists)
+        for n, c in contexts.items() if "device" in c
+    }
+    device_touched = [n for n, run in device_runs.items() if run]
 
     for f in files:
         for name, ctx in contexts.items():
@@ -324,9 +329,8 @@ def plan(
                python_names=tuple(n for n, c in contexts.items() if _is_python(c)))
 
     for name in device_touched:
-        ctx = contexts[name]
-        result.add(Selection("device", ctx["device"], f"{name}: diff touches code the instrumented tests cover (needs a device)",
-                             contexts=(name,)))
+        command, why = device_runs[name]
+        result.add(Selection("device", command, f"{name}: {why} (needs a device)", contexts=(name,)))
     skipped_device = [n for n, c in contexts.items() if "device" in c and n in touched and n not in device_touched]
     for name in skipped_device:
         result.notes.append(f"{name}: instrumented (device) tests excluded; the diff touches no code they cover")
@@ -338,6 +342,42 @@ def plan(
     elif not result.selections and not result.notes:
         result.notes.append("no test context touched; no tests planned")
     return result
+
+
+def _device_class_for(path: str, classes: dict, file_exists) -> str | None:
+    """The instrumented test file for a changed file, by the context's `device_classes.map`; None when no
+    entry places it or the test file it names does not exist."""
+    stem = PurePosixPath(path).stem
+    for entry in classes.get("map", []):
+        if _matches(path, [entry["from"]]):
+            candidate = entry["test"].replace("{stem}", stem).replace("{file}", path)
+            if file_exists(candidate):
+                return candidate
+    return None
+
+
+def _device_commands(ctx: dict, files: list[str], file_exists) -> tuple[str, str] | None:
+    """The instrumented (device) run a context's changed files owe, as (command, why), or None for none (#133).
+
+    Only files in `device_covered` and not in `device_free` count. Any of them in `device_full`, or one that
+    `device_classes.map` cannot place in an existing test class, owes the whole instrumented suite (the
+    safe default); otherwise the placed classes run as one class-level command."""
+    owed = [f for f in files if _matches(f, ctx.get("device_covered", [])) and not _matches(f, ctx.get("device_free", []))]
+    if not owed:
+        return None
+    full = (ctx["device"], "diff touches code the instrumented tests cover")
+    classes = ctx.get("device_classes")
+    if not classes:
+        return full
+    tests: list[str] = []
+    for f in owed:
+        test = None if _matches(f, ctx.get("device_full", [])) else _device_class_for(f, classes, file_exists)
+        if test is None:
+            return full
+        if test not in tests:
+            tests.append(test)
+    fqcns = ",".join(_fill("{fqcn}", ctx, t) for t in tests)
+    return classes["command"].replace("{fqcn}", fqcns), f"diff touches only screens and components with an instrumented test class ({fqcns})"
 
 
 def _pytest_marker_run(expression: str, exclude_slow: bool) -> str:
@@ -423,6 +463,12 @@ def _plan_issue(result, files, config, markers, touched, interface_changed, inte
             )
 
 
+def _session_context_command(ctx: dict) -> str:
+    """A context's whole session-end run: its `session_end` command (Android's device-free JVM tests,
+    coverage floor and detekt, #133) where it has one, else its context command."""
+    return ctx.get("session_end") or ctx["context"]
+
+
 def _plan_session(result, files, config, markers, touched, python_dependency_changed,
                   context_dependency_changed, file_exists, surfaces, downstream, allowed) -> None:
     """Scope ladder: one small context -> file, one context -> context, several -> application.
@@ -447,15 +493,18 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
 
     if result.scope == "application":
         for name, ctx in contexts.items():
-            command = ctx.get("application", ctx["context"])
+            command = ctx.get("session_end") or ctx.get("application", ctx["context"])
             result.add(Selection("application", command, f"application run ({name}; diff spans {', '.join(sorted(touched))})",
                                  contexts=(name,)))
     elif not touched:
         pass  # only downstream contexts, planned below
     elif result.scope == "context":
         (name,) = touched
-        result.add(Selection("context", contexts[name]["context"], f"{name} context run (diff is larger than a file)",
-                             contexts=(name,)))
+        result.add(Selection("context", _session_context_command(contexts[name]),
+                             f"{name} context run (diff is larger than a file)", contexts=(name,)))
+    elif "session_end" in contexts[next(iter(touched))]:
+        (name,) = touched  # the session-end command is the context's whole session run, whatever the diff size
+        result.add(Selection("context", contexts[name]["session_end"], f"{name} session-end run", contexts=(name,)))
     else:
         (name,) = touched
         ctx = contexts[name]
@@ -480,8 +529,8 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
     if result.scope != "application":  # an application run already covers every context
         for name in contexts:
             if name in downstream:
-                result.add(Selection("downstream", contexts[name]["context"], f"{name} context run ({downstream[name]})",
-                                     contexts=(name,)))
+                result.add(Selection("downstream", _session_context_command(contexts[name]),
+                                     f"{name} context run ({downstream[name]})", contexts=(name,)))
     _plan_surfaces(result, config, surfaces, {contexts[n].get("platform") for n in
                    (contexts if result.scope == "application" else touched | set(downstream))})
 

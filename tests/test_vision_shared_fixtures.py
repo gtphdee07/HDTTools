@@ -92,6 +92,21 @@ def test_the_external_test_keeps_no_image_list_or_expected_values_of_its_own():
     assert source.count(".jpg") == 1  # the one probe image of the free bad-key case, not a case list
 
 
+# --- the docs -----------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("path", ["TESTING.md", "tests/TESTING.md", "workers/scan-proxy/TESTING.md"])
+def test_the_testing_docs_describe_both_claude_surfaces_and_the_shared_files(path):
+    text = (ROOT / path).read_text(encoding="utf-8")
+    assert "anthropic-python" in text
+    assert "vision_external_cases.json" in text
+    assert "no longer reached by a wrapper" not in text
+
+
+def test_the_root_testing_doc_lists_the_shared_tool_schema_file():
+    assert "vision_tool_schemas.json" in (ROOT / "TESTING.md").read_text(encoding="utf-8")
+
+
 # --- the comparison rule ------------------------------------------------------------------------
 
 CASE = vision_cases.VisionCase(

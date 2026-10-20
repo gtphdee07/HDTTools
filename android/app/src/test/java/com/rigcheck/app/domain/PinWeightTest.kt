@@ -39,7 +39,7 @@ class PinWeightTest {
     }
 
     @Test
-    fun `the slider default and both ends convert to 0 20, 0 15 and 0 25`() {
+    fun `the slider default and both ends convert to their fractions`() {
         assertEquals(0.20, pinWeightFraction(20), 0.0)
         assertEquals(0.15, pinWeightFraction(15), 0.0)
         assertEquals(0.25, pinWeightFraction(25), 0.0)

@@ -294,9 +294,11 @@ full parity with Python.
 **Also built 2026-08-21**, a narrower fixture for a single risky
 convention rather than full input/output cases:
 `test-vectors/pin_weight_pct_contract.json`, consumed by Web's
-`web/src/breakdown.test.ts`. Every UI works in whole percentage points
+`web/src/breakdown.test.ts` and (since #137) Android's `PinWeightTest`.
+Every UI works in whole percentage points
 (15–25); the breakdown math takes the equivalent 0.15–0.25 fraction,
-converted at each UI's own thin boundary (Web's `createBreakdown`) — a
+converted at each UI's own thin boundary (Web's `createBreakdown`,
+Android's `pinWeightFraction`) — a
 silently-wrong-math risk shape (right field, wrong units, no type error
 anywhere) rather than a missing-field one. It proves the *contract* (a
 whole number in, that same value ÷ 100 out), not any particular breakdown

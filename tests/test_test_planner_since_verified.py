@@ -414,3 +414,15 @@ def test_an_unowned_interface_file_does_not_queue_the_provider_that_is_already_v
     verified = ledger(core="new", streamlit="new", web="old", android="new", proxy="new")
 
     assert commands(since_verified(repo, verified)) == ["web-golden"]
+
+
+def test_real_config_a_breakdown_change_selects_the_golden_vector_tests_of_all_three_ports_and_the_slow_sweeps():
+    # #136 moved breakdown.py; a stale path in scripts/test_planner_config.json would silently stop
+    # selecting these (the fake-config tests above name the path themselves, so they cannot notice).
+    selected = real_commands(["src/hdttools/breakdown.py"])
+
+    assert "uv run pytest tests/test_breakdown_golden_vectors.py" in selected
+    assert any("BreakdownGoldenVectorTest" in c for c in selected)
+    assert "npm --prefix web test -- src/breakdown.test.ts" in selected
+    assert any("test_breakdown_combinatorial_sweep.py" in c for c in selected)
+    assert any("test_real_photo_ocr_accuracy.py" in c for c in selected)

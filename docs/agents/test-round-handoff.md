@@ -4,7 +4,7 @@ Working notes for the test-first round (map #49, decisions on #58 and #59, writt
 
 ## Where the round stands
 
-Merged: #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142 (#141 closed as its duplicate). In build when this was written: #131 (Android JVM). Follow-ups filed along the way: #143 (split the `anthropic` surface into a Worker one and a Python one, both checked against the same golden data; until it lands nothing runs `tests/test_claude_vision_external.py`, so run `uv run pytest -m "external and anthropic"` by hand after a change to `vision_client.py`), #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #141 (rename the `api` package; the same work as #136).
+Merged: #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131 (#141 closed as its duplicate). Nothing in build when this was written. Follow-ups filed along the way: #143 (split the `anthropic` surface into a Worker one and a Python one, both checked against the same golden data; until it lands nothing runs `tests/test_claude_vision_external.py`, so run `uv run pytest -m "external and anthropic"` by hand after a change to `vision_client.py`), #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #141 (rename the `api` package; the same work as #136).
 
 **Pushed on 2026-10-20** (owner approved the #115 Web wording and the push): everything up to the External re-run commit 0f88264 is on `origin/MPSkills`, and Pages rebuilt Web. Wrangler 4.151.3 had made `pages-site` and `scan-proxy-worker` stale, so both were re-run first (1 paid call) and the gate passed without an override. The pre-push gate from #43 is live in the main checkout: a push of `MPSkills` that touches `web/`, `workers/scan-proxy/` or `android/` is refused while an External surface is stale. A new wrangler release makes the two Cloudflare surfaces stale again; `uv run scripts/external_freshness.py` says which. The honest ways through a stale gate are a real run, or `EXTERNAL_GATE_FORCE_REASON="why" git push` (records an override on the dashboard; commit the changed `scripts/dashboard_data/external_status.json`).
 
@@ -60,7 +60,7 @@ Two build lanes can run in parallel; tickets inside a lane share files, so they 
 | done | #134, #129, #128, #66, #135, #136 | #130, #41, #43, #44, #115, #142 |
 | next | #133 session-end command (also an Android ticket) | #143 Claude surface split (before #75/#39/#40), then #67 session-start debt report (needs #66, merged) |
 
-Android lane (one at a time; the single emulator): done #127, #84, #124. Next #131 and #137 (JVM only, can run beside any other lane), then #75, #39, #40 together (two paid scans, owner confirms first).
+Android lane (one at a time; the single emulator): done #127, #84, #124, #131. Next #137 (JVM only, can run beside any other lane), then #75, #39, #40 together (two paid scans, owner confirms first).
 
 Last: #105 (after the owner's dashboard step), #64 (docs refresh), then a final run of whichever External surfaces went stale again (`uv run scripts/external_freshness.py` first; from the main checkout; ask before each live run and before pushing). Optional: #132. Deferred: #68, #69, #70, #72, #100.
 

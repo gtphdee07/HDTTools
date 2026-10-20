@@ -10,10 +10,12 @@
     there. The tests run via scripts/run_external_pytest.py, narrowed to
     the stale surfaces' pytest markers.
 
-    Needs ANTHROPIC_API_KEY in this shell's environment for the "anthropic"
-    surface; a missing key fails the run. -Skip records `skipped` for the
+    Needs ANTHROPIC_API_KEY in this shell's environment for the
+    "anthropic-python" surface (the Python vision client; the Worker's own
+    "anthropic" surface is run by workers\scan-proxy\test-external.ps1); a
+    missing key fails the run. -Skip records `skipped` for the
     stale surfaces instead of running them; a skip never advances
-    freshness, so they stay stale. "anthropic" is paid and asks for
+    freshness, so they stay stale. "anthropic-python" is paid and asks for
     confirmation before it runs; -MaxPaidCalls sets an independent ceiling
     instead of trusting the sum of the stale paid surfaces' own declared
     costs.

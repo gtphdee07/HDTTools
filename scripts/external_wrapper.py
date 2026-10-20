@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -57,11 +58,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import external_freshness  # noqa: E402
 import record_external_result  # noqa: E402
+from external_surface_plugin import marker_name  # noqa: E402
 from paid_call_budget import BudgetExceeded, PaidCallBudget  # noqa: E402
 
 TAG_FORMATS = {
     "bracket": lambda surface: f"[{surface}]",
-    "marker": lambda surface: f"mark.{surface}",
+    "marker": lambda surface: f"mark.{marker_name(surface)}",
 }
 
 
@@ -218,7 +220,15 @@ def read_results_file(path: Path, surfaces: list[str], tag=TAG_FORMATS["bracket"
 
 def tagged_in(tests_dir: Path, glob: str = "*.external.test.ts", tag=TAG_FORMATS["bracket"]):
     texts = [p.read_text(encoding="utf-8") for p in tests_dir.glob(glob)]
-    return lambda surface: any(tag(surface) in t for t in texts)
+
+    def has_tag(surface: str) -> bool:
+        # A tag ending in a name character must not be the start of a longer one:
+        # "mark.anthropic" is not found in "mark.anthropic_python".
+        wanted = tag(surface)
+        pattern = re.escape(wanted) + (r"(?!\w)" if wanted[-1].isalnum() or wanted[-1] == "_" else "")
+        return any(re.search(pattern, t) for t in texts)
+
+    return has_tag
 
 
 def paid_calls_for(manifest: dict, only: list[str]) -> dict[str, int]:

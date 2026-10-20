@@ -18,16 +18,21 @@
 // below are free - same reasoning as scan.weekly.test.ts's corrupted-image
 // case: Anthropic rejects an undecodable image at the request layer
 // before any model call happens.
+//
+// The photos and the expected values come from the file this suite shares
+// with the Python vision-client suite (tests/test_claude_vision_external.py,
+// surface anthropic-python): test-vectors/vision_external_cases.json plus the
+// "photos" entries of ExampleDocs/golden_fields.json, loaded by
+// ./visionCases.ts. src/visionSharedFixtures.test.ts fails if this file stops
+// loading them. A wrong value fails here, not only a missing field name.
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
 import { extractFields } from "../claude.ts";
 import { DOC_TYPE_CONFIG } from "../docTypes.ts";
-import type { DocType } from "../docTypes.ts";
-import type { MediaType } from "../types.ts";
+import { REPO_ROOT, loadVisionCases, newMismatches } from "./visionCases.ts";
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 if (!ANTHROPIC_API_KEY) {
@@ -36,28 +41,7 @@ if (!ANTHROPIC_API_KEY) {
   );
 }
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
-
-// One real fixture per doc type (same files tests/test_claude_vision_external.py's
-// pass-pool journey uses on the Python side), with the field names each
-// platform's parser actually reads from the forced tool_use output.
-const FIXTURES: Record<DocType, { file: string; mediaType: MediaType; expectFields: string[] }> = {
-  truck_tag: {
-    file: "AddieTag.jpg",
-    mediaType: "image/jpeg",
-    expectFields: ["manufacturer", "gvwr_lb", "front_gawr_lb", "rear_gawr_lb"],
-  },
-  trailer_tag: {
-    file: "GooseTag.jpg",
-    mediaType: "image/jpeg",
-    expectFields: ["manufacturer", "gvwr_lb", "gawr_per_axle_lb", "uvw_lb"],
-  },
-  scale_ticket: {
-    file: "CatScale-Ticket.jpg",
-    mediaType: "image/jpeg",
-    expectFields: ["location_name", "scale_number", "steer_axle_lb", "gross_weight_lb"],
-  },
-};
+const CASES = loadVisionCases();
 
 test("[anthropic] reachable and authenticated: a bad key is rejected with a real auth error", async () => {
   await assert.rejects(
@@ -80,16 +64,22 @@ test("[anthropic] error contract: a corrupted/undecodable image is rejected befo
   });
 });
 
-for (const [docType, fixture] of Object.entries(FIXTURES) as [DocType, (typeof FIXTURES)[DocType]][]) {
-  test(`[anthropic] response shape and journey: a real ${docType} scan returns the fields its parser reads`, async () => {
-    const imagePath = path.join(REPO_ROOT, "ExampleDocs", fixture.file);
-    const imageBase64 = readFileSync(imagePath, "base64");
+for (const visionCase of CASES) {
+  test(`[anthropic] response shape and journey: a real ${visionCase.docType} scan returns the golden values`, async () => {
+    const imageBase64 = readFileSync(visionCase.imagePath, "base64");
 
-    const fields = await extractFields(ANTHROPIC_API_KEY, imageBase64, fixture.mediaType, DOC_TYPE_CONFIG[docType]);
+    const fields = await extractFields(
+      ANTHROPIC_API_KEY,
+      imageBase64,
+      visionCase.mediaType,
+      DOC_TYPE_CONFIG[visionCase.docType],
+    );
 
     assert.equal(typeof fields, "object");
-    for (const field of fixture.expectFields) {
-      assert.ok(field in fields, `expected "${field}" in ${JSON.stringify(fields)}`);
-    }
+    assert.deepEqual(
+      newMismatches(visionCase, fields),
+      {},
+      `${visionCase.image} (${visionCase.docType}): extracted value differs from the golden value and is not in known_ocr_limitations`,
+    );
   });
 }

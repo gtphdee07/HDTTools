@@ -20,10 +20,13 @@ import sys
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPTS))
+
+from external_surface_plugin import marker_name  # noqa: E402
 
 
 def command(surfaces: list[str], results_file: str | None) -> list[str]:
-    expr = "external" if not surfaces else "external and (" + " or ".join(surfaces) + ")"
+    expr = "external" if not surfaces else "external and (" + " or ".join(marker_name(s) for s in surfaces) + ")"
     cmd = [sys.executable, "-m", "pytest", "-m", expr, "-p", "external_surface_plugin"]
     if results_file:
         cmd.append(f"--junitxml={results_file}")

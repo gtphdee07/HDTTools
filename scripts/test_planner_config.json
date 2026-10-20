@@ -131,6 +131,22 @@
       "shares_with": ["streamlit"]
     },
     {
+      "name": "vision-fixtures",
+      "context": "core",
+      "files": [
+        "test-vectors/vision_external_cases.json",
+        "test-vectors/vision_tool_schemas.json",
+        "scripts/vision_cases.py",
+        "workers/scan-proxy/src/docTypes.ts",
+        "workers/scan-proxy/src/external/visionCases.ts"
+      ],
+      "tests": ["tests/test_vision_shared_fixtures.py"],
+      "shares_with": ["scan-proxy"],
+      "shares_tests": {
+        "scan-proxy": "node --test workers/scan-proxy/src/visionSharedFixtures.test.ts"
+      }
+    },
+    {
       "name": "scan-proxy-http",
       "context": "scan-proxy",
       "files": ["workers/scan-proxy/src/index.ts", "workers/scan-proxy/src/request.ts", "workers/scan-proxy/src/types.ts"],

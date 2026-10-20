@@ -36,7 +36,7 @@ testpaths = ["tests"]
 addopts = '--strict-markers --dist loadgroup --maxprocesses=8 -m "not external"'
 markers = [
     "external: live provider calls (billed); run on purpose with `pytest -m external`",
-    "anthropic: External suite surface tag (ADR-0008) for the Claude vision API boundary",
+    "anthropic_python: External suite surface tag (ADR-0008) for the Python Claude vision client (surface anthropic-python)",
     "minor: function and interaction tests; unmarked means Major",
     "slow: real-photo OCR, the combinatorial sweep, and the tooling tests that start pytest, npm, Node or Gradle (the planner owes them only when what they check changes)",
     "core: tests for src/hdttools and the scripts/ tooling",

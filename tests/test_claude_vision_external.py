@@ -1,9 +1,9 @@
-"""External-tier test for the "anthropic" surface (ADR-0008; originally
-added for roadmap item #16, now also this surface's per-surface suite for
-issue #37). Real Claude vision API calls against
+"""External-tier test for the "anthropic-python" surface (ADR-0008;
+originally added for roadmap item #16 and issue #37, split from the Worker's
+"anthropic" surface by #143). Real Claude vision API calls against
 `src/hdttools/vision_client.py` - the Python consumer of the Anthropic
-API (the other is `workers/scan-proxy/src/claude.ts`, covered by its own
-`[anthropic]`-tagged suite at
+API (the other is `workers/scan-proxy/src/claude.ts`, its own "anthropic"
+surface, covered by the `[anthropic]`-tagged suite at
 `workers/scan-proxy/src/external/anthropic.external.test.ts`). Fails the
 run entirely when no real `ANTHROPIC_API_KEY` is set (the autouse
 `_require_api_key` fixture below) - per ADR-0008, a missing key is a
@@ -19,10 +19,12 @@ Depth coverage (ADR-0008's four depths), per surface:
   undecodable image is rejected at the request layer before any model
   call happens).
 - response shape + full journey: the parametrized
-  test_claude_vision_extraction_matches_documented_pass_pool_state below,
-  one real doc_type per pass-pool entry (3 total, matching
-  scripts/external_manifest/surfaces/anthropic.json's max_paid_calls).
-  This is the only billed case in this file.
+  test_claude_vision_extraction_matches_the_shared_golden_values below,
+  one fixed image per doc_type from the shared
+  test-vectors/vision_external_cases.json (3 total, matching
+  scripts/external_manifest/surfaces/anthropic-python.json's max_paid_calls).
+  The Worker's External test reads the same file, so both sides look at the
+  same photos. This is the only billed case in this file.
 
 Real cost: exactly one real, billed Claude vision API call per doc type
 (this project's own precedent: ~$0.01-0.03 per call, see roadmap items
@@ -50,9 +52,7 @@ expensive to re-run.
 
 from __future__ import annotations
 
-import mimetypes
 import os
-import random
 import sys
 from pathlib import Path
 
@@ -66,9 +66,9 @@ _EXAMPLE_DOCS = Path(__file__).resolve().parent.parent / "ExampleDocs"
 _REPO_ROOT = _EXAMPLE_DOCS.parent
 
 _SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
-sys.path.insert(0, str(_SCRIPTS_DIR))  # pass_pool.py is a standalone module, like coverage_lib.py
+sys.path.insert(0, str(_SCRIPTS_DIR))  # vision_cases.py is a standalone module, like pass_pool.py
 
-import pass_pool  # noqa: E402
+import vision_cases  # noqa: E402
 
 _EXTRACTORS = {
     "truck_tag": truck_tag.extract_truck_tag_fields,
@@ -76,11 +76,19 @@ _EXTRACTORS = {
     "scale_ticket": scale_ticket.extract_scale_ticket_fields,
 }
 
-# "anthropic" is this surface's own pytest marker (ADR-0008: "marker for
-# pytest" is the surface tag) - scripts/run_external_pytest.py's
-# EXTERNAL_SURFACES filtering matches on it via a plain "mark.anthropic"
-# text search (scripts/external_wrapper.py's tagged_in, --tag-style marker).
-pytestmark = [pytest.mark.external, pytest.mark.anthropic]
+# The cases both Claude vision External tests run, from the one shared file
+# (test-vectors/vision_external_cases.json) plus the expected values in
+# ExampleDocs/golden_fields.json. tests/test_vision_shared_fixtures.py fails
+# if this test stops reading them.
+CASES = vision_cases.load_cases()
+
+# "anthropic-python" is this surface's name; its pytest marker is the same
+# name with the hyphen as an underscore (ADR-0008: "marker for pytest" is the
+# surface tag, and a hyphen is not valid in `pytest.mark.<name>`).
+# scripts/run_external_pytest.py's EXTERNAL_SURFACES filtering matches on it,
+# and scripts/external_wrapper.py's tagged_in finds it by the plain
+# "mark.anthropic_python" text (--tag-style marker).
+pytestmark = [pytest.mark.external, pytest.mark.anthropic_python]
 
 
 @pytest.fixture(autouse=True)
@@ -138,26 +146,16 @@ def test_a_corrupted_image_is_rejected_before_any_billed_model_call():
         extract_via_claude(image_bytes=truncated, media_type="image/png", **_PROBE_TOOL)
 
 
-@pytest.mark.parametrize("doc_type", sorted(_EXTRACTORS))
-def test_claude_vision_extraction_matches_documented_pass_pool_state(doc_type):
-    filename, photo = pass_pool.resolve_pass_pool_image(doc_type, rng=random.Random())
-    image_path = _EXAMPLE_DOCS / filename
-    media_type = mimetypes.guess_type(image_path.name)[0] or "image/jpeg"
+@pytest.mark.parametrize("case", CASES, ids=lambda case: case.doc_type)
+def test_claude_vision_extraction_matches_the_shared_golden_values(case):
+    extracted = _EXTRACTORS[case.doc_type](case.image_path.read_bytes(), case.media_type)
 
-    extracted = _EXTRACTORS[doc_type](image_path.read_bytes(), media_type)
-
-    known_limitations = set(photo.get("known_ocr_limitations", {}))
-    mismatched = {
-        field: (extracted.get(field), expected)
-        for field, expected in photo["fields"].items()
-        if extracted.get(field) != expected
-    }
-    new_mismatches = set(mismatched) - known_limitations
+    new_mismatches = vision_cases.new_mismatches(case, extracted)
 
     assert not new_mismatches, (
-        f"{filename} ({doc_type}): real Claude vision extraction produced a mismatch "
+        f"{case.image} ({case.doc_type}): real Claude vision extraction produced a mismatch "
         f"not covered by documented known_ocr_limitations - "
-        f"{ {field: mismatched[field] for field in new_mismatches} } "
+        f"{new_mismatches} "
         f"(got, expected). This is a real regression in the Claude-vision extraction "
         f"path itself (vision_client.extract_via_claude or the matching "
         f"extract_*_fields function), not an accuracy-tuning signal."

@@ -23,7 +23,7 @@
 // with the Python vision-client suite (tests/test_claude_vision_external.py,
 // surface anthropic-python): test-vectors/vision_external_cases.json plus the
 // "photos" entries of ExampleDocs/golden_fields.json, loaded by
-// ./visionCases.ts. src/visionSharedFixtures.test.ts fails if this file stops
+// ../visionCases.ts. src/visionSharedFixtures.test.ts fails if this file stops
 // loading them. A wrong value fails here, not only a missing field name.
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
@@ -32,7 +32,7 @@ import path from "node:path";
 import test from "node:test";
 import { extractFields } from "../claude.ts";
 import { DOC_TYPE_CONFIG } from "../docTypes.ts";
-import { REPO_ROOT, loadVisionCases, newMismatches } from "./visionCases.ts";
+import { REPO_ROOT, loadVisionCases, newMismatches } from "../visionCases.ts";
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 if (!ANTHROPIC_API_KEY) {

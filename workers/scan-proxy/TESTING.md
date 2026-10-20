@@ -447,7 +447,7 @@ journey, one real scan per doc type. The photos come from the file this suite
 shares with the Python suite, `test-vectors/vision_external_cases.json`
 (`AddieTag.jpg` for truck_tag, `GooseTag.jpg` for trailer_tag,
 `CatScale-Ticket.jpg` for scale_ticket today), loaded by
-`src/external/visionCases.ts`, and each extracted **value** is compared to the
+`src/visionCases.ts`, and each extracted **value** is compared to the
 expected one in the matching `photos` entry of `ExampleDocs/golden_fields.json`
 (`newMismatches`): a mismatch on a field named in `known_ocr_limitations` is
 tolerated, any other mismatch, or a field missing from the answer, fails, the

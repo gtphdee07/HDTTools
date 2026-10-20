@@ -41,6 +41,7 @@
     "core": {
       "marker": "core",
       "paths": ["src/hdttools/", "scripts/"],
+      "live_globs": ["tests/test_*_external.py"],
       "file": "uv run pytest {file}",
       "test_for": ["tests/test_{stem}.py"],
       "context": "uv run pytest -n auto -m \"core and not slow\"",
@@ -138,7 +139,7 @@
         "test-vectors/vision_tool_schemas.json",
         "scripts/vision_cases.py",
         "workers/scan-proxy/src/docTypes.ts",
-        "workers/scan-proxy/src/external/visionCases.ts"
+        "workers/scan-proxy/src/visionCases.ts"
       ],
       "tests": ["tests/test_vision_shared_fixtures.py"],
       "shares_with": ["scan-proxy"],

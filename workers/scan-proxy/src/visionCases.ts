@@ -8,10 +8,10 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { DocType } from "../docTypes.ts";
-import type { MediaType } from "../types.ts";
+import type { DocType } from "./docTypes.ts";
+import type { MediaType } from "./types.ts";
 
-export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
+export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const EXAMPLE_DOCS = path.join(REPO_ROOT, "ExampleDocs");
 
 export interface VisionCase {

@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { DOC_TYPE_CONFIG } from "./docTypes.ts";
-import { REPO_ROOT, loadVisionCases, newMismatches } from "./external/visionCases.ts";
+import { REPO_ROOT, loadVisionCases, newMismatches } from "./visionCases.ts";
 
 const EXTERNAL_DIR = path.join(import.meta.dirname, "external");
 
@@ -52,13 +52,13 @@ test("[sanity] a shared vision case's golden entry is for the same doc type as t
 
 test("[sanity] the Worker's External test takes its cases from the shared file and keeps no list of its own", () => {
   const source = readFileSync(path.join(EXTERNAL_DIR, "anthropic.external.test.ts"), "utf8");
-  assert.match(source, /import\s*\{[^}]*\bloadVisionCases\b[^}]*\}\s*from\s*"\.\/visionCases\.ts"/);
+  assert.match(source, /import\s*\{[^}]*\bloadVisionCases\b[^}]*\}\s*from\s*"\.\.\/visionCases\.ts"/);
   assert.match(source, /=\s*loadVisionCases\(\)/);
   assert.doesNotMatch(source, /\.jpe?g"/, "the External test names a photo of its own");
   assert.doesNotMatch(source, /"ExampleDocs"/, "the External test reads ExampleDocs itself");
   assert.doesNotMatch(source, /expectFields/, "the External test keeps its own list of fields");
 
-  const loader = readFileSync(path.join(EXTERNAL_DIR, "visionCases.ts"), "utf8");
+  const loader = readFileSync(path.join(import.meta.dirname, "visionCases.ts"), "utf8");
   assert.ok(loader.includes("vision_external_cases.json"));
   assert.ok(loader.includes("golden_fields.json"));
 });

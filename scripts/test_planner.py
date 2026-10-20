@@ -366,8 +366,10 @@ def _plan_issue(result, files, config, markers, touched, interface_changed, inte
     python_names = {n for n, c in contexts.items() if _is_python(c)}
     for f in files:
         if _is_python_test(f):
-            # a test file the branch deleted is changed but has nothing left to run
-            if allowed(f) & python_names and file_exists(f):
+            # a test file the branch deleted is changed but has nothing left to run; a live one is
+            # deselected by the default `-m "not external"`, so it runs through the External suite
+            if (allowed(f) & python_names and file_exists(f)
+                    and not any(_matches(f, c.get("live_globs", [])) for c in contexts.values())):
                 result.add(Selection("targeted", f"uv run pytest {f}", "changed test file, runs first"))
             continue
         for name, ctx in contexts.items():

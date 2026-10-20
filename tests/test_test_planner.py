@@ -507,6 +507,15 @@ def test_real_config_ui_logic_and_the_coverage_allow_list_need_no_device():
         assert not [c for c in commands(_real_plan([changed])) if "connectedDebugAndroidTest" in c], changed
 
 
+def test_real_config_the_paid_weekly_device_test_and_number_formatting_need_no_device_run():
+    # A changed *WeeklyTest.kt must never map to its own class-level command: that class is the paid live scan.
+    for changed in (
+        "android/app/src/androidTest/java/com/rigcheck/app/ui/screens/PaywallScreenWeeklyTest.kt",
+        REAL_MAIN + "ui/format/NumberFormatting.kt",
+    ):
+        assert not [c for c in commands(_real_plan([changed])) if "connectedDebugAndroidTest" in c], changed
+
+
 # Stale surfaces
 
 def test_session_end_runs_a_stale_free_surface_of_a_touched_context():

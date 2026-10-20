@@ -4,7 +4,7 @@ Working notes for the test-first round (map #49, decisions on #58 and #59, writt
 
 ## Where the round stands
 
-Merged: #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124. Nothing is in build. Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #141 (rename the `api` package; the same work as #136).
+Merged: #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136 (#141 closed as its duplicate). In build when this was written: #131 (Android JVM) and #142 (wrapper). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #141 (rename the `api` package; the same work as #136).
 
 **Nothing since #128 has been pushed.** About 38 local commits on `MPSkills` wait. The pre-push gate from #43 is live in the main checkout: a push of `MPSkills` that touches `web/`, `workers/scan-proxy/` or `android/` is refused while an External surface is stale. **It passes now** (checked 2026-10-19 after the run below: `uv run scripts/external_gate.py check --platform web --platform scan-proxy --platform android` reports 10 surfaces, none stale). Before pushing, read the texts in the "Scan outcomes" entry of `workers/scan-proxy/CONTEXT.md`: #115 changed Web's user-facing scan wording, and Web goes live on push. Later tickets that change watched files will make surfaces stale again; `uv run scripts/external_freshness.py` says which. The honest ways through a stale gate are a real run, or `EXTERNAL_GATE_FORCE_REASON="why" git push` (records an override on the dashboard; commit the changed `scripts/dashboard_data/external_status.json`).
 
@@ -58,9 +58,8 @@ Two build lanes can run in parallel; tickets inside a lane share files, so they 
 
 | Step | Lane A (planner and Python) | Lane B (tooling) |
 |---|---|---|
-| done | #134, #129, #128, #66, #135 | #130, #41, #43, #44, #115 |
-| next | #136 move `breakdown.py` (before #45) | #142 wrapper records fail for a surface it does not own, then #67 session-start debt report (needs #66, merged) |
-| then | #133 session-end command (needs #130 and #66, both merged; also an Android ticket) | |
+| done | #134, #129, #128, #66, #135, #136 | #130, #41, #43, #44, #115 |
+| next | #133 session-end command (also an Android ticket) | #142 wrapper records fail for a surface it does not own, then #67 session-start debt report (needs #66, merged) |
 
 Android lane (one at a time; the single emulator): done #127, #84, #124. Next #131 and #137 (JVM only, can run beside any other lane), then #75, #39, #40 together (two paid scans, owner confirms first).
 

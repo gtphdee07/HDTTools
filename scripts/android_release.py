@@ -72,6 +72,9 @@ INSTRUMENTED_STEP = {
 # google-play-billing - currently "planned", so stale_surfaces() can't
 # report them as blocking yet) have no Android-side runner at all; #39/#40
 # need to add one before this step can cover them once they go "active".
+# Nothing here records a result itself: the Worker's wrapper does, and only for
+# the surfaces it owns (#142), so a chain surface another wrapper owns
+# (supabase-auth: web) is reported by it, never recorded as a false fail.
 EXTERNAL_STEP = {
     "name": "Worker External suite (stale surfaces in Android's chain)",
     "command": powershell_command("test-external.ps1"),

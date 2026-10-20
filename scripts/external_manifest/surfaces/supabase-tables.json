@@ -2,6 +2,7 @@
   "name": "supabase-tables",
   "status": "active",
   "platforms": ["web"],
+  "owner": "web",
   "boundary_files": ["web/src/supabaseGarage.ts", "supabase/migrations/20261010000000_garage_rigs.sql"],
   "dependency_pins": ["web/package.json", "web/package-lock.json"],
   "registry_packages": [

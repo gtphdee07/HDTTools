@@ -2,6 +2,7 @@
   "name": "revenuecat-rest",
   "status": "active",
   "platforms": ["scan-proxy", "android"],
+  "owner": "scan-proxy",
   "boundary_files": ["workers/scan-proxy/src/revenuecat.ts"],
   "dependency_pins": [],
   "registry_packages": [],

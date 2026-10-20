@@ -657,6 +657,87 @@ def test_every_real_manifest_entry_is_well_formed():
             assert isinstance(pkg["package"], str) and pkg["package"], f"{name}: package must be a non-empty string"
 
 
+# --- surface owners (#142) ---------------------------------------------------
+
+
+def entry(name, owner="web", platforms=("web", "scan-proxy"), status="active"):
+    surface = {"name": name, "status": status, "platforms": list(platforms)}
+    if owner is not None:
+        surface["owner"] = owner
+    return surface
+
+
+def manifest_of(*entries):
+    return {"surfaces": {e["name"]: e for e in entries}}
+
+
+def test_a_surface_owned_by_one_of_its_platforms_has_no_owner_problem():
+    assert ef.owner_problems(manifest_of(entry("a", owner="web"), entry("b", owner="scan-proxy"))) == []
+
+
+def test_a_surface_with_no_owner_is_reported_by_name():
+    problems = ef.owner_problems(manifest_of(entry("a", owner="web"), entry("orphan", owner=None)))
+    assert len(problems) == 1 and "orphan" in problems[0] and "no owner" in problems[0]
+
+
+def test_a_blank_owner_counts_as_no_owner():
+    assert "no owner" in ef.owner_problems(manifest_of(entry("a", owner="")))[0]
+
+
+def test_a_surface_claimed_by_two_wrappers_is_reported():
+    problems = ef.owner_problems(manifest_of(entry("shared", owner=["web", "scan-proxy"])))
+    assert len(problems) == 1 and "shared" in problems[0] and "several" in problems[0]
+
+
+def test_an_owner_that_is_not_one_of_the_surfaces_platforms_is_reported():
+    problems = ef.owner_problems(manifest_of(entry("a", owner="core", platforms=("web",))))
+    assert len(problems) == 1 and "a" in problems[0] and "'core'" in problems[0]
+
+
+def test_planned_surfaces_need_an_owner_too():
+    assert ef.owner_problems(manifest_of(entry("later", owner=None, status="planned")))
+
+
+def test_the_real_manifest_gives_every_surface_exactly_one_owner():
+    assert ef.owner_problems(ef.load_manifest()) == []
+
+
+def test_the_real_manifest_assigns_the_shared_surfaces_to_the_wrapper_that_has_their_tests():
+    surfaces = ef.load_manifest()["surfaces"]
+    owners = {n: surfaces[n]["owner"] for n in surfaces}
+    for name in ("scan-proxy-worker", "worker-token-verification", "revenuecat-rest", "anthropic"):
+        assert owners[name] == "scan-proxy", name
+    assert owners["supabase-auth"] == "web"
+
+
+def test_cli_reports_an_ownerless_surface_and_exits_1_even_when_nothing_is_stale(tmp_path, capsys):
+    status_file = tmp_path / "s.json"
+    status_file.write_text(json.dumps(status_with(passed(), name="a")))
+    code = ef.main(
+        ["--surface", "a"],
+        manifest=manifest_of(entry("a", owner=None), entry("b", owner="web")),
+        git=FakeGit(),
+        registry=FakeRegistry(QUIET_REGISTRY),
+        status_file=status_file,
+    )
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "no owner" in out
+
+
+def test_cli_json_lists_owner_problems(tmp_path, capsys):
+    code = ef.main(
+        ["--json"],
+        manifest=manifest_of(entry("a", owner=None)),
+        git=FakeGit(),
+        registry=FakeRegistry(QUIET_REGISTRY),
+        status_file=tmp_path / "missing.json",
+    )
+    out = json.loads(capsys.readouterr().out)
+    assert code == 1
+    assert len(out["problems"]) == 1 and "a" in out["problems"][0]
+
+
 # --- Maven fetchers (#54) ---------------------------------------------------
 
 MAVEN_PKG = "com.revenuecat.purchases:purchases"

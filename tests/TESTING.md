@@ -77,10 +77,13 @@ platforms `core`/`streamlit`/`scan-proxy`) is covered by
 `test_claude_vision_external.py`, every case tagged with the `anthropic`
 marker (ADR-0008's "marker for pytest" convention — matched by
 `scripts/external_wrapper.py`'s `tagged_in(..., tag_style="marker")` as a
-`mark.anthropic` text search). Run it via the repo-root `.\test-external.ps1`
-(only when the surface is stale per `scripts/external_freshness.py`;
-records pass/fail per surface through `scripts/run_external_pytest.py`) or
-directly with `uv run pytest -m "external and anthropic"`. Needs
+`mark.anthropic` text search). **Since #142 the manifest names `scan-proxy`
+as the surface's one owner**, so `workers\scan-proxy\test-external.ps1` runs
+and records `anthropic` (through the Worker's TypeScript tests) and the
+repo-root `.\test-external.ps1` only prints "run workers\scan-proxy\test-external.ps1"
+for it: this Python suite is no longer reached by a wrapper. Run it directly
+with `uv run pytest -m "external and anthropic"` (paid, needs the owner's
+go-ahead; a direct run records nothing). Needs
 `ANTHROPIC_API_KEY`; a missing key fails the run (an autouse
 `_require_api_key` fixture calls `pytest.fail`, not `pytest.skip` - a skip
 would exit 0 and the wrapper would record a false `pass` for a surface

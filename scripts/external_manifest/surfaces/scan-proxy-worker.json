@@ -2,6 +2,7 @@
   "name": "scan-proxy-worker",
   "status": "active",
   "platforms": ["scan-proxy", "android", "web"],
+  "owner": "scan-proxy",
   "boundary_files": [
     "workers/scan-proxy/src/index.ts",
     "workers/scan-proxy/src/http.ts",

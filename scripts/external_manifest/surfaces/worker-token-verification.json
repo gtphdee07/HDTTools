@@ -2,6 +2,7 @@
   "name": "worker-token-verification",
   "status": "active",
   "platforms": ["scan-proxy", "android", "web"],
+  "owner": "scan-proxy",
   "boundary_files": ["workers/scan-proxy/src/auth.ts", "workers/scan-proxy/src/accountTokenContract.ts"],
   "dependency_pins": ["workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json"],
   "registry_packages": [],

@@ -281,6 +281,11 @@ def test_a_live_python_test_file_is_not_planned_as_an_offline_file():
     assert any("live" in n for n in plan.notes)
 
 
+def test_a_live_python_test_file_is_not_planned_at_session_end_either():
+    plan = plan_all(["tests/test_claude_vision_external.py"], level="session")
+    assert all("test_claude_vision_external" not in c for c in commands(plan))
+
+
 # Session end: the scope ladder
 
 def test_session_end_one_small_diff_runs_the_file():

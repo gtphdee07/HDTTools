@@ -432,7 +432,8 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
     contexts = config["contexts"]
     python_names = tuple(n for n, c in contexts.items() if _is_python(c))
     for f in files:
-        if _is_python_test(f) and set(python_names) & allowed(f) and file_exists(f):
+        if (_is_python_test(f) and set(python_names) & allowed(f) and file_exists(f)
+                and not any(_matches(f, c.get("live_globs", [])) for c in contexts.values())):
             result.add(Selection("file", f"uv run pytest {f}", "changed test file", contexts=python_names))
     if not touched and not downstream:
         return

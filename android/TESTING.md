@@ -18,6 +18,8 @@ names changed.
 |---|---|
 | One file | `./gradlew testDebugUnitTest --tests com.rigcheck.app.domain.BreakdownTest` (run from `android/`) |
 | Whole context (JVM, no device) | `./gradlew testDebugUnitTest` |
+| Session end (JVM tests, coverage floor, detekt; no device) | `uv run scripts/android_session_end.py` (run from the repo root) |
+| One instrumented class (needs the emulator) | `./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.rigcheck.app.ui.screens.AccountScreenTest` (run from `android/`) |
 | Full release | `.\release.ps1` (run from `android/`) |
 | Instrumented suite N times in a row | `uv run scripts/android_suite_loop.py --runs 5` (run from the repo root; needs the emulator, see below) |
 
@@ -27,6 +29,41 @@ tests (`connectedDebugAndroidTest`) and the weekly External suite are never
 part of either command. A command check
 (`tests/test_context_test_commands.py`, #52) reads Gradle's dry-run task
 graph and confirms no device task is in it.
+
+### Session end (#133)
+
+An Android ticket ends with one command and no device:
+
+```
+uv run scripts/android_session_end.py        # from the repo root, about 45 s warm
+```
+
+It runs three steps in this order and stops at the first that fails, with that
+step's exit code and its name: (1) the JVM unit tests, which also write the JVM
+coverage report; (2) the decision-logic coverage floor over that report
+(`scripts/coverage_gate.py --android-logic`, the 95% floor and allow-list from
+#130, `coverage-logic.toml`); (3) `detekt`. Its steps and their order are
+tested with a fake runner in `tests/test_android_session_end.py`.
+
+**Which instrumented tests a diff needs.** The test planner
+(`uv run scripts/test_planner.py --level session`) lists the session-end
+command for any Android diff, and adds instrumented tests only by these rules
+(the lists are `device_covered`, `device_free`, `device_full` and
+`device_classes` for the `android` context in `scripts/test_planner_config.json`):
+
+| The diff touches | The planner lists |
+|---|---|
+| `domain/`, `data/`, or UI logic (`ui/Scan*.kt`, `ui/format/`); a `*WeeklyTest.kt` | the session-end command only, no instrumented test |
+| A screen (`ui/screens/*Screen.kt`), a component (`ui/components/*.kt`), or an instrumented test class | the class-level command (the `-Pandroid.testInstrumentationRunnerArguments.class=` form above) for that screen's, component's or class's `androidTest` test class only; several changed files give one command with the classes comma-separated |
+| `RigCheckNavHost`, `RigCheckViewModel`, `MainActivity`, `AndroidManifest.xml` | the full instrumented suite |
+| Anything the mapping cannot place: an `androidTest/` helper, a screen or component with no test class of its own, any other `ui/` file | the full instrumented suite (the safe default) |
+
+The full suite wins whenever both it and a class would be listed. A screen
+is mapped to `<Name>Test` in the same package under `androidTest`; add a test
+class with that name and the planner starts using it. At release the planner
+lists the full instrumented suite once; no plan ever lists "N runs in a row"
+(that count stays with the flakiness script above and with tickets about
+flakiness).
 
 ### Release run (#63)
 

@@ -197,9 +197,28 @@ ALL = {
             "paths": ["android/"], "platform": "android",
             "dependency_files": ["android/app/build.gradle.kts"],
             "test_globs": ["android/app/src/test/*"],
-            "device_covered": ["android/app/src/main/java/app/ui/*", "android/app/src/androidTest/*"],
+            "device_covered": [
+                "android/app/src/main/java/app/ui/*", "android/app/src/main/java/app/MainActivity.kt",
+                "android/app/src/main/AndroidManifest.xml", "android/app/src/androidTest/*",
+            ],
+            "device_free": ["android/app/src/main/java/app/ui/Scan*.kt", "android/app/src/androidTest/*WeeklyTest.kt"],
+            "device_full": [
+                "android/app/src/main/java/app/ui/navigation/NavHost.kt", "android/app/src/main/java/app/ui/ViewModel.kt",
+                "android/app/src/main/java/app/MainActivity.kt", "android/app/src/main/AndroidManifest.xml",
+            ],
+            "device_classes": {
+                "command": "gradle-device --class {fqcn}",
+                "map": [
+                    {"from": "android/app/src/main/java/app/ui/screens/*Screen.kt",
+                     "test": "android/app/src/androidTest/java/app/ui/screens/{stem}Test.kt"},
+                    {"from": "android/app/src/main/java/app/ui/components/*.kt",
+                     "test": "android/app/src/androidTest/java/app/ui/components/{stem}Test.kt"},
+                    {"from": "android/app/src/androidTest/*Test.kt", "test": "{file}"},
+                ],
+            },
             "commands": {"minor": "gradle-jvm", "major": "gradle-jvm"},
             "device": "gradle-device",
+            "session_end": "android-session-end",
             "file": "gradle-jvm --tests {fqcn}", "test_for": ["{dir}/{stem}Test.kt"],
             "dir_rewrite": ["src/main/", "src/test/"],
             "context": "gradle-jvm",
@@ -230,6 +249,9 @@ EXISTING_TESTS = {
     "web/src/api.test.ts",
     "workers/scan-proxy/src/scan.test.ts",
     "android/app/src/test/java/app/domain/BreakdownTest.kt",
+    "android/app/src/androidTest/java/app/ui/screens/HomeScreenTest.kt",
+    "android/app/src/androidTest/java/app/ui/screens/DetailScreenTest.kt",
+    "android/app/src/androidTest/java/app/ui/components/ChipTest.kt",
 }
 
 
@@ -284,9 +306,7 @@ def test_session_end_one_small_diff_runs_the_file():
 def test_session_end_file_scope_finds_each_contexts_test_for_the_file():
     assert commands(plan_all(["web/src/api.ts"], "session")) == ["web-test -- src/api.test.ts"]
     assert commands(plan_all(["workers/scan-proxy/src/scan.ts"], "session")) == ["proxy-file src/scan.test.ts"]
-    assert commands(plan_all(["android/app/src/main/java/app/domain/Breakdown.kt"], "session")) == [
-        "gradle-jvm --tests app.domain.BreakdownTest"
-    ]
+    assert commands(plan_all(["android/app/src/main/java/app/domain/Breakdown.kt"], "session")) == ["android-session-end"]
 
 
 def test_session_end_file_without_a_test_falls_back_to_the_context():
@@ -305,7 +325,7 @@ def test_session_end_larger_single_context_diff_runs_the_context():
 def test_session_end_diff_across_contexts_runs_the_application():
     plan = plan_all(["web/src/api.ts", "streamlit_app/app.py"], "session")
     assert plan.scope == "application"
-    assert commands(plan) == ["uv run pytest", "web-test", "proxy-test", "gradle-jvm"]
+    assert commands(plan) == ["uv run pytest", "web-test", "proxy-test", "android-session-end"]
 
 
 def test_session_end_dependency_change_is_at_least_a_context_run():
@@ -335,6 +355,165 @@ def test_android_diff_touching_device_covered_code_adds_instrumented_tests():
 
 def test_changing_an_instrumented_test_runs_the_instrumented_tests():
     assert "gradle-device" in commands(plan_all(["android/app/src/androidTest/java/app/ui/HomeTest.kt"]))
+
+
+# Android session end and instrumented tests chosen by what changed (#133)
+
+MAIN = "android/app/src/main/java/app/"
+ANDROID_TEST = "android/app/src/androidTest/java/app/"
+SESSION_END = "android-session-end"
+FULL = "gradle-device"
+HOME_CLASS = "gradle-device --class app.ui.screens.HomeScreenTest"
+
+
+def test_android_session_end_for_a_jvm_only_diff_is_the_session_end_command_and_no_instrumented_test():
+    for changed in (MAIN + "domain/Breakdown.kt", MAIN + "data/Repo.kt", MAIN + "ui/ScanRetry.kt"):
+        plan = plan_all([changed], "session")
+        assert commands(plan) == [SESSION_END], changed
+
+
+def test_android_session_end_command_replaces_the_file_context_and_application_runs():
+    one_file = plan_all([MAIN + "domain/Breakdown.kt"], "session")
+    several = plan_all([MAIN + "domain/A.kt", MAIN + "domain/B.kt", MAIN + "domain/C.kt"], "session")
+    spanning = plan_all([MAIN + "domain/Breakdown.kt", "web/src/api.ts"], "session")
+    assert (one_file.scope, commands(one_file)) == ("file", [SESSION_END])
+    assert (several.scope, commands(several)) == ("context", [SESSION_END])
+    assert spanning.scope == "application" and SESSION_END in commands(spanning)
+    assert "gradle-jvm" not in commands(spanning)
+
+
+def test_android_session_end_runs_for_a_downstream_android_change_too():
+    plan = plan_all(["src/hdttools/breakdown.py"], "session")
+    assert SESSION_END in commands(plan)
+
+
+def test_android_issue_level_keeps_its_jvm_command():
+    assert commands(plan_all([MAIN + "domain/Breakdown.kt"])) == ["gradle-jvm"]
+
+
+def test_one_screen_file_lists_only_that_screens_instrumented_class():
+    for level in ("issue", "session"):
+        plan = plan_all([MAIN + "ui/screens/HomeScreen.kt"], level)
+        assert [c for c in commands(plan) if "gradle-device" in c] == [HOME_CLASS], level
+        assert [s.kind for s in plan.selections if s.command == HOME_CLASS] == ["device"]
+
+
+def test_one_component_file_lists_only_that_components_instrumented_class():
+    plan = plan_all([MAIN + "ui/components/Chip.kt"], "session")
+    assert [c for c in commands(plan) if "gradle-device" in c] == ["gradle-device --class app.ui.components.ChipTest"]
+
+
+def test_two_changed_screens_share_one_class_command():
+    plan = plan_all([MAIN + "ui/screens/HomeScreen.kt", MAIN + "ui/screens/DetailScreen.kt"], "session")
+    assert [c for c in commands(plan) if "gradle-device" in c] == [
+        "gradle-device --class app.ui.screens.HomeScreenTest,app.ui.screens.DetailScreenTest"
+    ]
+
+
+def test_a_changed_instrumented_test_class_runs_that_class():
+    plan = plan_all([ANDROID_TEST + "ui/screens/HomeScreenTest.kt"], "session")
+    assert [c for c in commands(plan) if "gradle-device" in c] == [HOME_CLASS]
+
+
+@pytest.mark.parametrize("changed", [
+    MAIN + "ui/navigation/NavHost.kt",
+    MAIN + "ui/ViewModel.kt",
+    MAIN + "MainActivity.kt",
+    "android/app/src/main/AndroidManifest.xml",
+])
+def test_navigation_view_model_activity_and_manifest_list_the_full_instrumented_suite(changed):
+    for level in ("issue", "session"):
+        assert [c for c in commands(plan_all([changed], level)) if "gradle-device" in c] == [FULL], level
+
+
+def test_the_full_suite_wins_over_a_class_when_both_are_owed():
+    plan = plan_all([MAIN + "ui/screens/HomeScreen.kt", MAIN + "ui/navigation/NavHost.kt"], "session")
+    assert [c for c in commands(plan) if "gradle-device" in c] == [FULL]
+
+
+@pytest.mark.parametrize("changed", [
+    ANDROID_TEST + "testsupport/Helper.kt",            # an androidTest helper, not a test class
+    MAIN + "ui/screens/GhostScreen.kt",                # a screen with no instrumented class
+    MAIN + "ui/Home.kt",                               # a ui file no mapping entry places
+    MAIN + "ui/components/Orphan.kt",                  # a component with no instrumented class
+])
+def test_a_changed_file_the_mapping_cannot_place_lists_the_full_suite(changed):
+    assert [c for c in commands(plan_all([changed], "session")) if "gradle-device" in c] == [FULL]
+
+
+def test_a_class_command_never_hides_an_unplaceable_file_next_to_it():
+    plan = plan_all([MAIN + "ui/screens/HomeScreen.kt", MAIN + "ui/Home.kt"], "session")
+    assert [c for c in commands(plan) if "gradle-device" in c] == [FULL]
+
+
+def test_a_live_weekly_test_class_is_not_planned_as_an_instrumented_run():
+    plan = plan_all([ANDROID_TEST + "ui/screens/PaywallScreenWeeklyTest.kt"], "session")
+    assert not [c for c in commands(plan) if "gradle-device" in c]
+
+
+def test_release_lists_the_full_instrumented_suite_once_and_no_level_lists_a_repeat_count():
+    release = plan_all([], "release", release_contexts=["android"])
+    assert commands(release).count(FULL) == 1
+    every_plan = [release] + [
+        plan_all([f], level) for level in ("issue", "session", "release")
+        for f in (MAIN + "ui/navigation/NavHost.kt", MAIN + "ui/screens/HomeScreen.kt", MAIN + "domain/Breakdown.kt")
+    ]
+    for plan in every_plan:
+        assert not [c for c in commands(plan) if "--runs" in c or "suite_loop" in c or "times" in c.lower()]
+
+
+# The real config and the real source tree (the fake map above only proves the rule).
+
+def _real_plan(files, level="session"):
+    return tp.plan(files, tp.load_config(), tp.load_markers(), level=level)
+
+
+REAL_MAIN = "android/app/src/main/java/com/rigcheck/app/"
+REAL_FULL = "android/gradlew -p android connectedDebugAndroidTest"
+
+
+def test_real_config_session_end_for_domain_code_is_the_documented_command():
+    assert commands(_real_plan([REAL_MAIN + "domain/Breakdown.kt"])) == ["uv run scripts/android_session_end.py"]
+
+
+def test_real_config_maps_a_screen_to_its_androidtest_class_with_the_documented_gradle_property():
+    plan = _real_plan([REAL_MAIN + "ui/screens/AccountScreen.kt"])
+    assert REAL_FULL + " -Pandroid.testInstrumentationRunnerArguments.class=com.rigcheck.app.ui.screens.AccountScreenTest" in commands(plan)
+    assert REAL_FULL not in commands(plan)
+
+
+def test_real_config_places_every_screen_that_has_an_instrumented_class_and_nothing_else_by_accident():
+    screens = sorted(p.name for p in (ROOT / "android/app/src/main/java/com/rigcheck/app/ui/screens").glob("*Screen.kt"))
+    for screen in screens:
+        plan = _real_plan([REAL_MAIN + f"ui/screens/{screen}"])
+        has_class = (ROOT / "android/app/src/androidTest/java/com/rigcheck/app/ui/screens" / screen.replace(".kt", "Test.kt")).is_file()
+        device = [c for c in commands(plan) if "connectedDebugAndroidTest" in c]
+        assert device == ([c for c in device if ".class=" in c] if has_class else [REAL_FULL]), screen
+
+
+@pytest.mark.parametrize("changed", [
+    "ui/navigation/RigCheckNavHost.kt", "ui/RigCheckViewModel.kt", "MainActivity.kt",
+])
+def test_real_config_lists_the_full_suite_for_navigation_view_model_and_activity(changed):
+    assert REAL_FULL in commands(_real_plan([REAL_MAIN + changed]))
+
+
+def test_real_config_lists_the_full_suite_for_the_manifest():
+    assert REAL_FULL in commands(_real_plan(["android/app/src/main/AndroidManifest.xml"]))
+
+
+def test_real_config_ui_logic_and_the_coverage_allow_list_need_no_device():
+    for changed in (REAL_MAIN + "ui/ScanRetry.kt", REAL_MAIN + "data/ScanAttempts.kt", "android/coverage-logic.toml"):
+        assert not [c for c in commands(_real_plan([changed])) if "connectedDebugAndroidTest" in c], changed
+
+
+def test_real_config_the_paid_weekly_device_test_and_number_formatting_need_no_device_run():
+    # A changed *WeeklyTest.kt must never map to its own class-level command: that class is the paid live scan.
+    for changed in (
+        "android/app/src/androidTest/java/com/rigcheck/app/ui/screens/PaywallScreenWeeklyTest.kt",
+        REAL_MAIN + "ui/format/NumberFormatting.kt",
+    ):
+        assert not [c for c in commands(_real_plan([changed])) if "connectedDebugAndroidTest" in c], changed
 
 
 # Stale surfaces
@@ -423,7 +602,7 @@ def test_each_listed_suite_is_marked_passed_or_run_and_the_run_list_omits_the_pa
     marks = {v.selection.command: v.passed_tree for v in tp.verdicts(plan, passed.get)}
 
     assert marks["web-test"] == "a" * 40
-    assert marks["gradle-jvm"] is None
+    assert marks["android-session-end"] is None
     assert [s.command for s in tp.run_list(plan, passed.get)] == [c for c in commands(plan) if c != "web-test"]
 
 

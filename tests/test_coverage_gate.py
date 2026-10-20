@@ -224,3 +224,35 @@ def test_the_tracked_scope_file_loads_and_lists_the_decision_logic():
     assert "com.rigcheck.app.data.AccountManager" in scope.allow
     assert "com.rigcheck.app.ui.screens" in scope.waived_packages
     assert all(reason.strip() for reason in scope.waived_classes.values())
+
+
+# --- Android logic floor on its own (#133) ----------------------------------
+
+
+def _android_only(tmp_path, monkeypatch, missed_a):
+    monkeypatch.setattr(coverage_gate, "ANDROID_JVM_REPORT", _report(tmp_path, missed_a=missed_a))
+    monkeypatch.setattr(coverage_gate, "ANDROID_LOGIC_SCOPE", _scope_file(tmp_path))
+    for getter in ("get_android_device_result", "get_android_merged_result", "get_python_result",
+                   "get_web_result", "get_scan_proxy_result"):
+        monkeypatch.setattr(coverage_gate, getter, _fail_if_called)
+    monkeypatch.setattr(coverage_gate, "_run", _fail_if_called)
+
+
+def test_android_logic_flag_checks_only_the_decision_logic_floor_and_passes(tmp_path, monkeypatch, capsys):
+    _android_only(tmp_path, monkeypatch, missed_a=8)
+    assert coverage_gate.main(["--android-logic"]) == 0
+    assert "PASS" in capsys.readouterr().out
+
+
+def test_android_logic_flag_exits_non_zero_below_the_floor(tmp_path, monkeypatch, capsys):
+    _android_only(tmp_path, monkeypatch, missed_a=12)
+    assert coverage_gate.main(["--android-logic"]) == 1
+    assert "below the 95.0% floor" in capsys.readouterr().out
+
+
+def test_android_logic_flag_reads_the_report_it_is_given_and_never_rebuilds_it(tmp_path, monkeypatch, capsys):
+    # The session-end command builds the report in its own first step; this check must not run Gradle again.
+    _android_only(tmp_path, monkeypatch, missed_a=0)
+    monkeypatch.setattr(coverage_gate, "ANDROID_JVM_REPORT", tmp_path / "no-report")
+    assert coverage_gate.main(["--android-logic"]) == 1
+    assert "No report" in capsys.readouterr().out

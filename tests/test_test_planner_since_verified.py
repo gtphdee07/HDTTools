@@ -388,7 +388,7 @@ def test_real_config_docs_only_changes_plan_nothing():
 
 def test_real_config_a_scan_proxy_http_change_queues_the_android_unit_tests():
     assert "android/gradlew -p android testDebugUnitTest" in real_commands(["workers/scan-proxy/src/request.ts"])
-    assert "android/gradlew -p android testDebugUnitTest" in real_commands(["workers/scan-proxy/src/request.ts"], "session")
+    assert "uv run scripts/android_session_end.py" in real_commands(["workers/scan-proxy/src/request.ts"], "session")
 
 
 def test_real_config_a_core_change_queues_the_streamlit_tests_because_streamlit_imports_core():

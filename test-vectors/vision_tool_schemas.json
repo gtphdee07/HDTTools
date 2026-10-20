@@ -1,0 +1,27 @@
+{
+  "_readme": "The Claude vision tool each doc type forces, as the Python readers (src/hdttools/truck_tag.py, trailer_tag.py, scale_ticket.py) and the Worker (workers/scan-proxy/src/docTypes.ts) must both send: the tool name, and the property names and required names of its input schema (a nested object, such as a tire, is listed under 'nested'). Prompt wording, descriptions and property types are not compared, so each side can still tune its prompt. The free offline tests tests/test_vision_shared_fixtures.py and workers/scan-proxy/src/visionSharedFixtures.test.ts each check their own side against this file. Change a schema on one side and these fail until the other side and this file follow.",
+  "tire": {
+    "properties": ["tire", "rim", "cold_pressure_kpa", "cold_pressure_psi", "dual"],
+    "required": ["tire", "rim", "cold_pressure_kpa", "cold_pressure_psi", "dual"]
+  },
+  "doc_types": {
+    "truck_tag": {
+      "tool_name": "record_truck_tag",
+      "properties": ["manufacturer", "date", "vin", "vehicle_type", "gvwr_kg", "gvwr_lb", "front_gawr_kg", "front_gawr_lb", "rear_gawr_kg", "rear_gawr_lb", "front_tire", "rear_tire"],
+      "required": ["manufacturer", "date", "vin", "vehicle_type", "gvwr_kg", "gvwr_lb", "front_gawr_kg", "front_gawr_lb", "rear_gawr_kg", "rear_gawr_lb", "front_tire", "rear_tire"],
+      "nested": ["front_tire", "rear_tire"]
+    },
+    "trailer_tag": {
+      "tool_name": "record_trailer_tag",
+      "properties": ["manufacturer", "date", "vin", "vehicle_type", "gvwr_kg", "gvwr_lb", "gawr_per_axle_kg", "gawr_per_axle_lb", "uvw_kg", "uvw_lb", "tire"],
+      "required": ["manufacturer", "date", "vin", "vehicle_type", "gvwr_kg", "gvwr_lb", "gawr_per_axle_kg", "gawr_per_axle_lb", "uvw_kg", "uvw_lb", "tire"],
+      "nested": ["tire"]
+    },
+    "scale_ticket": {
+      "tool_name": "record_scale_ticket",
+      "properties": ["ticket_number", "weigh_number", "date", "time", "scale_number", "location_name", "location_address", "city", "state", "steer_axle_lb", "drive_axle_lb", "trailer_axle_lb", "gross_weight_lb", "company", "commodity", "tractor_number", "trailer_number"],
+      "required": ["ticket_number", "weigh_number", "date", "time", "scale_number", "location_name", "location_address", "city", "state", "steer_axle_lb", "drive_axle_lb", "trailer_axle_lb", "gross_weight_lb", "company", "commodity", "tractor_number", "trailer_number"],
+      "nested": []
+    }
+  }
+}

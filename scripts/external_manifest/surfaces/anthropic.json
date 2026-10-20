@@ -1,13 +1,12 @@
 {
   "name": "anthropic",
   "status": "active",
-  "platforms": ["scan-proxy", "core", "streamlit"],
+  "platforms": ["scan-proxy"],
   "owner": "scan-proxy",
-  "boundary_files": ["workers/scan-proxy/src/claude.ts", "src/hdttools/vision_client.py"],
-  "dependency_pins": ["workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json", "pyproject.toml", "uv.lock"],
+  "boundary_files": ["workers/scan-proxy/src/claude.ts"],
+  "dependency_pins": ["workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json"],
   "registry_packages": [
-    {"ecosystem": "npm", "package": "@anthropic-ai/sdk"},
-    {"ecosystem": "pypi", "package": "anthropic"}
+    {"ecosystem": "npm", "package": "@anthropic-ai/sdk"}
   ],
   "max_paid_calls": 3
 }

@@ -166,6 +166,7 @@ ALL = {
     "contexts": {
         "core": {
             "marker": "core", "paths": ["src/hdttools/", "scripts/"],
+            "live_globs": ["tests/test_*_external.py"],
             "file": "uv run pytest {file}", "test_for": ["tests/test_{stem}.py"],
             "context": "uv run pytest -m core", "application": "uv run pytest",
         },
@@ -293,6 +294,18 @@ def test_live_test_files_are_never_planned():
     plan = plan_all(["web/src/external/auth.external.test.ts"])
     assert all("external" not in c for c in commands(plan))
     assert any("live" in n for n in plan.notes)
+
+
+def test_a_live_python_test_file_is_not_planned_as_an_offline_file():
+    # pytest deselects `external` by default, so `uv run pytest <file>` would run nothing (exit 5).
+    plan = plan_all(["tests/test_claude_vision_external.py"])
+    assert all("test_claude_vision_external" not in c for c in commands(plan))
+    assert any("live" in n for n in plan.notes)
+
+
+def test_a_live_python_test_file_is_not_planned_at_session_end_either():
+    plan = plan_all(["tests/test_claude_vision_external.py"], level="session")
+    assert all("test_claude_vision_external" not in c for c in commands(plan))
 
 
 # Session end: the scope ladder

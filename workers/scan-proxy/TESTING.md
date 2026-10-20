@@ -222,6 +222,18 @@ tests also included in the Minor category.
 - **toolName values are unique across doc types** — no two doc types
   could be confused with each other by Claude's tool-choice mechanism.
 
+### `visionSharedFixtures.test.ts` — the Worker and the Python vision client stay in step (#143)
+
+Free, no Claude call. Reads `test-vectors/vision_external_cases.json`,
+`test-vectors/vision_tool_schemas.json` and `ExampleDocs/golden_fields.json`;
+the Python half is `tests/test_vision_shared_fixtures.py`.
+
+- `[sanity]` **every shared case points at an image that exists and a golden entry that exists** (and the golden entry is for the case's doc type).
+- `[sanity]` **the shared cases cover every doc type exactly once**.
+- `[sanity]` **the Worker's External test takes its cases from the shared file and keeps no list of its own** — `anthropic.external.test.ts` must import and call `loadVisionCases`, name no `.jpg` and read no `ExampleDocs` itself.
+- `[sanity]` **a wrong value is a mismatch, a missing field is a mismatch, only a `known_ocr_limitations` field is tolerated** — the comparison `newMismatches` the External test fails on.
+- `[sanity]` **every doc type sends the tool name, property names and required names the Python readers send** — `DOC_TYPE_CONFIG` against the shared schema file, including the nested tire objects.
+
 ### `request.test.ts` — `parseScanRequest`'s validation
 
 - `[sanity]` **parses a fully valid request** — the whole-object happy path.
@@ -413,27 +425,36 @@ Release tier's direct-boundary check; the through-the-Worker cases in
 `src/weekly/` exercise `scan.ts` behaviour, not the REST contract, so they are
 left untagged. Neither feeds the freshness record.
 
-## Per-surface External suite: `anthropic` (ADR-0008, #37)
+## Per-surface External suite: `anthropic` (ADR-0008, #37, #143)
 
-The `anthropic` surface (boundary files `src/claude.ts` here and
-`src/hdttools/vision_client.py` on the Python side; shared manifest entry at
-`scripts/external_manifest/surfaces/anthropic.json`, platforms `scan-proxy`/
-`core`/`streamlit`) has its own suite in
+The `anthropic` surface (boundary file `src/claude.ts`, pins `package.json` and
+`package-lock.json`, the npm `@anthropic-ai/sdk` watch; manifest entry
+`scripts/external_manifest/surfaces/anthropic.json`, platform and owner
+`scan-proxy`) has its own suite in
 `src/external/anthropic.external.test.ts`, every test tagged `[anthropic]`.
-Run it the same way as `revenuecat-rest` above: `.\test-external.ps1` (only
-when stale) or `npm run test:external`. Needs `ANTHROPIC_API_KEY`; a missing
-key fails the run, and `-Skip` records `skipped`.
+Since #143 it is the Worker's surface only: the Python `vision_client.py` is its
+own surface, `anthropic-python`, owned by the repo-root `test-external.ps1`
+(see `tests/TESTING.md`). Run this one the same way as `revenuecat-rest` above:
+`.\test-external.ps1` (only when stale) or `npm run test:external`. Needs
+`ANTHROPIC_API_KEY`; a missing key fails the run, and `-Skip` records `skipped`.
 
 Depths covered, calling `extractFields` directly (never through the deployed
 Worker or RevenueCat — that stays the Release/Weekly tiers' job): reachable
 and authenticated (a bad key gets a real 401); error contract (a
 corrupted/undecodable image is rejected before any model call, free, same
 reasoning as `scan.weekly.test.ts`'s equivalent case); response shape and
-journey, one real scan per doc type against `ExampleDocs/AddieTag.jpg`
-(truck_tag), `GooseTag.jpg` (trailer_tag) and `CatScale-Ticket.jpg`
-(scale_ticket), asserting the forced tool_use output carries the field names
-each parser (TS `docTypes.ts` consumers / Python `truck_tag.py`/
-`trailer_tag.py`/`scale_ticket.py`) actually reads. **Real cost: exactly 3
+journey, one real scan per doc type. The photos come from the file this suite
+shares with the Python suite, `test-vectors/vision_external_cases.json`
+(`AddieTag.jpg` for truck_tag, `GooseTag.jpg` for trailer_tag,
+`CatScale-Ticket.jpg` for scale_ticket today), loaded by
+`src/visionCases.ts`, and each extracted **value** is compared to the
+expected one in the matching `photos` entry of `ExampleDocs/golden_fields.json`
+(`newMismatches`): a mismatch on a field named in `known_ocr_limitations` is
+tolerated, any other mismatch, or a field missing from the answer, fails, the
+same rule the Python test applies. (Before #143 this suite only checked that
+certain field names existed, so a wrong value passed.) The first real run may
+fail if the Worker's prompt reads a value differently from Python's; that is a
+finding to report, not a reason to loosen the comparison. **Real cost: exactly 3
 billed Claude calls per run** (one per doc type) — matches the manifest's
 `max_paid_calls: 3`, enforced by `scripts/external_wrapper.py`'s paid-call
 budget gate (`scripts/paid_call_budget.py`), which asks for confirmation
@@ -443,6 +464,16 @@ self-reported number nothing here independently checks against the real
 calls a suite makes, so `.\test-external.ps1 -MaxPaidCalls N` (mirroring
 `.\release.ps1`'s own flag) lets an operator set a genuinely independent,
 tighter cap for a given run instead.
+
+The free `src/visionSharedFixtures.test.ts` (part of `npm test`, no Claude
+call) is the offline half: it fails if a shared case names a missing photo or
+golden entry, a doc type has no case, `anthropic.external.test.ts` stops loading
+`visionCases.ts` or keeps a photo list of its own, `newMismatches` stops
+treating a wrong value as a failure or a documented limitation as tolerated, or
+a doc type's tool name, schema property names or required names differ from
+`test-vectors/vision_tool_schemas.json` (which the Python readers are checked
+against in `tests/test_vision_shared_fixtures.py`). Prompt wording is not
+compared.
 
 Review of the existing suites against the four depths (#37): `release/
 scan.release.test.ts` already covers reachable-and-authenticated and the

@@ -191,6 +191,47 @@ def test_a_surface_a_wrapper_owns_with_no_tagged_tests_is_still_recorded_fail():
     assert "No external tests tagged [auth]; recording fail." in r.lines
 
 
+# The Claude surfaces after #143: the Worker's and the Python client's, one owner each.
+CLAUDE_MANIFEST = {
+    "surfaces": {
+        "anthropic": {"name": "anthropic", "platforms": ["scan-proxy"], "owner": "scan-proxy"},
+        "anthropic-python": {"name": "anthropic-python", "platforms": ["core", "streamlit"], "owner": "core"},
+    }
+}
+
+
+def test_the_core_wrapper_runs_and_records_the_python_surface_and_leaves_the_workers_alone():
+    r = Run("core", manifest=CLAUDE_MANIFEST, tagged=("anthropic-python",))
+    assert r.code == 0
+    assert r.ran == [["anthropic-python"]]
+    assert r.recorded == [("anthropic-python", "pass")]
+    assert not any("owned by" in line for line in r.lines)
+
+
+def test_the_worker_wrapper_does_not_run_record_or_mention_the_python_surface():
+    r = Run("scan-proxy", manifest=CLAUDE_MANIFEST, tagged=("anthropic",))
+    assert r.code == 0
+    assert r.ran == [["anthropic"]]
+    assert r.recorded == [("anthropic", "pass")]
+    assert not any("anthropic-python" in line for line in r.lines)
+
+
+def test_the_core_wrapper_records_the_python_surface_fail_when_nothing_is_tagged_for_it():
+    r = Run("core", manifest=CLAUDE_MANIFEST, tagged=())
+    assert r.code == 1
+    assert r.recorded == [("anthropic-python", "fail")]
+    assert "No external tests tagged [anthropic-python]; recording fail." in r.lines
+
+
+def test_in_the_real_manifest_only_the_core_wrapper_has_the_python_claude_surface():
+    manifest = ew.external_freshness.load_manifest()
+    assert "anthropic-python" in ew.external_freshness.surfaces_for_platform(manifest, "core")
+    assert "anthropic-python" not in ew.external_freshness.surfaces_for_platform(manifest, "scan-proxy")
+    assert "anthropic" not in ew.external_freshness.surfaces_for_platform(manifest, "core")
+    assert ew.foreign_owners(manifest, "core") == {}
+    assert ew.foreign_owners(manifest, "scan-proxy") == {}
+
+
 def test_a_manifest_with_an_ownerless_surface_stops_the_wrapper_before_anything_runs():
     manifest = {"surfaces": {**MANIFEST["surfaces"], "new": {"name": "new", "platforms": ["web"]}}}
     r = Run("web", manifest=manifest, tagged=("site", "auth", "new"))
@@ -237,6 +278,15 @@ def test_tagged_in_supports_a_custom_glob_and_pytest_marker_tag_style(tmp_path):
     has = ew.tagged_in(tmp_path, "test_*_external.py", ew.TAG_FORMATS["marker"])
     assert has("anthropic") is True
     assert has("supabase") is False
+
+
+def test_a_hyphenated_surface_is_tagged_by_its_underscored_pytest_marker(tmp_path):
+    (tmp_path / "test_vision_external.py").write_text(
+        "pytestmark = [pytest.mark.external, pytest.mark.anthropic_python]"
+    )
+    has = ew.tagged_in(tmp_path, "test_*_external.py", ew.TAG_FORMATS["marker"])
+    assert has("anthropic-python") is True
+    assert has("anthropic") is False  # "mark.anthropic" alone is not "mark.anthropic_python"'s surface
 
 
 class BudgetHarness(Harness):

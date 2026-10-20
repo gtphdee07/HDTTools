@@ -34,7 +34,7 @@ its odd tests individually. No test files moved.
 | Marker | Meaning |
 |---|---|
 | `external` | Live provider calls. `test_claude_vision_external.py` (billed) and `test_maven_registries_external.py` (free registry reads, #54; deliberately not marked `core`, so `-m core` stays offline). |
-| `anthropic` | External-suite surface tag (ADR-0008) for the Claude vision API boundary; always paired with `external` on the same tests. |
+| `anthropic_python` | External-suite surface tag (ADR-0008) for the `anthropic-python` surface (the Python Claude vision client); always paired with `external` on the same tests. The marker is the surface name with the hyphen as an underscore. |
 | `minor` | Function and interaction tests. **Unmarked for `minor` means Major.** |
 | `slow` | Real-photo OCR, the Streamlit walkthrough, the combinatorial sweep, and the tooling tests that start pytest, npm, Node or Gradle (#129). The planner owes them only when the diff touches what they check, and always at release; a bare `uv run pytest` still runs them. See "Python test commands" in the root `TESTING.md`. |
 | `xdist_group` | Not ours (pytest-xdist): `("gradle")` and `("node")` keep the checks that start those tools on one worker under `-n auto` (`--dist loadgroup` is in `addopts`). |
@@ -68,22 +68,24 @@ The earlier real-environment gotcha — this dev machine has
 `ANTHROPIC_API_KEY` set ambiently, so a bare run used to make real billed
 calls (confirmed 2026-09-09) — is closed by the default `-m "not external"`.
 
-## Per-surface External suite: `anthropic` (ADR-0008, #37)
+## Per-surface External suite: `anthropic-python` (ADR-0008, #37, #143)
 
-The `anthropic` surface (boundary files `src/hdttools/vision_client.py`
-here and `workers/scan-proxy/src/claude.ts` on the Worker side; shared
-manifest entry at `scripts/external_manifest/surfaces/anthropic.json`,
-platforms `core`/`streamlit`/`scan-proxy`) is covered by
-`test_claude_vision_external.py`, every case tagged with the `anthropic`
-marker (ADR-0008's "marker for pytest" convention — matched by
-`scripts/external_wrapper.py`'s `tagged_in(..., tag_style="marker")` as a
-`mark.anthropic` text search). **Since #142 the manifest names `scan-proxy`
-as the surface's one owner**, so `workers\scan-proxy\test-external.ps1` runs
-and records `anthropic` (through the Worker's TypeScript tests) and the
-repo-root `.\test-external.ps1` only prints "run workers\scan-proxy\test-external.ps1"
-for it: this Python suite is no longer reached by a wrapper. Run it directly
-with `uv run pytest -m "external and anthropic"` (paid, needs the owner's
-go-ahead; a direct run records nothing). Needs
+The `anthropic-python` surface (boundary file `src/hdttools/vision_client.py`,
+pins `pyproject.toml` and `uv.lock`, the PyPI `anthropic` watch; manifest entry
+`scripts/external_manifest/surfaces/anthropic-python.json`, platforms
+`core`/`streamlit`, owner `core`, `max_paid_calls` 3) is covered by
+`test_claude_vision_external.py`, every case tagged with the `anthropic_python`
+marker (ADR-0008's "marker for pytest" convention — the surface name with the
+hyphen as an underscore, matched by `scripts/external_wrapper.py`'s
+`tagged_in(..., tag_style="marker")` as a `mark.anthropic_python` text search).
+The Worker's `claude.ts` is a different surface, `anthropic` (see
+`workers/scan-proxy/TESTING.md`); until #143 the two shared one record, and the
+Worker's run cleared the Python half unseen. **The repo-root
+`.\test-external.ps1` (platform `core`) runs and records `anthropic-python`
+when it is stale**, and the Worker's wrapper does not list it. A direct run is
+`uv run pytest -m "external and anthropic_python"` (paid, needs the owner's
+go-ahead; a direct run records nothing). The new surface has no recorded pass
+until the owner runs it once. Needs
 `ANTHROPIC_API_KEY`; a missing key fails the run (an autouse
 `_require_api_key` fixture calls `pytest.fail`, not `pytest.skip` - a skip
 would exit 0 and the wrapper would record a false `pass` for a surface
@@ -113,10 +115,22 @@ Depths covered: reachable and authenticated
 truncated real image raises `anthropic.BadRequestError` before any model
 call, free, same reasoning as `scan.weekly.test.ts`'s equivalent Worker-side
 case); response shape and full journey
-(`test_claude_vision_extraction_matches_documented_pass_pool_state`,
-parametrized over all three doc types via the existing pass-pool fixtures —
-**the only billed part of this file: exactly 3 real calls**, matching the
-manifest's `max_paid_calls: 3`).
+(`test_claude_vision_extraction_matches_the_shared_golden_values`,
+parametrized over the cases in `test-vectors/vision_external_cases.json` —
+one fixed photo per doc type, the same three photos the Worker's suite uses,
+each compared value by value to its `ExampleDocs/golden_fields.json` entry
+through `scripts/vision_cases.py`; a mismatch on a `known_ocr_limitations`
+field is tolerated, any other fails. **The only billed part of this file:
+exactly 3 real calls**, matching the manifest's `max_paid_calls: 3`). The
+random pass-pool pick stays for the free Tesseract tests that use it
+(`scripts/pass_pool.py`), not here.
+
+`test_vision_shared_fixtures.py` is the free offline half (no Claude call): it
+fails if a shared case names a missing photo or golden entry, if a doc type has
+no case, if `test_claude_vision_external.py` stops running exactly the shared
+cases, or if a reader's tool name, property names or required names differ from
+`test-vectors/vision_tool_schemas.json` (the Worker checks the same file in
+`workers/scan-proxy/src/visionSharedFixtures.test.ts`).
 
 Review of the pre-existing file against the four depths (#37): before this
 ticket, it covered only response shape and journey (added for roadmap item
@@ -214,7 +228,8 @@ library API remain.
 | `test_ocr_common.py` | Function | New 2026-09-09 (see `ARCHIVE_WEB_STREAMLIT.md`'s item #16 entry).
 `get_ocr_backend()` — defaults to `"tesseract"` when `HDTTOOLS_OCR_BACKEND` is unset, reads an explicit `"tesseract"`/`"claude"` value, and raises `ValueError` (fail loud, no silent fallback) on anything else. |
 | `test_ocr_output_key_contracts.py` | **Interface** | Every `fields.py`/`FIELDS` name must map to a real `_parse_fields()` key (2026-08-22): `streamlit_app/app.py`'s `_extract_fields` keep-filter silently drops a field that has no matching OCR key, and `FIELDS` deliberately shows only a curated subset of what OCR extracts, so the check runs in this one direction. Excludes the known manual-only fields (`standalone_weight_lb`, `axle_count`). Calls `_parse_fields("")` — the full key set is structurally present regardless of match success, so no synthetic label text is needed. The opposite direction (every OCR key declared on the FastAPI response models) went with the FastAPI app (#135). |
-| `test_claude_vision_external.py` | **External** | New 2026-09-09 — the first External-tier test on this platform (see "Event-based tiers" above). `@pytest.mark.skipif`'d unless a real `ANTHROPIC_API_KEY` is set; one real Claude vision call per doc type against a random pass-pool image (`scripts/pass_pool.py`/`scripts/vehicle_discovery.py`, item #13's existing infra), asserting no *new* mismatch against `golden_fields.json`'s documented fields beyond what `known_ocr_limitations` already records (a deliberately looser tolerance than `test_pass_pool_regression.py`'s strict equality — see that file's own docstring for why). |
+| `test_claude_vision_external.py` | **External** | New 2026-09-09 — the first External-tier test on this platform (see "Event-based tiers" above). `@pytest.mark.skipif`'d unless a real `ANTHROPIC_API_KEY` is set; one real Claude vision call per doc type, since #143 against the fixed photo the shared `test-vectors/vision_external_cases.json` names for it (not a random pass-pool pick), asserting no *new* mismatch against `golden_fields.json`'s documented fields beyond what `known_ocr_limitations` already records (a deliberately looser tolerance than `test_pass_pool_regression.py`'s strict equality — see that file's own docstring for why). Surface `anthropic-python`. |
+| `test_vision_shared_fixtures.py` | **Cross-platform interface** | New 2026-10-20 (#143) — free drift checks for the two Claude vision implementations: every case in `test-vectors/vision_external_cases.json` has an existing photo and `golden_fields.json` entry and every doc type has a case; `test_claude_vision_external.py` runs exactly those cases; the golden-value comparison rule; and each reader's tool name and schema property/required names against `test-vectors/vision_tool_schemas.json`. The Worker's `visionSharedFixtures.test.ts` runs the same checks on its side. |
 | `test_coverage_gate.py` | Function | New 2026-08-24. `../scripts/coverage_gate.py`'s `PlatformResult.passed` baseline-floor logic, loaded via `importlib` since the script lives outside the `hdttools` package. The report parsers themselves moved to `coverage_lib.py` 2026-08-24 (item #7) — see `test_coverage_lib.py` below. The `get_*_result` functions that actually shell out to each platform's toolchain (gradlew/pytest/npm) are deliberately not unit-tested here — thin I/O glue, exercised for real by the script's own manual runs (see `ARCHIVE_TESTING.md`). |
 | `test_coverage_lib.py` | Function | New 2026-08-24 (roadmap item #7). `../scripts/coverage_lib.py`'s four pure coverage-report parsers (`parse_android_report`/`parse_python_report`/`parse_web_report`/`parse_scan_proxy_output`), shared by `coverage_gate.py` and `generate_dashboard.py` — extracted from `test_coverage_gate.py` when the parsers themselves moved out of that script. |
 | `test_dashboard_lib.py` | Function | Extended 2026-10-19 (#44): failed/skipped counts, the per-surface list (every state, planned reads "not covered"). Extended 2026-10-04 (#49): surfaces column, per-file Python coverage, snapshot rows, results note. New 2026-08-24 (roadmap item #7). `../scripts/dashboard_lib.py`'s `color_for_percent` threshold banding, `parse_junit_xml` (real schema differences across pytest/Vitest/Android/Node's JUnit XML output — see that module's own docstring), `format_surface_cell`, and `render_dashboard_svg` (well-formedness + content checks, not a pixel-level snapshot). |

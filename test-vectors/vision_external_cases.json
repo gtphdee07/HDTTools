@@ -1,0 +1,8 @@
+{
+  "_readme": "The cases both Claude vision External tests run: tests/test_claude_vision_external.py (Python, surface anthropic-python) and workers/scan-proxy/src/external/anthropic.external.test.ts (the Worker, surface anthropic). One case per doc type, so each side makes one paid call per doc type and both look at the same photo. 'image' is a file name in ExampleDocs/. 'golden' is the key of an entry in the 'photos' section of ExampleDocs/golden_fields.json, which holds the expected field values and the known_ocr_limitations; the expected values are not copied here, so they cannot drift. A mismatch on a field named in known_ocr_limitations is tolerated, any other mismatch fails. The free offline tests tests/test_vision_shared_fixtures.py and workers/scan-proxy/src/visionSharedFixtures.test.ts check that every case points at an image and a golden entry that exist, that every doc type has a case, and that both external tests still read this file.",
+  "cases": [
+    {"doc_type": "truck_tag", "image": "AddieTag.jpg", "golden": "AddieTag.jpg"},
+    {"doc_type": "trailer_tag", "image": "GooseTag.jpg", "golden": "GooseTag.jpg"},
+    {"doc_type": "scale_ticket", "image": "CatScale-Ticket.jpg", "golden": "CatScale-Ticket.jpg"}
+  ]
+}

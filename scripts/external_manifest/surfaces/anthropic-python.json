@@ -1,0 +1,12 @@
+{
+  "name": "anthropic-python",
+  "status": "active",
+  "platforms": ["core", "streamlit"],
+  "owner": "core",
+  "boundary_files": ["src/hdttools/vision_client.py"],
+  "dependency_pins": ["pyproject.toml", "uv.lock"],
+  "registry_packages": [
+    {"ecosystem": "pypi", "package": "anthropic"}
+  ],
+  "max_paid_calls": 3
+}

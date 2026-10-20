@@ -139,6 +139,20 @@ Worker's wrapper for its chain, so it records nothing itself; the
 Android-only surfaces (`planned`, owner `android`) need an Android runner
 before they go `active` (#39, #40).
 
+**One surface per piece of our code that calls the provider** (#143). Claude
+is called from two places, so it is two surfaces: `anthropic` is the Worker's
+`claude.ts` (owner `scan-proxy`, platform `scan-proxy`, the npm
+`@anthropic-ai/sdk` pin and watch) and `anthropic-python` is the Python
+`vision_client.py` (owner `core`, platforms `core` and `streamlit`, the PyPI
+`anthropic` pin and watch). Each lists only its own boundary files, pins and
+packages, so changing one side makes only that side stale, and the repo-root
+`test-external.ps1` runs and records the Python surface while the Worker's
+wrapper no longer lists it. A hyphen cannot be part of `pytest.mark.<name>`,
+so a pytest surface's marker is its name with the hyphen as an underscore
+(`anthropic_python`); the wrapper, the runner and the plugin all map it.
+The two suites look at the same photos and the same golden values (see the
+cross-platform fixtures below), so the two implementations cannot drift unseen.
+
 **Depth, per surface:** reachable and authenticated; response shape
 matches our contract; error contracts; a full user journey. A surface
 whose ticket says one of these does not apply records why.
@@ -181,7 +195,8 @@ through-our-own-deployed-service vs. direct-provider-boundary — those
 are different surfaces, not different tiers. `scan-proxy` is the
 concrete example: `scan-proxy-worker` (the deployed Worker itself) and
 `anthropic`/`revenuecat-rest` (the providers it calls) are separate
-surfaces with separate records.
+surfaces with separate records. (The Python vision client's Claude calls are
+a third, `anthropic-python`, owned by `core`.)
 
 ## Regression scoping: Minor vs. Major
 
@@ -310,6 +325,29 @@ client is marked pending for it in the fixture, with the ticket that builds it;
 the test skips and lists it. Changing the fixture changes both clients' queued
 tests (`scripts/test_planner_config.json`, interface `scan-outcomes`).
 
+**Built 2026-10-20 (#143)**, a fifth and sixth, for the two Claude vision
+implementations (the Python readers and the Worker's `docTypes.ts`/`claude.ts`)
+that were ported by hand and checked nowhere against each other.
+`test-vectors/vision_external_cases.json` names, per doc type, the photo in
+`ExampleDocs/` and the entry in `ExampleDocs/golden_fields.json` (`photos`)
+whose expected values it is checked against; the expected values are not
+copied. Both External tests read it and nothing else for their cases:
+`tests/test_claude_vision_external.py` (surface `anthropic-python`) and
+`workers/scan-proxy/src/external/anthropic.external.test.ts` (surface
+`anthropic`), one fixed photo per doc type, so 3 paid calls per surface. Both
+compare **values** field by field: a mismatch on a field in
+`known_ocr_limitations` is tolerated, any other fails.
+`test-vectors/vision_tool_schemas.json` lists, per doc type, the tool name and
+the property and required names of its schema (prompt wording is deliberately
+not compared, so each side can tune its prompt). Two free offline suites check
+both files with no Claude call, and fail if a case names a missing photo or
+golden entry, a doc type has no case, either External test stops loading the
+shared cases, or a side's tool differs from the shared schema:
+`tests/test_vision_shared_fixtures.py` (Python) and
+`workers/scan-proxy/src/visionSharedFixtures.test.ts` (Worker). Changing a
+shared file changes both sides' queued tests
+(`scripts/test_planner_config.json`, interface `vision-fixtures`).
+
 ## Event-based tiers, not time-cadence tiers
 
 Retired 2026-08-24 (full narrative in `ARCHIVE_TESTING.md`): `android/TESTING.md` used to
@@ -351,7 +389,7 @@ really governing these tiers all along.
 Python/Streamlit, even though neither ever had tier language before —
 see `web/TESTING.md`'s and `tests/TESTING.md`'s own "Event-based tiers"
 sections. Python/Streamlit's only real External test is Core's Claude
-vision call (the `anthropic` surface); Web has its own External suite
+vision call (the `anthropic-python` surface); Web has its own External suite
 (`supabase-auth`, `pages-site`, `supabase-tables`, `revenuecat-web-billing`).
 
 ## Coverage gate

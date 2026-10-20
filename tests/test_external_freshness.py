@@ -541,14 +541,70 @@ def test_revenuecat_rest_is_in_the_real_manifest_with_android_and_scan_proxy_cha
     assert {"scan-proxy", "android"} <= set(surface["platforms"])
 
 
-def test_anthropic_is_in_the_real_manifest_active_with_both_consumer_chains():
+def test_anthropic_is_the_workers_surface_and_only_the_workers():
     surface = ef.load_manifest()["surfaces"]["anthropic"]
     assert surface["status"] == "active"
     assert surface["max_paid_calls"] == 3
-    assert "workers/scan-proxy/src/claude.ts" in surface["boundary_files"]
-    assert "src/hdttools/vision_client.py" in surface["boundary_files"]
-    assert {"scan-proxy", "core"} <= set(surface["platforms"])
-    assert {"npm", "pypi"} == {p["ecosystem"] for p in surface["registry_packages"]}
+    assert surface["platforms"] == ["scan-proxy"]
+    assert surface["owner"] == "scan-proxy"
+    assert surface["boundary_files"] == ["workers/scan-proxy/src/claude.ts"]
+    assert surface["dependency_pins"] == ["workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json"]
+    assert surface["registry_packages"] == [{"ecosystem": "npm", "package": "@anthropic-ai/sdk"}]
+
+
+def test_anthropic_python_is_the_python_vision_clients_surface_and_only_that():
+    surface = ef.load_manifest()["surfaces"]["anthropic-python"]
+    assert surface["status"] == "active"
+    assert surface["max_paid_calls"] == 3
+    assert surface["platforms"] == ["core", "streamlit"]
+    assert surface["owner"] == "core"
+    assert surface["boundary_files"] == ["src/hdttools/vision_client.py"]
+    assert surface["dependency_pins"] == ["pyproject.toml", "uv.lock"]
+    assert surface["registry_packages"] == [{"ecosystem": "pypi", "package": "anthropic"}]
+
+
+def test_the_two_claude_surfaces_share_no_platform_boundary_file_pin_or_package():
+    surfaces = ef.load_manifest()["surfaces"]
+    worker, python = surfaces["anthropic"], surfaces["anthropic-python"]
+    for key in ("platforms", "boundary_files", "dependency_pins", "registry_packages"):
+        assert not [item for item in worker[key] if item in python[key]], key
+
+
+def _claude_surfaces_after_a_change_to(changed):
+    manifest = ef.load_manifest()
+    status = {"surfaces": {name: passed(sha="abc123") for name in ("anthropic", "anthropic-python")}}
+    quiet = FakeRegistry({
+        "@anthropic-ai/sdk": {"0.135.0": "2026-09-01T00:00:00Z"},
+        "anthropic": {"1.15.0": "2026-09-01T00:00:00Z"},
+    })
+    verdicts = ef.evaluate(manifest, status, FakeGit(changed=[changed]), quiet, only=["anthropic", "anthropic-python"])
+    return {v.surface: v for v in verdicts}
+
+
+def test_changing_the_python_vision_client_makes_only_the_python_surface_stale():
+    verdicts = _claude_surfaces_after_a_change_to("src/hdttools/vision_client.py")
+    assert verdicts["anthropic-python"].state == "stale"
+    assert any("src/hdttools/vision_client.py" in r for r in verdicts["anthropic-python"].reasons)
+    assert verdicts["anthropic"].state == "fresh"
+
+
+def test_changing_the_workers_claude_module_makes_only_the_worker_surface_stale():
+    verdicts = _claude_surfaces_after_a_change_to("workers/scan-proxy/src/claude.ts")
+    assert verdicts["anthropic"].state == "stale"
+    assert any("workers/scan-proxy/src/claude.ts" in r for r in verdicts["anthropic"].reasons)
+    assert verdicts["anthropic-python"].state == "fresh"
+
+
+@pytest.mark.parametrize("pin", ["pyproject.toml", "uv.lock"])
+def test_a_python_dependency_pin_makes_only_the_python_surface_stale(pin):
+    verdicts = _claude_surfaces_after_a_change_to(pin)
+    assert (verdicts["anthropic-python"].state, verdicts["anthropic"].state) == ("stale", "fresh")
+
+
+@pytest.mark.parametrize("pin", ["workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json"])
+def test_an_npm_dependency_pin_makes_only_the_worker_surface_stale(pin):
+    verdicts = _claude_surfaces_after_a_change_to(pin)
+    assert (verdicts["anthropic"].state, verdicts["anthropic-python"].state) == ("stale", "fresh")
 
 
 def test_pages_site_is_in_the_real_manifest_active_with_the_web_chain():
@@ -708,6 +764,7 @@ def test_the_real_manifest_assigns_the_shared_surfaces_to_the_wrapper_that_has_t
     for name in ("scan-proxy-worker", "worker-token-verification", "revenuecat-rest", "anthropic"):
         assert owners[name] == "scan-proxy", name
     assert owners["supabase-auth"] == "web"
+    assert owners["anthropic-python"] == "core"
 
 
 def test_cli_reports_an_ownerless_surface_and_exits_1_even_when_nothing_is_stale(tmp_path, capsys):

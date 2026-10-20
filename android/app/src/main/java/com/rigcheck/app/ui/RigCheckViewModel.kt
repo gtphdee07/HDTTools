@@ -26,9 +26,10 @@ import com.rigcheck.app.data.googleFailureMessage
 import com.rigcheck.app.data.requestGoogleIdentity
 import com.rigcheck.app.data.standaloneWeightFrom
 import com.rigcheck.app.domain.BreakdownItem
-import com.rigcheck.app.domain.DEFAULT_PIN_WEIGHT_PCT
+import com.rigcheck.app.domain.DEFAULT_PIN_WEIGHT_UI_PERCENT
 import com.rigcheck.app.domain.VerdictInfo
 import com.rigcheck.app.domain.computeBreakdown
+import com.rigcheck.app.domain.pinWeightFraction
 import com.rigcheck.app.domain.model.RecentRig
 import com.rigcheck.app.domain.model.ScaleTicket
 import com.rigcheck.app.domain.model.TrailerTag
@@ -79,9 +80,9 @@ class RigCheckViewModel internal constructor(
         private set
 
     // Whole-number percentage (15-25, default 20), same convention as
-    // Web's wizard.pinWeightPct - converted to a fraction only at the
-    // computeBreakdown call site below.
-    var pinWeightPct by mutableStateOf((DEFAULT_PIN_WEIGHT_PCT * 100).toInt())
+    // Web's wizard.pinWeightPct - converted to a fraction only by
+    // pinWeightFraction at the computeBreakdown call site below.
+    var pinWeightPct by mutableStateOf(DEFAULT_PIN_WEIGHT_UI_PERCENT)
 
     // null = not loaded yet (distinct from a real 0-credit balance).
     var creditBalance by mutableStateOf<Int?>(null)
@@ -122,7 +123,7 @@ class RigCheckViewModel internal constructor(
     private val scanRetry = ScanRetry<Uri>()
 
     val breakdown: List<BreakdownItem>
-        get() = computeBreakdown(truck, trailer, scale, pinWeightPct / 100.0)
+        get() = computeBreakdown(truck, trailer, scale, pinWeightFraction(pinWeightPct))
 
     val verdict: VerdictInfo
         get() = verdictFor(breakdown)
@@ -207,7 +208,7 @@ class RigCheckViewModel internal constructor(
         scale = ScaleTicket()
         scanNoticeState.rigStarted()
         scanSession.rigStarted()
-        pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
+        pinWeightPct = DEFAULT_PIN_WEIGHT_UI_PERCENT
     }
 
     fun startNewRig(nickname: String) {
@@ -217,7 +218,7 @@ class RigCheckViewModel internal constructor(
         scale = ScaleTicket()
         scanNoticeState.rigStarted()
         scanSession.rigStarted()
-        pinWeightPct = (DEFAULT_PIN_WEIGHT_PCT * 100).toInt()
+        pinWeightPct = DEFAULT_PIN_WEIGHT_UI_PERCENT
     }
 
     fun updatePinWeightPct(value: Int) {

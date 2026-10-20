@@ -26,6 +26,7 @@ allow = [
   "com.rigcheck.app.domain.BreakdownKt",
   "com.rigcheck.app.domain.BreakdownItem",
   "com.rigcheck.app.domain.NumberFormattingKt",
+  "com.rigcheck.app.domain.PinWeightKt",
   "com.rigcheck.app.domain.Row",
   "com.rigcheck.app.domain.Tone",
   "com.rigcheck.app.domain.VerdictInfo",

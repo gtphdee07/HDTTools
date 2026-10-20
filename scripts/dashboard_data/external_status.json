@@ -27,12 +27,12 @@
       }
     },
     "pages-site": {
-      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
+      "commit": "e872efd8359c5eaf7b6da725b75191ef9bec81e6",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-19T22:07:00Z",
+      "timestamp": "2026-10-20T13:25:09Z",
       "versions": {
-        "wrangler": "4.151.2"
+        "wrangler": "4.151.3"
       }
     },
     "revenuecat-rest": {
@@ -52,14 +52,14 @@
       }
     },
     "scan-proxy-worker": {
-      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
+      "commit": "e872efd8359c5eaf7b6da725b75191ef9bec81e6",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-19T22:08:25Z",
+      "timestamp": "2026-10-20T13:25:45Z",
       "versions": {
         "@cloudflare/workers-types": "5.20261019.1",
         "workerd": "1.20261019.1",
-        "wrangler": "4.151.2"
+        "wrangler": "4.151.3"
       }
     },
     "supabase-auth": {

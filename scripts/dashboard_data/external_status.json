@@ -17,13 +17,21 @@
   },
   "surfaces": {
     "anthropic": {
-      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
+      "commit": "19ecf2db54a9664f83e96be706bb8a53737230ba",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-19T22:09:17Z",
+      "timestamp": "2026-10-20T22:53:35Z",
       "versions": {
-        "@anthropic-ai/sdk": "0.135.0",
-        "anthropic": "1.15.0"
+        "@anthropic-ai/sdk": "0.137.0"
+      }
+    },
+    "anthropic-python": {
+      "commit": "19ecf2db54a9664f83e96be706bb8a53737230ba",
+      "passed": true,
+      "result": "pass",
+      "timestamp": "2026-10-20T22:54:05Z",
+      "versions": {
+        "anthropic": "1.17.0"
       }
     },
     "pages-site": {

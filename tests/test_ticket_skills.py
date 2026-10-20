@@ -109,6 +109,16 @@ def test_the_finish_skill_runs_the_session_level_only_through_the_ledger_and_not
     assert "re-runs only the suites whose files changed" in text
 
 
+def test_the_finish_skill_asks_before_moving_the_shell_out_of_the_worktree_and_only_after_a_successful_post():
+    text = _skill("ticket-finish")
+    last = text.split("## 7.")[1]
+
+    assert "AskUserQuestion" in last
+    assert "git worktree list --porcelain" in last
+    assert "post` succeeded" in last  # never leave the worktree after a failed post
+    assert "do not check out, merge, pull or edit" in last
+
+
 def test_the_merge_skill_drops_the_blanket_rerun_but_keeps_the_diff_read_criterion_trace_and_mutation_check():
     text = _skill("ticket-merge")
     step_two = text.split("## 2.")[1].split("## 3.")[0]

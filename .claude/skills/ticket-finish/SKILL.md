@@ -52,3 +52,19 @@ uv run scripts/ticket_finish.py post <report.json>
 Read the dry run first. If it refuses, fix the cause. When a criterion truly cannot be met, post `PARTIAL` or `BLOCKED` with the exact criterion and evidence in `not_done`; never loosen a criterion to pass. Never put a secret value in the report.
 
 On success the script deletes the scratch file. Leave the worktree in place for `/ticket-merge`. Do not push and do not close the issue.
+
+## 7. Step out of the worktree
+
+Only after `post` succeeded (a `READY TO MERGE`, `PARTIAL` or `BLOCKED` comment is on the ticket). A session whose shell sits inside `.claude/worktrees/ticket-<N>` keeps Windows from removing that folder at `/ticket-merge close`, and the owner has to run the merge from the main checkout anyway. Ask with `AskUserQuestion` (the answer is theirs, every time):
+
+- Question: "The ticket is posted. Move this session's shell out of the worktree into the main checkout, so the merge can remove the worktree folder cleanly?"
+- Options: "Yes, move to the main checkout" / "No, stay here".
+
+On yes, find the main checkout and change the shell's directory to it. The first entry of `git worktree list --porcelain` is the main checkout:
+
+```
+git worktree list --porcelain
+cd "<the first worktree path>"
+```
+
+Then run `git branch --show-current` there and report the directory and branch. Change the directory only: do not check out, merge, pull or edit anything in the main checkout. On no, do nothing more. If the post did not succeed, skip this step.

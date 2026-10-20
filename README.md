@@ -183,7 +183,7 @@ narrative history of how it got built.
 - `src/hdttools/scale_ticket_ocr.py`, `truck_tag_ocr.py`, `trailer_tag_ocr.py` — local-OCR alternatives
 - `src/hdttools/review_form.py` — generic GUI review/repair form
 - `src/hdttools/database.py` — SQLite persistence (CLI tool only)
-- `src/hdttools/api/breakdown.py` — Python reference for the breakdown math (used by the Streamlit app; the golden-vector fixture ties it to the Web and Android ports)
+- `src/hdttools/breakdown.py` — Python reference for the breakdown math (used by the Streamlit app; the golden-vector fixture ties it to the Web and Android ports)
 - `tests/` — pytest suite
 - `web/` — React + Vite frontend (RigCheck Web)
 - `streamlit_app/` — self-contained Streamlit frontend (RigCheck Desktop)

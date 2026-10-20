@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-from hdttools.api.breakdown import compute_breakdown, verdict_for
+from hdttools.breakdown import compute_breakdown, verdict_for
 
 pytestmark = [pytest.mark.core]
 

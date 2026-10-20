@@ -19,7 +19,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from hdttools import scale_ticket, trailer_tag, truck_tag
-from hdttools.api.breakdown import DEFAULT_PIN_WEIGHT_PCT
+from hdttools.breakdown import DEFAULT_PIN_WEIGHT_PCT
 from hdttools.models import TireSpec
 
 _APP_PATH = Path(__file__).resolve().parent.parent / "streamlit_app" / "app.py"

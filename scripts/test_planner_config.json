@@ -17,7 +17,7 @@
     {
       "name": "ocr-photos",
       "triggers": [
-        "src/hdttools/*_ocr.py", "src/hdttools/ocr_common.py", "src/hdttools/api/breakdown.py",
+        "src/hdttools/*_ocr.py", "src/hdttools/ocr_common.py", "src/hdttools/breakdown.py",
         "scripts/vehicle_discovery.py", "scripts/pass_pool.py", "scripts/fail_pool.py",
         "ExampleDocs/*"
       ],
@@ -33,7 +33,7 @@
     },
     {
       "name": "breakdown-sweep",
-      "triggers": ["src/hdttools/api/breakdown.py"],
+      "triggers": ["src/hdttools/breakdown.py"],
       "tests": ["tests/test_breakdown_combinatorial_sweep.py"]
     }
   ],
@@ -115,7 +115,7 @@
     {
       "name": "breakdown-golden-vectors",
       "context": "core",
-      "files": ["src/hdttools/api/breakdown.py", "test-vectors/breakdown_cases.json", "web/src/breakdown.ts", "android/app/src/main/java/com/rigcheck/app/domain/*"],
+      "files": ["src/hdttools/breakdown.py", "test-vectors/breakdown_cases.json", "web/src/breakdown.ts", "android/app/src/main/java/com/rigcheck/app/domain/*"],
       "tests": ["tests/test_breakdown_golden_vectors.py"],
       "shares_with": ["android", "web"],
       "shares_tests": {

@@ -2,7 +2,7 @@
 
 ## Contexts
 
-- [Core](./src/hdttools/CONTEXT.md): shared OCR extraction and breakdown/verdict computation (the tow-rig safety-check math; `src/hdttools/api/breakdown.py` is the Python reference for it)
+- [Core](./src/hdttools/CONTEXT.md): shared OCR extraction and breakdown/verdict computation (the tow-rig safety-check math; `src/hdttools/breakdown.py` is the Python reference for it)
 - [Android](./android/CONTEXT.md): native Kotlin/Compose app — the Disclaimer gate; shares Core/Web's Rig/Breakdown/Verdict shape independently, see Relationships below
 - [Web](./web/CONTEXT.md): React + Vite + TS frontend — the guided Wizard flow, Rig/History/Dashboard concepts
 - [Streamlit](./streamlit_app/CONTEXT.md): free public-service demo, permanently Tesseract-only (ADR-0002) — no accounts, credits, or paywall

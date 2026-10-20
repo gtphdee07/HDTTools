@@ -1,7 +1,7 @@
 # Python backend/OCR/Streamlit testing
 
 Classifies this repo's Python test suite (`tests/`, covering
-`src/hdttools/`, `src/hdttools/api/`, and `streamlit_app/`) against the
+`src/hdttools/` and `streamlit_app/`) against the
 categories defined in the root `TESTING.md`. Written 2026-08-21,
 retrofitted onto tests written before that framework existed — most of
 this suite predates the categories below; this is the first pass at

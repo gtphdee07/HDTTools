@@ -32,15 +32,17 @@ allow = [
   "com.rigcheck.app.domain.VerdictInfoKt",
   "com.rigcheck.app.domain.VerdictStatus",
   # domain.model: the rig values the math runs on
+  "com.rigcheck.app.domain.model.RecentRig",
   "com.rigcheck.app.domain.model.ScaleTicket",
   "com.rigcheck.app.domain.model.TrailerTag",
   "com.rigcheck.app.domain.model.TruckTag",
-  # data: account rules, scan rules, field mapping
+  # data: account rules, saved-Rig rules, scan rules, field mapping
   "com.rigcheck.app.data.Account",
   "com.rigcheck.app.data.AccountManager",
   "com.rigcheck.app.data.AccountResult.Failure",
   "com.rigcheck.app.data.AccountState.SignedIn",
   "com.rigcheck.app.data.BackendStatus.Authenticated",
+  "com.rigcheck.app.data.RecentRigsRepository",
   "com.rigcheck.app.data.ScanApiClientKt",
   "com.rigcheck.app.data.ScanAttempts",
   "com.rigcheck.app.data.ScanAttemptsKt",
@@ -88,6 +90,4 @@ allow = [
 "com.rigcheck.app.data.PhotoEncodingKt" = "Android Bitmap encoding: needs a device"
 "com.rigcheck.app.data.ScanPhotoStorageKt" = "Android file storage: needs a device"
 "com.rigcheck.app.data.ScanApiClient" = "HTTP client wrapper: External tests; the request rules are in ScanApiClientKt"
-"com.rigcheck.app.data.RecentRigsRepository" = "Waived until the RecentRigsRepository seam ticket moves it to the allow list"
-"com.rigcheck.app.data.RecentRigsRepositoryKt" = "Waived until the RecentRigsRepository seam ticket moves it to the allow list"
-"com.rigcheck.app.domain.model.RecentRig" = "Waived until the RecentRigsRepository seam ticket moves it to the allow list"
+"com.rigcheck.app.data.RecentRigsRepositoryKt" = "The Context-bound DataStore delegate behind RecentRigsRepository's Context constructor: needs a device; the repository's rules are allow-listed"

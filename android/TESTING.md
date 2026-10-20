@@ -473,6 +473,14 @@ root `TESTING.md`'s "Dashboard" section.
   an account was logged in, a failed RevenueCat login leaves the user signed
   in but not billing-linked until `ensureBillingLinked()` succeeds, and
   failures/exceptions become messages, not crashes.
+- `RecentRigsRepositoryTest.kt` (#131) — saved Rigs through the repository's
+  `DataStore<Preferences>` seam, on a real DataStore in a temporary folder
+  (DataStore's Okio storage, not its default file storage, whose second write
+  fails on Windows): save then load most recent first, capped at five, a
+  nickname in another letter case replaces the old entry; a stored Rig missing
+  a field the model defaults loads with the default and the other Rigs still
+  load; an unknown extra field is ignored; corrupt stored JSON loads as an
+  empty list, and a save over it starts a fresh list.
 - `GoogleSignInTest.kt` (#22) — the Google nonce (Supabase gets the raw
   nonce, Google its SHA-256 hex) and cancel/missing-account messages.
 - `ScanApiClientTest.kt` (#22) — scan requests carry
@@ -885,9 +893,6 @@ depends on, and the scroll helper the screen and nav tests use:
   tapping them dispatches the correct Android intent or that a real
   capture/pick completes. Low regression risk (well-understood platform
   API); real flows stay covered by manual on-device testing.
-- **`android/app/src/androidTest/java/com/rigcheck/app/ExampleInstrumentedTest.kt`**
-  — the unmodified AGP template test, left in place; harmless, not part
-  of this suite's real coverage.
 - ✅ **Predictive standalone-only truck-side estimate — implemented
   2026-08-21 ("Round 2").** Landed TDD-style: `predictive_truck_estimate`
   was added to `BreakdownGoldenVectorTest.kt`'s `SUPPORTED_CAPABILITIES`

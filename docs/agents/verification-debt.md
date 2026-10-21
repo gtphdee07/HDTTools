@@ -64,7 +64,7 @@ A value of `0` switches that limit off. `--max-files N` and `--max-age-days N` o
 
 ## Hooking it up to Claude Code
 
-Changing Claude Code settings needs the owner's approval, so the repo does not ship this change; the owner decides after the merge. To print the report at the start of every session, add this to `.claude/settings.local.json` (just you, not committed):
+The hook is committed in the shared `.claude/settings.json` (the owner approved it on 2026-10-20), so a clone, a new machine and every ticket worktree get it with nothing to set up. It is exactly this, and a test keeps the file and this snippet identical. To turn it off for just yourself, override it in `.claude/settings.local.json` (gitignored) rather than editing the shared file:
 
 ```json
 {

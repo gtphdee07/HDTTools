@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project \"$CLAUDE_PROJECT_DIR/scripts/verification_debt.py\" --hook",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

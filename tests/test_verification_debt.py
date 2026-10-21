@@ -454,6 +454,15 @@ def test_the_setup_document_gives_a_session_start_hook_that_calls_the_script():
     assert (ROOT / "scripts" / "verification_debt.py").is_file()
 
 
+def test_the_committed_settings_file_carries_the_same_hook_as_the_setup_document():
+    text = DOC.read_text(encoding="utf-8")
+    blocks = re.findall(r"```json\n(.*?)```", text, re.S)
+    documented = [json.loads(b) for b in blocks if '"SessionStart"' in b]
+    committed = json.loads((ROOT / ".claude" / "settings.json").read_text(encoding="utf-8"))
+
+    assert documented and committed == documented[0]
+
+
 def test_the_setup_document_lists_the_exact_bootstrap_command_of_every_context():
     text = DOC.read_text(encoding="utf-8")
     config = tp.load_config()

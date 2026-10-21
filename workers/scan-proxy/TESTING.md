@@ -176,20 +176,20 @@ npm run test:coverage
 
 (`node --test --experimental-test-coverage src/*.test.ts` — the same
 files `npm test` already runs, with coverage instrumentation added.)
-Real numbers, 2026-10-21 (`npm run test:coverage`, 150 tests): **99.84% of lines, 95.97% of
-branches, 100.00% of functions** over every `src/*.ts` file. Every file is at 100% of lines
-except `liveTokenCli.ts` at 94.59% (lines 36-37, the guard that runs the sign-in helper
-only when the file is invoked directly as a script, which `android/test-weekly.ps1` does;
-a test that did so would sign in against the live Supabase project, so only its functions
-are tested, in `liveTokenCli.test.ts`). Branch gaps are in `accountTokenContract.ts`
-(93.75%), `installGuard.ts` (80%), `liveTokenCli.ts` (71.43%) and `visionCases.ts`
-(75%). **The enforced baseline `scripts/coverage_gate.py` checks scan-proxy against is
-100.00% of lines**, so today the gate **fails** (99.84%, exit 1; seen on 2026-10-21 with
-`uv run scripts/coverage_gate.py --refresh`). It was 100% when #21 recorded it, before
-#75 added `liveTokenCli.ts`. The release command does not run the gate, so nothing is blocked by
-it automatically, but a release-time gate run reports FAIL until the owner lowers the
-floor, excludes the line or decides on another test (rule 9 of
-`docs/test-audit/rules.md`: the owner sets coverage targets). See the root
+Real numbers, 2026-10-21 (`npm run test:coverage`, 150 tests, after #151): **100.00% of lines,
+96.34% of branches, 100.00% of functions** over every `src/*.ts` file. Every file is at 100% of
+lines. Branch gaps are in `accountTokenContract.ts` (93.75%), `installGuard.ts` (80%),
+`liveTokenCli.ts` (85.71%) and `visionCases.ts` (75%). **The enforced baseline
+`scripts/coverage_gate.py` checks scan-proxy against is 100.00% of lines**, and the gate passes.
+
+**How the gate passes (#151).** It was at 99.84% before: `liveTokenCli.ts` ends with a guard that
+runs the sign-in helper only when the file is invoked directly as a script, which
+`android/test-weekly.ps1` does, and a test that ran the script would sign in against the live
+Supabase project, so only its functions are tested, in `liveTokenCli.test.ts`. The guard carries a
+`/* node:coverage ignore next 3 */` comment, so Node's coverage leaves those three lines out and the
+floor stays at 100% for all the other code. `tests/test_scan_proxy_coverage_guard.py` keeps that
+honest: it asks Node's own report that `liveTokenCli.ts` is at 100% of lines, and pins the
+ignored range to exactly the guard so nothing else can be hidden under the comment. See the root
 `TESTING.md`'s "Coverage gate" section.
 
 **Structured pass-rate reporting for the README dashboard** (roadmap
@@ -426,8 +426,9 @@ Each entry says whether it is closed or still open, and an open one names the ti
 that tracks it or says there is none (`tests/test_testing_docs.py` checks this). Refreshed 2026-10-21 (#64)
 against the test audit in `docs/test-audit/scan-proxy.md`.
 
-- **Open (#151)**: the coverage gate fails Scan Proxy today, 99.84% of lines against the
-  100.00% floor (`liveTokenCli.ts` lines 36-37, see "Coverage").
+- ✅ **Closed (#151)**: the coverage gate failed Scan Proxy at 99.84% of lines against the
+  100.00% floor (`liveTokenCli.ts` lines 36-37). The run-as-script guard now carries a
+  `node:coverage ignore` comment and the gate passes at 100.00% (see "Coverage").
 - ✅ **Closed (#152)**: `npm run check:dead-code` exited 1 on `uv` as an unlisted binary.
   `knip.json` now lists it, and `tests/test_scan_proxy_knip_config.py` fails if it stops
   (see "Dead code").

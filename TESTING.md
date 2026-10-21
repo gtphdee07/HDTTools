@@ -512,14 +512,14 @@ what that same push exercises on the backend side). Python and
 scan-proxy are baseline floors: the gate fails only if the real number
 drops *below* its last known-good baseline (2026-08-24: Python 79%,
 scan-proxy 100%). **Measured 2026-10-21 (`uv run scripts/coverage_gate.py --refresh`, #64):
-Python 87.78% (PASS), Android decision logic 96.96% (PASS), Web 95.95% (report only),
-scan-proxy 99.84% against its 100.00% floor (FAIL, exit 1).** The Scan Proxy shortfall
-is two lines, `workers/scan-proxy/src/liveTokenCli.ts` 36-37, the guard that runs the
-sign-in helper only when it is invoked directly as a script (added by #75); every test
-calls its functions, and a test that ran the script would sign in against the live
-Supabase project. So a release-time `coverage_gate.py` run fails today until the owner
-lowers that floor, excludes the line or decides on another test (#151); this document does not
-change the floor (rule 9 of `docs/test-audit/rules.md`: the owner sets targets). Neither
+Python 87.78% (PASS), Android decision logic 96.96% (PASS), Web 95.95% (report only);
+scan-proxy was 99.84% against its 100.00% floor (FAIL) and, after #151, is 100.00% (PASS).**
+The Scan Proxy shortfall had been two lines, `workers/scan-proxy/src/liveTokenCli.ts` 36-37, the
+guard that runs the sign-in helper only when it is invoked directly as a script (added by #75);
+every test calls its functions, and a test that ran the script would sign in against the live
+Supabase project. The owner chose to keep the 100.00% floor and exclude the guard: a
+`/* node:coverage ignore next 3 */` comment on it (rule 9 of `docs/test-audit/rules.md`: the owner
+sets targets), pinned by `tests/test_scan_proxy_coverage_guard.py`. Neither
 `release.ps1` runs the full gate, so nothing blocks on it automatically; it is run by
 hand, and Android's session-end command runs only its own decision-logic floor
 (`--android-logic`).

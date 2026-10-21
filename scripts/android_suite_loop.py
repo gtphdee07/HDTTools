@@ -12,8 +12,8 @@ cause and the rules are in android/TESTING.md.
 Each run: cold-boot the emulator, wait until adb and the system services have
 answered several polls in a row, install both APKs, run `am instrument` for the
 Major suite (the weekly class and every `@ExternalSurface` class excluded, as
-the Gradle task excludes them), then label the output. `--driver gradle` runs the literal Gradle command
-instead, for comparing the two.
+the Gradle task excludes them), then label the output. `--driver gradle` runs
+the literal Gradle command instead, for comparing the two.
 
 Needs the single emulator: no other Android ticket may be running. It builds
 the APKs once, up front (`gradlew assembleDebug assembleDebugAndroidTest`).

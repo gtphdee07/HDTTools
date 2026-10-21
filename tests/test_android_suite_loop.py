@@ -296,7 +296,7 @@ def test_readiness_gives_up_at_the_timeout():
     assert ok is False
 
 
-def run_instrument(tests_dir=None):
+def run_instrument(tests_dir=asl.run_external_android.TESTS_DIR):
     """Runs instrument_once against a fake adb; returns the calls it made."""
     calls = []
 
@@ -304,14 +304,18 @@ def run_instrument(tests_dir=None):
         calls.append(args)
         return (0, "Success\n") if args[0] == "install" else (0, "OK (132 tests)\n")
 
-    kwargs = {} if tests_dir is None else {"tests_dir": tests_dir}
-    text, code = asl.instrument_once(adb, suite_timeout_s=60, **kwargs)
+    text, code = asl.instrument_once(adb, suite_timeout_s=60, tests_dir=tests_dir)
     assert (code, text) == (0, "OK (132 tests)\n")
     return calls
 
 
-def excluded_by(calls):
+def instrument_call(calls):
     (instrument,) = [c for c in calls if c[:3] == ("shell", "am", "instrument")]
+    return instrument
+
+
+def excluded_by(calls):
+    instrument = instrument_call(calls)
     assert instrument[instrument.index("-e") + 1] == "notClass"
     return instrument[instrument.index("-e") + 2].split(",")
 
@@ -321,9 +325,8 @@ def test_the_suite_command_leaves_out_the_weekly_class_and_clears_its_marker():
     # a raw `am instrument` runs it unless told not to, and would label its failure a real test failure.
     calls = run_instrument()
     assert asl.WEEKLY_CLASS in excluded_by(calls)
-    instrument = next(c for c in calls if c[:3] == ("shell", "am", "instrument"))
     assert ("shell", "rm", "-f", asl.WEEKLY_MARKER) in calls
-    assert calls.index(("shell", "rm", "-f", asl.WEEKLY_MARKER)) < calls.index(instrument)
+    assert calls.index(("shell", "rm", "-f", asl.WEEKLY_MARKER)) < calls.index(instrument_call(calls))
 
 
 def test_the_suite_command_leaves_out_the_external_surface_class_of_the_real_tree():

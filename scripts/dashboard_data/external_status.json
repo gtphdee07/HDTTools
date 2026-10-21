@@ -61,6 +61,8 @@
     },
     "scan-proxy-worker": {
       "commit": "e872efd8359c5eaf7b6da725b75191ef9bec81e6",
+      "overridden_at": "2026-10-21T01:24:20Z",
+      "override_reason": "only Cloudflare package versions (workerd 1.20261021.1, workers-types 5.20261021.1) were published since the last Worker pass; no Worker source changed",
       "passed": true,
       "result": "pass",
       "timestamp": "2026-10-20T13:25:45Z",

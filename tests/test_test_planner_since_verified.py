@@ -323,7 +323,7 @@ def test_a_commit_the_real_ledger_holds_is_the_one_the_planner_diffs_from(tmp_pa
     vl.record("web", "issue", "pass", revision=vl.Revision("c" * 40, "t" * 40), path=path)
     repo = Repo(**{"c" * 40: ["web/app.ts"], BASE: ["src/database.py"]})
 
-    plan = since_verified(repo, lambda c, l: vl.last_verified(c, l, path=path))
+    plan = since_verified(repo, lambda c, level: vl.last_verified(c, level, path=path))
 
     assert "web-minor" in commands(plan)  # web: planned from the recorded commit
     assert "uv run pytest -m core" not in " ".join(commands(plan))  # others: never verified, planned from the base
@@ -352,10 +352,10 @@ def test_main_since_verified_is_ignored_for_a_release_and_for_explicit_files(cap
     repo = Repo()
 
     tp.main(["--since-verified", "--level", "release", "--context", "android"], git=repo, surfaces=lambda: [],
-            ledger=lambda: (lambda c: None), verified=lambda c, l: pytest.fail("ledger must not be read"))
+            ledger=lambda: (lambda c: None), verified=lambda c, level: pytest.fail("ledger must not be read"))
     release = capsys.readouterr().out
     tp.main(["--since-verified", "--files", "src/hdttools/database.py"], git=repo,
-            ledger=lambda: (lambda c: None), verified=lambda c, l: pytest.fail("ledger must not be read"))
+            ledger=lambda: (lambda c: None), verified=lambda c, level: pytest.fail("ledger must not be read"))
     explicit = capsys.readouterr().out
 
     assert "--since-verified ignored: a release plans everything" in release
@@ -367,7 +367,7 @@ def test_main_since_verified_never_blocks_when_git_fails(capsys):
     def broken(ref):
         raise tp.GitError("no repo")
 
-    assert tp.main(["--since-verified"], git=broken, verified=lambda c, l: None) == 0
+    assert tp.main(["--since-verified"], git=broken, verified=lambda c, level: None) == 0
     assert "could not plan" in capsys.readouterr().out
 
 

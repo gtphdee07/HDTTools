@@ -82,7 +82,7 @@ def test_every_top_level_proxy_test_file_imports_the_guard_first():
     unguarded = [
         f.name
         for f in files
-        if not (lines := [l for l in read(f).splitlines() if l.startswith("import ")])
+        if not (lines := [line for line in read(f).splitlines() if line.startswith("import ")])
         or lines[0] != 'import "./requireInstall.ts";'
     ]
     assert unguarded == []

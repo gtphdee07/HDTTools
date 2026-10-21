@@ -1,0 +1,47 @@
+{
+  "_comment": "oxlint warnings that are accepted, one entry per file and rule (#150, Decision 2). scripts/static_checks.py fails on any warning not listed here for its context, and on an entry that lists more warnings than the file now has, so the list cannot go stale. 'file' is relative to the directory oxlint runs in (web/ or workers/scan-proxy/). Fix a warning rather than listing it where the fix is small; every entry needs a reason.",
+  "entries": [
+    {
+      "context": "web",
+      "file": "src/auth.tsx",
+      "rule": "react(only-export-components)",
+      "count": 2,
+      "reason": "A provider component and its hook live in one file on purpose; the rule only costs a full reload instead of fast refresh in dev."
+    },
+    {
+      "context": "web",
+      "file": "src/billing.tsx",
+      "rule": "react(only-export-components)",
+      "count": 2,
+      "reason": "A provider component and its hook live in one file on purpose; the rule only costs a full reload instead of fast refresh in dev."
+    },
+    {
+      "context": "web",
+      "file": "src/garage.tsx",
+      "rule": "react(only-export-components)",
+      "count": 3,
+      "reason": "A provider component and its hooks live in one file on purpose; the rule only costs a full reload instead of fast refresh in dev."
+    },
+    {
+      "context": "web",
+      "file": "src/scanTestKit.tsx",
+      "rule": "react(only-export-components)",
+      "count": 7,
+      "reason": "Test helper that exports render helpers and fakes together; it is only imported by tests, so fast refresh never applies."
+    },
+    {
+      "context": "web",
+      "file": "src/components/RigDelete.tsx",
+      "rule": "react(only-export-components)",
+      "count": 1,
+      "reason": "useRigDelete and the two components it serves are one unit (#90, #106); the rule only costs fast refresh in dev."
+    },
+    {
+      "context": "web",
+      "file": "src/components/RigDelete.tsx",
+      "rule": "react-hooks(exhaustive-deps)",
+      "count": 1,
+      "reason": "The focus effect must run only when the bin first mounts (#108); listing takeFocus would refocus on every prop change."
+    }
+  ]
+}

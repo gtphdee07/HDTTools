@@ -25,7 +25,6 @@ from .database import save_truck_tag
 from .models import TireSpec, TruckTagData
 from .ocr_common import (
     ensure_tesseract_configured as _ensure_tesseract_configured,
-    find_num as _find_num,
     find_str as _find_str,
     ocr_text as _ocr_text,
     open_image as _open_image,

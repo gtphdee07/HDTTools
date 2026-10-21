@@ -241,7 +241,7 @@ def test_connected_devices_excludes_unauthorized_and_offline_entries():
         "\n"
     )
 
-    def fake_run(command, capture_output=None, text=None):
+    def fake_run(command, **_options):
         return SimpleNamespace(stdout=runner_output)
 
     assert ar.connected_devices(adb="adb", run_command=fake_run) == ["emulator-5554"]

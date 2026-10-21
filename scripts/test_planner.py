@@ -465,14 +465,51 @@ def _plan_issue(result, files, config, markers, touched, interface_changed, inte
             )
 
 
+def _session_end_replaces_suite(ctx: dict) -> bool:
+    """Does the context's `session_end` stand in for its test suites? Android's does (it runs the JVM tests
+    first, #133). The static-check commands (#150) set `session_end_runs_tests` false: they run beside the suites."""
+    return bool(ctx.get("session_end")) and ctx.get("session_end_runs_tests", True)
+
+
 def _session_context_command(ctx: dict) -> str:
     """A context's whole session-end run: its `session_end` command (Android's device-free JVM tests,
-    coverage floor and detekt, #133) where it has one, else its context command."""
-    return ctx.get("session_end") or ctx["context"]
+    coverage floor and detekt, #133) where that command runs the tests too, else its context command."""
+    return ctx["session_end"] if _session_end_replaces_suite(ctx) else ctx["context"]
+
+
+def _plan_static_checks(result: Plan, files: list[str], config: dict, allowed) -> None:
+    """A context whose `session_end` only runs static checks (#150) lists it when a file of the context, one of
+    its `static_triggers` or one of its dependency files changed. `session_end_coverage`, when the context has it,
+    replaces the command if a file under the context's own `paths` changed (Decision 4: the Python coverage floor
+    runs when `src/hdttools/`, `streamlit_app/` or `scripts/` changed)."""
+    contexts = config["contexts"]
+    for name, ctx in contexts.items():
+        if not ctx.get("session_end") or _session_end_replaces_suite(ctx):
+            continue
+        triggers = [*ctx.get("static_triggers", []), *ctx.get("dependency_files", [])]
+        if _is_python(ctx):
+            triggers += config["dependency_files"]
+        hit = [f for f in files if name in allowed(f) and (_owners(f, {name: ctx}) or _matches(f, triggers))]
+        if not hit:
+            continue
+        owned = next((f for f in hit if _owners(f, {name: ctx})), None)
+        if owned and ctx.get("session_end_coverage"):
+            result.add(Selection("static", ctx["session_end_coverage"],
+                                 f"{name} static checks with the coverage floor (diff touches {owned})"))
+        else:
+            result.add(Selection("static", ctx["session_end"], f"{name} static checks (diff touches {hit[0]})"))
 
 
 def _plan_session(result, files, config, markers, touched, python_dependency_changed,
                   context_dependency_changed, file_exists, surfaces, downstream, allowed) -> None:
+    """The suites by the scope ladder, then each context's static checks (#150)."""
+    _plan_session_suites(result, files, config, markers, touched, python_dependency_changed,
+                         context_dependency_changed, file_exists, surfaces, downstream, allowed)
+    _plan_static_checks(result, files, config, allowed)
+
+
+def _plan_session_suites(result, files, config, markers, touched, python_dependency_changed,
+                         context_dependency_changed, file_exists, surfaces, downstream, allowed) -> None:
     """Scope ladder: one small context -> file, one context -> context, several -> application.
     Downstream contexts (#66) add their context run on top; the ladder counts only the contexts the diff touches."""
     contexts = config["contexts"]
@@ -496,7 +533,7 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
 
     if result.scope == "application":
         for name, ctx in contexts.items():
-            command = ctx.get("session_end") or ctx.get("application", ctx["context"])
+            command = ctx["session_end"] if _session_end_replaces_suite(ctx) else ctx.get("application", ctx["context"])
             result.add(Selection("application", command, f"application run ({name}; diff spans {', '.join(sorted(touched))})",
                                  contexts=(name,)))
     elif not touched:
@@ -505,7 +542,7 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
         (name,) = touched
         result.add(Selection("context", _session_context_command(contexts[name]),
                              f"{name} context run (diff is larger than a file)", contexts=(name,)))
-    elif "session_end" in contexts[next(iter(touched))]:
+    elif _session_end_replaces_suite(contexts[next(iter(touched))]):
         (name,) = touched  # the session-end command is the context's whole session run, whatever the diff size
         result.add(Selection("context", contexts[name]["session_end"], f"{name} session-end run", contexts=(name,)))
     else:

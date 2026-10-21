@@ -485,6 +485,102 @@ REAL_MAIN = "android/app/src/main/java/com/rigcheck/app/"
 REAL_FULL = "android/gradlew -p android connectedDebugAndroidTest"
 
 
+# Static checks as each context's session_end (#150), planned from the real config.
+
+STATIC = "uv run scripts/static_checks.py"
+
+
+def _static(plan):
+    return [c for c in commands(plan) if c.startswith(STATIC)]
+
+
+@pytest.mark.parametrize("changed, expected", [
+    ("src/hdttools/breakdown.py", [f"{STATIC} core --coverage"]),
+    ("scripts/ticket_merge.py", [f"{STATIC} core --coverage"]),
+    ("streamlit_app/app.py", [f"{STATIC} streamlit --coverage"]),
+    ("web/src/api.ts", [f"{STATIC} web"]),
+    ("workers/scan-proxy/src/scan.ts", [f"{STATIC} scan-proxy"]),
+])
+def test_real_config_a_changed_file_of_a_context_lists_that_contexts_static_checks(changed, expected):
+    assert _static(_real_plan([changed])) == expected
+
+
+def test_real_config_the_python_coverage_floor_rides_only_on_changes_under_the_decision_4_paths():
+    """Decision 4 of #150: src/hdttools/, streamlit_app/ or scripts/ run the floor; a tests-only diff does not."""
+    assert _static(_real_plan(["tests/test_planner_only.py"])) == [f"{STATIC} core"]
+    assert _static(_real_plan(["vulture_whitelist.py"])) == [f"{STATIC} core", f"{STATIC} streamlit"]
+    assert _static(_real_plan(["ruff.toml"])) == [f"{STATIC} core", f"{STATIC} streamlit"]
+
+
+def test_real_config_a_diff_across_contexts_lists_each_touched_contexts_static_checks_once():
+    plan = _real_plan(["web/src/api.ts", "src/hdttools/breakdown.py", "workers/scan-proxy/src/scan.ts"])
+
+    assert _static(plan) == [f"{STATIC} core --coverage", f"{STATIC} web", f"{STATIC} scan-proxy"]
+
+
+@pytest.mark.parametrize("docs", ["TESTING.md", "web/TESTING.md", "docs/agents/static-checks.md", "workers/scan-proxy/CONTEXT.md"])
+def test_real_config_a_docs_only_change_lists_no_static_checks(docs):
+    assert _static(_real_plan([docs])) == []
+
+
+def test_real_config_a_change_to_one_context_does_not_list_another_contexts_static_checks():
+    assert _static(_real_plan(["web/src/api.ts"])) == [f"{STATIC} web"]
+    assert _static(_real_plan([REAL_MAIN + "domain/Breakdown.kt"])) == []
+
+
+def test_real_config_the_static_checks_run_beside_the_suite_not_instead_of_it():
+    plan = _real_plan(["web/src/api.ts"])
+
+    assert "npm --prefix web test -- src/api.test.ts" in commands(plan)
+    assert f"{STATIC} web" in commands(plan)
+
+
+def test_real_config_a_dependency_change_lists_the_static_checks_of_the_context_it_feeds():
+    # Scan Proxy lints with the oxlint installed for web, so web's dependency files feed its checks too.
+    assert _static(_real_plan(["web/package-lock.json"])) == [f"{STATIC} web", f"{STATIC} scan-proxy"]
+    assert _static(_real_plan(["workers/scan-proxy/package-lock.json"])) == [f"{STATIC} scan-proxy"]
+    assert _static(_real_plan(["uv.lock"])) == [f"{STATIC} core", f"{STATIC} streamlit"]
+
+
+def test_real_config_the_issue_level_does_not_list_static_checks():
+    assert _static(_real_plan(["web/src/api.ts"], "issue")) == []
+
+
+def test_real_config_every_context_has_a_session_end_and_the_static_ones_name_their_context():
+    contexts = tp.load_config()["contexts"]
+    assert set(contexts) == {"core", "streamlit", "web", "scan-proxy", "android"}
+    assert contexts["android"]["session_end"] == "uv run scripts/android_session_end.py"
+    for name in ("core", "streamlit", "web", "scan-proxy"):
+        ctx = contexts[name]
+        assert ctx["session_end"] == f"{STATIC} {name}", name
+        assert ctx["session_end_runs_tests"] is False
+        assert ("session_end_coverage" in ctx) is (name in ("core", "streamlit"))
+
+
+def test_real_config_every_session_end_argument_is_one_static_checks_accepts():
+    sys.path.insert(0, str(ROOT / "scripts"))  # static_checks imports release_steps
+    spec = importlib.util.spec_from_file_location("static_checks_for_config", ROOT / "scripts" / "static_checks.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["static_checks_for_config"] = module  # a dataclass resolves its module by name
+    spec.loader.exec_module(module)
+    for name, ctx in tp.load_config()["contexts"].items():
+        for key in ("session_end", "session_end_coverage"):
+            if name == "android" or key not in ctx:
+                continue
+            argv = shlex.split(ctx[key])[3:]  # after `uv run scripts/static_checks.py`
+            assert argv[0] in module.CONTEXTS and module.steps_for(argv[0], coverage="--coverage" in argv)
+
+
+def test_session_end_that_runs_no_tests_is_added_beside_the_context_suite_in_a_fake_config():
+    web = {**ALL["contexts"]["web"], "session_end": "web-static", "session_end_runs_tests": False}
+    config = {**ALL, "contexts": {**ALL["contexts"], "web": web}}
+
+    plan = tp.plan(["web/src/api.ts"], config, MARKERS, level="session", file_exists=lambda p: p in EXISTING_TESTS)
+
+    assert commands(plan)[-1] == "web-static"
+    assert len(commands(plan)) == 2, "the web suite and the static checks"
+
+
 def test_real_config_session_end_for_domain_code_is_the_documented_command():
     assert commands(_real_plan([REAL_MAIN + "domain/Breakdown.kt"])) == ["uv run scripts/android_session_end.py"]
 

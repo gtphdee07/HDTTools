@@ -256,3 +256,44 @@ def test_android_logic_flag_reads_the_report_it_is_given_and_never_rebuilds_it(t
     monkeypatch.setattr(coverage_gate, "ANDROID_JVM_REPORT", tmp_path / "no-report")
     assert coverage_gate.main(["--android-logic"]) == 1
     assert "No report" in capsys.readouterr().out
+
+
+# --- --only: the static-check commands' coverage step (#150) ----------------
+
+
+def _only(monkeypatch, name, percent, baseline):
+    """Make `name`'s getter return a measurement and every other platform's getter fail the test if called."""
+    getters = {"python": "get_python_result", "scan-proxy": "get_scan_proxy_result"}
+    for getter in ("get_android_result", "get_android_device_result", "get_android_merged_result",
+                   "get_python_result", "get_web_result", "get_scan_proxy_result"):
+        monkeypatch.setattr(coverage_gate, getter, _fail_if_called)
+    seen = []
+
+    def measured(refresh):
+        seen.append(refresh)
+        return coverage_gate.PlatformResult(name, percent, baseline, gated=True)
+
+    monkeypatch.setattr(coverage_gate, getters[name], measured)
+    return seen
+
+
+def test_only_python_checks_the_python_floor_alone_and_passes_it_the_refresh_flag(monkeypatch, capsys):
+    seen = _only(monkeypatch, "python", 87.0, 79.0)
+
+    assert coverage_gate.main(["--only", "python", "--refresh"]) == 0
+    assert seen == [True]
+    assert "PASS" in capsys.readouterr().out
+
+
+def test_only_python_exits_non_zero_below_the_floor(monkeypatch, capsys):
+    _only(monkeypatch, "python", 78.9, 79.0)
+
+    assert coverage_gate.main(["--only", "python", "--refresh"]) == 1
+    assert "FAIL" in capsys.readouterr().out
+
+
+def test_only_scan_proxy_exits_non_zero_below_its_100_percent_floor(monkeypatch, capsys):
+    _only(monkeypatch, "scan-proxy", 99.84, 100.0)
+
+    assert coverage_gate.main(["--only", "scan-proxy"]) == 1
+    assert "FAIL" in capsys.readouterr().out

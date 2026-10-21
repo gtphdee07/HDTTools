@@ -8,6 +8,7 @@ Android (#164) check their own forms against the same file. No network, no Claud
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
@@ -99,7 +100,7 @@ def test_the_fixture_agrees_with_the_tool_schema_file():
 
 
 def test_a_scanned_name_that_is_not_a_tool_property_is_reported():
-    bad = json.loads(json.dumps(FIXTURE))
+    bad = copy.deepcopy(FIXTURE)
     bad["truck_tag"]["scanned"][0]["name"] = "manufaturer"
     assert any(
         "scanned manufaturer" in p for p in problems_in_fixture(bad, TOOL_SCHEMAS)
@@ -107,28 +108,28 @@ def test_a_scanned_name_that_is_not_a_tool_property_is_reported():
 
 
 def test_a_manual_only_name_that_is_a_tool_property_is_reported():
-    bad = json.loads(json.dumps(FIXTURE))
+    bad = copy.deepcopy(FIXTURE)
     bad["truck_tag"]["manual_only"].append({"name": "vin", "type": "text"})
     assert any("manual_only vin" in p for p in problems_in_fixture(bad, TOOL_SCHEMAS))
 
 
 def test_a_type_that_is_neither_text_nor_number_is_reported():
-    bad = json.loads(json.dumps(FIXTURE))
+    bad = copy.deepcopy(FIXTURE)
     bad["scale_ticket"]["scanned"][1]["type"] = "integer"
     assert any("'integer'" in p for p in problems_in_fixture(bad, TOOL_SCHEMAS))
 
 
 def test_a_missing_or_extra_doc_type_is_reported():
-    missing = json.loads(json.dumps(FIXTURE))
+    missing = copy.deepcopy(FIXTURE)
     del missing["scale_ticket"]
-    extra = json.loads(json.dumps(FIXTURE))
+    extra = copy.deepcopy(FIXTURE)
     extra["tire_tag"] = {"scanned": [], "manual_only": []}
     assert any("doc types" in p for p in problems_in_fixture(missing, TOOL_SCHEMAS))
     assert any("doc types" in p for p in problems_in_fixture(extra, TOOL_SCHEMAS))
 
 
 def test_a_name_listed_twice_is_reported():
-    bad = json.loads(json.dumps(FIXTURE))
+    bad = copy.deepcopy(FIXTURE)
     bad["trailer_tag"]["manual_only"].append({"name": "uvw_lb", "type": "number"})
     assert any(
         "uvw_lb appears twice" in p for p in problems_in_fixture(bad, TOOL_SCHEMAS)

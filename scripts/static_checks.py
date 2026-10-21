@@ -41,17 +41,16 @@ ALLOWLIST = REPO_ROOT / "scripts" / "static_allowlists" / "oxlint.json"
 WEB_DIR = REPO_ROOT / "web"
 PROXY_DIR = REPO_ROOT / "workers" / "scan-proxy"
 
-# Pinned here, not in pyproject.toml: pyproject.toml and uv.lock are boundary files of the anthropic-python
-# External surface, so adding a dev dependency would mark that paid surface stale. Rules live in ruff.toml.
-RUFF = ["uv", "tool", "run", "ruff@0.17.1"]
+# ruff is a dev dependency (pinned in pyproject.toml, locked in uv.lock). Rules live in ruff.toml.
+RUFF = ["uv", "run", "ruff"]
 PYTHON_TARGETS = ["src/hdttools", "streamlit_app", "scripts", "tests"]
 # Vulture needs every caller to judge a definition dead, so every Python context scans the same code. tests/
 # is a pass of its own: scanned together with src/, a function only its own test calls would count as used.
 VULTURE = [sys.executable, "-m", "vulture", "src/hdttools", "streamlit_app", "scripts", "vulture_whitelist.py"]
 VULTURE_TESTS = [sys.executable, "-m", "vulture", "tests", "vulture_whitelist_tests.py"]
-# oxlint is installed once, in web/. Scan Proxy runs that binary rather than adding a dev dependency of its
-# own, because an edit to workers/scan-proxy/package.json marks the External surfaces it pins stale.
-OXLINT = str(WEB_DIR / "node_modules" / ".bin" / "oxlint")
+# Each Node context lints with the oxlint of its own install (a devDependency of web/ and of workers/scan-proxy/).
+WEB_OXLINT = str(WEB_DIR / "node_modules" / ".bin" / "oxlint")
+PROXY_OXLINT = str(PROXY_DIR / "node_modules" / ".bin" / "oxlint")
 
 
 @dataclass(frozen=True)
@@ -81,13 +80,13 @@ def steps_for(context: str, *, coverage: bool = False) -> list[Step]:
     if context == "web":
         return [
             Step("typecheck (tsc -b)", ["npx", "--no-install", "tsc", "-b"], cwd=WEB_DIR),
-            Step("oxlint", [OXLINT, "-f", "json", "."], cwd=WEB_DIR, lint_context="web"),
+            Step("oxlint", [WEB_OXLINT, "-f", "json", "."], cwd=WEB_DIR, lint_context="web"),
             Step("knip (dead code)", ["npm", "--prefix", "web", "run", "check:dead-code"]),
         ]
     if context == "scan-proxy":
         return [
             Step("typecheck (tsc --noEmit)", ["npm", "--prefix", "workers/scan-proxy", "run", "typecheck"]),
-            Step("oxlint", [OXLINT, "-f", "json", "."], cwd=PROXY_DIR, lint_context="scan-proxy"),
+            Step("oxlint", [PROXY_OXLINT, "-f", "json", "."], cwd=PROXY_DIR, lint_context="scan-proxy"),
             Step("knip (dead code)", ["npm", "--prefix", "workers/scan-proxy", "run", "check:dead-code"]),
             _coverage_step("scan-proxy"),
         ]
@@ -147,10 +146,11 @@ def run_capture(command: list[str], cwd: Path) -> subprocess.CompletedProcess:
 
 
 def run_lint_step(step: Step, *, capture, out: Callable[[str], None], oxlint_installed=None) -> int:
+    oxlint = step.command[0]
     if oxlint_installed is None:
-        oxlint_installed = shutil.which(OXLINT) is not None
+        oxlint_installed = shutil.which(oxlint) is not None
     if not oxlint_installed:
-        out(f"  oxlint is not installed ({OXLINT}); it comes from Web's install: run `npm --prefix web ci`")
+        out(f"  oxlint is not installed ({oxlint}); run `npm --prefix {step.cwd.relative_to(REPO_ROOT).as_posix()} ci`")
         return 1
     proc = capture(step.command, cwd=step.cwd)
     try:

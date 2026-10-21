@@ -8,8 +8,8 @@ tool over the real files and fails when a list names something the tool does not
   (tests) must still be reported when vulture runs without the whitelist. Fast.
 - oxlint: `scripts/static_allowlists/oxlint.json` must match what oxlint reports for Web and for Scan Proxy,
   exactly. These start Node, so they are `slow` (the planner owes them when `scripts/*` changes).
-- ruff: the pinned ruff, with the repo's `ruff.toml`, fails on an unused import and passes on a clean file, so
-  an emptied rule list or a changed pin that stops catching defects is noticed. Starts `uv tool run`, so `slow`.
+- ruff: the locked ruff, with the repo's `ruff.toml`, fails on an unused import and passes on a clean file, so
+  an emptied rule list or a changed pin that stops catching defects is noticed. Starts `uv run`, so `slow`.
 """
 
 from __future__ import annotations
@@ -71,9 +71,9 @@ def test_whitelisted_names_of_production_code_are_not_hiding_in_the_tests_whitel
 def test_the_oxlint_allow_list_matches_what_oxlint_reports_for_the_context_exactly(context):
     tool("node")
     if context == "scan-proxy":
-        require_proxy_install()
-    if not (WEB / "node_modules" / ".bin").is_dir():
-        pytest.skip("web/node_modules is not installed (oxlint comes from there)")
+        require_proxy_install()  # the Worker's own install is all its lint step needs: Web's is not read
+    elif not (WEB / "node_modules" / ".bin").is_dir():
+        pytest.skip("web/node_modules is not installed")
     step = next(s for s in sc.steps_for(context) if s.lint_context)
 
     messages: list[str] = []
@@ -83,7 +83,7 @@ def test_the_oxlint_allow_list_matches_what_oxlint_reports_for_the_context_exact
 
 
 @pytest.mark.slow
-def test_the_pinned_ruff_with_the_repos_config_fails_on_an_unused_import_and_passes_a_clean_file(tmp_path):
+def test_the_locked_ruff_with_the_repos_config_fails_on_an_unused_import_and_passes_a_clean_file(tmp_path):
     def ruff(source: str) -> subprocess.CompletedProcess:
         probe = tmp_path / "probe.py"
         probe.write_text(source, encoding="utf-8")

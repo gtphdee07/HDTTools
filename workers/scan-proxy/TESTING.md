@@ -12,13 +12,30 @@ Sanity/Daily/Weekly/Release tiers as a second axis alongside Minor/
 Major — see the root `TESTING.md`'s "Event-based tiers, not
 time-cadence tiers" section for why that's now one axis, not two.
 
+What to run, and when, follows the agreed rules in
+[`docs/test-audit/rules.md`](../../docs/test-audit/rules.md) (the scope ladder, per issue,
+session end, release); the advisory planner
+[`scripts/test_planner.py`](../../scripts/test_planner.py) prints the commands for a diff
+(`uv run scripts/test_planner.py --level issue|session|release`; it never blocks). The root
+[`TESTING.md`](../../TESTING.md) has the ladder for all five contexts and the category
+definitions this file uses.
+
+Offline suite, real run 2026-10-21 (#64): **150 tests in 14 files, 150 passed**, in about 0.5 s
+(`npm test`); the Minor selection (`npm run test:sanity`, the `[sanity]` tests) is **30** of them.
+
 ## Running tests
 
 | Level | Command |
 |---|---|
-| One file | `node --test src/docTypes.test.ts` (run from `workers/scan-proxy/`) |
-| Whole context (offline) | `npm test` |
-| Full release | `.\release.ps1` (run from `workers/scan-proxy/`) |
+| One file (per issue, the targeted test first) | `node --test src/docTypes.test.ts` (run from `workers/scan-proxy/`) |
+| Minor (per issue) | `npm run test:sanity` (30 tests, the `[sanity]` ones) |
+| Major (per issue, when an interface or dependency changed) | `npm test` (150 tests) |
+| Whole context (offline), session end | `npm test` |
+| Type check | `npm run typecheck` |
+| Coverage | `npm run test:coverage` |
+| Dead code | `npm run check:dead-code` (reports one finding today, see "Dead code") |
+| Full release (the Worker deploy) | `.\release.ps1` (run from `workers/scan-proxy/`) |
+| External, stale surfaces only | `.\test-external.ps1` |
 
 `npm test` runs `src/*.test.ts` only, so it never picks up `src/weekly/`,
 `src/release/` or `src/external/` (live, paid) and has no `pretest` hook
@@ -65,6 +82,7 @@ Anthropic surface, #37).
 | **Major** | ✅ built | a Major change (public-interface/new-library) | none (mocked) | `npm test` |
 | **External (through-our-service)** | ✅ built (4 tests) | event-driven — ongoing/ad hoc, cheap enough to run anytime; also diff-driven whenever a Major change touches boundary-calling code | real, bounded, dedicated test customer | `.\test-weekly.ps1` |
 | **External (direct-provider-boundary)** | 🟡 built, needs your local secrets to run | event-driven — before pushing a major update to the Play Store, not a fixed cadence; also diff-driven, same trigger as above | real, against RevenueCat/Anthropic directly | `.\test-release.ps1` (`-SkipKeys` to allow skipping) |
+| **External, per surface** (ADR-0008) | ✅ built (#37, #38, #41, #74, #143): four surfaces, `revenuecat-rest`, `anthropic`, `worker-token-verification`, `scan-proxy-worker`, each tagged `[surface]` | whenever the surface is stale: its boundary files or pins changed, or a watched package has a new stable release | real; free except `anthropic` (3 billed calls) and `scan-proxy-worker` (1 billed call), each confirmed before it runs | `.\test-external.ps1` (adds to the two old suites above; replaces neither) |
 
 (Command names — `test:sanity`, `test-release.ps1` — are unrenamed this
 pass; see `ARCHIVE_TESTING.md` for the full narrative on the deferred
@@ -158,17 +176,21 @@ npm run test:coverage
 
 (`node --test --experimental-test-coverage src/*.test.ts` — the same
 files `npm test` already runs, with coverage instrumentation added.)
-Real numbers as of #21 (2026-10-07): **100.00%** line and function
-coverage across every source file (`accountTokenContract.ts`, `auth.ts`, `jwt.ts`,
-`liveToken.ts`, `claude.ts`, `docTypes.ts`, `http.ts`, `index.ts`,
-`request.ts`, `revenuecat.ts`, `scan.ts`; branch coverage is 100% everywhere
-except the token modules and test fixtures, ~98% overall) — the Major suite's
-107 tests exercise every line. (Earlier, 2026-08-24: 100% on all three metrics, 57
-tests.) **This is the enforced baseline
-`scripts/coverage_gate.py` checks scan-proxy against at release time**
-(see the root `TESTING.md`'s "Coverage gate" section) — since it starts
-at 100%, in practice the gate can only ever catch a real regression, not
-demand improvement that isn't there to make.
+Real numbers, 2026-10-21 (`npm run test:coverage`, 150 tests): **99.84% of lines, 95.97% of
+branches, 100.00% of functions** over every `src/*.ts` file. Every file is at 100% of lines
+except `liveTokenCli.ts` at 94.59% (lines 36-37, the guard that runs the sign-in helper
+only when the file is invoked directly as a script, which `android/test-weekly.ps1` does;
+a test that did so would sign in against the live Supabase project, so only its functions
+are tested, in `liveTokenCli.test.ts`). Branch gaps are in `accountTokenContract.ts`
+(93.75%), `installGuard.ts` (80%), `liveTokenCli.ts` (71.43%) and `visionCases.ts`
+(75%). **The enforced baseline `scripts/coverage_gate.py` checks scan-proxy against is
+100.00% of lines**, so today the gate **fails** (99.84%, exit 1; seen on 2026-10-21 with
+`uv run scripts/coverage_gate.py --refresh`). It was 100% when #21 recorded it, before
+#75 added `liveTokenCli.ts`. The release command does not run the gate, so nothing is blocked by
+it automatically, but a release-time gate run reports FAIL until the owner lowers the
+floor, excludes the line or decides on another test (rule 9 of
+`docs/test-audit/rules.md`: the owner sets coverage targets). See the root
+`TESTING.md`'s "Coverage gate" section.
 
 **Structured pass-rate reporting for the README dashboard** (roadmap
 item #7, new 2026-08-24): `npm run test:report` (Major) and `npm run
@@ -192,8 +214,17 @@ Real run, 2026-08-24: found 3 unnecessarily-`export`ed names
 outside `scan.ts` ever calls `runScan` with an explicit `deps` argument,
 confirmed via grep across `src/` and every test file). Fixed by removing
 the unneeded `export` keyword, not by deleting anything — confirmed via
-`npm run typecheck` and a full `npm test` (57/57) afterward. No genuine
-dead code found. Command exits clean (0 findings) as of this writing.
+`npm run typecheck` and a full `npm test` (57/57 at the time) afterward. No genuine
+dead code found then, and the command exited clean.
+
+**Today it does not exit clean (2026-10-21, #64): one finding, exit 1.** `knip` reports
+`uv` as an *unlisted binary* in `package.json`: the `deploy` script is
+`uv run ../../scripts/scan_proxy_deploy.py` since #43 (the External release gate runs
+before `wrangler deploy`), and knip has no way to know `uv` is a tool the repo expects on the
+PATH. It is not dead code. The fix is an `ignoreBinaries` entry in knip's configuration. No
+knip config file exists today; a `knip.json` would leave `package.json` alone, which matters
+because `package.json` is a dependency pin of `anthropic`, `scan-proxy-worker` and
+`worker-token-verification`, so editing it marks all three stale. Tracked in #152.
 
 ## What each test covers
 
@@ -246,6 +277,8 @@ the Python half is `tests/test_vision_shared_fixtures.py`.
 - **rejects wrong-typed fields, not just wrong/missing values** — a number where `doc_type`/`image_base64` should be a string, and an array where `doc_type` should be a string.
 - **an explicit null media_type is treated the same as an omitted one**.
 - **rejects an array payload the same way as any other non-conforming object** — `[]` and `["truck_tag"]`.
+- **parses a request with client_request_id and passes it through**, **omitting it leaves it absent** (not defaulted), and **an explicit null is treated as omitted**.
+- **rejects a blank or wrong-typed client_request_id**.
 - **accepts a client_request_id up to the length cap, including a UUID**, and **rejects one over 128 characters or with characters outside `A-Za-z0-9._:-`** (space, newline, tab, non-ASCII, `/`, emoji, leading space), naming the rule in the message (#94).
 - **silently ignores unknown extra fields rather than rejecting them** — documents intended behavior (only the four known keys are ever read).
 
@@ -259,10 +292,11 @@ the Python half is `tests/test_vision_shared_fixtures.py`.
 - **a refund call that resolves with ok:false (not a throw) is also treated as a failed refund** — the other way a refund can fail without throwing.
 - **a successful scan never issues a refund**.
 - **spendCredit and refundCredit are called with the same idempotency key** — scan.ts's own responsibility (revenuecat.ts derives the refund's distinct `-refund` suffix from whatever key it's given); a regression minting a fresh key per call would silently break the charge/refund pairing.
-- **spendCredit itself rejecting propagates out of runScan rather than being caught** — documents a known gap: no `try/catch` around the spend call, so a real network failure here currently means an ungraceful failure rather than a clean `billing_error` response.
+- **a spendCredit rejection (e.g. a timeout) is mapped to a clean `billing_error` response, not a hang** (commit `6c59f05`, roadmap item #5) — `scan.ts` catches the thrown rejection from the spend call (RevenueCat unreachable, or its own 10 s timeout firing) and answers 502 `billing_error` without calling Claude. This replaced the earlier test that pinned the opposite behaviour as a known gap.
+- **an extractFields timeout is refunded and mapped to extraction_failed like any other extraction failure**.
 - **trailer_tag and scale_ticket scans use their own doc type's config and echo it back** — every other test in this file uses `truck_tag`; this is the only one exercising the other two doc types through `runScan` directly.
 
-- **a request with client_request_id gets a stable RevenueCat idempotency key derived from it, never the raw id** and **two runScan calls with the same client_request_id use the same idempotency key both times** — the same id gives the same key, a different id a different one.
+- **a request with client_request_id gets a stable RevenueCat idempotency key derived from it, never the raw id** and **two runScan calls with the same client_request_id use the same idempotency key both times** — the same id gives the same key, a different id a different one. **A request without client_request_id falls back to a fresh random key each call** (a request with no id is never deduped).
 
 These use a fake RevenueCat ledger that replays a repeated Idempotency-Key and 422s when no credit is left (#94, the `client_request_id` replay lead):
 
@@ -279,7 +313,8 @@ These use a fake RevenueCat ledger that replays a repeated Idempotency-Key and 4
 - **URL-encodes the customer id** — a customer id with spaces/slashes.
 - **a 422 (insufficient balance) is surfaced as ok:false, not thrown** — this response IS the entitlement check.
 - **a non-JSON error body doesn't throw** — an HTML error page from a 502 doesn't crash the parser; `body` ends up `null`.
-- **a network failure (fetch rejecting) propagates out of spendCredit rather than being caught** — documents a known gap, the same shape as `scan.test.ts`'s matching case one layer up.
+- **a network failure (fetch rejecting) propagates out of spendCredit rather than being caught here** — by design: `revenuecat.ts` does not swallow it, and `scan.ts` catches it one layer up and answers `billing_error` (see `scan.test.ts`).
+- `[sanity]` **the fetch call is wired to abort after REVENUECAT_TIMEOUT_MS, not left to hang forever** (10 s).
 - **uses the currency code from env, not a value baked into the module** — a non-`SCAN` currency code flows through into the adjustment body correctly.
 - **the real response body is returned to the caller, not discarded** — the success-path body isn't just treated as opaque.
 
@@ -384,9 +419,34 @@ validates a real token against.
 - **extractFields against the real Anthropic API extracts real fields from a real truck tag photo** — `ExampleDocs/AddieTag.jpg`, the same file the original 2026-08-17 scan-proxy smoke test used. Proves the real request shape (model name, forced `tool_choice`, image content block) is still accepted and still returns a matching `tool_use` block with real field names — not any particular extracted value, since real vision accuracy isn't this test's concern (that's `tests/test_scale_ticket_real_photo.py`'s job on the Python/Tesseract side; this is the same idea applied directly to Claude). The one real, billed call in this file — fails explicitly as `"ANTHROPIC_API_KEY appears invalid"` (via `rejectingAuthFailureAsBadKey`), not a bare SDK error, if the real key is present but wrong.
 - **extractFields against the real Anthropic API rejects an invalid key with a real auth error** — free (fails before any billed inference), proves the auth-failure shape `extractFields`'s error handling assumes is still what a real 401 actually looks like. (This one's *point* is a bad key being correctly rejected, so it's not wrapped in `rejectingAuthFailureAsBadKey` — that wrapper is for `ANTHROPIC_API_KEY` unexpectedly being the thing that's wrong, not this test's own deliberately-bad key.)
 
-## Known gaps (deliberately not tested, or not yet)
+## Known gaps
 
-- **Investigated 2026-08-21, confirmed not a gap**: whether a customer's
+Each entry says whether it is closed or still open, and an open one names the ticket
+that tracks it or says there is none (`tests/test_testing_docs.py` checks this). Refreshed 2026-10-21 (#64)
+against the test audit in `docs/test-audit/scan-proxy.md`.
+
+- **Open (#151)**: the coverage gate fails Scan Proxy today, 99.84% of lines against the
+  100.00% floor (`liveTokenCli.ts` lines 36-37, see "Coverage").
+- **Open (#152)**: `npm run check:dead-code` exits 1 on `uv` as an unlisted binary
+  (see "Dead code").
+- **Open (#96)**: an exact replay of a completed scan is still extracted again — the
+  RevenueCat key binds account, document type, image and `client_request_id` (#94), so a retry after a lost response charges once, but resending the identical request re-runs Claude each time (one credit, N billed extractions) and, if that second extraction fails, refunds the credit of a scan that was delivered. (The mirror case: after a failed, refunded first attempt, an honest retry replays the Spend and is extracted at no net credit.) RevenueCat gives no replay signal and the Worker keeps no state, so only a server-side record (Workers KV or a single-use scan token) closes it.
+- **Deliberately not tested**: Workers-runtime-specific behavior (`@cloudflare/vitest-pool-workers`) —
+  this Worker uses no Workers-only API, so plain Node test coverage is representative. It
+  does use `AbortSignal.timeout`, `crypto.randomUUID` and a dynamic `import()`, which Node and
+  `workerd` both provide; the `scan-proxy-worker` External surface is what runs the real
+  deployed runtime. Low risk, unblocked, not written.
+- ✅ **Closed (commit `6c59f05`, roadmap item #5; #112)**: a hung call to RevenueCat or Claude.
+  Both now carry a timeout (`REVENUECAT_TIMEOUT_MS` 10 s; `ANTHROPIC_TIMEOUT_MS` 20 s with
+  no retries), a failed spend becomes a clean 502 `billing_error`, and the three time limits
+  (Worker, Web, Android) are checked to agree by `timeLimits.test.ts`.
+- ✅ **Closed (#94)**: the same charge for a repeated request. A request's RevenueCat key is
+  a fixed-width hash of account, document type, image and `client_request_id`, and a request
+  with no id gets a fresh random key (`scan.test.ts`).
+- ✅ **Closed (#21)**: no test anticipated account-token verification. `accountToken.test.ts`
+  now covers it, with the shared contract (`accountTokenContract.ts`) and the live
+  `[worker-token-verification]` surface.
+- **Not a gap** (investigated 2026-08-21): whether a customer's
   `RigCheck Pro` *entitlement* state (vs. its `SCAN` credit balance)
   needs its own dedicated test customer/test case. It doesn't, currently
   — neither `scan.ts` nor the Android app ever reads entitlement state at
@@ -396,9 +456,6 @@ validates a real token against.
   differs from a normal one. Revisit if entitlement-based gating is ever
   actually built.
 
-- **No timeout on the Anthropic/RevenueCat `fetch` calls** — not a test gap so much as a missing feature (both here and Android-client-side); a hung call currently means the Android loading spinner never resolves. Raised, not yet a task.
-- **An exact replay of a completed scan is still extracted again** — the RevenueCat key binds account, document type, image and `client_request_id` (#94), so a retry after a lost response charges once, but resending the identical request re-runs Claude each time (one credit, N billed extractions) and, if that second extraction fails, refunds the credit of a scan that was delivered. (The mirror case: after a failed, refunded first attempt, an honest retry replays the Spend and is extracted at no net credit.) RevenueCat gives no replay signal and the Worker keeps no state, so only a server-side record (Workers KV or a single-use scan token) closes it; tracked in #96.
-- **Workers-runtime-specific behavior** (`@cloudflare/vitest-pool-workers`) — this Worker doesn't currently use any Workers-only APIs, so plain Node test coverage is representative; low-risk gap, unblocked but not written.
 
 ## Per-surface External suite (ADR-0008, #38)
 

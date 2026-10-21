@@ -1,7 +1,7 @@
 # Python backend/OCR/Streamlit testing
 
 Classifies this repo's Python test suite (`tests/`, covering
-`src/hdttools/` and `streamlit_app/`) against the
+`src/hdttools/`, `streamlit_app/` and the `scripts/` tooling) against the
 categories defined in the root `TESTING.md`. Written 2026-08-21,
 retrofitted onto tests written before that framework existed — most of
 this suite predates the categories below; this is the first pass at
@@ -10,20 +10,23 @@ root — `ARCHIVE_WEB_STREAMLIT.md`, `ARCHIVE_TESTING.md`,
 `ARCHIVE_EARLY_HISTORY.md`) for the narrative history of individual
 features/bugs each test file guards against.
 
-`uv run pytest -q` — 797 tests selected by default (793 passing, 4
-deliberate `xfail`s — see `test_real_photo_ocr_accuracy.py` below), 802
-collected in all: the other 5 are the live `external` tests, which a
-default run deselects. No CI; everything runs manually, matching the root
-`TESTING.md`'s "session regression" model rather than a cadence. Counted
-2026-10-05 (issue #42's `pages-site` manifest-entry test added one; its
-live tests are Web's, not pytest's — see `web/TESTING.md`. Before that,
-issue #37, after adding the `anthropic` surface's
-reachable/authenticated and malformed-image cases to
-`test_claude_vision_external.py`, the PyPI registry fetcher and its tests
-to `test_external_freshness.py`, and the paid-call-budget tests to
-`test_external_wrapper.py` — see "Per-surface External suite" below; the
-per-context breakdowns further down this file were last refreshed for
-issue #56 and are not re-verified here).
+**What to run, and when,** follows the agreed rules in
+[`docs/test-audit/rules.md`](../docs/test-audit/rules.md) (the scope ladder, per issue,
+session end, release), and the advisory planner
+[`scripts/test_planner.py`](../scripts/test_planner.py) turns a diff into the commands
+(`uv run scripts/test_planner.py --level issue|session|release`; it never blocks). The
+root [`TESTING.md`](../TESTING.md) has the ladder for all five contexts. Core and
+Streamlit share this one suite and this one document; Core has no release event of its
+own (it is covered through the apps that use it), and neither has a full-run release.
+
+`uv run pytest -n auto --maxprocesses=8` — real run, 2026-10-21 (#64): **1586
+passed, 4 `xfail`ed** (see `test_real_photo_ocr_accuracy.py` below), 10 deselected,
+in 45 s. The deselected 10 are the live `external` tests (the 5 Claude tests, 3 of them
+billed calls, and 5 free Maven-registry reads); `addopts` leaves them out of any default
+run, so 1,600 tests are collected in all and 1,590 selected. No CI; everything runs manually,
+matching the root `TESTING.md`'s "session regression" model rather than a cadence.
+The counts in the tables below are collected tests (`--collect-only`) from the same
+day; the by-file table is the place to find a file's own tests, not its count.
 
 ## Markers and commands
 
@@ -43,26 +46,45 @@ its odd tests individually. No test files moved.
 
 `addopts = -m "not external"`, so bare `pytest`, `scripts/coverage_gate.py`
 and `scripts/generate_dashboard.py` never select the live tests, whatever
-`ANTHROPIC_API_KEY` is set to. The missing-key `skipif` stays as a second
-guard, and `tests/conftest.py` makes any unmarked test that reaches the
-real Anthropic client (`anthropic.Anthropic`, the only provider client
-this suite uses) fail (`test_live_provider_guard.py` checks it).
+`ANTHROPIC_API_KEY` is set to. A selected live test with no key does not skip: its
+autouse `_require_api_key` fixture fails it (a skip would exit 0 and record a false
+pass; see "Per-surface External suite" below). And `tests/conftest.py` makes any
+unmarked test that reaches the real Anthropic client (`anthropic.Anthropic`, the
+only provider client this suite uses) fail (`test_live_provider_guard.py` checks it).
 
-| Run | Command | Tests |
+| Level | Command | Tests |
 |---|---|---|
-| Minor only, one context | `uv run pytest -m "minor and core"` / `-m "minor and streamlit"` | 613 / 19 |
-| Minor only, whole app | `uv run pytest -m minor` | 632 |
-| One context | `uv run pytest -m core` / `-m streamlit` | 732 / 19 |
-| Major (everything but external), parallel | `uv run pytest -n auto` (about 40 s; the serial `uv run pytest` takes about 170 s, #129) | 751 |
-| Fast Minor | `uv run pytest -m "minor and not slow"` | 232 |
-| External (live, billed) | `uv run pytest -m external` | 5 billed Claude tests + the 5 free Maven ones below |
+| One file | `uv run pytest tests/test_breakdown.py` (any file; a `-k` or node id narrows it) | that file's |
+| Minor only, one context (per issue) | `uv run pytest -m "minor and core"` / `-m "minor and streamlit"` | 1,377 / 19 |
+| Minor only, whole app | `uv run pytest -m minor` | 1,396 |
+| Fast Minor | `uv run pytest -m "minor and not slow"` | 990 |
+| One context | `uv run pytest -m core` / `-m streamlit` | 1,571 / 19 |
+| Context, session end (the planner's command) | `uv run pytest -n auto -m "core and not slow"` / `uv run pytest -m "streamlit and not slow"` | 1,153 / 17 |
+| Application, session end | `uv run pytest -n auto -m "not slow and not external"` | 1,170 |
+| Major, everything offline (the slow tests included), parallel | `uv run pytest -n auto --maxprocesses=8` (45 s on 2026-10-21; the serial `uv run pytest` is the same tests, about 170 s in #129) | 1,590 |
+| Slow tests only (owed when the diff touches what they check, always at release) | `uv run pytest -n auto -m "slow and not external"` | 420 |
+| External (live) | `uv run pytest -m external` | 10: the 5 Claude tests (3 billed calls, 2 free) + the 5 free Maven ones below |
 | Maven registry guard (live, free, about 10 s) | `uv run pytest -m external tests/test_maven_registries_external.py` | 5 |
 
-Counts are collected tests at 2026-10-04. `core` and `streamlit` do not overlap, but `test_ocr_output_key_contracts.py` (marked `core`) also
+Counts are collected tests (`--collect-only -m ...`), 2026-10-21. The Minor,
+Major and External columns of the ladder are the root `TESTING.md`'s; this table is only
+how each is selected here. The slow tests are 420 of the 1,590. In the parallel run they
+add about 15 s (1,170 non-slow tests took 29 s, everything 45 s, 2026-10-21) but they start
+pytest, npm, Node or Gradle themselves, which is why the planner leaves them out of
+per-issue and session-end runs unless the diff touches what they check (root `TESTING.md`,
+"Python test commands"). `core` and
+`streamlit` do not overlap, but `test_ocr_output_key_contracts.py` (marked `core`) also
 checks Streamlit's `fields.py`, and `test_live_provider_guard.py` is
 marked `core`. A **Major** run is everything except `external`; a Minor
 run is a subset of it. Live tests run on purpose only, after the owner
 confirms the cost (about $0.01-0.03 per call).
+
+**Release.** Core and Streamlit have no full-run release; their release evidence is the
+slow set above (always listed at release level) plus the Android and Scan Proxy release
+runs that use them. **Session end** is the whole file, context or application, by the
+size of the diff (`uv run scripts/test_planner.py --level session`); a suite that already
+passed at this exact tree is not re-run (the verification ledger, `test_verification_ledger.py`
+below).
 
 The earlier real-environment gotcha — this dev machine has
 `ANTHROPIC_API_KEY` set ambiently, so a bare run used to make real billed
@@ -84,8 +106,8 @@ Worker's run cleared the Python half unseen. **The repo-root
 `.\test-external.ps1` (platform `core`) runs and records `anthropic-python`
 when it is stale**, and the Worker's wrapper does not list it. A direct run is
 `uv run pytest -m "external and anthropic_python"` (paid, needs the owner's
-go-ahead; a direct run records nothing). The new surface has no recorded pass
-until the owner runs it once. Needs
+go-ahead; a direct run records nothing). Its first real pass was recorded
+2026-10-20 (3 paid calls; `scripts/dashboard_data/external_status.json`). Needs
 `ANTHROPIC_API_KEY`; a missing key fails the run (an autouse
 `_require_api_key` fixture calls `pytest.fail`, not `pytest.skip` - a skip
 would exit 0 and the wrapper would record a false `pass` for a surface
@@ -148,33 +170,38 @@ previously `streamlit_app/` had zero coverage measurement at all). Real, repeata
 command:
 
 ```bash
-uv run pytest --cov --cov-report=term-missing
+uv run pytest -n auto --cov --cov-report=term-missing
 ```
 
 (Bare `--cov` — no `--cov=PATH` needed — because `[tool.coverage.run]`'s
-`source` already tells coverage.py what to measure.) Real numbers as of
-2026-08-24: 79% total, `streamlit_app/app.py` 80% (223 statements, 44
-missed), `streamlit_app/fields.py` 100%, `streamlit_app/recent_rigs.py`
-79%. Kept as an explicit, separate command rather than a default
-`pytest -q` `addopts` — matching Android's Minor/Major suites, coverage
-reporting stays a deliberate, occasional check, not overhead on every
-routine run. (Issue #56's new Streamlit tests, 2026-10-04, raised measured
-`streamlit_app/app.py` to 99% — see `test_streamlit_app.py`'s row below.
-The 79%/80% figures just above are left as-is since they're the frozen
-`coverage_gate.py` floor, not a running total; re-baselining that floor
-to the current measured number is its own separate, not-yet-filed task.)
+`source` already tells coverage.py what to measure; the gate runs the same command
+with `--cov-report=json`.) The live tests stay deselected, so coverage never makes a
+billed call. Real numbers, 2026-10-21 (`uv run scripts/coverage_gate.py --refresh`):
+**87.78% of statements** (747 of 851), of which `src/hdttools/` is 83.2% (495 of 595)
+and `streamlit_app/` 98.4% (252 of 256). The files under 90% are the interactive
+ones, plus code that only a subprocess test reaches: `review_form.py` 46% (the Tkinter
+window, the thin GUI glue this project accepts as untested), `trailer_tag_ocr.py` 64%
+and `truck_tag_ocr.py` 72% (each one's missed lines are the interactive
+`read_*_ocr()` entry point: file picker, review window and save, none of it run here),
+`file_picker.py` 85%, `vision_client.py` 88% (the `anthropic`-not-installed branch,
+which `test_optional_anthropic_import.py` proves in a real subprocess that coverage does
+not see) and `__init__.py` 75%. `scripts/` is not
+in `source`, so the tooling tests below have no coverage number. Kept as an explicit,
+separate command rather than a default `addopts` — coverage reporting stays a
+deliberate check, not overhead on every routine run.
 
-**This 79% total is the enforced baseline `scripts/coverage_gate.py`
-checks Python against at release time** — see the root `TESTING.md`'s
-"Coverage gate" section; the gate fails only on regression below this
-real baseline, not an arbitrary target.
+**The enforced floor is 79%.** `scripts/coverage_gate.py` fails Python only below
+that number, which is the 2026-08-24 baseline and not the measured one; the measured
+87.78% passes with 8.8 points to spare. Whether to raise the floor is the owner's call
+(rule 9 of `docs/test-audit/rules.md`: no targets are set until the owner has seen the
+numbers). See the root `TESTING.md`'s "Coverage gate" section.
 
 **Structured pass-rate reporting for the README dashboard** (roadmap
-item #7, new 2026-08-24): `scripts/generate_dashboard.py` runs `uv run
-pytest -q --junitxml=junit.xml` (repo root, gitignored) — the same suite
-`uv run pytest -q` already runs, with a JUnit XML report added. Python's
-Minor and Major dashboard cells show the same number, since (as noted
-above) nothing here tags a fast subset yet — see the root `TESTING.md`'s
+item #7, new 2026-08-24): `scripts/generate_dashboard.py` runs one pytest per tier
+and context with `--junitxml=junit-<context>-<tier>.xml` (repo root, gitignored):
+`-m "minor and core"` and `-m core` for Core, `-m "minor and streamlit"` and
+`-m streamlit` for Streamlit, so the Minor and Major cells are different numbers
+(they were the same until the markers of #50) — see the root `TESTING.md`'s
 "Dashboard" section.
 
 ## Dead code
@@ -228,7 +255,7 @@ library API remain.
 | `test_ocr_common.py` | Function | New 2026-09-09 (see `ARCHIVE_WEB_STREAMLIT.md`'s item #16 entry).
 `get_ocr_backend()` — defaults to `"tesseract"` when `HDTTOOLS_OCR_BACKEND` is unset, reads an explicit `"tesseract"`/`"claude"` value, and raises `ValueError` (fail loud, no silent fallback) on anything else. |
 | `test_ocr_output_key_contracts.py` | **Interface** | Every `fields.py`/`FIELDS` name must map to a real `_parse_fields()` key (2026-08-22): `streamlit_app/app.py`'s `_extract_fields` keep-filter silently drops a field that has no matching OCR key, and `FIELDS` deliberately shows only a curated subset of what OCR extracts, so the check runs in this one direction. Excludes the known manual-only fields (`standalone_weight_lb`, `axle_count`). Calls `_parse_fields("")` — the full key set is structurally present regardless of match success, so no synthetic label text is needed. The opposite direction (every OCR key declared on the FastAPI response models) went with the FastAPI app (#135). |
-| `test_claude_vision_external.py` | **External** | New 2026-09-09 — the first External-tier test on this platform (see "Event-based tiers" above). `@pytest.mark.skipif`'d unless a real `ANTHROPIC_API_KEY` is set; one real Claude vision call per doc type, since #143 against the fixed photo the shared `test-vectors/vision_external_cases.json` names for it (not a random pass-pool pick), asserting no *new* mismatch against `golden_fields.json`'s documented fields beyond what `known_ocr_limitations` already records (a deliberately looser tolerance than `test_pass_pool_regression.py`'s strict equality — see that file's own docstring for why). Surface `anthropic-python`. |
+| `test_claude_vision_external.py` | **External** | New 2026-09-09 — the first External-tier test on this platform (see the root `TESTING.md`'s "Event-based tiers, not time-cadence tiers"). Marked `external` and `anthropic_python`, so a default run deselects it; a missing `ANTHROPIC_API_KEY` fails it (never skips); one real Claude vision call per doc type, since #143 against the fixed photo the shared `test-vectors/vision_external_cases.json` names for it (not a random pass-pool pick), asserting no *new* mismatch against `golden_fields.json`'s documented fields beyond what `known_ocr_limitations` already records (a deliberately looser tolerance than `test_pass_pool_regression.py`'s strict equality — see that file's own docstring for why). Surface `anthropic-python`. |
 | `test_vision_shared_fixtures.py` | **Cross-platform interface** | New 2026-10-20 (#143) — free drift checks for the two Claude vision implementations: every case in `test-vectors/vision_external_cases.json` has an existing photo and `golden_fields.json` entry and every doc type has a case; `test_claude_vision_external.py` runs exactly those cases; the golden-value comparison rule; and each reader's tool name and schema property/required names against `test-vectors/vision_tool_schemas.json`. The Worker's `visionSharedFixtures.test.ts` runs the same checks on its side. |
 | `test_coverage_gate.py` | Function | New 2026-08-24. `../scripts/coverage_gate.py`'s `PlatformResult.passed` baseline-floor logic, loaded via `importlib` since the script lives outside the `hdttools` package. The report parsers themselves moved to `coverage_lib.py` 2026-08-24 (item #7) — see `test_coverage_lib.py` below. The `get_*_result` functions that actually shell out to each platform's toolchain (gradlew/pytest/npm) are deliberately not unit-tested here — thin I/O glue, exercised for real by the script's own manual runs (see `ARCHIVE_TESTING.md`). |
 | `test_coverage_lib.py` | Function | New 2026-08-24 (roadmap item #7). `../scripts/coverage_lib.py`'s four pure coverage-report parsers (`parse_android_report`/`parse_python_report`/`parse_web_report`/`parse_scan_proxy_output`), shared by `coverage_gate.py` and `generate_dashboard.py` — extracted from `test_coverage_gate.py` when the parsers themselves moved out of that script. |
@@ -256,9 +283,54 @@ library API remain.
 | `test_wizard_web_revenuecat.py` | Interaction | New 2026-10-11 (#86). `../scripts/wizard_web_revenuecat.sh` run with scripted stdin in a scratch directory: a pasted `sk_` secret key is read silently (a `read` wrapper logs `-s`, since a pipe never echoes), never printed or saved, and the public key that follows is saved. |
 | `test_web_glossary.py` | Structure | New 2026-10-11 (#86). `../web/CONTEXT.md`'s **Pro** entry has an `_Avoid_` line and points at the reserved **Entitlement** term in `workers/scan-proxy/CONTEXT.md` instead of defining Pro as an entitlement. |
 | `test_record_external_result.py` | Function | New 2026-08-24 (roadmap item #7). `../scripts/record_external_result.py`'s `record()` — writes a new entry, maps a nonzero exit code to `passed: false`, preserves other platforms'/suites' existing entries untouched, and overwrites a stale entry for the same platform+suite. Uses `monkeypatch` on the module's `STATUS_FILE` constant rather than touching the real `scripts/dashboard_data/external_status.json`. |
+| `test_testing_docs.py` | Structure | New (#64). The five testing documents (root, this one, Web, Scan Proxy, Android): every test file of a context is named in its document, each document links to `docs/test-audit/rules.md` and to `scripts/test_planner.py` and every relative link resolves, every `scripts/` file a document names exists and every `npm run` script Web's and Scan Proxy's documents run is in that package's `package.json`, the root document has the per-issue, session-end and release levels with the planner's three `--level` forms, every entry under "Known gaps" starts with a status and an open one names its ticket or says there is none, a gap the code has since closed (Scan Proxy's timeout and spend-throws) is not worded as open, and a test file named as existing does exist unless the text says it is retired. Counts are not asserted: they change with every ticket, so the real figures come from a real run when the documents are refreshed. |
+| `test_external_freshness.py` | Function | `../scripts/external_freshness.py`, ADR-0008's freshness check, with git history, the status file and every registry response faked: a surface is stale when a commit since its last real pass touched a boundary file or pin, or a watched package published a stable release after it, or a registry is unreachable; the npm, PyPI, Maven Central and Google Maven fetchers (the Maven ones added in #54), the `owner` rules (#142: a surface with no owner, an owner outside its platforms or a list of owners is a manifest problem that exits 1), the planned, failed, skipped and overridden states, and checks of the real manifest (every provider surface registered, every entry well formed, each surface's chain, the Worker's and Python's Claude surfaces sharing no file, pin or package). Its live counterpart is `test_maven_registries_external.py`. |
+| `test_maven_registries_external.py` | **External** (free) | New (#54). The Maven fetchers against the real registries (plain GETs, no key, about 10 s), so a registry that stops telling the truth fails here instead of silently marking a surface fresh. Marked `external` and deliberately not `core`, so a default run and `-m core` never reach the network; run with `uv run pytest -m external tests/test_maven_registries_external.py`. A registry that cannot be reached fails, never skips. |
+| `test_external_wrapper.py` | Function | `../scripts/external_wrapper.py`, the decision logic behind every platform's `test-external` wrapper, with the runner and recorder faked: which stale surfaces run, the owner rule (a stale surface another platform owns is printed with its script and never run or recorded), a surface with no tagged test recorded `fail`, `-Skip` recorded `skipped`, the paid-call confirmation and budget (`scripts/paid_call_budget.py`), and the per-surface results taken from the tagged tests rather than the exit code (#89). |
+| `test_external_surface_results.py` | Interaction | New (#89). The pytest half of the per-surface result: `run_external_pytest.py` selects each surface's marker, loads `external_surface_plugin.py` and writes JUnit XML that `external_wrapper.surface_results` attributes per surface. Runs a throwaway pytest in a temp directory; no live call. |
+| `test_live_provider_guard.py` | Function | New (#50). The `external` marker is the only way a test may reach a live provider: an unmarked test that reaches the real `anthropic.Anthropic` client fails (`tests/conftest.py`), the live vision file is marked `external`, a default run's `addopts` excludes `external`, and every test file that reads the real API key to decide whether to run is marked `external` too. |
+| `test_pass_pool.py` | Function | New (item #13). `../scripts/pass_pool.py`: a doc type resolves to one of its registered real images with that image's own `golden_fields.json` entry attached (the pool is a membership index over `photos`, not a second copy of the field data). A fixed seed keeps the assertions deterministic. |
+| `test_pass_pool_regression.py` | Function, real-photo (`slow`) | New (item #13). A random real photo per doc type from the pass pool, picked at run time with an unseeded `random.Random()`, through real Tesseract: the mismatched fields must equal the documented `known_ocr_limitations`, so a new mismatch is a regression and a limitation that starts matching is an improvement to record. Owed by the planner when the OCR modules, the pool scripts or `ExampleDocs/` change. |
+| `test_fail_pool_regression.py` | Function, real-photo (`slow`) | New (item #13). A random known-illegible real photo per doc type through real Tesseract: extraction still gives the documented `None` failure signature, and that signature still reaches "Not Enough Information" through `compute_breakdown`/`verdict_for`, so garbled OCR is never taken as real data. Self-contained in `golden_fields.json`'s `fail_pool` section. |
+| `test_vehicle_discovery.py` | Function | New (item #13). `../scripts/vehicle_discovery.py`, the directory-convention discovery behind the pools ("drop images and a `vehicle.json` in a folder and the tests pick them up"): builds a fake `scans/` tree under `tmp_path` per case and proves the discovery mechanics, not the real photos (the two regression files above do that). |
+| `test_breakdown_combinatorial_sweep.py` | Function, invariant sweep (`slow`) | `itertools.product` over a small chosen set of truck, trailer, scale, axle-count and pin-weight-percentage values: `compute_breakdown`/`verdict_for` never crash, every tone and status is a real member of its set, `estimated` never leaks onto an insufficient row and `pct` stays in range. Asserts invariants, not values; a bug it finds is promoted to a named case in `test-vectors/breakdown_cases.json`. Owed when `breakdown.py` changes. |
+| `test_review_form_rebuild.py` | Function | New (item #8). `review_form.py`'s field discovery and reconstruction (`_leaf_fields`, `_rebuild_from_values`), extracted from the window's closures so no Tkinter window is needed, like `test_review_form_coerce.py`. The widget wiring stays untested glue. |
+| `test_paid_call_budget.py` | Function | `../scripts/paid_call_budget.py`, the shared paid-call confirmation and counter (#62): a confirmed step runs and is counted, a declined one is not, spend accumulates across steps, a step that would exceed the maximum or the remaining budget aborts without prompting (exactly the remaining budget is allowed), a zero-call step still confirms, and the default prompt reads stdin and treats anything but `y` or `yes` as no. |
+| `test_release_steps.py` | Function | `../scripts/release_steps.py`'s `run_paid_step` (#62, #63), shared by both release commands: a confirmed passing step runs, a declined one does not run, a step over the budget aborts with exit 1, a confirmed failing step returns its own exit code. |
+| `test_scan_proxy_release.py` | Function | `../scripts/scan_proxy_release.py` behind `workers\scan-proxy\release.ps1` (#62), with a fake runner (no deploy, no test run, no network): the offline suite, then the stale surfaces, then the gate, then the release and weekly suites, in that order; a blocked gate stops the run before the weekly suite deploys; `-Force` needs a reason and passes it to every step; a failing offline suite stops before anything paid; a declined paid step is skipped and the next one still runs; exceeding the declared maximum aborts; the default maximum is the release suite's one call plus the weekly suite's two. |
+| `test_android_release.py` | Function | `../scripts/android_release.py` behind `android\release.ps1` (#63), with a fake runner and a fake device list (no device, deploy or network): JVM suite, instrumented suite, the Worker's wrapper then Android's own for the stale surfaces, the gate over Android's chain, then the weekly suite, in order; a missing device (or an `adb` that cannot be found) fails the run, never skips it; unauthorized and offline devices are not counted; a blocked gate, a failing wrapper or a failing instrumented suite stops the run; a declined weekly suite is skipped; the default maximum matches the weekly step's declared cost. |
+| `test_android_session_end.py` | Function | `../scripts/android_session_end.py`, the device-free session-end command (#133): JVM tests, then the decision-logic coverage floor, then detekt; it stops at the first failing step with that step's exit code and name, says so when everything passes, and no step needs a device. Fake runner. |
+| `test_run_external_android.py` | Function | `../scripts/run_external_android.py`, the Android External runner `external_wrapper.py` calls (#39), with a fake command runner for Gradle, `adb` and the sign-in helper (the instrumentation output is the shape the `medium_phone` emulator printed): the device checks (exactly one device, Google Play Services present), the access token never reaching the device or the output, a failed build, install or sign-in failing the run before any test, the marker file removed even when the run is interrupted, the raw `-r` output turned into JUnit XML with each test's surface, and checks that every `@ExternalSurface` class is an active Android-owned surface in the manifest and is kept out of the Gradle default run. No device, build or network. |
 
-## Known gaps (identified 2026-08-21, not all closed)
+## Known gaps
 
+Each entry says whether it is closed or still open, and an open one names the ticket
+that tracks it or says there is none (`tests/test_testing_docs.py` checks this). Refreshed 2026-10-21 (#64)
+against the test audit in `docs/test-audit/` (core, streamlit).
+
+- **Open (#140)**: Streamlit's `FIELDS` names are checked against the Tesseract
+  parsers' keys (`test_ocr_output_key_contracts.py`) but not against the Claude
+  vision extractors' schemas, so a `FIELDS` name that is not a key there would
+  silently never be pre-filled on the Claude path.
+- **Open (no ticket yet; the audit's suggestion)**: `streamlit_app/requirements.txt`
+  (what Streamlit Community Cloud installs) is not checked against `pyproject.toml`
+  or the imports `app.py` and Core need. It has already drifted once and caused a
+  production import bug (`test_optional_anthropic_import.py` is the regression test
+  for that one, not a check of the file).
+- **Open (no ticket)**: `review_form.py`'s window wiring, the interactive
+  `read_*_ocr()` entry points and `file_picker.py`'s dialog calls are untested glue
+  (46%, 64%, 72% and 85% statement coverage under "Coverage" above). A deliberate
+  gap, the same class this project accepts for shell-out I/O elsewhere.
+- ✅ **Closed (#55)**: the golden-vector fixture has an over-limit case
+  for every Breakdown row (18 cases), asserts each row's note and badge and the
+  verdict's headline and subline, and every runner fails a case that needs a
+  capability it does not know.
+- ✅ **Closed 2026-10-04 (#56)**: the Streamlit Disclaimer gate is asserted to hide
+  Results until acknowledged (`test_results_is_hidden_until_the_disclaimer_is_acknowledged`),
+  and `streamlit_app/app.py` went from 81% to 99%.
+- ✅ **Closed (#50)**: a default run, the coverage gate and the dashboard
+  never reach a billed Claude call, whatever `ANTHROPIC_API_KEY` is set to;
+  Minor, slow, Core and Streamlit are selectable by marker.
 - **Obsolete (#135)**: the `estimated`-field-in-the-`/api/breakdown`-response
   check and the OCR-keys-vs-`schemas.py` check guarded the FastAPI app,
   which was removed. `estimated` is now asserted on every row by the

@@ -518,7 +518,7 @@ is two lines, `workers/scan-proxy/src/liveTokenCli.ts` 36-37, the guard that run
 sign-in helper only when it is invoked directly as a script (added by #75); every test
 calls its functions, and a test that ran the script would sign in against the live
 Supabase project. So a release-time `coverage_gate.py` run fails today until the owner
-lowers that floor, excludes the line or decides on another test; this document does not
+lowers that floor, excludes the line or decides on another test (#151); this document does not
 change the floor (rule 9 of `docs/test-audit/rules.md`: the owner sets targets). Neither
 `release.ps1` runs the full gate, so nothing blocks on it automatically; it is run by
 hand, and Android's session-end command runs only its own decision-logic floor

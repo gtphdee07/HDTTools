@@ -224,7 +224,7 @@ before `wrangler deploy`), and knip has no way to know `uv` is a tool the repo e
 PATH. It is not dead code. The fix is an `ignoreBinaries` entry in knip's configuration. No
 knip config file exists today; a `knip.json` would leave `package.json` alone, which matters
 because `package.json` is a dependency pin of `anthropic`, `scan-proxy-worker` and
-`worker-token-verification`, so editing it marks all three stale. No ticket yet.
+`worker-token-verification`, so editing it marks all three stale. Tracked in #152.
 
 ## What each test covers
 
@@ -425,9 +425,9 @@ Each entry says whether it is closed or still open, and an open one names the ti
 that tracks it or says there is none (`tests/test_testing_docs.py` checks this). Refreshed 2026-10-21 (#64)
 against the test audit in `docs/test-audit/scan-proxy.md`.
 
-- **Open (no ticket)**: the coverage gate fails Scan Proxy today, 99.84% of lines against the
+- **Open (#151)**: the coverage gate fails Scan Proxy today, 99.84% of lines against the
   100.00% floor (`liveTokenCli.ts` lines 36-37, see "Coverage").
-- **Open (no ticket)**: `npm run check:dead-code` exits 1 on `uv` as an unlisted binary
+- **Open (#152)**: `npm run check:dead-code` exits 1 on `uv` as an unlisted binary
   (see "Dead code").
 - **Open (#96)**: an exact replay of a completed scan is still extracted again — the
   RevenueCat key binds account, document type, image and `client_request_id` (#94), so a retry after a lost response charges once, but resending the identical request re-runs Claude each time (one credit, N billed extractions) and, if that second extraction fails, refunds the credit of a scan that was delivered. (The mirror case: after a failed, refunded first attempt, an honest retry replays the Spend and is extracted at no net credit.) RevenueCat gives no replay signal and the Worker keeps no state, so only a server-side record (Workers KV or a single-use scan token) closes it.

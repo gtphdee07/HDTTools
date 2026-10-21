@@ -133,14 +133,17 @@ public by design) and the `WEB_EXTERNAL_TEST_*` account in `web/.env.local`. The
 account's Supabase user id is the RevenueCat app user id, as on the site. **The
 RevenueCat dashboard must be configured first** (`scripts/wizard_web_revenuecat_dashboard.sh`):
 the offering with a lifetime package backed by a Web Billing product, the `pro`
-entitlement, and the `SCAN` virtual currency. A missing piece fails the run with
+entitlement, and the `SCAN` virtual currency, plus the Pro fixture customer
+`external-suite-pro` holding `pro` (below). A missing piece fails the run with
 a message naming it.
 
 No purchase is ever made (0 paid calls; `externalGuards.test.ts` rejects any
 `purchase` call in an external file): a sandbox purchase stays the human
 checklist in #11. The test account may or may not be Pro, so the tests that use it
 check shapes and agreement between the client and the raw SDK, never `isPro`'s
-value; `isPro` is asserted only on the two fixture users below. Unlike the other suites, the "unknown user" case is not an error here:
+value; `isPro` is asserted only on the two fixture users, `external-suite-pro`
+(Pro, below) and `external-suite-no-purchases` (free). Unlike the other suites,
+the "unknown user" case is not an error here:
 RevenueCat creates a customer on first sight, so an unseen app user id is a free
 customer with no scans, and the test uses one fixed id
 (`external-suite-no-purchases`) so it creates a single customer, not one per run.
@@ -157,7 +160,9 @@ to grant it, which is a setup fault, not a code bug. What this does not prove: t
 the Pro *product* is attached to the entitlement, because a promotional grant
 works without it and seeing the attachment needs a purchase or the REST API's
 secret key (neither is allowed here). The attachment stays with the human
-sandbox checklist in #11.
+sandbox checklist in #11. `createRevenueCatFixtureUser.mjs` is a setup helper, not
+a boundary file: it is not run by the suite, and `web/package.json` (which holds its
+npm script) is already a pin of this surface.
 
 | ADR-0008 depth | Covered by |
 |---|---|

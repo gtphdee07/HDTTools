@@ -4,17 +4,16 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-One ticket at a time in the main line; #149 can be built in a second session beside it (see below). Start the next only after the previous one is merged, so it is cut from the updated `MPSkills`.
+The only build tickets left are #149 and the optional #132. Start the next only after the previous one is merged, so it is cut from the updated `MPSkills`.
 
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
-| 1 | #160 pin ruff and oxlint in the lockfiles instead of in commands | tooling; makes two more External surfaces stale on purpose | answer the 2 questions the build session asks | [#160](#160-pin-ruff-and-oxlint-in-the-lockfiles) |
-| 2 (second session, any time) | #149 Android scan field keys against the shared tool schema | one new JVM test, a row in `android/TESTING.md` | none | [#149](#149-android-scan-field-keys-against-the-shared-tool-schema) |
+| 1 (any time) | #149 Android scan field keys against the shared tool schema | one new JVM test, a row in `android/TESTING.md` | none | [#149](#149-android-scan-field-keys-against-the-shared-tool-schema) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 | 3 | The final External run, then one push | live runs, asks you first | give a paid-call ceiling and go-ahead | [Final External run and push](#final-external-run-and-push) |
 | later | #147 the field-name epic | three decisions, one `CONTEXT-MAP.md` line | decide with Claude after #149 | [#147](#147-the-epic-not-built-as-a-ticket-now) |
 
-#149 touches only `android/TESTING.md` and a new test, so it does not collide with #160. `/ticket-start` counts any Android ticket as holding the emulator; #149 is JVM-only, so if another Android ticket is running when you start it, add `--not-android`. Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember").
+#149 touches only `android/TESTING.md` and a new test. `/ticket-start` counts any Android ticket as holding the emulator; #149 is JVM-only, so if another Android ticket is running when you start it, add `--not-android`. Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember").
 
 Not in this round: #40 (blocked on Play Console, see its card), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically), #145 (check that a fresh clone builds on another computer), #146 (check that `pro` is attached to the Pro product), #155 to #159 (static-check gaps: a Python type checker, a shell and PowerShell linter, the Python coverage floor, a Web coverage floor, Android Lint and config files), #138 and #139.
 
@@ -32,30 +31,6 @@ The same six steps every time. The card for the ticket gives the exact command f
 A session-start report (verification debt, #67) prints when each session opens. With the five contexts recorded it says there is nothing to report; it is advisory and you do nothing with it.
 
 ## Run cards
-
-### #160 pin ruff and oxlint in the lockfiles
-
-Why: #150 had to pin ruff inside a command (`uv tool run ruff@0.17.1`) and run the Worker's lint with the oxlint that Web installs, because `pyproject.toml`, `uv.lock` and `workers/scan-proxy/package.json` are External surface pins. This ticket moves both into the lockfiles on purpose, just before the final External run, so the surfaces it makes stale (`scan-proxy-worker`, 1 paid call, and `worker-token-verification`, free) are re-run together with the ones already stale.
-
-- **Step 1:** `/ticket-start 160`.
-- **Step 2 block:**
-
-```
-Test-round additions:
-- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
-  The slow tooling tests are left out of planner runs unless the diff touches
-  what they check.
-- This ticket edits `pyproject.toml`, `uv.lock` and `workers/scan-proxy/package.json` on purpose. It will
-  make External surfaces stale: list which ones (`uv run scripts/external_freshness.py`) and the paid-call
-  cost in the STATUS comment. Do not run any live suite from the branch.
-- The ticket has two Decisions: ask them with AskUserQuestion before building.
-- A new slow-marked test file must be named in `scripts/test_planner_config.json`, and a new test file in
-  its context's testing document (`tests/test_testing_docs.py`).
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
-  markers.
-```
-
-- **Your part:** answer the two decisions (the recommended option is first).
 
 ### #149 Android scan field keys against the shared tool schema
 
@@ -142,13 +117,13 @@ Stale now (`uv run scripts/external_freshness.py`, 2026-10-21), and why:
 
 | Surface | Why stale | Cost | How it runs |
 |---|---|---|---|
-| `anthropic` (Worker) | `@anthropic-ai/sdk` 1.0.0 published after the last pass | 3 paid calls | Worker wrapper `workers\scan-proxy\test-external.ps1 -MaxPaidCalls N` |
-| `anthropic-python` | `anthropic` 2.0.0 published after the last pass | 3 paid calls | the Python vision test, shared golden data with the Worker's |
+| `anthropic` (Worker) | `@anthropic-ai/sdk` 1.0.0 published after the last pass; its pins also changed (#160) | 3 paid calls | Worker wrapper `workers\scan-proxy\test-external.ps1 -MaxPaidCalls N` |
+| `anthropic-python` | `anthropic` 2.0.0 published after the last pass; `pyproject.toml` and `uv.lock` also changed (#160) | 3 paid calls | the Python vision test, shared golden data with the Worker's |
 | `pages-site` | `web/vite.config.ts` changed (a lint fix from #150) | free | `web\test-external.ps1` |
 | `revenuecat-android-sdk` | `com.revenuecat.purchases:purchases` 10.29.0 published | free; needs one emulator with Google Play Services | `android\test-external.ps1` |
-| after #160: `scan-proxy-worker` and `worker-token-verification` | `workers/scan-proxy/package.json` changed on purpose | 1 paid call and free | the Worker wrapper, same run as `anthropic` |
+| `scan-proxy-worker` and `worker-token-verification` | `workers/scan-proxy/package.json` changed on purpose (#160: ruff and oxlint moved into the lockfiles) | 1 paid call and free | the Worker wrapper, same run as `anthropic` |
 
-Suggested ceiling: 6 paid calls before #160, 7 after it. Order: finish #160 (and #149, #132 if you want them) first, so one run covers everything. Then:
+Suggested ceiling: 7 paid calls (3 + 3 + 1). Order: build #149 (and #132 if you want it) first, so one run covers everything. Then:
 
 1. Run `uv run scripts/external_freshness.py` in the main checkout and compare with the table (registries can publish new versions at any time).
 2. Tell Claude "run the External suites" and give the paid-call ceiling. Claude asks, runs from the main checkout (starting the emulator for the Android surface), and commits the pass records in `scripts/dashboard_data/external_status.json`. A new major SDK version may fail; that is worth learning before the push depends on it.
@@ -167,7 +142,7 @@ Suggested ceiling: 6 paid calls before #160, 7 after it. Order: finish #160 (and
 
 ## History (for reference; nothing to do)
 
-- **Merged in the round:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105, #64, #140, #148, #152, #151, #150, #153 (#141 closed as a duplicate, #154 as a duplicate of #153).
+- **Merged in the round:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105, #64, #140, #148, #152, #151, #150, #153, #160 (#141 closed as a duplicate, #154 as a duplicate of #153).
 - **Pushed** up to a76a31f on 2026-10-21; later commits are local.
 - **External runs, owner-approved:** 2026-10-19 sanity run of seven stale surfaces; 2026-10-20 and 2026-10-21 re-runs and the first runs of `anthropic`, `anthropic-python`, the Android SDK surface and the Pro entitlement test; all passed, with the records in `scripts/dashboard_data/external_status.json`.
 - **Verification debt (#67):** a committed SessionStart hook in `.claude/settings.json`; all five contexts have a recorded pass (a new machine or fresh clone needs the one-time commands in [verification-debt.md](verification-debt.md) again; #144 will automate it).

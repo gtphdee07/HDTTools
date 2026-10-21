@@ -147,14 +147,27 @@ def test_a_context_with_no_recorded_pass_is_named_but_not_counted_or_nudged():
     assert report.no_record == ["web"]
     assert [d.name for d in report.debts] == ["core", "streamlit"]
     assert report.nudges == []
-    assert "No recorded session-level pass for: web" in vd.render(report, LIMITS)
+    assert "No recorded pass for web: run once to start the record: " in vd.render(report, LIMITS)
 
 
-def test_with_no_record_at_all_the_report_says_so_instead_of_claiming_everything_is_verified():
+def test_with_no_record_at_all_each_context_gets_one_bootstrap_line_with_its_exact_command():
     text = text_for(Repo(HEAD=["src/a.py"]), {})
 
-    assert "No recorded session-level pass for: core, streamlit, web, android" in text
-    assert "is verified up to date" not in text
+    start = "run once to start the record: uv run scripts/verification_ledger.py run --context "
+    assert [line.strip() for line in text.splitlines() if "No recorded pass" in line] == [
+        f"No recorded pass for core: {start}core --level session -- core-suite",
+        f"No recorded pass for streamlit: {start}streamlit --level session -- streamlit-suite",
+        f"No recorded pass for web: {start}web --level session -- web-suite",
+        f"No recorded pass for android: {start}android --level session -- android-session-end",
+    ]
+    assert "is verified up to date" not in text and "Recommended" not in text  # a bootstrap is not a recommendation
+
+
+def test_the_bootstrap_line_goes_once_the_context_has_a_recorded_pass():
+    text = text_for(Repo(), dict(core="old", streamlit="old", web="old"))
+
+    assert "No recorded pass for android" in text
+    assert "No recorded pass for core" not in text and "No recorded pass for web" not in text
 
 
 # --- The tests owed ---------------------------------------------------------------------------
@@ -300,6 +313,16 @@ def test_when_nothing_is_owed_the_hook_still_says_there_is_no_debt():
     assert "none" in json.loads(out)["systemMessage"]
 
 
+def test_on_an_empty_ledger_the_hook_carries_a_bootstrap_line_per_context():
+    _, out = run_main(["--hook"], verified=lambda c, lv: None)
+
+    data = json.loads(out)
+    lines = [l for l in data["systemMessage"].splitlines() if "No recorded pass for" in l]
+    assert len(lines) == len(tp.load_config()["contexts"])
+    assert all("verification_ledger.py run --context" in l for l in lines)
+    assert data["hookSpecificOutput"]["additionalContext"] == data["systemMessage"]
+
+
 @pytest.mark.parametrize("hook", [[], ["--hook"]])
 def test_a_git_failure_is_reported_and_exits_zero(hook):
     def broken(ref):
@@ -382,6 +405,15 @@ def test_the_setup_document_gives_a_session_start_hook_that_calls_the_script():
     assert hooks[0][0]["hooks"][0]["type"] == "command" and isinstance(hooks[0][0]["hooks"][0]["timeout"], int)
     assert "scripts/verification_debt.py" in command and "--hook" in command
     assert (ROOT / "scripts" / "verification_debt.py").is_file()
+
+
+def test_the_setup_document_lists_the_exact_bootstrap_command_of_every_context():
+    text = DOC.read_text(encoding="utf-8")
+    config = tp.load_config()
+
+    for name, ctx in config["contexts"].items():
+        command = vd.LEDGER_RUN.format(context=name, level="session", command=tp._session_context_command(ctx))
+        assert command in text, f"the setup document lacks the bootstrap command for {name}"
 
 
 def test_the_setup_document_names_where_the_limits_are_set():

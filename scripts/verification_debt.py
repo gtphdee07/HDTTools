@@ -18,8 +18,9 @@ limit off); `--max-files` and `--max-age-days` override them for one run:
 
   "debt": {"level": "session", "max_files": 15, "max_age_days": 7}
 
-A context with no recorded pass has nothing to measure drift from, so it is named once
-and never triggers the recommendation. Docs-only files never count (the planner's
+A context with no recorded pass has nothing to measure drift from: it gets one bootstrap
+line with the exact command that starts its record, and never triggers the recommendation.
+The line goes once the pass is recorded. Docs-only files never count (the planner's
 `docs_globs`). Stale External surfaces are not part of this report (they need the
 network); `uv run scripts/external_freshness.py` covers them. Setup of the hook:
 docs/agents/verification-debt.md.
@@ -75,6 +76,7 @@ class Report:
     level: str
     debts: list[ContextDebt] = field(default_factory=list)
     no_record: list[str] = field(default_factory=list)
+    bootstrap: dict[str, str] = field(default_factory=dict)  # no-record context -> its session command
     owed: list[planner.Selection] = field(default_factory=list)
     nudges: list[Nudge] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
@@ -121,6 +123,7 @@ def build(
 
     recorded = [name for name in contexts if found.since[name]]
     report.no_record = [name for name in contexts if not found.since[name]]
+    report.bootstrap = {name: planner._session_context_command(contexts[name]) for name in report.no_record}
     for note in found.notes:
         if "ledger unavailable" in note or "is not readable" in note:
             report.notes.append(note)
@@ -192,10 +195,9 @@ def render(report: Report, limits: Limits) -> str:
         lines.append(f"  Recommended: catch up {n.context} with a context-level run, {' and '.join(n.reasons)}:")
         lines.append("      " + LEDGER_RUN.format(context=n.context, level=report.level, command=n.command))
         lines.append("      (the run records its pass, which clears the debt; this report never runs it)")
-    if report.no_record:
-        lines.append(f"  No recorded {report.level}-level pass for: {', '.join(report.no_record)}. Nothing to measure drift from, "
-                     "so they are not counted. Start a record by running that context's suite through the ledger: "
-                     + LEDGER_RUN.format(context="<context>", level=report.level, command="<its test command>"))
+    for name, command in report.bootstrap.items():
+        lines.append(f"  No recorded pass for {name}: run once to start the record: "
+                     + LEDGER_RUN.format(context=name, level=report.level, command=command))
     lines.extend(f"  note: {note}" for note in report.notes)
     if limits.max_files or limits.max_age_days:
         parts = []

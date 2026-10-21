@@ -27,8 +27,22 @@ Verification debt (session level; advisory, nothing was run)
 - **Changed files per context**, measured from the commit the ledger last recorded as verified for that context at the session level (`scripts/verification_ledger.py`, #65). Each context has its own starting point. Docs-only files (the planner's `docs_globs`) never count.
 - **Downstream contexts**: files that reach a context from another one, through a shared interface or a `depends_on` link in `scripts/test_planner_config.json`, are listed under `from <where they live>`. A change in Core therefore shows up as debt for Streamlit.
 - **Tests owed**: the session-level plan the planner (#66) makes for that debt, minus any suite the ledger shows as already passed at the current tree. Stale External surfaces are not in it (they need the network); `uv run scripts/external_freshness.py` covers them.
-- **No recorded pass**: a context the ledger has no session-level pass for has nothing to measure drift from. It is named in one line and never triggers the recommendation. Today nothing records context-level passes by itself; running a context's suite through `verification_ledger.py run --context <context> --level session -- <test command>` starts the record. If every context is in this state the report says so instead of claiming everything is verified.
-- With no debt it prints `none` and still names any context without a record.
+- **No recorded pass**: a context the ledger has no session-level pass for has nothing to measure drift from. It gets one bootstrap line with the exact command that starts its record, for example `No recorded pass for core: run once to start the record: uv run scripts/verification_ledger.py run --context core --level session -- <the context's session command>`. The line is not a recommendation (it never counts toward the limits below) and it disappears once the pass is recorded. See "One-time setup".
+- With no debt it prints `none` and still prints the bootstrap line of any context without a record.
+
+## One-time setup: start each context's record
+
+Nothing records a context-level pass by itself yet (a ticket's session-level run covers only the files that ticket touched, so recording it as a context pass would overstate what was verified). Until a follow-up does that, run each context's whole session command once through the ledger, from a clean, committed tree on `MPSkills` (the ledger records nothing on a dirty tree or if HEAD moves during the run). Each takes from about 45 seconds to a couple of minutes:
+
+```
+uv run scripts/verification_ledger.py run --context core --level session -- uv run pytest -n auto -m "core and not slow"
+uv run scripts/verification_ledger.py run --context streamlit --level session -- uv run pytest -m "streamlit and not slow"
+uv run scripts/verification_ledger.py run --context web --level session -- npm --prefix web test
+uv run scripts/verification_ledger.py run --context scan-proxy --level session -- npm --prefix workers/scan-proxy test
+uv run scripts/verification_ledger.py run --context android --level session -- uv run scripts/android_session_end.py
+```
+
+These are the commands the report prints; if the planner config changes a context's command, the report's line is the current one. Android's is device-free (JVM tests, coverage floor, detekt). A failed run records nothing. `uv run scripts/verification_ledger.py show` lists what is recorded.
 
 ## The recommendation and its limits
 
@@ -49,7 +63,7 @@ A value of `0` switches that limit off. `--max-files N` and `--max-age-days N` o
 
 ## Hooking it up to Claude Code
 
-Changing Claude Code settings needs the owner's approval, so the repo does not ship this change. To print the report at the start of every session, add this to the project's `.claude/settings.json` (shared) or `.claude/settings.local.json` (just you):
+Changing Claude Code settings needs the owner's approval, so the repo does not ship this change; the owner decides after the merge. To print the report at the start of every session, add this to `.claude/settings.local.json` (just you, not committed):
 
 ```json
 {

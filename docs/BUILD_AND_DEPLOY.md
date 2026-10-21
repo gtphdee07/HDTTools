@@ -212,7 +212,8 @@ the apps at a new project, all of it must be recreated or re-verified.
 - `scripts/wizard_web_revenuecat_dashboard.sh` (run from the repo root) walks
   through the RevenueCat dashboard side of Web "Buy Pro": the Pro product, the
   `pro` entitlement, the starter `SCAN` bundle and the offering package. It
-  offers to run the next wizard at the end.
+  offers to run the next wizard, then creates the External test's Pro customer
+  `external-suite-pro` and walks through granting it `pro` (#105).
 - `scripts/wizard_web_revenuecat.sh` (run from the repo root) walks through
   collecting the Web Billing public key and offering id and writes the
   `VITE_REVENUECAT_*` values into `web/.env.local` and, if you choose,

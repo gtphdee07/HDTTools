@@ -197,7 +197,7 @@ finish() {
 # Configurations). The dashboard changes over time, so each stage says what to
 # look for rather than relying on an exact label.
 
-TOTAL_STAGES=7
+TOTAL_STAGES=8
 ENV_FILE="/dev/null" # this wizard writes no env file; keeps ask from reading a stray .env
 RC_PROJECT_ID="proj07f52826" # workers/scan-proxy/wrangler.toml REVENUECAT_PROJECT_ID
 RC_URL="https://app.revenuecat.com/projects/${RC_PROJECT_ID}"
@@ -217,6 +217,7 @@ step "attach that product to a 'pro' entitlement"
 step "have buying it grant a starter bundle of SCAN (scan credits)"
 step "put it on the offering's lifetime package, next to Android's product"
 step "hand off to the second wizard, which saves the ids into web/.env.local"
+step "create 'external-suite-pro' and grant it 'pro' (the External test reads it, #105)"
 say ""
 note "Prices and the starter bundle size are placeholders until launch pricing is set (ADR-0006)."
 note "Safe to stop and re-run: each stage tells you what to check if you already did it."
@@ -283,9 +284,38 @@ stage "Save the ids into the Web app"
 say "The companion wizard stores the public key and ids in web/.env.local (and, if you choose,"
 say "web/.env.production), refusing secret keys and flagging a sandbox key bound for the live site."
 if confirm "Run scripts/wizard_web_revenuecat.sh now?"; then
-  exec bash scripts/wizard_web_revenuecat.sh
+  bash scripts/wizard_web_revenuecat.sh || SKIPPED+=("scripts/wizard_web_revenuecat.sh did not finish: re-run it")
+  pause "Back in the dashboard wizard. Press Enter for the last stage"
 else
   SKIPPED+=("run scripts/wizard_web_revenuecat.sh to save the public key and offering id into web/.env.local")
+fi
+
+stage "A Pro customer for the External test (#105)"
+say "The External test proves the 'pro' entitlement is named right and attached, by reading a"
+say "customer who has it. That customer is the app user id 'external-suite-pro'. It is granted"
+say "'pro' by hand; nothing is bought, and no secret key is involved."
+note "The dashboard has no 'new customer' button: RevenueCat creates a customer when an SDK first"
+note "uses its id. web/scripts/createRevenueCatFixtureUser.mjs does that with the sandbox public key."
+ENV_FILE="web/.env.local"
+FIXTURE_KEY=$(_existing VITE_REVENUECAT_WEB_PUBLIC_API_KEY || true)
+if [[ "$FIXTURE_KEY" != rcb_sb_* ]]; then
+  warn "web/.env.local has no sandbox Web Billing key (rcb_sb_...), so the customer can't be created yet."
+  SKIPPED+=("Pro fixture user: run scripts/wizard_web_revenuecat.sh, then this wizard again (or: cd web && npm run fixture:revenuecat-pro-user, then grant 'pro' in the dashboard)")
+else
+  step "Creating the customer 'external-suite-pro' (safe to repeat)."
+  (cd web && npm run --silent fixture:revenuecat-pro-user) || warn "The script failed: fix the message above, then re-run this wizard."
+  say ""
+  open_url "$RC_URL/customers"
+  step "Open 'Customers' and search 'external-suite-pro'."
+  step "In the Entitlements card click 'Grant', choose 'pro', and pick the longest duration offered."
+  note "No lifetime option? Pick an 'Until' date far in the future."
+  pause "Granted? Press Enter to check it"
+  if (cd web && npm run --silent fixture:revenuecat-pro-user) | grep -q "Active entitlements: .*pro"; then
+    say "Confirmed: external-suite-pro holds 'pro'."
+  else
+    warn "external-suite-pro does not show 'pro' yet. Grant it, then re-run this wizard to check."
+    SKIPPED+=("grant 'pro' to external-suite-pro in the RevenueCat dashboard")
+  fi
 fi
 
 finish

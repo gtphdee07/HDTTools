@@ -10,6 +10,7 @@ import { REQUIRED, REVENUECAT, readConfig } from './config';
 // "[revenuecat-web-billing]" name tag is what the wrapper filters on.
 // Reads only, and never buys anything: a sandbox purchase stays the human checklist in #11. The one side
 // effect is that RevenueCat creates a customer for NO_PURCHASES_USER the first time it sees it.
+// PRO_USER already exists, with its entitlement granted by hand.
 // The test account is the Supabase one from scripts/wizard_web_external_test_user.sh: its
 // Supabase user id is the RevenueCat app user id, exactly as the site identifies a customer.
 
@@ -22,6 +23,9 @@ const WRONG_KEY = 'rcb_external_suite_wrong_key';
 // An app user id that never buys anything. RevenueCat creates a customer on first sight, so a
 // fixed id keeps that to one customer instead of one per run.
 const NO_PURCHASES_USER = 'external-suite-no-purchases';
+// The Pro fixture: granted the "pro" entitlement by hand in the dashboard (no purchase), then only ever read.
+// web/scripts/createRevenueCatFixtureUser.mjs creates the customer, since the dashboard cannot.
+const PRO_USER = 'external-suite-pro';
 
 describe('[revenuecat-web-billing] RevenueCat Web Billing live contract', () => {
   let billing: BillingConfig;
@@ -141,5 +145,21 @@ describe('[revenuecat-web-billing] RevenueCat Web Billing live contract', () => 
     // signing out and in as someone else switches the customer on the same instance
     await client.identify(NO_PURCHASES_USER);
     expect(await client.getStatus()).toEqual({ isPro: false, scanBalance: 0 });
+  });
+
+  it('proves the "pro" entitlement exists: the Pro fixture user is Pro through the client and the raw SDK', async () => {
+    const client = createRevenueCatBillingClient(billing);
+
+    await client.identify(PRO_USER);
+    const status = await client.getStatus();
+    const customerInfo = await Purchases.getSharedInstance().getCustomerInfo();
+
+    // The literal "pro", not billing.proEntitlementId: the dashboard entitlement must carry the id the
+    // site and both apps read, so a misnamed one fails here even if an env override points the site at it.
+    expect(
+      Object.keys(customerInfo.entitlements.active),
+      `"${PRO_USER}" must hold an active "pro" entitlement: grant it in the RevenueCat dashboard (scripts/wizard_web_revenuecat_dashboard.sh)`,
+    ).toContain('pro');
+    expect(status.isPro, 'the site must read this customer as Pro').toBe(true);
   });
 });

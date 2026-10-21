@@ -8,11 +8,10 @@ One ticket at a time. Start the next only after the previous one is merged, so i
 
 | # | Ticket | Kind | Your part before or after | Card |
 |---|---|---|---|---|
-| 1 | #153 the Android repeat-run script runs the live External test that Gradle excludes | tooling, uses the emulator once | go-ahead to start the emulator for the acceptance run | [#153](#153-android-repeat-run-script-excludes) |
-| 2 | #160 pin ruff and oxlint in the lockfiles instead of in commands | tooling, makes `scan-proxy-worker` and `worker-token-verification` stale on purpose | answer 2 questions the build session asks; the next External run covers the cost | [#160](#160-pin-ruff-and-oxlint-in-the-lockfiles) |
+| 1 | #160 pin ruff and oxlint in the lockfiles instead of in commands | tooling, makes `scan-proxy-worker` and `worker-token-verification` stale on purpose | answer 2 questions the build session asks; the next External run covers the cost | [#160](#160-pin-ruff-and-oxlint-in-the-lockfiles) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
-The order is #153, #160 (#150, #151 and #152 are merged). #151 and #152 are the two Scan Proxy failures the #64 build session found (knip since #43, the coverage gate since #75); the merged testing documents already cite them by number. #150 was blocked by both on GitHub (now merged) because its new session-end commands would otherwise fail on day one, and it also closes the wider gap: nothing ran these checks, and some code is in no check's scope. None of the four changes a `package.json`, so none makes an External surface stale. #154 was closed as a duplicate of #153.
+The order is #160, then the final External run (#150, #151, #152 and #153 are merged). #151 and #152 are the two Scan Proxy failures the #64 build session found (knip since #43, the coverage gate since #75); the merged testing documents already cite them by number. #150 was blocked by both on GitHub (now merged) because its new session-end commands would otherwise fail on day one, and it also closes the wider gap: nothing ran these checks, and some code is in no check's scope. None of the four changes a `package.json`, so none makes an External surface stale. #154 was closed as a duplicate of #153.
 
 ### A second lane, beside the chain above (field-name checks, epic #147)
 
@@ -109,30 +108,9 @@ Done: you chose to keep the 100% floor and exclude the run-as-script guard in `l
 
 Done: `uv run scripts/static_checks.py core|streamlit|web|scan-proxy` (and Android's `android_session_end.py`) are each context's session-end command, listed by the planner, run by `/ticket-finish` and recorded in the ledger. Every one exits 0 on its whole tree; a checked-in baseline holds the 16 accepted Web lint warnings; the inventory is `docs/agents/static-checks.md`. ruff and oxlint are pinned in the commands for now (see #160). Follow-ups #155 to #159 hold the gaps nothing covers yet.
 
-### #153 Android repeat-run script excludes
+### #153 (merged 2026-10-21)
 
-- **Step 1:** `/ticket-start 153` (it names `android/` paths, so the Android flag should be detected; add `--android` if it says the ticket is not Android). Run it after #150 is merged and no other Android ticket is running.
-- **Step 2 block:**
-
-```
-Test-round additions:
-- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
-  The slow tooling tests are left out of planner runs unless the diff touches
-  what they check.
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- This needs the single emulator for the acceptance run only; no other Android
-  ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd
-  medium_phone -no-snapshot-save -gpu swangle_indirect`, wait for
-  `sys.boot_completed`, and kill it when you are done.
-- Live runs: do not run the live External suite or any paid call. Do not commit
-  changes to `scripts/dashboard_data/external_status.json` or `dashboard.svg`
-  from the branch.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
-  markers.
-```
-
-- **Your part:** none beyond the usual steps; stop the emulator afterwards (step 6).
+Done: the repeat-run script leaves out the weekly class and every `@ExternalSurface` class, found the way the External runner finds them, so a real loop run is `OK (148 tests)`. You decided `--expected-tests` stays opt-in; the documented loop command passes `--expected-tests 148`.
 
 ### #148 (merged 2026-10-21)
 
@@ -212,7 +190,7 @@ Test-round additions:
 
 ## History (for reference; nothing to do)
 
-- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105, #64, #140, #148, #152, #151, #150 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145, #146, #150, #151, #152 and #153 (all now in the round; #153 is `scripts/android_suite_loop.py` also running the excluded live `RevenueCatAndroidSdkExternalTest`: 154 tests reported, 6 failing, against an offline suite of 148).
+- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105, #64, #140, #148, #152, #151, #150, #153 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145, #146, #150, #151, #152 and #153 (all now in the round; #153 is `scripts/android_suite_loop.py` also running the excluded live `RevenueCatAndroidSdkExternalTest`: 154 tests reported, 6 failing, against an offline suite of 148).
 - **Pushed** up to d0ea7b7 on 2026-10-20 (plus handoff-note commits), including #115's changed Web scan wording, which the owner approved.
 - **External runs, owner-approved:** 2026-10-19 sanity run of seven stale surfaces (4 paid calls; commit 95ae133); 2026-10-20 re-run of `pages-site` and `scan-proxy-worker` after a wrangler release (1 paid call); 2026-10-20 first runs of `anthropic` (Worker) and `anthropic-python` (6 paid calls, commit 615e552), both against `test-vectors/vision_external_cases.json` and `ExampleDocs/golden_fields.json`. All passed.
 - **Verification debt (#67):** a committed SessionStart hook in `.claude/settings.json`; all five contexts have a recorded pass from 2026-10-20 at d0ea7b7 (a new machine or fresh clone needs the one-time commands in [verification-debt.md](verification-debt.md) again; #144 will automate it).

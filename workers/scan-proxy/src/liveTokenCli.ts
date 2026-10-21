@@ -32,6 +32,8 @@ export async function runCli(
   }
 }
 
+// Run-as-script guard: only a real sign-in reaches it, so the coverage gate (#151) leaves it out.
+/* node:coverage ignore next 3 */
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.exitCode = await runCli(console.log, console.error);
 }

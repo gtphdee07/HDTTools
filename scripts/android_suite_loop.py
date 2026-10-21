@@ -11,8 +11,8 @@ cause and the rules are in android/TESTING.md.
 
 Each run: cold-boot the emulator, wait until adb and the system services have
 answered several polls in a row, install both APKs, run `am instrument` for the
-Major suite (the weekly class excluded exactly as the Gradle task excludes
-it), then label the output. `--driver gradle` runs the literal Gradle command
+Major suite (the weekly class and every `@ExternalSurface` class excluded, as
+the Gradle task excludes them), then label the output. `--driver gradle` runs the literal Gradle command
 instead, for comparing the two.
 
 Needs the single emulator: no other Android ticket may be running. It builds
@@ -36,6 +36,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import run_external_android  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ANDROID_DIR = REPO_ROOT / "android"
@@ -73,8 +77,9 @@ AVD = "medium_phone"
 GPU = "swangle_indirect"
 APP_PACKAGE = "com.rigcheck.app"
 RUNNER = f"{APP_PACKAGE}.test/{APP_PACKAGE}.CustomTestRunner"
-# The Gradle task excludes this class (app/build.gradle.kts notClass); a raw
-# `am instrument` has to say so itself or it runs against the offline app.
+# The Gradle task excludes this class (app/build.gradle.kts notClass) and every
+# `@ExternalSurface` class (notAnnotation); a raw `am instrument` has to say so
+# itself or it runs them against the offline app (excluded_classes() below).
 WEEKLY_CLASS = "com.rigcheck.app.ui.screens.PaywallScreenWeeklyTest"
 WEEKLY_MARKER = "/data/local/tmp/rigcheck_weekly_mode"
 APKS = (
@@ -325,7 +330,17 @@ def restart_emulator(
     return True
 
 
-def instrument_once(adb: Adb, suite_timeout_s: float) -> tuple[str, int]:
+def excluded_classes(tests_dir: Path = run_external_android.TESTS_DIR) -> list[str]:
+    """The classes the offline run must leave out, the same set the Gradle task
+    leaves out: the weekly class, plus every `@ExternalSurface` class, found the
+    way the External runner finds them so a newly tagged class is excluded too."""
+    tagged = [cls for classes in run_external_android.surface_classes(tests_dir).values() for cls in classes]
+    return [WEEKLY_CLASS, *sorted(tagged)]
+
+
+def instrument_once(
+    adb: Adb, suite_timeout_s: float, tests_dir: Path = run_external_android.TESTS_DIR
+) -> tuple[str, int]:
     """Install both APKs on the (fresh) emulator and run the Major suite."""
     for apk in APKS:
         code, text = adb("install", "-r", str(apk), timeout=240)
@@ -333,7 +348,8 @@ def instrument_once(adb: Adb, suite_timeout_s: float) -> tuple[str, int]:
             return f"install of {apk.name} failed:\n{text}", code or 1
     adb("shell", "rm", "-f", WEEKLY_MARKER)
     code, text = adb(
-        "shell", "am", "instrument", "-w", "-e", "notClass", WEEKLY_CLASS, RUNNER, timeout=suite_timeout_s
+        "shell", "am", "instrument", "-w", "-e", "notClass", ",".join(excluded_classes(tests_dir)), RUNNER,
+        timeout=suite_timeout_s,
     )
     return text, code
 

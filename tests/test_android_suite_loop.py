@@ -296,19 +296,54 @@ def test_readiness_gives_up_at_the_timeout():
     assert ok is False
 
 
-def test_the_suite_command_leaves_out_the_weekly_class_and_clears_its_marker():
-    # The Gradle task excludes PaywallScreenWeeklyTest (it needs the network and a funded test user);
-    # a raw `am instrument` runs it unless told not to, and would label its failure a real test failure.
+def run_instrument(tests_dir=None):
+    """Runs instrument_once against a fake adb; returns the calls it made."""
     calls = []
 
     def adb(*args, timeout=None):
         calls.append(args)
         return (0, "Success\n") if args[0] == "install" else (0, "OK (132 tests)\n")
 
-    text, code = asl.instrument_once(adb, suite_timeout_s=60)
-
+    kwargs = {} if tests_dir is None else {"tests_dir": tests_dir}
+    text, code = asl.instrument_once(adb, suite_timeout_s=60, **kwargs)
     assert (code, text) == (0, "OK (132 tests)\n")
+    return calls
+
+
+def excluded_by(calls):
     (instrument,) = [c for c in calls if c[:3] == ("shell", "am", "instrument")]
-    assert instrument[instrument.index("-e") + 1 : instrument.index("-e") + 3] == ("notClass", asl.WEEKLY_CLASS)
+    assert instrument[instrument.index("-e") + 1] == "notClass"
+    return instrument[instrument.index("-e") + 2].split(",")
+
+
+def test_the_suite_command_leaves_out_the_weekly_class_and_clears_its_marker():
+    # The Gradle task excludes PaywallScreenWeeklyTest (it needs the network and a funded test user);
+    # a raw `am instrument` runs it unless told not to, and would label its failure a real test failure.
+    calls = run_instrument()
+    assert asl.WEEKLY_CLASS in excluded_by(calls)
+    instrument = next(c for c in calls if c[:3] == ("shell", "am", "instrument"))
     assert ("shell", "rm", "-f", asl.WEEKLY_MARKER) in calls
     assert calls.index(("shell", "rm", "-f", asl.WEEKLY_MARKER)) < calls.index(instrument)
+
+
+def test_the_suite_command_leaves_out_the_external_surface_class_of_the_real_tree():
+    # #153: Gradle keeps @ExternalSurface classes out (notAnnotation); the raw run did not, so
+    # RevenueCatAndroidSdkExternalTest's 6 live tests ran, failed, and no run was ever green.
+    assert "com.rigcheck.app.RevenueCatAndroidSdkExternalTest" in excluded_by(run_instrument())
+
+
+def test_every_tagged_class_is_left_out_without_a_hand_kept_list(tmp_path):
+    # A class tagged tomorrow must be excluded with no edit to the script: the set comes from the
+    # same discovery run_external_android.py uses (class-level @ExternalSurface in *ExternalTest.kt).
+    (tmp_path / "AlphaExternalTest.kt").write_text(
+        'package com.example.one\n\n@ExternalSurface("alpha")\nclass AlphaExternalTest {\n}\n', encoding="utf-8"
+    )
+    (tmp_path / "BetaExternalTest.kt").write_text(
+        'package com.example.two\n\n@ExternalSurface("beta")\n@RunWith(AndroidJUnit4::class)\nclass BetaExternalTest {\n}\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "PlainTest.kt").write_text("package com.example.three\n\nclass PlainTest {\n}\n", encoding="utf-8")
+
+    excluded = excluded_by(run_instrument(tmp_path))
+
+    assert set(excluded) == {asl.WEEKLY_CLASS, "com.example.one.AlphaExternalTest", "com.example.two.BetaExternalTest"}

@@ -33,7 +33,7 @@ Offline suite, real run 2026-10-21 (#64): **150 tests in 14 files, 150 passed**,
 | Whole context (offline), session end | `npm test` |
 | Type check | `npm run typecheck` |
 | Coverage | `npm run test:coverage` |
-| Dead code | `npm run check:dead-code` (reports one finding today, see "Dead code") |
+| Dead code | `npm run check:dead-code` (exits 0 with no findings, see "Dead code") |
 | Full release (the Worker deploy) | `.\release.ps1` (run from `workers/scan-proxy/`) |
 | External, stale surfaces only | `.\test-external.ps1` |
 
@@ -217,14 +217,15 @@ the unneeded `export` keyword, not by deleting anything — confirmed via
 `npm run typecheck` and a full `npm test` (57/57 at the time) afterward. No genuine
 dead code found then, and the command exited clean.
 
-**Today it does not exit clean (2026-10-21, #64): one finding, exit 1.** `knip` reports
-`uv` as an *unlisted binary* in `package.json`: the `deploy` script is
-`uv run ../../scripts/scan_proxy_deploy.py` since #43 (the External release gate runs
-before `wrangler deploy`), and knip has no way to know `uv` is a tool the repo expects on the
-PATH. It is not dead code. The fix is an `ignoreBinaries` entry in knip's configuration. No
-knip config file exists today; a `knip.json` would leave `package.json` alone, which matters
-because `package.json` is a dependency pin of `anthropic`, `scan-proxy-worker` and
-`worker-token-verification`, so editing it marks all three stale. Tracked in #152.
+**It exits clean again (2026-10-21, #152).** From #43 until #152 it exited 1 on one finding:
+`knip` reported `uv` as an *unlisted binary* in `package.json`, because the `deploy` script is
+`uv run ../../scripts/scan_proxy_deploy.py` (the External release gate runs before
+`wrangler deploy`) and knip has no way to know `uv` is a tool the repo expects on the PATH. It
+was not dead code. `knip.json` now lists `uv` under `ignoreBinaries`. The entry is in
+`knip.json` and not in `package.json` on purpose: `package.json` is a dependency pin of
+`anthropic`, `scan-proxy-worker` and `worker-token-verification`, so editing it marks all
+three stale. `tests/test_scan_proxy_knip_config.py` fails if `knip.json` stops listing `uv`
+while a `package.json` script still runs it, or if knip would read a second configuration.
 
 ## What each test covers
 
@@ -427,7 +428,8 @@ against the test audit in `docs/test-audit/scan-proxy.md`.
 
 - **Open (#151)**: the coverage gate fails Scan Proxy today, 99.84% of lines against the
   100.00% floor (`liveTokenCli.ts` lines 36-37, see "Coverage").
-- **Open (#152)**: `npm run check:dead-code` exits 1 on `uv` as an unlisted binary
+- ✅ **Closed (#152)**: `npm run check:dead-code` exited 1 on `uv` as an unlisted binary.
+  `knip.json` now lists it, and `tests/test_scan_proxy_knip_config.py` fails if it stops
   (see "Dead code").
 - **Open (#96)**: an exact replay of a completed scan is still extracted again — the
   RevenueCat key binds account, document type, image and `client_request_id` (#94), so a retry after a lost response charges once, but resending the identical request re-runs Claude each time (one credit, N billed extractions) and, if that second extraction fails, refunds the credit of a scan that was delivered. (The mirror case: after a failed, refunded first attempt, an honest retry replays the Spend and is extracted at no net credit.) RevenueCat gives no replay signal and the Worker keeps no state, so only a server-side record (Workers KV or a single-use scan token) closes it.

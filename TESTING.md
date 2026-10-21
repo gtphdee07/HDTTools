@@ -331,7 +331,9 @@ code, not a pass mark: see "Coverage gate".
 
 ## Python test commands
 
-The full Python run is **`uv run pytest -n auto`** (`pytest-xdist`): 1,586 passed
+The full Python run is **`uv run pytest -n auto`** (`pytest-xdist`; `addopts` adds
+`--maxprocesses=8`, so `uv run pytest -n auto --maxprocesses=8` is the same command spelled
+out): 1,586 passed
 and 4 `xfail`ed in 45 s (real run, 2026-10-21, #64, nothing else running; the 10 live
 tests are deselected), against about 170 s on one core (measured 2026-10-18, #129).
 Bare `uv run pytest` still runs the same tests serially, slow ones included.

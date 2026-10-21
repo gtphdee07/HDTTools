@@ -12,9 +12,12 @@ written. What does drift without anyone noticing, and what these tests pin, is t
 - the root document describes the session-end and release layers the rules add;
 - every entry under "Known gaps" says whether it is closed or still open, and an open one names the
   ticket that tracks it, so a gap that was fixed cannot sit there looking open;
-- a test file named as if it exists, exists (one named only to say it was retired or moved is fine).
+- a test file named as if it exists, exists (one named only to say it was retired or removed is fine).
 """
 
+from __future__ import annotations
+
+import json
 import re
 from pathlib import Path
 
@@ -40,11 +43,20 @@ GAPS_HEADING = re.compile(r"^## Known gaps", re.M)
 GAP_STATUS = re.compile(
     r"^- (?:✅ )?\*\*(Closed|Retired|Obsolete|Open|Deliberately not tested|Not a gap)\b", re.M
 )
-RETIRED_WORDS = re.compile(r"retired|removed|went with|moved|deleted|no longer|replaced|renamed|history", re.I)
+RETIRED_WORDS = re.compile(r"retired|removed|went with|deleted|no longer|replaced|renamed", re.I)
 
 
 def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
+
+
+def relative_link_targets(doc: str) -> list[str]:
+    """The targets of a document's markdown links that point inside the repo (not a URL or an anchor)."""
+    return [
+        target
+        for target in re.findall(r"\]\(([^)#\s]+)", read(doc))
+        if not re.match(r"[a-z]+:", target)
+    ]
 
 
 def gaps_section(text: str) -> str | None:
@@ -82,13 +94,8 @@ def test_every_test_file_of_a_context_is_named_in_its_document(doc):
 
 @pytest.mark.parametrize("doc", ALL_DOCS)
 def test_each_document_links_to_the_rules_and_the_planner(doc):
-    text = read(doc)
     base = (ROOT / doc).parent
-    targets = {
-        (base / target).resolve()
-        for target in re.findall(r"\]\(([^)#\s]+)", text)
-        if not re.match(r"[a-z]+:", target)
-    }
+    targets = {(base / target).resolve() for target in relative_link_targets(doc)}
     assert RULES.resolve() in targets, f"{doc} has no link to docs/test-audit/rules.md"
     assert PLANNER.resolve() in targets, f"{doc} has no link to scripts/test_planner.py"
 
@@ -96,12 +103,7 @@ def test_each_document_links_to_the_rules_and_the_planner(doc):
 @pytest.mark.parametrize("doc", ALL_DOCS)
 def test_every_relative_link_in_a_document_resolves(doc):
     base = (ROOT / doc).parent
-    broken = []
-    for target in re.findall(r"\]\(([^)#\s]+)", read(doc)):
-        if re.match(r"[a-z]+:", target):
-            continue
-        if not (base / target).exists():
-            broken.append(target)
+    broken = [target for target in relative_link_targets(doc) if not (base / target).exists()]
     assert not broken, f"{doc} links to files that do not exist: {broken}"
 
 
@@ -115,7 +117,7 @@ def test_the_root_document_describes_every_level_of_the_ladder():
         assert context_doc in text, f"root TESTING.md does not point at {context_doc}"
 
 
-@pytest.mark.parametrize("doc", [d for d in CONTEXT_DOCS])
+@pytest.mark.parametrize("doc", CONTEXT_DOCS)
 def test_every_known_gap_says_whether_it_is_closed_or_open_and_an_open_one_names_its_ticket(doc):
     section = gaps_section(read(doc))
     assert section is not None, f"{doc} has no '## Known gaps' section"
@@ -166,15 +168,14 @@ NPM_RUN = re.compile(r"npm (?:--prefix [\w/.-]+ )?run ([\w:-]+)")
 
 @pytest.mark.parametrize("doc", NPM_DOCS)
 def test_every_npm_script_a_context_document_runs_exists_in_its_package(doc):
-    import json
-
     scripts = json.loads((ROOT / NPM_DOCS[doc] / "package.json").read_text(encoding="utf-8"))["scripts"]
     named = set(NPM_RUN.findall(read(doc)))
     missing = sorted(name for name in named if name not in scripts)
     assert not missing, f"{doc} runs npm scripts that {NPM_DOCS[doc]}/package.json does not have: {missing}"
 
 
-def _test_file_names() -> set[str]:
+def _known_file_names() -> set[str]:
+    """Names (and, for Kotlin, class names) of the files a document may point at."""
     names: set[str] = set()
     for pattern in ("tests/*.py", "web/src/**/*.ts", "web/src/**/*.tsx", "workers/scan-proxy/src/**/*.ts",
                     "android/app/src/**/*.kt", "scripts/*.py"):
@@ -188,7 +189,7 @@ NAMED_AS_A_TEST = re.compile(r"`(?:[\w./-]*/)?(test_\w+\.py|[\w.]+\.test\.tsx?|\
 
 @pytest.mark.parametrize("doc", ALL_DOCS)
 def test_a_test_file_named_in_a_document_exists_unless_the_text_says_it_is_gone(doc):
-    existing = _test_file_names()
+    existing = _known_file_names()
     text = read(doc)
     missing = []
     for block in re.split(r"\n\s*\n|\n(?=\|)", text):

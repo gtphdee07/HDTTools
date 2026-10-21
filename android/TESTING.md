@@ -1117,7 +1117,7 @@ depends on, and the scroll helper the screen and nav tests use:
 ## Known gaps
 
 Each entry says whether it is closed or still open, and an open one names the ticket
-that tracks it (`tests/test_testing_docs.py` checks this). Refreshed 2026-10-21 (#64)
+that tracks it or says there is none (`tests/test_testing_docs.py` checks this). Refreshed 2026-10-21 (#64)
 against the test audit in `docs/test-audit/android.md`.
 
 - **Open (no ticket)**: `scripts/android_suite_loop.py` runs the External-surface class too.

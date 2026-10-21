@@ -376,7 +376,7 @@ writing.
 ## Known gaps
 
 Each entry says whether it is closed or still open, and an open one names the ticket
-that tracks it (`tests/test_testing_docs.py` checks this). Refreshed 2026-10-21 (#64)
+that tracks it or says there is none (`tests/test_testing_docs.py` checks this). Refreshed 2026-10-21 (#64)
 against the test audit in `docs/test-audit/web.md`.
 
 - ✅ **Closed (#42, #28, #85, #43)**: the audit's worst Web gap, that External

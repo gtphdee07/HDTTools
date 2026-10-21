@@ -69,15 +69,13 @@
       }
     },
     "scan-proxy-worker": {
-      "commit": "e872efd8359c5eaf7b6da725b75191ef9bec81e6",
-      "overridden_at": "2026-10-21T01:24:20Z",
-      "override_reason": "only Cloudflare package versions (workerd 1.20261021.1, workers-types 5.20261021.1) were published since the last Worker pass; no Worker source changed",
+      "commit": "4c6d70862863658c5ae53710bbe75ecd69a9d9d5",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-20T13:25:45Z",
+      "timestamp": "2026-10-21T04:30:33Z",
       "versions": {
-        "@cloudflare/workers-types": "5.20261019.1",
-        "workerd": "1.20261019.1",
+        "@cloudflare/workers-types": "5.20261021.1",
+        "workerd": "1.20261021.1",
         "wrangler": "4.151.3"
       }
     },

@@ -17,39 +17,39 @@
   },
   "surfaces": {
     "anthropic": {
-      "commit": "19ecf2db54a9664f83e96be706bb8a53737230ba",
+      "commit": "09854955463219abcaeec92002795504c3ba577b",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-20T22:53:35Z",
+      "timestamp": "2026-10-21T21:01:35Z",
       "versions": {
-        "@anthropic-ai/sdk": "0.137.0"
+        "@anthropic-ai/sdk": "1.0.0"
       }
     },
     "anthropic-python": {
-      "commit": "19ecf2db54a9664f83e96be706bb8a53737230ba",
+      "commit": "09854955463219abcaeec92002795504c3ba577b",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-20T22:54:05Z",
+      "timestamp": "2026-10-21T21:01:59Z",
       "versions": {
-        "anthropic": "1.17.0"
+        "anthropic": "2.0.0"
       }
     },
     "pages-site": {
-      "commit": "f2d5aefff76d1952576ee4d5aa4858df53cb83aa",
+      "commit": "09854955463219abcaeec92002795504c3ba577b",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-21T13:32:06Z",
+      "timestamp": "2026-10-21T21:00:47Z",
       "versions": {
         "wrangler": "4.151.3"
       }
     },
     "revenuecat-android-sdk": {
-      "commit": "2c519e4c5314aa7d2fef98985947e19c53d63684",
+      "commit": "09854955463219abcaeec92002795504c3ba577b",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-21T02:56:49Z",
+      "timestamp": "2026-10-21T21:04:49Z",
       "versions": {
-        "com.revenuecat.purchases:purchases": "10.28.1"
+        "com.revenuecat.purchases:purchases": "10.29.0"
       }
     },
     "revenuecat-rest": {
@@ -69,10 +69,10 @@
       }
     },
     "scan-proxy-worker": {
-      "commit": "4c6d70862863658c5ae53710bbe75ecd69a9d9d5",
+      "commit": "09854955463219abcaeec92002795504c3ba577b",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-21T04:30:33Z",
+      "timestamp": "2026-10-21T21:01:35Z",
       "versions": {
         "@cloudflare/workers-types": "5.20261021.1",
         "workerd": "1.20261021.1",
@@ -98,10 +98,10 @@
       }
     },
     "worker-token-verification": {
-      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
+      "commit": "09854955463219abcaeec92002795504c3ba577b",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-19T22:08:25Z",
+      "timestamp": "2026-10-21T21:01:35Z",
       "versions": {}
     }
   }

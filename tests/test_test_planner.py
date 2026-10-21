@@ -1034,3 +1034,30 @@ def test_every_slow_marked_test_file_is_named_by_a_real_config_group():
     marked = {i.split("::")[0] for i in _collect('uv run pytest -m "slow and not external"')}
     assert marked and marked <= named, sorted(marked - named)
     assert all((ROOT / t).is_file() for t in named)
+
+
+# The shared vision and form-field fixtures name every surface's check (#161, under epic #147).
+
+VISION_SCHEMA_CHECKS = [
+    "npm --prefix web test -- src/visionToolSchema.test.ts",
+    "android/gradlew -p android testDebugUnitTest --tests com.rigcheck.app.data.ScanFieldKeysSchemaTest",
+    "uv run pytest tests/test_ocr_output_key_contracts.py",
+    "uv run pytest tests/test_scan_form_fields_fixture.py",  # it also checks the form fields against the schemas
+]
+FORM_FIELD_CHECKS = [
+    "uv run pytest tests/test_scan_form_fields_fixture.py",
+    "npm --prefix web test -- src/scanFormFields.test.ts",
+    "android/gradlew -p android testDebugUnitTest --tests com.rigcheck.app.data.ScanFormFieldsFixtureTest",
+]
+
+
+def test_real_config_a_vision_tool_schema_change_plans_the_web_android_and_streamlit_checks():
+    out = commands(_real_plan(["test-vectors/vision_tool_schemas.json"], "issue"))
+    for check in VISION_SCHEMA_CHECKS:
+        assert check in out, check
+
+
+def test_real_config_a_form_field_fixture_change_plans_the_python_web_and_android_checks():
+    out = commands(_real_plan(["test-vectors/scan_form_fields.json"], "issue"))
+    for check in FORM_FIELD_CHECKS:
+        assert check in out, check

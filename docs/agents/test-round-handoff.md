@@ -8,13 +8,12 @@ One ticket at a time. Start the next only after the previous one is merged, so i
 
 | # | Ticket | Kind | Your part before or after | Card |
 |---|---|---|---|---|
-| 1 | #152 Scan Proxy: `check:dead-code` fails on `uv` (add `knip.json`) | small fix | none | [#152](#152-scan-proxy-knip-fails-on-uv) |
-| 2 | #151 Scan Proxy: the coverage gate fails at 99.84% against 100% | small fix | answer the one question the build session asks (how the gate should pass) | [#151](#151-scan-proxy-coverage-gate-fails) |
-| 3 | #150 static checks (typecheck, lint, dead code, coverage floor) never run: put each context's into its session-end command | tooling | answer 4 questions the build session asks | [#150](#150-static-checks-never-run) |
-| 4 | #153 the Android repeat-run script runs the live External test that Gradle excludes | tooling, uses the emulator once | go-ahead to start the emulator for the acceptance run | [#153](#153-android-repeat-run-script-excludes) |
+| 1 | #151 Scan Proxy: the coverage gate fails at 99.84% against 100% | small fix | answer the one question the build session asks (how the gate should pass) | [#151](#151-scan-proxy-coverage-gate-fails) |
+| 2 | #150 static checks (typecheck, lint, dead code, coverage floor) never run: put each context's into its session-end command | tooling | answer 4 questions the build session asks | [#150](#150-static-checks-never-run) |
+| 3 | #153 the Android repeat-run script runs the live External test that Gradle excludes | tooling, uses the emulator once | go-ahead to start the emulator for the acceptance run | [#153](#153-android-repeat-run-script-excludes) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
-The order is #152, #151, #150, #153. #151 and #152 are the two Scan Proxy failures the #64 build session found (knip since #43, the coverage gate since #75); the merged testing documents already cite them by number. #150 is blocked by both on GitHub because its new session-end commands would otherwise fail on day one, and it also closes the wider gap: nothing ran these checks, and some code is in no check's scope. None of the four changes a `package.json`, so none makes an External surface stale. #154 was closed as a duplicate of #153.
+The order is #151, #150, #153 (#152 is merged). #151 and #152 are the two Scan Proxy failures the #64 build session found (knip since #43, the coverage gate since #75); the merged testing documents already cite them by number. #150 is blocked by both on GitHub because its new session-end commands would otherwise fail on day one, and it also closes the wider gap: nothing ran these checks, and some code is in no check's scope. None of the four changes a `package.json`, so none makes an External surface stale. #154 was closed as a duplicate of #153.
 
 ### A second lane, beside the chain above (field-name checks, epic #147)
 
@@ -23,7 +22,7 @@ A second `claude` session can build these while the chain runs, because they tou
 | Order | Ticket | Files | Card |
 |---|---|---|---|
 | 1 | #140 Streamlit `FIELDS` against the shared tool schema | `tests/test_ocr_output_key_contracts.py`, one line of `tests/TESTING.md` | merged 2026-10-21 |
-| 2 | #148 Web `MODULES` field names against the shared tool schema | one new Vitest file, a row in `web/TESTING.md` | [#148](#148-web-field-names-against-the-shared-tool-schema) |
+| 2 | #148 Web `MODULES` field names against the shared tool schema | one new Vitest file, a row in `web/TESTING.md` | merged 2026-10-21 |
 | 3 | #149 Android `ScanFieldMapping` keys against the shared tool schema | one new JVM test, a row in `android/TESTING.md` | [#149](#149-android-scan-field-keys-against-the-shared-tool-schema) |
 | later | #147 the epic | owner decisions, one `CONTEXT-MAP.md` line | not built now: see the note after the cards |
 
@@ -99,26 +98,9 @@ Done: Web's External suite proves an entitlement named exactly `pro` exists (the
 
 Done: the five testing documents match real runs (Python 1586 passed + 4 xfail, Web 547 + 3 skipped, Scan Proxy 150, Android JVM 176 and instrumented 148), closed gaps are no longer listed as open, and `tests/test_testing_docs.py` pins the shape that drifts (every test file named, links, scripts, gap statuses). It found three problems and filed #151, #152 and #153, which are the next tickets below.
 
-### #152 Scan Proxy knip fails on uv
+### #152 (merged 2026-10-21)
 
-- **Step 1:** `/ticket-start 152`.
-- **Step 2 block:**
-
-```
-Test-round additions:
-- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
-  The slow tooling tests are left out of planner runs unless the diff touches
-  what they check.
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- Do not edit `workers/scan-proxy/package.json` or `package-lock.json`: they pin three
-  External surfaces, and a change makes them stale. The fix is a new `knip.json`.
-- No live or paid runs.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
-  markers.
-```
-
-- **Your part:** none beyond the usual steps.
+Done: `workers/scan-proxy/knip.json` lists `uv` under `ignoreBinaries`, so `npm run check:dead-code` exits 0 again with `package.json` untouched. Persistent tests in `tests/test_scan_proxy_knip_config.py` cover the real exit code, that `knip.json` is no External surface's pin or boundary file, and the testing document's wording.
 
 ### #151 Scan Proxy coverage gate fails
 
@@ -195,27 +177,9 @@ Test-round additions:
 
 - **Your part:** none beyond the usual steps; stop the emulator afterwards (step 6).
 
-### #148 Web field names against the shared tool schema
+### #148 (merged 2026-10-21)
 
-- **Step 1:** `/ticket-start 148`.
-- **Step 2 block:**
-
-```
-Test-round additions:
-- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
-  The slow tooling tests are left out of planner runs unless the diff touches
-  what they check.
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in `web/TESTING.md` (`tests/test_testing_docs.py`
-  checks it): add its row there.
-- Do not edit `web/package.json`: it pins External surfaces.
-- No live or paid runs.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
-  markers.
-```
-
-- **Your part:** none beyond the usual steps.
+Done: `web/src/visionToolSchema.test.ts` checks every non-optional `MODULES` field name against the shared tool schema, and pins that the optional fields are exactly the manual-only ones.
 
 ### #149 Android scan field keys against the shared tool schema
 
@@ -269,7 +233,7 @@ Test-round additions:
 
 ## History (for reference; nothing to do)
 
-- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105, #64, #140 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145, #146, #150, #151, #152 and #153 (all now in the round; #153 is `scripts/android_suite_loop.py` also running the excluded live `RevenueCatAndroidSdkExternalTest`: 154 tests reported, 6 failing, against an offline suite of 148).
+- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105, #64, #140, #148, #152 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145, #146, #150, #151, #152 and #153 (all now in the round; #153 is `scripts/android_suite_loop.py` also running the excluded live `RevenueCatAndroidSdkExternalTest`: 154 tests reported, 6 failing, against an offline suite of 148).
 - **Pushed** up to d0ea7b7 on 2026-10-20 (plus handoff-note commits), including #115's changed Web scan wording, which the owner approved.
 - **External runs, owner-approved:** 2026-10-19 sanity run of seven stale surfaces (4 paid calls; commit 95ae133); 2026-10-20 re-run of `pages-site` and `scan-proxy-worker` after a wrangler release (1 paid call); 2026-10-20 first runs of `anthropic` (Worker) and `anthropic-python` (6 paid calls, commit 615e552), both against `test-vectors/vision_external_cases.json` and `ExampleDocs/golden_fields.json`. All passed.
 - **Verification debt (#67):** a committed SessionStart hook in `.claude/settings.json`; all five contexts have a recorded pass from 2026-10-20 at d0ea7b7 (a new machine or fresh clone needs the one-time commands in [verification-debt.md](verification-debt.md) again; #144 will automate it).

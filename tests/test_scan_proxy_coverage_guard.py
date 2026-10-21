@@ -8,8 +8,8 @@ The fix is a `node:coverage ignore next 3` comment on the guard, so the floor st
 The two risks in that fix are that the comment stops matching the guard (someone adds a line above or inside it,
 and the ignore then covers the wrong lines or too few), and that it grows past the guard and hides real code.
 The first test asks Node's own coverage report, so it catches both for `liveTokenCli.ts`; the second reads the
-file and pins the ignored range to exactly the guard's lines, so nothing else can be hidden under the same comment.
-The third checks that the testing documents say how the gate passes.
+file and pins the ignored range to exactly the guard's lines, and no other source file may carry such a comment.
+The third checks that the testing documents name the exclusion and no longer list the gap as open.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from tests._test_command_helpers import PROXY, ROOT, read, require_proxy_install
 pytestmark = [pytest.mark.core, pytest.mark.minor]
 
 CLI = PROXY / "src" / "liveTokenCli.ts"
-IGNORE = re.compile(r"/\*\s*node:coverage\s+ignore\s+next\s+(\d+)\s*\*/")
+IGNORE_COMMENT = re.compile(r"/\*\s*node:coverage\s+ignore\s+next\s+(\d+)\s*\*/")
 
 
 @pytest.mark.slow
@@ -39,7 +39,7 @@ def test_the_sign_in_helper_is_at_100_percent_of_lines_under_nodes_own_coverage(
 
 def test_the_ignore_comment_covers_exactly_the_run_as_script_guard():
     lines = read(CLI).replace("\r\n", "\n").split("\n")
-    marks = [(i, IGNORE.search(line)) for i, line in enumerate(lines) if IGNORE.search(line)]
+    marks = [(i, IGNORE_COMMENT.search(line)) for i, line in enumerate(lines) if IGNORE_COMMENT.search(line)]
     assert len(marks) == 1, f"expected one node:coverage ignore comment in liveTokenCli.ts, found {len(marks)}"
     index, mark = marks[0]
     ignored = lines[index + 1 : index + 1 + int(mark.group(1))]
@@ -47,8 +47,8 @@ def test_the_ignore_comment_covers_exactly_the_run_as_script_guard():
     assert ignored[0].startswith("if (process.argv[1] === fileURLToPath(import.meta.url)) {"), ignored
     assert ignored[-1] == "}", ignored
     assert sum(line.startswith("}") for line in ignored) == 1, "the ignored range spans more than the one guard block"
-    assert not any(line.strip() for line in lines[index + 1 + len(ignored) :]), "code follows the guard, outside the ignore"
-    assert "/* node:coverage" not in read(PROXY / "src" / "liveToken.ts"), "unrelated file excludes lines too"
+    others = [path.name for path in sorted((PROXY / "src").glob("*.ts")) if path != CLI and "node:coverage" in read(path)]
+    assert not others, f"{others} also carry a node:coverage comment; the floor is only meant to exclude this guard"
 
 
 def test_the_testing_documents_say_how_the_scan_proxy_gate_passes():
@@ -57,7 +57,7 @@ def test_the_testing_documents_say_how_the_scan_proxy_gate_passes():
     gate = root_doc.split("## Coverage gate", 1)[1].split("\n## ", 1)[0]
     for name, text in (("workers/scan-proxy/TESTING.md", proxy_doc), ("TESTING.md Coverage gate", gate)):
         assert "node:coverage ignore" in text, f"{name} does not name the exclusion"
-        assert "99.84" not in text or "before" in text, f"{name} still reports the gate as failing at 99.84%"
-    assert "gate **fails**" not in proxy_doc and "FAIL, exit 1" not in gate
+        assert "#151" in text, f"{name} does not point at the ticket"
+    assert "100.00% of lines" in proxy_doc, "workers/scan-proxy/TESTING.md does not report the measured line figure"
     still_open = [line for line in proxy_doc.split("## Known gaps", 1)[1].splitlines() if line.startswith("- **Open") and "#151" in line]
     assert not still_open, still_open

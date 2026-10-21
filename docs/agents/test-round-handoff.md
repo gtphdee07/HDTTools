@@ -8,12 +8,11 @@ One ticket at a time. Start the next only after the previous one is merged, so i
 
 | # | Ticket | Kind | Your part before or after | Card |
 |---|---|---|---|---|
-| 1 | #40 Google Play Billing surface | Android, emulator with Play Services, builds on #39's runner | the live run after the merge | [#40](#40-google-play-billing-surface) |
-| 2 | #105 prove the RevenueCat `pro` entitlement | Web, free live run | **a RevenueCat dashboard step first** | [#105](#105-prove-the-revenuecat-pro-entitlement) |
-| 3 | #64 refresh each context's testing document | docs | none | [#64](#64-refresh-the-testing-documents) |
+| 1 | #105 prove the RevenueCat `pro` entitlement | Web, free live run | **a RevenueCat dashboard step first** | [#105](#105-prove-the-revenuecat-pro-entitlement) |
+| 2 | #64 refresh each context's testing document | docs | none | [#64](#64-refresh-the-testing-documents) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
-After #64: a final run of whichever External surfaces went stale again (`uv run scripts/external_freshness.py` first, from the main checkout; Claude asks before each live run and before pushing). Deferred, not in this round: #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically) and #145 (check that a fresh clone builds on another computer).
+After #64: a final run of whichever External surfaces went stale again (`uv run scripts/external_freshness.py` first, from the main checkout; Claude asks before each live run and before pushing). Deferred, not in this round: #40 (blocked on Play Console), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically) and #145 (check that a fresh clone builds on another computer).
 
 ## How to run one ticket
 
@@ -38,7 +37,9 @@ Done: `android/test-weekly.ps1` signs in the funded Supabase test account and th
 
 Done: the `revenuecat-android-sdk` surface and the first Android External runner, `android\test-external.ps1` (needs one attached emulator with Google Play Services; free). Its six tests passed on 2026-10-21 and the pass is recorded. #40 adds its tests to this runner.
 
-### #40 Google Play Billing surface
+### #40 Google Play Billing surface (BLOCKED, not part of this round)
+
+The #40 session found no Google Play Console account and no Play product: `lifetime` and `consumable` exist only on RevenueCat's Test Store, and the app uses the Test Store key, so it never calls `BillingClient`. You chose to block the ticket until Play Console exists (`DECISIONS` and `STATUS: BLOCKED` on #40, which keep the measured `BillingClient` behaviour for whoever resumes). `google-play-billing` stays `planned` and blocks nothing. **To restart it:** register Play Console, create at least one in-app product (the Play side of `lifetime` or `consumable`), then use the steps and block below.
 
 - **Step 1:** `/ticket-start 40 --android` (its text names neither Android nor an `android/` path, so `/ticket-start` needs the flag). 
 - **Step 2 block:**

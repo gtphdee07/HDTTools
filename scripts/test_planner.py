@@ -643,6 +643,67 @@ def suite_affected(selection: Selection, changed: list[str], config: dict) -> bo
     return False
 
 
+VERIFIED, NEVER, UNREADABLE_COMMIT, LEDGER_ERROR = "verified", "never", "unreadable-commit", "ledger-error"
+
+
+@dataclass
+class Unverified:
+    """What changed in each context since its last verified commit (#66, read by #67)."""
+
+    debt: dict[str, set[str]] = field(default_factory=dict)  # changed file -> contexts it is unverified for
+    files: dict[str, list[str]] = field(default_factory=dict)  # context -> its unverified files
+    since: dict[str, str | None] = field(default_factory=dict)  # context -> verified commit diffed from; None = from base
+    state: dict[str, str] = field(default_factory=dict)  # context -> VERIFIED | NEVER | UNREADABLE_COMMIT | LEDGER_ERROR
+    notes: list[str] = field(default_factory=list)
+
+
+def unverified_since(config: dict, *, level: str, diff, verified, base: str) -> Unverified:
+    """The files each context has changed since its last commit the ledger holds at `level`.
+
+    `diff(ref)` lists the files changed from `ref` to the working tree; `verified(context, level)`
+    returns the context's last verified commit or None. A context with no commit, or one `diff` cannot
+    read, is measured from `base` (`since` is None). A file counts only for the contexts it reaches."""
+    found = Unverified()
+    debt, notes = found.debt, found.notes
+    cache: dict[str, list[str]] = {}
+
+    def changed_from(ref: str) -> list[str]:
+        if ref not in cache:
+            cache[ref] = diff(ref)
+        return cache[ref]
+
+    for name in config["contexts"]:
+        try:
+            ref = verified(name, level)
+        except Exception as exc:  # an unreadable ledger is the same as nothing verified
+            ref = None
+            found.state[name] = LEDGER_ERROR
+            notes.append(f"{name}: ledger unavailable ({exc})")
+        source = base
+        found.since[name] = None
+        if ref:
+            try:
+                changed_from(ref)
+                source = ref
+                found.since[name] = ref
+                found.state[name] = VERIFIED
+            except GitError:
+                found.state[name] = UNREADABLE_COMMIT
+                notes.append(f"{name}: last verified commit {ref[:8]} is not readable; planned from {base}")
+        else:
+            if name not in found.state:
+                found.state[name] = NEVER
+            notes.append(f"{name}: never verified at the {level} level; planned from {base}")
+        files = [_normalise(f) for f in changed_from(source)]
+        mine = [f for f in files if not _is_docs(f, config) and name in _reaches(f, config)]
+        found.files[name] = mine
+        for f in mine:
+            debt.setdefault(f, set()).add(name)
+        label = source[:8] if source != base else base
+        notes.append(f"{name}: " + (f"{len(mine)} file(s) changed since {label}" if mine else f"nothing to verify since {label}"))
+    return found
+
+
 def plan_since_verified(
     config: dict,
     markers: set[str],
@@ -656,42 +717,12 @@ def plan_since_verified(
 ) -> Plan:
     """Plan each context from the last commit the ledger holds for it at `level` (#66).
 
-    `diff(ref)` lists the files changed from `ref` to the working tree; `verified(context, level)`
-    returns the context's last verified commit or None. A context with no commit, or one `diff` cannot
-    read, is planned from `base`. A file counts only for the contexts it changed since their own commit."""
-    debt: dict[str, set[str]] = {}
-    notes: list[str] = []
-    cache: dict[str, list[str]] = {}
-
-    def changed_from(ref: str) -> list[str]:
-        if ref not in cache:
-            cache[ref] = diff(ref)
-        return cache[ref]
-
-    for name in config["contexts"]:
-        try:
-            ref = verified(name, level)
-        except Exception as exc:  # an unreadable ledger is the same as nothing verified
-            ref = None
-            notes.append(f"{name}: ledger unavailable ({exc})")
-        source = base
-        if ref:
-            try:
-                changed_from(ref)
-                source = ref
-            except GitError:
-                notes.append(f"{name}: last verified commit {ref[:8]} is not readable; planned from {base}")
-        else:
-            notes.append(f"{name}: never verified at the {level} level; planned from {base}")
-        files = [_normalise(f) for f in changed_from(source)]
-        mine = [f for f in files if not _is_docs(f, config) and name in _reaches(f, config)]
-        for f in mine:
-            debt.setdefault(f, set()).add(name)
-        label = source[:8] if source != base else base
-        notes.append(f"{name}: " + (f"{len(mine)} file(s) changed since {label}" if mine else f"nothing to verify since {label}"))
-    result = plan(list(debt), config, markers, level=level, surfaces=surfaces, file_exists=file_exists, debt=debt)
-    result.notes = notes + [n for n in result.notes if n != "no changed files; nothing planned"]
-    if not debt:
+    A context with no commit, or one `diff` cannot read, is planned from `base`
+    (see `unverified_since`). A file counts only for the contexts it changed since their own commit."""
+    found = unverified_since(config, level=level, diff=diff, verified=verified, base=base)
+    result = plan(list(found.debt), config, markers, level=level, surfaces=surfaces, file_exists=file_exists, debt=found.debt)
+    result.notes = found.notes + [n for n in result.notes if n != "no changed files; nothing planned"]
+    if not found.debt:
         result.notes.append("every context is verified up to date; nothing planned")
     return result
 

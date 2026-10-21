@@ -169,6 +169,12 @@ def last_verified(context: str, level: str, *, path: Path | None = None) -> str 
     return entry["commit"] if entry else None
 
 
+def last_verified_at(context: str, level: str, *, path: Path | None = None) -> str | None:
+    """The UTC timestamp (`%Y-%m-%dT%H:%M:%SZ`) of the last recorded pass, or None."""
+    entry = _entry(_load(path or default_ledger_path()), context, level)
+    return entry.get("timestamp") if entry else None
+
+
 def _state(entry: dict | None, revision: Revision) -> str:
     """A pass holds for any commit with the same tree: an amend keeps it, a content change loses it."""
     if entry is None:

@@ -1,8 +1,9 @@
 {
-  "_comment": "Test contexts for scripts/test_planner.py (#60, #61). Context names follow CONTEXT-MAP.md. A context with a 'marker' is a pytest context; one with 'commands' runs shell commands. An interface's 'files' are its public surface; a change to one adds its 'tests' and forces its context's Major suite, and queues the contexts in 'shares_with' (downstream, #66; api-contract shares with none: Web no longer calls the API, ADR-0007). A context's 'depends_on' names the contexts it imports (a list, or a mapping to the file globs it really imports); a change to one queues the dependent. 'docs_globs' are docs-only files that plan nothing. Command templates take {rel} (path under the context root), {fqcn} (Kotlin class) and {file}. The non-Python commands are the ones #52 documents; change them here if #52 settles on others.",
+  "_comment": "Test contexts for scripts/test_planner.py (#60, #61). Context names follow CONTEXT-MAP.md. A context with a 'marker' is a pytest context; one with 'commands' runs shell commands. An interface's 'files' are its public surface; a change to one adds its 'tests' and forces its context's Major suite, and queues the contexts in 'shares_with' (downstream, #66; api-contract shares with none: Web no longer calls the API, ADR-0007). A context's 'depends_on' names the contexts it imports (a list, or a mapping to the file globs it really imports); a change to one queues the dependent. 'docs_globs' are docs-only files that plan nothing. 'debt' holds the limits scripts/verification_debt.py (#67) recommends a context-level catch-up run at: unverified files per context and days since the context was last verified (0 = off). Command templates take {rel} (path under the context root), {fqcn} (Kotlin class) and {file}. The non-Python commands are the ones #52 documents; change them here if #52 settles on others.",
   "dependency_files": ["pyproject.toml", "uv.lock"],
   "docs_globs": ["*.md", "docs/*", "ClaudePlans/*"],
   "scope": {"file_max_files": 2},
+  "debt": {"level": "session", "max_files": 15, "max_age_days": 7},
   "slow": [
     {
       "name": "tooling",

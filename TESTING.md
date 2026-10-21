@@ -1,12 +1,17 @@
 # RigCheck — testing methodology
 
 This defines the test categories and regression-scoping rules used across
-the whole repo (Python backend, Web, Streamlit, Android, `scan-proxy`).
+the whole repo (Core, Streamlit, Web, Android, Scan Proxy).
 Decided 2026-08-20 — see `ARCHIVE_TESTING.md` at the repo root for the
-narrative history of how this was arrived at. Platform-specific
-files (`android/TESTING.md`, `workers/scan-proxy/TESTING.md`) document
-each platform's *actual* current tests against this framework — this file
-only defines the framework itself.
+narrative history of how this was arrived at. Each context's own file
+([`tests/TESTING.md`](tests/TESTING.md) for Core and Streamlit,
+[`web/TESTING.md`](web/TESTING.md), [`android/TESTING.md`](android/TESTING.md),
+[`workers/scan-proxy/TESTING.md`](workers/scan-proxy/TESTING.md)) documents that
+context's *actual* current tests, commands and gaps against this framework — this file
+only defines the framework itself. When to run what is set by the agreed rules in
+[`docs/test-audit/rules.md`](docs/test-audit/rules.md) (see "Run levels" below), and the
+advisory planner [`scripts/test_planner.py`](scripts/test_planner.py) prints the commands
+for a diff.
 
 ## Test categories
 
@@ -235,10 +240,102 @@ dependency is a broader risk surface (install, licensing, version
 conflicts, unfamiliar failure modes) than the diff's line count alone
 would suggest.
 
+## Run levels: per issue, session end, release
+
+Minor and Major say *which tests a change calls for*; the run levels say *when
+they run*. Agreed 2026-10-04 in the grilling session behind map #49 and spec #51;
+the rules themselves are in [`docs/test-audit/rules.md`](docs/test-audit/rules.md)
+and the audit that measured every context against them is in
+[`docs/test-audit/`](docs/test-audit/SUMMARY.md). Nothing here renames a category:
+the layers add *when*, not new names. The advisory planner,
+[`scripts/test_planner.py`](scripts/test_planner.py), turns a diff into the commands
+for each level and **never blocks** (it always exits 0); give it `--level`, and
+`--files` or `--base` to say what changed:
+
+```
+uv run scripts/test_planner.py --level issue     # the default
+uv run scripts/test_planner.py --level session
+uv run scripts/test_planner.py --level release
+```
+
+**The scope ladder.** File, then context (a `CONTEXT-MAP.md` context: Core,
+Streamlit, Web, Android, Scan Proxy), then application. The size of the diff picks
+the level (session end): a diff in more than one context is the application; one
+context with more than two changed files, or a changed dependency file, is that
+context; anything smaller is the file. A change to an interface's provider side also
+queues the contexts that share it, and a change to a context queues the contexts that
+depend on it (`scripts/test_planner_config.json`, #66).
+
+Each context's testing document has the exact commands; the ladder at a glance:
+
+| Context | One file | Minor (per issue) | Context, session end | Release |
+|---|---|---|---|---|
+| Core | `uv run pytest tests/test_x.py` | `uv run pytest -m "minor and core"` | `uv run pytest -n auto -m "core and not slow"` | none: covered through the apps that use it |
+| Streamlit | `uv run pytest tests/test_x.py` | `uv run pytest -m "minor and streamlit"` | `uv run pytest -m "streamlit and not slow"` | none |
+| Web | `npm --prefix web test -- src/x.test.ts` | `npm --prefix web test` (Minor and Major are one suite) | `npm --prefix web test` | none; a push that deploys Web keeps the External freshness gate |
+| Scan Proxy | `node --test workers/scan-proxy/src/x.test.ts` | `npm --prefix workers/scan-proxy run test:sanity` | `npm --prefix workers/scan-proxy test` | `.\release.ps1` (Worker deploy) |
+| Android | `android/gradlew -p android testDebugUnitTest --tests <class>` | `android/gradlew -p android testDebugUnitTest` (JVM; Minor and Major are one run) | `uv run scripts/android_session_end.py` (no device) | `.\release.ps1` (Play Store push) |
+
+The documents: [`tests/TESTING.md`](tests/TESTING.md) (Core and Streamlit, one shared
+suite), [`web/TESTING.md`](web/TESTING.md),
+[`workers/scan-proxy/TESTING.md`](workers/scan-proxy/TESTING.md),
+[`android/TESTING.md`](android/TESTING.md).
+
+### Per issue
+
+The issue's own targeted test exists and runs first (it would have failed before the
+change). Then, with no sampling: the touched module's Minor suite always; the Major
+suite when a public interface or a dependency changed; and the inter-module interface
+tests for every module that shares a changed interface (category 4). The planner's
+issue level (`--level issue`, the default) lists exactly that, and adds the slow tests
+(below) only when the diff touches what they check.
+
+### Session end
+
+Run the whole file, context or application by the ladder above, so nothing in the
+affected area is left unverified. For Android that is one device-free command,
+`uv run scripts/android_session_end.py` (JVM tests, the decision-logic coverage floor,
+detekt); instrumented tests join only when the diff touches code they cover, and then
+only the test classes for the screens and components touched (the full instrumented suite
+when it touches navigation, the view model, the activity, the manifest or anything the
+planner cannot map). The planner's `--level session` lists the commands. A suite that has
+already passed at this exact tree is marked `already passed at <tree>` and left out of
+`To run:` by the verification ledger ([`scripts/verification_ledger.py`](scripts/verification_ledger.py),
+#65, #128): a pass counts only for the exact tree it ran at, a dirty tree is never
+vouched for, and a missing or unreadable ledger means `run`. `/ticket-finish` runs the
+session level once and remembers it; a SessionStart report
+([`scripts/verification_debt.py`](scripts/verification_debt.py), #67) lists what each
+context has not had a pass for since its last verified commit.
+
+### Release
+
+A full run of every category, including the paid External tests and (for Android) the
+device tests, for the two things that release: **Android** (a Play Store push) and **the
+Worker** (a `wrangler deploy`). Web, Streamlit and Core have no full-run release.
+
+| Release | One command | In order |
+|---|---|---|
+| Android (Play Store push) | `.\release.ps1` in `android/` | JVM suite; instrumented suite on exactly one attached device (a missing one fails the run); the stale surfaces in Android's chain (the Worker's `test-external.ps1`, then Android's own); the External release gate; the old weekly suite (deploys the Worker, two paid scans) |
+| Worker (deploy) | `.\release.ps1` in `workers/scan-proxy/` | offline suite; the stale surfaces; the External release gate; the old release suite (paid); the old weekly suite (paid, redeploys the Worker) |
+
+Each stops on the first failure. The paid steps ask the owner to confirm before they
+run, and count against a shared paid-call budget
+([`scripts/paid_call_budget.py`](scripts/paid_call_budget.py), `-MaxPaidCalls`): a
+confirmation that would exceed the budget aborts the run instead of spending further
+(#62, #63; tested with fakes in `tests/test_scan_proxy_release.py` and
+`tests/test_android_release.py`). The planner's `--level release` lists the same steps,
+marks every paid one `[CONFIRM]` (never run unprompted) and always lists the slow
+Python tests. A push to `MPSkills` that deploys Web keeps ADR-0008's External freshness
+gate without a full run (see "External release gate" below). Coverage is a map of untested
+code, not a pass mark: see "Coverage gate".
+
 ## Python test commands
 
-The full Python run is **`uv run pytest -n auto`** (`pytest-xdist`): about 40 s
-for about 1,100 tests, against about 170 s on one core (measured 2026-10-18, #129).
+The full Python run is **`uv run pytest -n auto`** (`pytest-xdist`; `addopts` adds
+`--maxprocesses=8`, so `uv run pytest -n auto --maxprocesses=8` is the same command spelled
+out): 1,586 passed
+and 4 `xfail`ed in 45 s (real run, 2026-10-21, #64, nothing else running; the 10 live
+tests are deselected), against about 170 s on one core (measured 2026-10-18, #129).
 Bare `uv run pytest` still runs the same tests serially, slow ones included.
 `addopts` caps `-n auto` at 8 workers (`--maxprocesses=8`): 24 workers
 ran this machine out of memory (failures were "paging file too small",
@@ -391,12 +488,14 @@ triggers a test running** — a change's real scope, or a real-world event
 (a release, a dependency bump, suspicion of drift) — which is what was
 really governing these tiers all along.
 
-**Applied uniformly across all four platforms**, including Web and
+**Applied uniformly across all five contexts**, including Web and
 Python/Streamlit, even though neither ever had tier language before —
-see `web/TESTING.md`'s and `tests/TESTING.md`'s own "Event-based tiers"
-sections. Python/Streamlit's only real External test is Core's Claude
-vision call (the `anthropic-python` surface); Web has its own External suite
+see `web/TESTING.md`'s and `tests/TESTING.md`'s own sections. Python/Streamlit's
+only real External test is Core's Claude vision call (the `anthropic-python`
+surface, plus the free Maven registry reads); Web has its own External suite
 (`supabase-auth`, `pages-site`, `supabase-tables`, `revenuecat-web-billing`).
+What changed since: Minor and Major are real selections in Python (markers,
+#50) and in Scan Proxy (`[sanity]`), while Web and Android run one suite for both.
 
 ## Coverage gate
 
@@ -412,7 +511,18 @@ with a real release-gating event today (Android/scan-proxy's shared
 what that same push exercises on the backend side). Python and
 scan-proxy are baseline floors: the gate fails only if the real number
 drops *below* its last known-good baseline (2026-08-24: Python 79%,
-scan-proxy 100%).
+scan-proxy 100%). **Measured 2026-10-21 (`uv run scripts/coverage_gate.py --refresh`, #64):
+Python 87.78% (PASS), Android decision logic 96.96% (PASS), Web 95.95% (report only),
+scan-proxy 99.84% against its 100.00% floor (FAIL, exit 1).** The Scan Proxy shortfall
+is two lines, `workers/scan-proxy/src/liveTokenCli.ts` 36-37, the guard that runs the
+sign-in helper only when it is invoked directly as a script (added by #75); every test
+calls its functions, and a test that ran the script would sign in against the live
+Supabase project. So a release-time `coverage_gate.py` run fails today until the owner
+lowers that floor, excludes the line or decides on another test (#151); this document does not
+change the floor (rule 9 of `docs/test-audit/rules.md`: the owner sets targets). Neither
+`release.ps1` runs the full gate, so nothing blocks on it automatically; it is run by
+hand, and Android's session-end command runs only its own decision-logic floor
+(`--android-logic`).
 
 **The Android gate is a JVM floor on decision logic, not an app-wide
 number.** It reads the JVM unit-test JaCoCo report (`./gradlew
@@ -429,12 +539,14 @@ the report (a stale list) and names every class in `domain`, `data` or
 failure). The device-based Android numbers (Major suite, Major+External
 merged) are still printed, as informational numbers that gate nothing.
 
-**Report-only** for Web — the one platform with no real release event
-yet (no hosting at all today; see `NEXT_STEPS.md`'s "Deliberately not on
-this list"). The script prints its real number with an explicit "not
-gated — no release event yet" note and always exits 0 for it. Once Web
-gains a real release event, its threshold flips to enforced the same way
-the other three already are.
+**Report-only** for Web. Web does have a release event now (a push to
+`MPSkills` deploys it to Cloudflare Pages, and the External freshness gate guards
+that push), but nobody has set a coverage floor for it: rule 9 of
+`docs/test-audit/rules.md` leaves the number to the owner after seeing it
+(95.95% of statements on 2026-10-21). The script still prints its number with the
+older "not gated — no release event yet" note, which is out of date, and always
+exits 0 for it. Once the owner sets a Web floor, it flips to enforced the same way
+the others are.
 
 The script's overall exit code reflects only the platforms actually
 gated — a Web coverage dip alone never fails the gate.
@@ -578,12 +690,25 @@ requests; an unreachable one blocks) with no cache.
 ## Status of this repo against the framework
 
 This framework was defined 2026-08-20, after most of this repo's existing
-tests were already written — they haven't been retroactively categorized
-against it, and the framework hasn't yet been applied as an actual
-per-session discipline. Reconciling the sanity/daily/weekly/release tiers
+tests were already written. Reconciling the sanity/daily/weekly/release tiers
 with Minor/Major closed that specific gap 2026-08-21; retiring those
-tier names entirely in favor of the single Minor/Major/External axis
-(immediately above), plus standing up the coverage gate, closed the
-remaining redesign 2026-08-24. Applying Minor/Major/External as a lived
-per-session discipline going forward remains a separate, ongoing thing
-to keep honest, not a one-time task.
+tier names entirely in favor of the single Minor/Major/External axis, plus
+standing up the coverage gate, closed the remaining redesign 2026-08-24.
+
+Since 2026-10-04 (map #49, spec #51) the framework is applied as a discipline with
+tooling instead of by judgement: the run levels above, the advisory planner, Python
+markers that make Minor, slow, Core, Streamlit and External selectable (#50), a
+file-level and context-level command in every context, a session-end command per
+context, one release command for Android and the Worker with a paid-call
+confirmation and counter, the External freshness gate on push and deploy, and the
+verification ledger that remembers which suites passed at which tree. What is
+still by judgement: whether a change is Minor or Major (the planner's Major rule
+is "a public interface or a dependency changed", which is a reading of the diff),
+the choice to run a live External suite (always the owner's go-ahead), and the
+coverage floors (the owner's to set, rule 9). Each context's own document ends in
+a "Known gaps" list that says what is closed and what is still open.
+
+This file and the four context documents were last refreshed against real runs on
+2026-10-21 (#64); the counts in them come from those runs and are not asserted by
+any test (`tests/test_testing_docs.py` pins what does drift unnoticed: that every
+test file is named, the links and the gap statuses).

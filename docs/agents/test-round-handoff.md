@@ -107,7 +107,7 @@ Test-round additions:
 ## Things to remember
 
 - `--maxprocesses=8` caps `-n auto` because 24 workers ran this machine out of memory. Even at 8, the Python suite occasionally errors in tests that create a real git repo (`git init` or `git worktree add` exits 3221225773 or "WinError 1455: paging file too small") when the emulator, Gradle and other sessions are up (about 3 in 16 runs). It is memory, not a regression; re-run.
-- Set the `medium_phone` AVD's Graphics to Software in Device Manager (`G:\Android\EmulatorHome\avd\medium_phone.avd\config.ini`, `hw.gpu.mode`). Not yet confirmed done. The `-gpu swangle_indirect` start line above does not depend on it; a plain `gradlew connectedDebugAndroidTest` or `android/release.ps1` against a default-graphics emulator can still abort.
+- The `medium_phone` AVD's Graphics is set to Software in Device Manager (done 2026-10-21; `G:\Android\EmulatorHome\avd\medium_phone.avd\config.ini`, `hw.gpu.mode`). The `-gpu swangle_indirect` start line above stays in the cards and does not depend on it.
 - An emulator that `android_suite_loop.py` or a session started holds its `emulator.log` open and blocks deleting the ticket folder after `/ticket-merge`: step 6 above.
 - If an assigned ticket is wrongly counted as holding the emulator (its title says Android but it never uses it), start the next with `--emulator-free <M>` naming it.
 - Paid prompts from a non-interactive shell: `cmd /c "echo y| powershell -NoProfile -File workers\scan-proxy\test-external.ps1 -MaxPaidCalls N"` (piping several `'y'` lines from PowerShell declines the first prompt and records `skipped`, which spends nothing and leaves the surface stale). Claude does this, with your ceiling.

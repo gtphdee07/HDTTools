@@ -4,16 +4,20 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-The only build ticket left is the optional #132; everything else in the round is merged. Start the next only after the previous one is merged, so it is cut from the updated `MPSkills`.
+The round's tickets are merged and pushed. What is left is epic #147's tree (below) and the optional #132. Start the next ticket only after the previous one is merged, so it is cut from the updated `MPSkills`; #163 and #164 may be built in two sessions at the same time once #162 is merged. Start the next only after the previous one is merged, so it is cut from the updated `MPSkills`.
 
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
+| 1 | #162 shared scan form fields: the fixture, plus the Python and Streamlit checks | test data + 2 small tests + one `CONTEXT-MAP.md` line | none (the decisions were taken on 2026-10-21) | [#162](#162-shared-scan-form-fields-fixture) |
+| 2 | #163 Web checks its review-form fields against the fixture | one new Vitest file | none | [#163](#163-web-checks-the-fixture) |
+| 2 (same time) | #164 Android checks its scan fields against the fixture | one new JVM test | none | [#164](#164-android-checks-the-fixture) |
+| 3 | #161 the planner names all the field checks when a shared vision fixture changes | planner config | none | [#161](#161-planner-names-the-field-checks) |
+| then | I close epic #147 with a comment; nothing for you to type | | | |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
-| later | #147 the field-name epic | three decisions, one `CONTEXT-MAP.md` line | decide with Claude whenever you like; its three children are merged | [#147](#147-the-epic-not-built-as-a-ticket-now) |
 
 Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember"). The final External run is done (2026-10-21, see History); if #132 changes no code there is nothing more to run, and any later change to a boundary file or pin needs `uv run scripts/external_freshness.py` first.
 
-Not in this round: #40 (blocked on Play Console, see its card), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically), #145 (check that a fresh clone builds on another computer), #146 (check that `pro` is attached to the Pro product), #161 (name Android's field-key test in the planner when the vision fixture changes), #155 to #159 (static-check gaps: a Python type checker, a shell and PowerShell linter, the Python coverage floor, a Web coverage floor, Android Lint and config files), #138 and #139.
+Not in this round: #40 (blocked on Play Console, see its card), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically), #145 (check that a fresh clone builds on another computer), #146 (check that `pro` is attached to the Pro product), #155 to #159 (static-check gaps: a Python type checker, a shell and PowerShell linter, the Python coverage floor, a Web coverage floor, Android Lint and config files), #138 and #139.
 
 ## How to run one ticket
 
@@ -30,6 +34,102 @@ A session-start report (verification debt, #67) prints when each session opens. 
 
 ## Run cards
 
+### #162 shared scan form fields fixture
+
+Epic #147 (keep scan field names in step across Streamlit, Web and Android). #140, #148 and #149 are merged: each surface checks its field names against the Claude tool schema. On 2026-10-21 you decided to add a shared `test-vectors/scan_form_fields.json` that also pins each field's type (decisions recorded on #147); this ticket creates it and checks the Python side.
+
+- **Step 1:** `/ticket-start 162`.
+- **Step 2 block:**
+
+```
+Test-round additions:
+- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
+  The slow tooling tests are left out of planner runs unless the diff touches
+  what they check.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- The ticket has no open decisions (see the DECISIONS comment on #147). Fill the fixture from
+  what the three surfaces show today; they agree.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Do not edit `pyproject.toml`, `web/package.json` or `workers/scan-proxy/package.json`.
+- No live or paid runs.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+```
+
+- **Your part:** none beyond the usual steps. Merge it before starting #163 and #164.
+
+### #163 Web checks the fixture
+
+- **Step 1:** `/ticket-start 163` (after #162 is merged; GitHub blocks it until then).
+- **Step 2 block:**
+
+```
+Test-round additions:
+- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
+  The slow tooling tests are left out of planner runs unless the diff touches
+  what they check.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Do not edit `web/package.json`: it pins External surfaces.
+- No live or paid runs.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+```
+
+- **Your part:** none beyond the usual steps. It can be built at the same time as #164.
+
+### #164 Android checks the fixture
+
+- **Step 1:** `/ticket-start 164` (after #162 is merged). Add `--not-android` if another Android ticket is running; this one needs no emulator.
+- **Step 2 block:**
+
+```
+Test-round additions:
+- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
+  The slow tooling tests are left out of planner runs unless the diff touches
+  what they check.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- If you add or move a class in `domain`, `data` or `ui`, classify it in
+  `android/coverage-logic.toml`. This ticket adds a test only. The Android
+  end-of-session command is `uv run scripts/android_session_end.py` (JVM tests,
+  coverage floor, detekt; no device, no emulator needed).
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Do not edit `android/app/build.gradle.kts`: it pins an External surface.
+- No live or paid runs.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+```
+
+- **Your part:** none beyond the usual steps. It can be built at the same time as #163.
+
+### #161 planner names the field checks
+
+- **Step 1:** `/ticket-start 161` (after #162, #163 and #164 are merged; GitHub blocks it until then). Last ticket of the tree.
+- **Step 2 block:**
+
+```
+Test-round additions:
+- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
+  The slow tooling tests are left out of planner runs unless the diff touches
+  what they check.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Only `scripts/test_planner_config.json` and the planner's tests change.
+- No live or paid runs.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+```
+
+- **Your part:** none beyond the usual steps. After it merges, ask Claude to close epic #147.
+
 ### #132 (optional) mutation-testing research
 
 - **Step 1:** `/ticket-start 132`. Lowest priority; production code is not changed. Skip it if the round is running long.
@@ -40,10 +140,6 @@ Test-round additions:
 - Research only: write one file under `docs/research/` and change no production code.
 - No live or paid runs.
 ```
-
-### #147 (the epic): not built as a ticket now
-
-It is labelled `needs-triage` and carries three decisions for you (whether a shared `scan_form_fields.json` fixture is added, whether field types are pinned, and its close gate). Its three children (#140, #148, #149) are merged. The decisions are a short conversation with Claude in the main session, and the only edit left is one line in `CONTEXT-MAP.md`. If you answer "add the shared fixture", that becomes a new ticket touching all three surfaces, and it should wait until the rest of the round is finished.
 
 ### #40 Google Play Billing surface (BLOCKED, not part of this round)
 

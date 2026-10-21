@@ -1,0 +1,35 @@
+{
+  "_comment": "Which fields each surface's review form shows per doc type, and each field's type ('text' or 'number'). 'scanned' fields are the ones a Scan can fill, so each is a property of that doc type in vision_tool_schemas.json; 'manual_only' fields are shown on the form but a Scan never returns them, so none is. Field order is not pinned. tests/test_scan_form_fields_fixture.py checks this file against vision_tool_schemas.json and Streamlit's FIELDS (streamlit_app/fields.py); Web and Android each check their own form against it.",
+  "truck_tag": {
+    "scanned": [
+      { "name": "manufacturer", "type": "text" },
+      { "name": "gvwr_lb", "type": "number" },
+      { "name": "front_gawr_lb", "type": "number" },
+      { "name": "rear_gawr_lb", "type": "number" }
+    ],
+    "manual_only": [
+      { "name": "standalone_weight_lb", "type": "number" }
+    ]
+  },
+  "trailer_tag": {
+    "scanned": [
+      { "name": "manufacturer", "type": "text" },
+      { "name": "gvwr_lb", "type": "number" },
+      { "name": "gawr_per_axle_lb", "type": "number" },
+      { "name": "uvw_lb", "type": "number" }
+    ],
+    "manual_only": [
+      { "name": "axle_count", "type": "number" }
+    ]
+  },
+  "scale_ticket": {
+    "scanned": [
+      { "name": "location_name", "type": "text" },
+      { "name": "steer_axle_lb", "type": "number" },
+      { "name": "drive_axle_lb", "type": "number" },
+      { "name": "trailer_axle_lb", "type": "number" },
+      { "name": "gross_weight_lb", "type": "number" }
+    ],
+    "manual_only": []
+  }
+}

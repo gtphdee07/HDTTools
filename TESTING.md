@@ -474,6 +474,11 @@ shared cases, or a side's tool differs from the shared schema:
 `workers/scan-proxy/src/visionSharedFixtures.test.ts` (Worker). Changing a
 shared file changes both sides' queued tests
 (`scripts/test_planner_config.json`, interface `vision-fixtures`).
+`test-vectors/scan_form_fields.json` (#162, epic #147) lists, per doc type, the
+fields every surface's review form shows (`scanned`, which a Scan can fill and
+which must be tool schema properties, and `manual_only`, which a Scan never
+returns) with a `text` or `number` type; `tests/test_scan_form_fields_fixture.py`
+checks it and Streamlit's form, and Web and Android check their own.
 
 ## Event-based tiers, not time-cadence tiers
 

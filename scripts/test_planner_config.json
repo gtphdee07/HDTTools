@@ -87,7 +87,7 @@
       "dependency_files": ["workers/scan-proxy/package.json", "workers/scan-proxy/package-lock.json"],
       "session_end": "uv run scripts/static_checks.py scan-proxy",
       "session_end_runs_tests": false,
-      "static_triggers": ["scripts/static_checks.py", "scripts/static_allowlists/*", "scripts/coverage_gate.py", "web/package.json", "web/package-lock.json"],
+      "static_triggers": ["scripts/static_checks.py", "scripts/static_allowlists/*", "scripts/coverage_gate.py"],
       "test_globs": ["workers/scan-proxy/src/*.test.ts"],
       "live_globs": ["workers/scan-proxy/src/external/*", "workers/scan-proxy/src/weekly/*", "workers/scan-proxy/src/release/*"],
       "commands": {"minor": "npm --prefix workers/scan-proxy run test:sanity", "major": "npm --prefix workers/scan-proxy test"},

@@ -536,8 +536,8 @@ def test_real_config_the_static_checks_run_beside_the_suite_not_instead_of_it():
 
 
 def test_real_config_a_dependency_change_lists_the_static_checks_of_the_context_it_feeds():
-    # Scan Proxy lints with the oxlint installed for web, so web's dependency files feed its checks too.
-    assert _static(_real_plan(["web/package-lock.json"])) == [f"{STATIC} web", f"{STATIC} scan-proxy"]
+    # Each Node context lints with its own oxlint, so only its own dependency files feed its checks.
+    assert _static(_real_plan(["web/package-lock.json"])) == [f"{STATIC} web"]
     assert _static(_real_plan(["workers/scan-proxy/package-lock.json"])) == [f"{STATIC} scan-proxy"]
     assert _static(_real_plan(["uv.lock"])) == [f"{STATIC} core", f"{STATIC} streamlit"]
 

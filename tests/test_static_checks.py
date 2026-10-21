@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -92,16 +93,28 @@ def test_vulture_scans_the_code_and_the_tests_in_separate_passes_so_a_function_o
     assert tests[3:] == ["tests", "vulture_whitelist_tests.py"]
 
 
-def test_ruff_is_pinned_in_the_command_not_in_pyproject_so_the_anthropic_python_surface_stays_fresh():
+def test_ruff_runs_through_uv_run_with_its_exact_version_pinned_in_pyproject_and_locked_in_uv_lock():
     ruff = sc.steps_for("core")[0].command
-    assert ruff[:3] == ["uv", "tool", "run"] and ruff[3].startswith("ruff@")
-    assert "ruff" not in (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert ruff[:3] == ["uv", "run", "ruff"], "no `uv tool run`, and no version in the command"
+    assert not any("@" in part or "==" in part for part in ruff)
+    assert re.search(r'^\s*"ruff==\d+\.\d+\.\d+",?$', (ROOT / "pyproject.toml").read_text(encoding="utf-8"), re.M)
+    assert re.search(r'^name = "ruff"$', (ROOT / "uv.lock").read_text(encoding="utf-8"), re.M)
 
 
-def test_scan_proxy_lint_uses_the_oxlint_installed_for_web_not_a_new_dependency_of_its_own():
+def test_scan_proxy_lint_runs_the_workers_own_oxlint_which_is_its_own_locked_dev_dependency():
     lint = next(s for s in sc.steps_for("scan-proxy") if s.name == "oxlint")
-    assert lint.command[0] == sc.OXLINT and sc.OXLINT.endswith("oxlint") and "web" in sc.OXLINT
-    assert "oxlint" not in (ROOT / "workers" / "scan-proxy" / "package.json").read_text(encoding="utf-8")
+    expected = ROOT / "workers" / "scan-proxy" / "node_modules" / ".bin" / "oxlint"
+    assert Path(lint.command[0]) == expected and lint.cwd == sc.PROXY_DIR
+    package = json.loads((ROOT / "workers" / "scan-proxy" / "package.json").read_text(encoding="utf-8"))
+    assert "oxlint" in package["devDependencies"]
+    assert package["scripts"]["lint"] == "oxlint", "knip reports a devDependency nothing references as unused"
+    lock = json.loads((ROOT / "workers" / "scan-proxy" / "package-lock.json").read_text(encoding="utf-8"))
+    assert "node_modules/oxlint" in lock["packages"]
+
+
+def test_web_lint_runs_the_web_install_of_oxlint():
+    lint = next(s for s in sc.steps_for("web") if s.name == "oxlint")
+    assert Path(lint.command[0]) == ROOT / "web" / "node_modules" / ".bin" / "oxlint" and lint.cwd == sc.WEB_DIR
 
 
 def test_a_context_with_no_static_checks_is_refused():
@@ -211,11 +224,13 @@ def test_the_lint_step_fails_on_a_new_warning_and_prints_it(monkeypatch):
     assert any("1 finding(s), 0 allowed" in line for line in lines)
 
 
-def test_the_lint_step_says_to_install_web_when_the_oxlint_binary_is_missing():
-    code, lines = run(["scan-proxy"], FakeRunner(), oxlint_installed=False)
+@pytest.mark.parametrize("context, install", [("scan-proxy", "workers/scan-proxy"), ("web", "web")])
+def test_the_lint_step_says_to_install_its_own_context_when_the_oxlint_binary_is_missing(context, install):
+    code, lines = run([context], FakeRunner(), oxlint_installed=False)
 
     assert code == 1
-    assert any("npm --prefix web ci" in line for line in lines)
+    assert any(f"npm --prefix {install} ci" in line for line in lines)
+    assert not any("npm --prefix web ci" in line for line in lines if context == "scan-proxy")
 
 
 def test_the_lint_step_fails_when_oxlint_prints_no_diagnostics_at_all():

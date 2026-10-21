@@ -1,8 +1,7 @@
 # ruff for the Python code (#150): the correctness rules only (pyflakes F, and the pycodestyle E4, E7 and
 # E9 syntax, import and statement checks). Style rules are left off on purpose: this repo has no formatter,
-# and a style baseline would be noise. scripts/static_checks.py pins the ruff version and runs it with
-# `uv tool run`, so no dev dependency is added (pyproject.toml and uv.lock pin the anthropic-python
-# External surface).
+# and a style baseline would be noise. ruff is a dev dependency (pinned exactly in pyproject.toml, locked in
+# uv.lock, #160); scripts/static_checks.py runs it with `uv run ruff`.
 target-version = "py314"
 
 [lint]

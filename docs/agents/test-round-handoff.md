@@ -9,9 +9,12 @@ One ticket at a time. Start the next only after the previous one is merged, so i
 | # | Ticket | Kind | Your part before or after | Card |
 |---|---|---|---|---|
 | 1 | #64 refresh each context's testing document | docs | none | [#64](#64-refresh-the-testing-documents) |
+| 2 | #150 static checks (typecheck, lint, dead code, coverage floor) never run: put each context's into its session-end command and clear what they find | tooling + small fixes | answer 4 questions the build session asks | [#150](#150-static-checks-never-run) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
-After #64: a final run of whichever External surfaces went stale again (`uv run scripts/external_freshness.py` first, from the main checkout; Claude asks before each live run and before pushing). Deferred, not in this round: #40 (blocked on Play Console), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically) and #145 (check that a fresh clone builds on another computer).
+#150 comes right after #64 because it edits the same testing documents (it is blocked by #64 on GitHub) and because it should land before the final External run: it changes no `package.json`, so it makes no External surface stale, and the checks it adds then cover everything the round changed. Found while merging the round: Scan Proxy knip fails since #43, Scan Proxy coverage is 99.84% against a 100% floor, and nothing ran either.
+
+After #150: a final run of whichever External surfaces went stale again (`uv run scripts/external_freshness.py` first, from the main checkout; Claude asks before each live run and before pushing). Deferred, not in this round: #40 (blocked on Play Console), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically) and #145 (check that a fresh clone builds on another computer).
 
 ## How to run one ticket
 
@@ -93,6 +96,32 @@ Test-round additions:
   markers.
 ```
 
+### #150 static checks never run
+
+- **Step 1:** `/ticket-start 150`, only after #64 is merged (GitHub blocks it until then).
+- **Step 2 block:**
+
+```
+Test-round additions:
+- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
+  The slow tooling tests are left out of planner runs unless the diff touches
+  what they check.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- Do not edit `web/package.json` or `workers/scan-proxy/package.json`: they pin
+  three External surfaces, and a change makes them stale. Use `knip.json` and other
+  config files instead.
+- The ticket has four Decisions: ask them with AskUserQuestion before building.
+- The ticket cannot be READY TO MERGE until every context's new session-end command
+  exits 0 on that context's whole tree; quote the real output for all five in the
+  STATUS comment.
+- No live or paid runs, no emulator needed (the Android check already exists).
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+```
+
+- **Your part:** answer the four decisions the build session asks (where the checks run, whether warnings fail, new tools, Python coverage floor timing). Each has a recommended first option.
+
 ### #132 (optional) mutation-testing research
 
 - **Step 1:** `/ticket-start 132`. Lowest priority; production code is not changed. Skip it if the round is running long.
@@ -116,7 +145,7 @@ Test-round additions:
 
 ## History (for reference; nothing to do)
 
-- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145.
+- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145, #146, #150 (now in the round). Not yet filed: `scripts/android_suite_loop.py` also runs the excluded live `RevenueCatAndroidSdkExternalTest` (reported 154 tests, 6 failing; the offline suite is 148).
 - **Pushed** up to d0ea7b7 on 2026-10-20 (plus handoff-note commits), including #115's changed Web scan wording, which the owner approved.
 - **External runs, owner-approved:** 2026-10-19 sanity run of seven stale surfaces (4 paid calls; commit 95ae133); 2026-10-20 re-run of `pages-site` and `scan-proxy-worker` after a wrangler release (1 paid call); 2026-10-20 first runs of `anthropic` (Worker) and `anthropic-python` (6 paid calls, commit 615e552), both against `test-vectors/vision_external_cases.json` and `ExampleDocs/golden_fields.json`. All passed.
 - **Verification debt (#67):** a committed SessionStart hook in `.claude/settings.json`; all five contexts have a recorded pass from 2026-10-20 at d0ea7b7 (a new machine or fresh clone needs the one-time commands in [verification-debt.md](verification-debt.md) again; #144 will automate it).

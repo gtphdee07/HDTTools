@@ -29,10 +29,11 @@ import java.io.File
 // documented order), so no instrumentation-args mechanism can be read in
 // time. The reliable fix is a device-side marker file, checked with plain
 // synchronous file I/O that has no lifecycle-ordering dependency at all:
-// test-weekly.ps1 touches WEEKLY_MARKER_PATH via `adb shell` before
+// test-weekly.ps1 writes WEEKLY_MARKER_PATH via `adb shell` before
 // invoking `am instrument`, and removes it afterward so a later
-// ./gradlew connectedDebugAndroidTest run never sees it.
-private const val WEEKLY_MARKER_PATH = "/data/local/tmp/rigcheck_weekly_mode"
+// ./gradlew connectedDebugAndroidTest run never sees it. Its text is the funded
+// test account's id, which WeeklyTestApplication reads (#75).
+internal const val WEEKLY_MARKER_PATH = "/data/local/tmp/rigcheck_weekly_mode"
 
 class CustomTestRunner : AndroidJUnitRunner() {
     override fun newApplication(cl: ClassLoader?, className: String?, context: Context?): Application {

@@ -5,10 +5,10 @@
 
 .DESCRIPTION
     Unlike the Daily tier (./gradlew connectedDebugAndroidTest), this tier
-    touches a device-side marker file before running, which
+    writes a device-side marker file before running, which
     CustomTestRunner checks to substitute WeeklyTestApplication (real
-    Purchases.configure() against the dedicated weekly-test-user Test
-    Store customer) instead of the Daily tier's plain, offline
+    Purchases.configure() against the funded test account's Test Store
+    customer) instead of the Daily tier's plain, offline
     Application - see android/TESTING.md and CustomTestRunner.kt's own
     comment for the two mechanisms tried first that didn't work (a second
     named instrumentation runner - AGP's manifest merger only allows one
@@ -32,9 +32,18 @@
     device/emulator, sets the marker, runs PaywallScreenWeeklyTest, then
     clears the marker so a later Daily-tier run is unaffected either way.
 
-    Identity is hardcoded (weekly-test-user), not an env secret, so
-    unlike test-release.ps1 there's no key-based skip logic here - this
-    either runs for real or you don't run it.
+    Identity is the funded Supabase test account the Worker's own live
+    suites use (WEB_EXTERNAL_TEST_EMAIL / WEB_EXTERNAL_TEST_PASSWORD, plus
+    VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY, from the environment or
+    web/.env.local - set up by scripts/wizard_scan_proxy_live_accounts.sh).
+    The first step signs it in (`node workers/scan-proxy/src/liveTokenCli.ts`) and a
+    missing or rejected credential stops the run there, naming the variable,
+    before anything is deployed or bought. The account id becomes the
+    RevenueCat customer (written into the device marker file) and the access
+    token goes to the tests as an instrumentation argument, so the purchase
+    and the real scans act on the same balance. Credentials stay on this
+    machine and nothing here prints the token. Unlike test-release.ps1 there's
+    no key-based skip logic - this either runs for real or you don't run it.
 
 .EXAMPLE
     .\test-weekly.ps1
@@ -58,6 +67,23 @@ if ($adbCmd) {
     throw 'adb not found on PATH and neither ANDROID_SDK_ROOT nor ANDROID_HOME is set.'
 }
 if (-not (Test-Path $adb)) { throw "adb not found at resolved path: $adb" }
+
+# Sign in the funded test account before anything else, so a missing or
+# rejected credential stops the run here (its reason is printed by the helper,
+# naming the variable, never a value) rather than after a deploy and a build.
+# The helper's stdout is the token and account id as one JSON line; it is read
+# into a variable, never echoed. A Supabase access token lasts about an hour,
+# well beyond one run.
+$sessionLine = & node ..\workers\scan-proxy\src\liveTokenCli.ts
+if ($LASTEXITCODE -ne 0) {
+    Write-Error 'Signing in the funded Supabase test account failed (reason above); nothing was deployed or bought.'
+    exit 1
+}
+$session = $sessionLine | ConvertFrom-Json
+if (-not $session.accessToken -or -not $session.accountId) {
+    Write-Error 'The test-account sign-in returned no access token or account id; nothing was deployed or bought.'
+    exit 1
+}
 
 # Redeploy the Worker first, every time - these tests hit the real deployed
 # URL (ScanApiClient.kt's SCAN_ENDPOINT), so if this step is skipped a
@@ -97,7 +123,11 @@ $markerPath = '/data/local/tmp/rigcheck_weekly_mode'
 # so it can always write there with no extra permission.
 $coverageDevicePath = "/data/data/com.rigcheck.app/coverage-external.ec"
 $coverageLocalPath = "app\build\outputs\code_coverage\debugAndroidTest\external\coverage-external.ec"
-& $adb shell touch $markerPath
+# The marker's text is the account id (a UUID, not a secret): it is the one
+# channel WeeklyTestApplication can read before instrumentation arguments
+# exist, and it becomes the RevenueCat customer.
+& $adb shell "echo $($session.accountId) > $markerPath"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 try {
     # Real bug, found and fixed 2026-09-08 (NEXT_STEPS.md item #19):
     # `adb shell am instrument`'s own exit code does NOT reflect an
@@ -112,6 +142,7 @@ try {
     # $LASTEXITCODE alone.
     & $adb shell am instrument -w `
         -e coverage true -e coverageFile $coverageDevicePath `
+        -e weeklyAccessToken $session.accessToken `
         -e class com.rigcheck.app.ui.screens.PaywallScreenWeeklyTest `
         com.rigcheck.app.test/com.rigcheck.app.CustomTestRunner | Tee-Object -Variable instrumentOutput
     $harnessExitCode = $LASTEXITCODE

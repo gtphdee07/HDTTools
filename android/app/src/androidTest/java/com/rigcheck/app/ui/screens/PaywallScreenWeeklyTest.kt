@@ -51,10 +51,10 @@ private fun encodeFixtureImageForScan(instrumentation: Instrumentation, imagePat
 }
 
 // Weekly-equivalent tier - runs against real RevenueCat Test Store
-// offerings and a real deployed Worker call. test-weekly.ps1 touches a
+// offerings and a real deployed Worker call. test-weekly.ps1 writes a
 // device-side marker file before invoking `am instrument`, which
 // CustomTestRunner checks to substitute WeeklyTestApplication
-// (weekly-test-user) for the Daily tier's plain offline Application.
+// (the funded test account, #75) for the Daily tier's plain offline Application.
 // Explicitly excluded from ./gradlew connectedDebugAndroidTest via
 // build.gradle.kts's testInstrumentationRunnerArguments["notClass"] -
 // see android/TESTING.md, CustomTestRunner.kt, and android/test-weekly.ps1

@@ -8,14 +8,15 @@ One ticket at a time. Start the next only after the previous one is merged, so i
 
 | # | Ticket | Kind | Your part before or after | Card |
 |---|---|---|---|---|
-| 1 | #64 refresh each context's testing document | docs | none | [#64](#64-refresh-the-testing-documents) |
-| 2 | #150 static checks (typecheck, lint, dead code, coverage floor) never run: put each context's into its session-end command and clear what they find | tooling + small fixes | answer 4 questions the build session asks | [#150](#150-static-checks-never-run) |
-| 3 | #154 the Android repeat-run script runs the live External test that Gradle excludes | tooling, uses the emulator once | go-ahead to start the emulator for the acceptance run | [#154](#154-android-repeat-run-script-excludes) |
+| 1 | #152 Scan Proxy: `check:dead-code` fails on `uv` (add `knip.json`) | small fix | none | [#152](#152-scan-proxy-knip-fails-on-uv) |
+| 2 | #151 Scan Proxy: the coverage gate fails at 99.84% against 100% | small fix | answer the one question the build session asks (how the gate should pass) | [#151](#151-scan-proxy-coverage-gate-fails) |
+| 3 | #150 static checks (typecheck, lint, dead code, coverage floor) never run: put each context's into its session-end command | tooling | answer 4 questions the build session asks | [#150](#150-static-checks-never-run) |
+| 4 | #153 the Android repeat-run script runs the live External test that Gradle excludes | tooling, uses the emulator once | go-ahead to start the emulator for the acceptance run | [#153](#153-android-repeat-run-script-excludes) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
-#150 comes right after #64 because it edits the same testing documents (it is blocked by #64 on GitHub) and because it should land before the final External run: it changes no `package.json`, so it makes no External surface stale, and the checks it adds then cover everything the round changed. Found while merging the round: Scan Proxy knip fails since #43, Scan Proxy coverage is 99.84% against a 100% floor, and nothing ran either.
+The order is #152, #151, #150, #153. #151 and #152 are the two Scan Proxy failures the #64 build session found (knip since #43, the coverage gate since #75); the merged testing documents already cite them by number. #150 is blocked by both on GitHub because its new session-end commands would otherwise fail on day one, and it also closes the wider gap: nothing ran these checks, and some code is in no check's scope. None of the four changes a `package.json`, so none makes an External surface stale. #154 was closed as a duplicate of #153.
 
-After #154 (and #132 if you run it): a final run of whichever External surfaces went stale again (`uv run scripts/external_freshness.py` first, from the main checkout; Claude asks before each live run and before pushing). Deferred, not in this round: #40 (blocked on Play Console), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically) and #145 (check that a fresh clone builds on another computer).
+After #153 (and #132 if you run it): a final run of whichever External surfaces went stale again (`uv run scripts/external_freshness.py` first, from the main checkout; Claude asks before each live run and before pushing). Deferred, not in this round: #40 (blocked on Play Console), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically) and #145 (check that a fresh clone builds on another computer).
 
 ## How to run one ticket
 
@@ -81,9 +82,13 @@ Test-round additions:
 
 Done: Web's External suite proves an entitlement named exactly `pro` exists (the fixture user `external-suite-pro`); the live run passed (33 tests) and can fail. The clause "attached to the Pro product" could not be proven without a purchase or a secret key and was accepted as is; #146 will check it in the Worker's External project. Keep the `external-suite-pro` grant non-expiring or far-dated.
 
-### #64 refresh the testing documents
+### #64 (merged 2026-10-21)
 
-- **Step 1:** `/ticket-start 64`.
+Done: the five testing documents match real runs (Python 1586 passed + 4 xfail, Web 547 + 3 skipped, Scan Proxy 150, Android JVM 176 and instrumented 148), closed gaps are no longer listed as open, and `tests/test_testing_docs.py` pins the shape that drifts (every test file named, links, scripts, gap statuses). It found three problems and filed #151, #152 and #153, which are the next tickets below.
+
+### #152 Scan Proxy knip fails on uv
+
+- **Step 1:** `/ticket-start 152`.
 - **Step 2 block:**
 
 ```
@@ -91,15 +96,44 @@ Test-round additions:
 - For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
   The slow tooling tests are left out of planner runs unless the diff touches
   what they check.
-- Counts and commands in the documents must match a real run of the free, offline
-  suites; run them and quote what they print. No live or paid runs.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- Do not edit `workers/scan-proxy/package.json` or `package-lock.json`: they pin three
+  External surfaces, and a change makes them stale. The fix is a new `knip.json`.
+- No live or paid runs.
 - Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
   markers.
 ```
 
+- **Your part:** none beyond the usual steps.
+
+### #151 Scan Proxy coverage gate fails
+
+- **Step 1:** `/ticket-start 151`.
+- **Step 2 block:**
+
+```
+Test-round additions:
+- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
+  The slow tooling tests are left out of planner runs unless the diff touches
+  what they check.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- The ticket has one Decision (how the gate should pass: lower the floor, exclude
+  the guard, or split it into an entry file). Ask it with AskUserQuestion before
+  building.
+- Do not edit `workers/scan-proxy/package.json`. No test may sign in against a live
+  provider to raise the number.
+- No live or paid runs.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+```
+
+- **Your part:** answer the one decision (the recommended option is the first one).
+
 ### #150 static checks never run
 
-- **Step 1:** `/ticket-start 150`, only after #64 is merged (GitHub blocks it until then).
+- **Step 1:** `/ticket-start 150`, only after #151 and #152 are merged (GitHub blocks it until then).
 - **Step 2 block:**
 
 ```
@@ -123,9 +157,9 @@ Test-round additions:
 
 - **Your part:** answer the four decisions the build session asks (where the checks run, whether warnings fail, new tools, Python coverage floor timing). Each has a recommended first option.
 
-### #154 Android repeat-run script excludes
+### #153 Android repeat-run script excludes
 
-- **Step 1:** `/ticket-start 154` (it names `android/` paths, so the Android flag should be detected; add `--android` if it says the ticket is not Android). Run it after #150 is merged and no other Android ticket is running.
+- **Step 1:** `/ticket-start 153` (it names `android/` paths, so the Android flag should be detected; add `--android` if it says the ticket is not Android). Run it after #150 is merged and no other Android ticket is running.
 - **Step 2 block:**
 
 ```
@@ -171,7 +205,7 @@ Test-round additions:
 
 ## History (for reference; nothing to do)
 
-- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145, #146, #150 and #154 (both now in the round; #154 is `scripts/android_suite_loop.py` also running the excluded live `RevenueCatAndroidSdkExternalTest`: 154 tests reported, 6 failing, against an offline suite of 148).
+- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105, #64 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145, #146, #150, #151, #152 and #153 (all now in the round; #153 is `scripts/android_suite_loop.py` also running the excluded live `RevenueCatAndroidSdkExternalTest`: 154 tests reported, 6 failing, against an offline suite of 148).
 - **Pushed** up to d0ea7b7 on 2026-10-20 (plus handoff-note commits), including #115's changed Web scan wording, which the owner approved.
 - **External runs, owner-approved:** 2026-10-19 sanity run of seven stale surfaces (4 paid calls; commit 95ae133); 2026-10-20 re-run of `pages-site` and `scan-proxy-worker` after a wrangler release (1 paid call); 2026-10-20 first runs of `anthropic` (Worker) and `anthropic-python` (6 paid calls, commit 615e552), both against `test-vectors/vision_external_cases.json` and `ExampleDocs/golden_fields.json`. All passed.
 - **Verification debt (#67):** a committed SessionStart hook in `.claude/settings.json`; all five contexts have a recorded pass from 2026-10-20 at d0ea7b7 (a new machine or fresh clone needs the one-time commands in [verification-debt.md](verification-debt.md) again; #144 will automate it).

@@ -27,8 +27,8 @@
 <text x="159" y="173" fill="#c9d1d9">107/107</text>
 <circle cx="225" cy="168" r="7" fill="#2563eb"/>
 <text x="239" y="173" fill="#c9d1d9">107/107</text>
-<circle cx="305" cy="168" r="7" fill="#2563eb"/>
-<text x="319" y="173" fill="#c9d1d9">6/6</text>
+<circle cx="305" cy="168" r="7" fill="#ca8a04"/>
+<text x="319" y="173" fill="#c9d1d9">5/6</text>
 <text x="558" y="173" fill="#16a34a">91.7% (report-only)</text>
 <text x="8" y="217" fill="#c9d1d9">Android</text>
 <circle cx="145" cy="212" r="7" fill="#2563eb"/>
@@ -58,9 +58,9 @@
 <text x="28" y="367" fill="#c9d1d9">google-play-billing</text>
 <text x="258" y="367" fill="#c9d1d9">planned - not covered</text>
 <text x="438" y="367" fill="#8b949e">android</text>
-<circle cx="14" cy="385" r="5" fill="#2563eb"/>
+<circle cx="14" cy="385" r="5" fill="#ca8a04"/>
 <text x="28" y="389" fill="#c9d1d9">pages-site</text>
-<text x="258" y="389" fill="#c9d1d9">fresh</text>
+<text x="258" y="389" fill="#c9d1d9">stale</text>
 <text x="438" y="389" fill="#8b949e">web</text>
 <circle cx="14" cy="407" r="5" fill="#2563eb"/>
 <text x="28" y="411" fill="#c9d1d9">revenuecat-android-sdk</text>

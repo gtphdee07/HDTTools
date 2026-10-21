@@ -16,6 +16,19 @@ One ticket at a time. Start the next only after the previous one is merged, so i
 
 The order is #152, #151, #150, #153. #151 and #152 are the two Scan Proxy failures the #64 build session found (knip since #43, the coverage gate since #75); the merged testing documents already cite them by number. #150 is blocked by both on GitHub because its new session-end commands would otherwise fail on day one, and it also closes the wider gap: nothing ran these checks, and some code is in no check's scope. None of the four changes a `package.json`, so none makes an External surface stale. #154 was closed as a duplicate of #153.
 
+### A second lane, beside the chain above (field-name checks, epic #147)
+
+A second `claude` session can build these while the chain runs, because they touch different files. They merge one at a time through the main checkout like everything else.
+
+| Order | Ticket | Files | Card |
+|---|---|---|---|
+| 1 | #140 Streamlit `FIELDS` against the shared tool schema | `tests/test_ocr_output_key_contracts.py`, one line of `tests/TESTING.md` | built, ready to merge: type `/ticket-merge 140` |
+| 2 | #148 Web `MODULES` field names against the shared tool schema | one new Vitest file, a row in `web/TESTING.md` | [#148](#148-web-field-names-against-the-shared-tool-schema) |
+| 3 | #149 Android `ScanFieldMapping` keys against the shared tool schema | one new JVM test, a row in `android/TESTING.md` | [#149](#149-android-scan-field-keys-against-the-shared-tool-schema) |
+| later | #147 the epic | owner decisions, one `CONTEXT-MAP.md` line | not built now: see the note after the cards |
+
+Where it can collide with the chain: `tests/test_testing_docs.py` requires every test file to be named in its context's testing document, so #148 and #149 each edit `web/TESTING.md` or `android/TESTING.md`, the same files #150 and #153 edit (a different part of each, so git usually merges them; if not, the merge review resolves it). #149 is JVM-only, but `/ticket-start` counts any Android ticket as holding the emulator, so finish #149 before #153 starts (or start #149 with `--not-android` if #153 is already running). Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember").
+
 After #153 (and #132 if you run it): a final run of whichever External surfaces went stale again (`uv run scripts/external_freshness.py` first, from the main checkout; Claude asks before each live run and before pushing). Deferred, not in this round: #40 (blocked on Play Console), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically) and #145 (check that a fresh clone builds on another computer).
 
 ## How to run one ticket
@@ -181,6 +194,57 @@ Test-round additions:
 ```
 
 - **Your part:** none beyond the usual steps; stop the emulator afterwards (step 6).
+
+### #148 Web field names against the shared tool schema
+
+- **Step 1:** `/ticket-start 148`.
+- **Step 2 block:**
+
+```
+Test-round additions:
+- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
+  The slow tooling tests are left out of planner runs unless the diff touches
+  what they check.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in `web/TESTING.md` (`tests/test_testing_docs.py`
+  checks it): add its row there.
+- Do not edit `web/package.json`: it pins External surfaces.
+- No live or paid runs.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+```
+
+- **Your part:** none beyond the usual steps.
+
+### #149 Android scan field keys against the shared tool schema
+
+- **Step 1:** `/ticket-start 149` (finish it before #153 starts; if #153 is already running, add `--not-android`).
+- **Step 2 block:**
+
+```
+Test-round additions:
+- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
+  The slow tooling tests are left out of planner runs unless the diff touches
+  what they check.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- If you add or move a class in `domain`, `data` or `ui`, classify it in
+  `android/coverage-logic.toml`. This ticket adds a test only. The Android
+  end-of-session command is `uv run scripts/android_session_end.py` (JVM tests,
+  coverage floor, detekt; no device, no emulator needed).
+- A new test class must be named in `android/TESTING.md` (`tests/test_testing_docs.py`
+  checks it): add its row there.
+- No live or paid runs.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+```
+
+- **Your part:** none beyond the usual steps.
+
+### #147 (the epic): not built as a ticket now
+
+It is labelled `needs-triage` and carries three decisions for you (whether a shared `scan_form_fields.json` fixture is added, whether field types are pinned, and its close gate). Its three children (#140, #148, #149) stand alone and do not need those answers. Once the children are merged, the decisions are a short conversation with Claude in the main session, and the only edit left is one line in `CONTEXT-MAP.md`. If you answer "add the shared fixture", that becomes a new ticket touching all three surfaces, and it should wait until the chain above is finished.
 
 ### #132 (optional) mutation-testing research
 

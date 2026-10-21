@@ -186,10 +186,23 @@
         "workers/scan-proxy/src/docTypes.ts",
         "workers/scan-proxy/src/visionCases.ts"
       ],
-      "tests": ["tests/test_vision_shared_fixtures.py"],
-      "shares_with": ["scan-proxy"],
+      "tests": ["tests/test_vision_shared_fixtures.py", "tests/test_ocr_output_key_contracts.py", "tests/test_scan_form_fields_fixture.py"],
+      "shares_with": ["scan-proxy", "web", "android"],
       "shares_tests": {
-        "scan-proxy": "node --test workers/scan-proxy/src/visionSharedFixtures.test.ts"
+        "scan-proxy": "node --test workers/scan-proxy/src/visionSharedFixtures.test.ts",
+        "web": "npm --prefix web test -- src/visionToolSchema.test.ts",
+        "android": "android/gradlew -p android testDebugUnitTest --tests com.rigcheck.app.data.ScanFieldKeysSchemaTest"
+      }
+    },
+    {
+      "name": "scan-form-fields",
+      "context": "core",
+      "files": ["test-vectors/scan_form_fields.json"],
+      "tests": ["tests/test_scan_form_fields_fixture.py"],
+      "shares_with": ["web", "android"],
+      "shares_tests": {
+        "web": "npm --prefix web test -- src/scanFormFields.test.ts",
+        "android": "android/gradlew -p android testDebugUnitTest --tests com.rigcheck.app.data.ScanFormFieldsFixtureTest"
       }
     },
     {

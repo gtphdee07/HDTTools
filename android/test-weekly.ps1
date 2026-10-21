@@ -5,7 +5,7 @@
 
 .DESCRIPTION
     Unlike the Daily tier (./gradlew connectedDebugAndroidTest), this tier
-    touches a device-side marker file before running, which
+    writes a device-side marker file before running, which
     CustomTestRunner checks to substitute WeeklyTestApplication (real
     Purchases.configure() against the funded test account's Test Store
     customer) instead of the Daily tier's plain, offline
@@ -127,6 +127,7 @@ $coverageLocalPath = "app\build\outputs\code_coverage\debugAndroidTest\external\
 # channel WeeklyTestApplication can read before instrumentation arguments
 # exist, and it becomes the RevenueCat customer.
 & $adb shell "echo $($session.accountId) > $markerPath"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 try {
     # Real bug, found and fixed 2026-09-08 (NEXT_STEPS.md item #19):
     # `adb shell am instrument`'s own exit code does NOT reflect an

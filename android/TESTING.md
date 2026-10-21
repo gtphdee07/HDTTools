@@ -838,6 +838,12 @@ not tapped through the photo picker; the tests start the Scan on the view model.
 coverage for test infrastructure: the fixture pool the External suite below
 depends on, and the scroll helper the screen and nav tests use:
 
+- `WeeklyAccessTokenTest.kt` — five cases (#75) for how the External suite
+  learns its identity: `weeklyAccessToken()`'s lookup returns the
+  `weeklyAccessToken` argument, a missing or blank one fails naming it, and
+  `weeklyAccountIdFromMarker` returns the marker text without its line
+  ending and fails on an empty marker. The lookup is injected, so nothing
+  touches the device's arguments or the network.
 - `ScanFixturePoolTest.kt` — `ScanFixturePool`'s directory-convention
   discovery (item #13's Android pass-pool/fail-pool, mirroring
   `scripts/vehicle_discovery.py`'s design), tested against a fake

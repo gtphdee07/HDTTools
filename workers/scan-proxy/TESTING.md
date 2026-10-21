@@ -341,7 +341,12 @@ validates a real token against.
 - **`parseEnvText`** reads `KEY=value` lines, skips comments/blanks, strips matching quotes, keeps `=` inside values.
 - **`missingVars` / `requireVars`** report names only (never values): the environment wins, `web/.env.local` is the fallback, empty counts as missing.
 - **`readEnvFile`** returns nothing, rather than throwing, for a missing file; **`liveCredentialsMissing`** lists only what the given accounts need (the release suite uses it to stop up front, or skip under `SKIP_KEYS`).
-- **`signInTestAccount`** posts the right account's credentials to Supabase's password grant and returns the access token; a failure names the account and HTTP status but never the credentials; a response without `access_token` throws. **`subjectOf`** returns the token's `sub` and throws without one.
+- **`signInTestAccount`** (credentials from the environment and env file, or injected as `env`/`fileValues`) posts the right account's credentials to Supabase's password grant and returns the access token; a failure names the account and HTTP status but never the credentials; a response without `access_token` throws. **`subjectOf`** returns the token's `sub` and throws without one.
+
+### `liveTokenCli.test.ts` — the sign-in helper `android/test-weekly.ps1` shells out to, `npm run live-token` (#75; mocked `fetch`, credentials passed in, never Supabase or `web/.env.local`)
+
+- **`fundedSession`** signs in the funded account and returns its token with the account id the token names.
+- **`runCli`** prints that session as one JSON line and exits 0; takes a credential from the env-file values when the environment lacks it; with a missing credential exits 1 naming the variable (no value), without calling Supabase; with a rejected sign-in exits 1 with the HTTP status and none of the credentials.
 
 ### `index.test.ts` — the router/entry point, `worker.fetch` (real `defaultScanDeps` — no injection point at this layer, so `fetch` is mocked to route by URL between RevenueCat, Anthropic and the Supabase JWKS endpoint; every request carries a locally signed account token since #21)
 

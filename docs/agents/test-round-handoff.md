@@ -8,10 +8,9 @@ One ticket at a time. Start the next only after the previous one is merged, so i
 
 | # | Ticket | Kind | Your part before or after | Card |
 |---|---|---|---|---|
-| 1 | #39 RevenueCat Android SDK surface | Android, emulator, adds the first Android External runner | the live run after the merge | [#39](#39-revenuecat-android-sdk-surface) |
-| 2 | #40 Google Play Billing surface | Android, emulator with Play Services, builds on #39's runner | the live run after the merge | [#40](#40-google-play-billing-surface) |
-| 3 | #105 prove the RevenueCat `pro` entitlement | Web, free live run | **a RevenueCat dashboard step first** | [#105](#105-prove-the-revenuecat-pro-entitlement) |
-| 4 | #64 refresh each context's testing document | docs | none | [#64](#64-refresh-the-testing-documents) |
+| 1 | #40 Google Play Billing surface | Android, emulator with Play Services, builds on #39's runner | the live run after the merge | [#40](#40-google-play-billing-surface) |
+| 2 | #105 prove the RevenueCat `pro` entitlement | Web, free live run | **a RevenueCat dashboard step first** | [#105](#105-prove-the-revenuecat-pro-entitlement) |
+| 3 | #64 refresh each context's testing document | docs | none | [#64](#64-refresh-the-testing-documents) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
 After #64: a final run of whichever External surfaces went stale again (`uv run scripts/external_freshness.py` first, from the main checkout; Claude asks before each live run and before pushing). Deferred, not in this round: #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically) and #145 (check that a fresh clone builds on another computer).
@@ -35,9 +34,13 @@ A session-start report (verification debt, #67) prints when each session opens. 
 
 Done: `android/test-weekly.ps1` signs in the funded Supabase test account and the Android External suite ran `OK (6 tests)` with two paid scans. Nothing more to do for it.
 
-### #39 RevenueCat Android SDK surface
+### #39 (merged 2026-10-21)
 
-- **Step 1:** `/ticket-start 39`. Only one Android ticket may be in flight.
+Done: the `revenuecat-android-sdk` surface and the first Android External runner, `android\test-external.ps1` (needs one attached emulator with Google Play Services; free). Its six tests passed on 2026-10-21 and the pass is recorded. #40 adds its tests to this runner.
+
+### #40 Google Play Billing surface
+
+- **Step 1:** `/ticket-start 40 --android` (its text names neither Android nor an `android/` path, so `/ticket-start` needs the flag). 
 - **Step 2 block:**
 
 ```
@@ -56,27 +59,19 @@ Test-round additions:
   with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save
   -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are
   done.
-- No Android External runner exists yet: this ticket adds the first one, and #40
-  will reuse it. Keep it small and documented, and say in the STATUS how the
-  wrapper requires a device.
+- Reuse the Android External runner #39 added (`android\test-external.ps1`,
+  `scripts/run_external_android.py`): add a class named `*ExternalTest.kt` tagged
+  `@ExternalSurface("google-play-billing")` next to the existing one, and do not
+  write a second runner. The emulator image is `google_apis_playstore`, so Play
+  Services is available.
 - Live runs: do not run the live External suite or any paid call. The owner runs
   the surface from the main checkout after the merge. Do not commit changes to
   `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
 ```
 
-- **Your part:** after the merge, run the new Android External runner the ticket documents (it needs the emulator; Claude can start and run it with your go-ahead and a paid-call ceiling if the ticket's maximum is above 0).
-
-### #40 Google Play Billing surface
-
-- **Step 1:** `/ticket-start 40 --android` (its text names neither Android nor an `android/` path, so `/ticket-start` needs the flag). Start it after #39 is merged.
-- **Step 2 block:** the same as #39's, with the runner line replaced by:
-
-```
-- Reuse the Android External runner #39 added; do not write a second one. The
-  emulator image is `google_apis_playstore`, so Play Services is available.
-```
-
-- **Your part:** after the merge, the live run as for #39.
+- **Your part:** after the merge, the live run (`android\test-external.ps1` with the emulator
+  up; Claude can start the emulator and run it with your go-ahead and a paid-call
+  ceiling if the ticket's maximum is above 0).
 
 ### #105 prove the RevenueCat `pro` entitlement
 
@@ -138,7 +133,7 @@ Test-round additions:
 
 ## History (for reference; nothing to do)
 
-- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145.
+- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145.
 - **Pushed** up to d0ea7b7 on 2026-10-20 (plus handoff-note commits), including #115's changed Web scan wording, which the owner approved.
 - **External runs, owner-approved:** 2026-10-19 sanity run of seven stale surfaces (4 paid calls; commit 95ae133); 2026-10-20 re-run of `pages-site` and `scan-proxy-worker` after a wrangler release (1 paid call); 2026-10-20 first runs of `anthropic` (Worker) and `anthropic-python` (6 paid calls, commit 615e552), both against `test-vectors/vision_external_cases.json` and `ExampleDocs/golden_fields.json`. All passed.
 - **Verification debt (#67):** a committed SessionStart hook in `.claude/settings.json`; all five contexts have a recorded pass from 2026-10-20 at d0ea7b7 (a new machine or fresh clone needs the one-time commands in [verification-debt.md](verification-debt.md) again; #144 will automate it).

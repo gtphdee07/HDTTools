@@ -75,6 +75,7 @@ class Nudge:
 class Report:
     level: str
     debts: list[ContextDebt] = field(default_factory=list)
+    recorded: list[str] = field(default_factory=list)  # contexts measured from a usable recorded pass
     no_record: list[str] = field(default_factory=list)
     bootstrap: dict[str, str] = field(default_factory=dict)  # no-record context -> its session command
     owed: list[planner.Selection] = field(default_factory=list)
@@ -121,8 +122,11 @@ def build(
     found = planner.unverified_since(config, level=level, diff=diff, verified=verified, base=base)
     report = Report(level=level)
 
-    recorded = [name for name in contexts if found.since[name]]
-    report.no_record = [name for name in contexts if not found.since[name]]
+    # Only a context the ledger has no pass for gets a bootstrap line. One whose recorded commit git can no
+    # longer read (a rebase) or whose ledger could not be read has a record we cannot use: its note says so.
+    recorded = [name for name in contexts if found.state[name] == planner.VERIFIED]
+    report.recorded = recorded
+    report.no_record = [name for name in contexts if found.state[name] == planner.NEVER]
     report.bootstrap = {name: planner._session_context_command(contexts[name]) for name in report.no_record}
     for note in found.notes:
         if "ledger unavailable" in note or "is not readable" in note:
@@ -140,11 +144,11 @@ def build(
         entry = ContextDebt(name, found.since[name] or "", age)
         for f in files:
             debt_by_file.setdefault(f, set()).add(name)
-            if name in planner._owners(f, contexts):
+            owners = planner._owners(f, contexts)
+            if name in owners:
                 entry.own.append(f)
             else:
-                owners = sorted(planner._owners(f, contexts)) or ["shared files"]
-                entry.inherited.setdefault(", ".join(owners), []).append(f)
+                entry.inherited.setdefault(", ".join(sorted(owners)) or "shared files", []).append(f)
         report.debts.append(entry)
         reasons = []
         if limits.max_files and entry.count >= limits.max_files:
@@ -177,8 +181,12 @@ def _listing(files: list[str]) -> str:
 def render(report: Report, limits: Limits) -> str:
     lines = [f"Verification debt ({report.level} level; advisory, nothing was run)"]
     if not report.debts:
-        lines.append("  none: no context has changes since its last recorded pass." if not report.no_record
-                     else "  none to report for the contexts that have a recorded pass.")
+        if not report.recorded:
+            lines.append("  none to report: no context has a usable recorded pass yet.")
+        elif report.no_record:
+            lines.append("  none to report for the contexts that have a recorded pass.")
+        else:
+            lines.append("  none: no context has changes since its last recorded pass.")
     for d in report.debts:
         age = f", verified {_days(d.age_days)} ago" if d.age_days is not None else ""
         lines.append(f"  {d.name}: {d.count} file(s) changed since {d.since[:8]}{age}")
@@ -257,7 +265,11 @@ def main(argv: list[str] | None = None, *, out=print, git=planner.changed_files_
         text = "Verification debt report not shown (bad arguments)."
     except Exception as exc:
         text = f"Verification debt report unavailable ({type(exc).__name__}: {exc}). Nothing was run and nothing is blocked."
-    out(hook_json(text) if hook else text)
+    message = hook_json(text) if hook else text
+    try:
+        out(message)
+    except UnicodeEncodeError:  # a console that cannot show a file name's characters must not fail the session
+        out(message.encode("ascii", "replace").decode("ascii"))
     return 0
 
 

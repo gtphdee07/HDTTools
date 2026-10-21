@@ -643,6 +643,9 @@ def suite_affected(selection: Selection, changed: list[str], config: dict) -> bo
     return False
 
 
+VERIFIED, NEVER, UNREADABLE_COMMIT, LEDGER_ERROR = "verified", "never", "unreadable-commit", "ledger-error"
+
+
 @dataclass
 class Unverified:
     """What changed in each context since its last verified commit (#66, read by #67)."""
@@ -650,6 +653,7 @@ class Unverified:
     debt: dict[str, set[str]] = field(default_factory=dict)  # changed file -> contexts it is unverified for
     files: dict[str, list[str]] = field(default_factory=dict)  # context -> its unverified files
     since: dict[str, str | None] = field(default_factory=dict)  # context -> verified commit diffed from; None = from base
+    state: dict[str, str] = field(default_factory=dict)  # context -> VERIFIED | NEVER | UNREADABLE_COMMIT | LEDGER_ERROR
     notes: list[str] = field(default_factory=list)
 
 
@@ -673,6 +677,7 @@ def unverified_since(config: dict, *, level: str, diff, verified, base: str) -> 
             ref = verified(name, level)
         except Exception as exc:  # an unreadable ledger is the same as nothing verified
             ref = None
+            found.state[name] = LEDGER_ERROR
             notes.append(f"{name}: ledger unavailable ({exc})")
         source = base
         found.since[name] = None
@@ -681,9 +686,13 @@ def unverified_since(config: dict, *, level: str, diff, verified, base: str) -> 
                 changed_from(ref)
                 source = ref
                 found.since[name] = ref
+                found.state[name] = VERIFIED
             except GitError:
+                found.state[name] = UNREADABLE_COMMIT
                 notes.append(f"{name}: last verified commit {ref[:8]} is not readable; planned from {base}")
         else:
+            if name not in found.state:
+                found.state[name] = NEVER
             notes.append(f"{name}: never verified at the {level} level; planned from {base}")
         files = [_normalise(f) for f in changed_from(source)]
         mine = [f for f in files if not _is_docs(f, config) and name in _reaches(f, config)]

@@ -25,6 +25,7 @@ Verification debt (session level; advisory, nothing was run)
 ## What it shows
 
 - **Changed files per context**, measured from the commit the ledger last recorded as verified for that context at the session level (`scripts/verification_ledger.py`, #65). Each context has its own starting point. Docs-only files (the planner's `docs_globs`) never count.
+- **Tracked files only.** The changes are `git diff --name-only <verified commit>`: a new file counts once it is added (`git add`) or committed, not while it is untracked.
 - **Downstream contexts**: files that reach a context from another one, through a shared interface or a `depends_on` link in `scripts/test_planner_config.json`, are listed under `from <where they live>`. A change in Core therefore shows up as debt for Streamlit.
 - **Tests owed**: the session-level plan the planner (#66) makes for that debt, minus any suite the ledger shows as already passed at the current tree. Stale External surfaces are not in it (they need the network); `uv run scripts/external_freshness.py` covers them.
 - **No recorded pass**: a context the ledger has no session-level pass for has nothing to measure drift from. It gets one bootstrap line with the exact command that starts its record, for example `No recorded pass for core: run once to start the record: uv run scripts/verification_ledger.py run --context core --level session -- <the context's session command>`. The line is not a recommendation (it never counts toward the limits below) and it disappears once the pass is recorded. See "One-time setup".
@@ -42,11 +43,11 @@ uv run scripts/verification_ledger.py run --context scan-proxy --level session -
 uv run scripts/verification_ledger.py run --context android --level session -- uv run scripts/android_session_end.py
 ```
 
-These are the commands the report prints; if the planner config changes a context's command, the report's line is the current one. Android's is device-free (JVM tests, coverage floor, detekt). A failed run records nothing. `uv run scripts/verification_ledger.py show` lists what is recorded.
+Recording these automatically, only when a context's whole session command passed on the tree, is ticket #144. These are the commands the report prints; if the planner config changes a context's command, the report's line is the current one. Android's is device-free (JVM tests, coverage floor, detekt). A failed run records nothing. `uv run scripts/verification_ledger.py show` lists what is recorded.
 
 ## The recommendation and its limits
 
-A context gets a context-level catch-up recommendation when it has unverified changes **and** passes either limit:
+A context gets a context-level catch-up recommendation when it has unverified changes **and** passes either limit. The size counts every file the context owes, including files that reach it from another context (a 15-file Core change can therefore also tip Streamlit or Web over the limit; they owe those tests):
 
 | Limit | Meaning | Default |
 |---|---|---|
@@ -74,7 +75,7 @@ Changing Claude Code settings needs the owner's approval, so the repo does not s
         "hooks": [
           {
             "type": "command",
-            "command": "uv run \"$CLAUDE_PROJECT_DIR/scripts/verification_debt.py\" --hook",
+            "command": "uv run --no-project \"$CLAUDE_PROJECT_DIR/scripts/verification_debt.py\" --hook",
             "timeout": 60
           }
         ]
@@ -83,6 +84,8 @@ Changing Claude Code settings needs the owner's approval, so the repo does not s
   }
 }
 ```
+
+`--no-project` keeps `uv run` from creating or syncing a project environment, so the hook is quick even in a fresh ticket worktree with no `.venv`; the script uses only the standard library.
 
 `--hook` prints the one JSON object a SessionStart hook expects: the report as `systemMessage` (you see it) and as `additionalContext` (Claude sees it). Without `--hook` the output is plain text, which Claude Code adds to Claude's context but does not show to you.
 

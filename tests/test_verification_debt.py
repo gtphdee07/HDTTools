@@ -163,6 +163,53 @@ def test_with_no_record_at_all_each_context_gets_one_bootstrap_line_with_its_exa
     assert "is verified up to date" not in text and "Recommended" not in text  # a bootstrap is not a recommendation
 
 
+def test_a_recorded_commit_git_can_no_longer_read_is_not_reported_as_never_verified():
+    repo = Repo(gone=tp.GitError("bad object"), old=["src/a.py"])
+
+    report = report_for(repo, dict(core="gone", streamlit="old", web="old", android="old"))
+    text = vd.render(report, LIMITS)
+
+    assert "core" not in report.no_record and "No recorded pass for core" not in text
+    assert "note: core: last verified commit gone is not readable" in text  # the note says why core is not measured
+    assert [d.name for d in report.debts] == ["streamlit"]  # core's usable record is gone, so it is not measured
+
+
+def test_an_unreadable_ledger_gives_no_bootstrap_lines_since_their_commands_would_fail_to_record():
+    def unreadable(context, level):
+        raise vl.LedgerError("verification ledger is unreadable")
+
+    report = vd.build(CONFIG, MARKERS, level="session", limits=LIMITS, diff=Repo(), verified=unreadable,
+                      verified_at=lambda c, lv: None, now=NOW)
+    text = vd.render(report, LIMITS)
+
+    assert report.bootstrap == {} and "No recorded pass" not in text
+    assert "none to report: no context has a usable recorded pass yet." in text
+    assert text.count("ledger unavailable") == 4  # one note per context
+
+
+def test_the_empty_case_wording_matches_what_is_recorded():
+    nothing = vd.render(report_for(Repo(), {}), LIMITS)
+    some = vd.render(report_for(Repo(), dict(core="old")), LIMITS)
+    all_ = vd.render(report_for(Repo(), ALL_AT), LIMITS)
+
+    assert "none to report: no context has a usable recorded pass yet." in nothing
+    assert "none to report for the contexts that have a recorded pass." in some
+    assert "none: no context has changes since its last recorded pass." in all_
+
+
+def test_a_console_that_cannot_show_a_file_name_does_not_fail_the_report():
+    lines = []
+
+    def ascii_console(text):
+        text.encode("ascii")  # what a cp1252-less console does with a character it cannot show
+        lines.append(text)
+
+    code = vd.main([], out=ascii_console, git=Repo(old=["web/café.ts"]), verified=lambda c, lv: "old",
+                   verified_at=lambda c, lv: None, ledger=lambda: (lambda command: None), now=NOW)
+
+    assert code == 0 and "caf?.ts" in lines[0]
+
+
 def test_the_bootstrap_line_goes_once_the_context_has_a_recorded_pass():
     text = text_for(Repo(), dict(core="old", streamlit="old", web="old"))
 

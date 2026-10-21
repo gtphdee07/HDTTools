@@ -35,10 +35,10 @@
       }
     },
     "pages-site": {
-      "commit": "e872efd8359c5eaf7b6da725b75191ef9bec81e6",
+      "commit": "f2d5aefff76d1952576ee4d5aa4858df53cb83aa",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-20T13:25:09Z",
+      "timestamp": "2026-10-21T13:32:06Z",
       "versions": {
         "wrangler": "4.151.3"
       }
@@ -60,10 +60,10 @@
       "versions": {}
     },
     "revenuecat-web-billing": {
-      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
+      "commit": "f2d5aefff76d1952576ee4d5aa4858df53cb83aa",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-19T22:07:00Z",
+      "timestamp": "2026-10-21T13:32:06Z",
       "versions": {
         "@revenuecat/purchases-js": "1.71.0"
       }
@@ -80,19 +80,19 @@
       }
     },
     "supabase-auth": {
-      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
+      "commit": "f2d5aefff76d1952576ee4d5aa4858df53cb83aa",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-19T22:07:00Z",
+      "timestamp": "2026-10-21T13:32:06Z",
       "versions": {
         "@supabase/supabase-js": "2.118.0"
       }
     },
     "supabase-tables": {
-      "commit": "695ae73a99c271a385e7ab847734bdcbec1412a2",
+      "commit": "f2d5aefff76d1952576ee4d5aa4858df53cb83aa",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-19T22:07:00Z",
+      "timestamp": "2026-10-21T13:32:06Z",
       "versions": {
         "@supabase/supabase-js": "2.118.0"
       }

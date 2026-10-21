@@ -5,7 +5,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 // The scan service (#21) charges the account named by a signed-in user's
 // access token, so the External suite's real scans send a real token for the
 // funded Supabase test user. test-weekly.ps1 signs that user in (through
-// workers/scan-proxy's `npm run live-token`, so the credentials never reach
+// workers/scan-proxy's `src/liveTokenCli.ts`, so the credentials never reach
 // the device) and hands the result over two ways:
 //  - the access token, as the `weeklyAccessToken` instrumentation argument -
 //    readable in a test, which is all that needs it;

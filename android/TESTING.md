@@ -258,8 +258,10 @@ and reading its own text.
 **Test account (#75).** The scan service charges the account named by a
 Supabase access token and ignores `app_user_id`, so the suite signs in the
 same funded test user the Worker's live suites use. `test-weekly.ps1`'s
-first step runs `npm run --silent live-token` in `workers/scan-proxy`
-(`src/liveTokenCli.ts`, built on `liveToken.ts`), which reads
+first step runs `node workers/scan-proxy/src/liveTokenCli.ts`
+(built on `liveToken.ts`; run directly, not as an npm script, because
+`package.json` is a Worker boundary file and editing it would mark the
+Worker's External suites stale), which reads
 `WEB_EXTERNAL_TEST_EMAIL` / `WEB_EXTERNAL_TEST_PASSWORD` plus
 `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` from the environment,
 falling back to `web/.env.local`

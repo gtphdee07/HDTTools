@@ -1,7 +1,7 @@
 // Signs in the funded Supabase test user and prints its access token and account id as one JSON
 // line on stdout - the hand-off to android/test-weekly.ps1 (#75), which gives the token to the
 // instrumented External suite and makes the account id its RevenueCat customer. Run it as
-// `npm run --silent live-token`. Credentials come from liveToken.ts (environment, then
+// `node src/liveTokenCli.ts`. Credentials come from liveToken.ts (environment, then
 // web/.env.local); a missing or rejected one exits 1 with the reason on stderr. Only the token and
 // account id reach stdout, and nothing else is ever printed.
 import { fileURLToPath } from "node:url";

@@ -36,7 +36,7 @@
     suites use (WEB_EXTERNAL_TEST_EMAIL / WEB_EXTERNAL_TEST_PASSWORD, plus
     VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY, from the environment or
     web/.env.local - set up by scripts/wizard_scan_proxy_live_accounts.sh).
-    The first step signs it in (workers/scan-proxy `npm run live-token`) and a
+    The first step signs it in (`node workers/scan-proxy/src/liveTokenCli.ts`) and a
     missing or rejected credential stops the run there, naming the variable,
     before anything is deployed or bought. The account id becomes the
     RevenueCat customer (written into the device marker file) and the access
@@ -74,7 +74,7 @@ if (-not (Test-Path $adb)) { throw "adb not found at resolved path: $adb" }
 # The helper's stdout is the token and account id as one JSON line; it is read
 # into a variable, never echoed. A Supabase access token lasts about an hour,
 # well beyond one run.
-$sessionLine = & npm run --silent live-token --prefix ..\workers\scan-proxy
+$sessionLine = & node ..\workers\scan-proxy\src\liveTokenCli.ts
 if ($LASTEXITCODE -ne 0) {
     Write-Error 'Signing in the funded Supabase test account failed (reason above); nothing was deployed or bought.'
     exit 1

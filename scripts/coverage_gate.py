@@ -21,7 +21,7 @@ these are genuinely different metrics, not normalized to one, since each
 is what that platform's own TESTING.md already documents and no single
 metric is available across all four tools.
 
-Usage: uv run scripts/coverage_gate.py [--refresh | --android-logic]
+Usage: uv run scripts/coverage_gate.py [--refresh | --android-logic | --only python|scan-proxy]
     --refresh        Re-run every platform's test suite instead of reading an
                      existing report file, if one is present. Slow - the
                      default without --refresh
@@ -31,6 +31,9 @@ Usage: uv run scripts/coverage_gate.py [--refresh | --android-logic]
     --android-logic  Only Android's decision-logic floor, read from the JVM
                      report already on disk (the session-end command's second
                      step, scripts/android_session_end.py).
+    --only NAME      Only the Python or the scan-proxy floor: the coverage step of
+                     scripts/static_checks.py (#150), which passes --refresh for Python
+                     so the number is from the tree being checked.
 """
 
 from __future__ import annotations
@@ -351,10 +354,20 @@ def main(argv: list[str] | None = None) -> int:
         help="Check only Android's decision-logic floor, from the JVM report already on "
         "disk (never builds it, never touches the other platforms)",
     )
+    parser.add_argument(
+        "--only",
+        choices=("python", "scan-proxy"),
+        help="Check only this platform's floor (the static-check commands' coverage step, "
+        "scripts/static_checks.py); never touches the other platforms",
+    )
     args = parser.parse_args(argv)
 
     if args.android_logic:
         results = [get_android_result(False, build=False)]
+    elif args.only == "python":
+        results = [get_python_result(args.refresh)]
+    elif args.only == "scan-proxy":
+        results = [get_scan_proxy_result(args.refresh)]
     else:
         results = [
             get_android_result(args.refresh),

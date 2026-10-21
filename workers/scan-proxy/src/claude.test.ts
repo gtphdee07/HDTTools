@@ -51,12 +51,13 @@ test("[sanity] extracts fields from a matching tool_use block", async (t) => {
 
   assert.deepEqual(fields, { manufacturer: "Ford" });
   assert.equal(capturedUrl, "https://api.anthropic.com/v1/messages");
-  assert.equal(capturedBody?.model, "claude-sonnet-5");
-  assert.deepEqual(capturedBody?.tool_choice, { type: "tool", name: config.toolName });
-  assert.equal((capturedBody?.tools as Array<{ name: string }>)[0].name, config.toolName);
+  assert.ok(capturedBody, "expected the request body to be captured");
+  assert.equal(capturedBody.model, "claude-sonnet-5");
+  assert.deepEqual(capturedBody.tool_choice, { type: "tool", name: config.toolName });
+  assert.equal((capturedBody.tools as Array<{ name: string }>)[0].name, config.toolName);
 
   type ContentBlock = { type: string; source?: { media_type: string; data: string } };
-  const userMessage = (capturedBody?.messages as Array<{ content: ContentBlock[] }>)[0];
+  const userMessage = (capturedBody.messages as Array<{ content: ContentBlock[] }>)[0];
   const imageBlock = userMessage.content.find((block) => block.type === "image");
   assert.ok(imageBlock?.source, "expected an image content block with a source");
   assert.equal(imageBlock.source.media_type, "image/jpeg");

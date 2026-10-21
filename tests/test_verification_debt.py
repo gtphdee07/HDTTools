@@ -364,9 +364,9 @@ def test_on_an_empty_ledger_the_hook_carries_a_bootstrap_line_per_context():
     _, out = run_main(["--hook"], verified=lambda c, lv: None)
 
     data = json.loads(out)
-    lines = [l for l in data["systemMessage"].splitlines() if "No recorded pass for" in l]
+    lines = [line for line in data["systemMessage"].splitlines() if "No recorded pass for" in line]
     assert len(lines) == len(tp.load_config()["contexts"])
-    assert all("verification_ledger.py run --context" in l for l in lines)
+    assert all("verification_ledger.py run --context" in line for line in lines)
     assert data["hookSpecificOutput"]["additionalContext"] == data["systemMessage"]
 
 

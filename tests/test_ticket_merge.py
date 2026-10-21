@@ -597,3 +597,29 @@ def test_verdicts_command_prints_and_never_fails(repo, monkeypatch, capsys):
 
     assert merge.main(["verdicts", "9"]) == 0
     assert "no suite" in capsys.readouterr().out
+
+
+# --- the static checks show up in `verdicts` like any suite (#150) ---
+
+STATIC_WEB = "uv run scripts/static_checks.py web"
+STATIC_CORE = "uv run scripts/static_checks.py core --coverage"
+
+
+def _real_config_for(*contexts):
+    real = _load("test_planner").load_config()
+    return {**real, "contexts": {name: real["contexts"][name] for name in contexts}, "interfaces": []}
+
+
+def test_static_checks_finish_ran_are_skipped_at_merge_and_the_one_that_failed_is_rerun(ticket):
+    repo, wt, ledger = ticket
+    config = _real_config_for("core", "web")
+    markers = {"core", "minor", "slow"}
+    finish.run_suites(shell=common.real_shell, root=wt, config=config, markers=markers, ledger=ledger,
+                      git_state=vl.RealGit(wt), run_command=Runner(failing={STATIC_WEB}), out=lambda _: None)
+
+    rows = merge.suite_verdicts(9, shell=common.real_shell, root=repo, config=config, markers=markers, ledger=ledger,
+                                git_state=vl.RealGit(repo), out=lambda _: None)
+    verdicts = {command: verdict for verdict, command, _ in rows}
+
+    assert verdicts[STATIC_CORE] == "skip"
+    assert verdicts[STATIC_WEB] == "rerun"

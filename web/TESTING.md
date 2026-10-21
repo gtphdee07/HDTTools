@@ -33,6 +33,8 @@ categories this file's tables use.
 | Type check and build | `npm run build` (`tsc -b && vite build`) |
 | Coverage | `npm run test:coverage` |
 | Dead code | `npm run check:dead-code` |
+| Lint | `npm run lint` (oxlint); warnings are judged against an allow-list by the session-end command below |
+| Static checks, session end (#150) | `uv run scripts/static_checks.py web` (from the repo root): `tsc -b`, oxlint, knip. Offline, exits 0 only when all three pass |
 | Release | none: Web has no full-run release. A push to `MPSkills` that touches `web/` is guarded by the External release gate (`scripts/external_gate.py`, run by `.githooks/pre-push`; `uv run scripts/external_freshness.py --platform web` shows what it would block on) and nothing else |
 | External, stale surfaces only (live, free) | `web\test-external.ps1` (see below) |
 
@@ -309,6 +311,29 @@ deleting anything — confirmed via `git grep` for each name before
 touching it, and via a clean `npm run build` + `npm test` afterward. No
 genuine dead code found. Command exits clean (0 findings) as of this
 writing.
+
+## Static checks (#150)
+
+Nothing used to run Web's typecheck, lint or dead-code checks except `npm run build`
+(which typechecks) before a deploy; they sat green or red unseen. They are now one command,
+`uv run scripts/static_checks.py web`, listed by the test planner at session level when a
+file under `web/` changes (never for a docs-only change), run and recorded against the tree
+by `/ticket-finish`. Steps, in order, every one run even after a failure; exit 0 only when
+all pass:
+
+| Step | Command it wraps | Covers | Fails on |
+|---|---|---|---|
+| typecheck | `tsc -b` | `src/`, `vite.config.ts`, `vitest.external.config.ts` and (since #150, `checkJs`) `scripts/*.mjs` | any error |
+| oxlint | `oxlint -f json .` from `web/` | every `.ts`, `.tsx` and `.mjs` file | an error, a warning not in `scripts/static_allowlists/oxlint.json`, or an entry in it that no longer occurs |
+| knip | `npm run check:dead-code` | unused files, exports and dependencies | any finding |
+
+There are no coverage floor and no new test here: Web's coverage stays report-only (95.95% of
+statements on 2026-10-21), and a floor is #158. The 16 oxlint warnings of 2026-10-21 are all
+allow-listed with a reason (16 `only-export-components` and `exhaustive-deps` cases where a hook
+or provider shares a file with a component on purpose, or an effect must run once). The
+`/// <reference types="vitest/config" />` line in `vite.config.ts` was a real finding and was
+removed (the `import` of `vitest/config` already carries the types). What no check covers, and
+the ticket for each: [`docs/agents/static-checks.md`](../docs/agents/static-checks.md).
 
 ## Harness
 

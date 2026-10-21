@@ -203,7 +203,7 @@ def test_comment_follows_the_handoff_template():
     assert "|---|---|" in lines
     assert "| A works | tests/test_a.py::test_a |" in lines
     assert "| B \\| with pipe | tests/test_b.py::test_b |" in lines
-    assert any(l.startswith("Commands run and results:") and "`uv run pytest`" in l and "10 passed" in l for l in lines)
+    assert any(line.startswith("Commands run and results:") and "`uv run pytest`" in line and "10 passed" in line for line in lines)
     assert "Code review: No findings." in lines
     assert "Not done, and why: nothing" in lines
     assert "Owner actions needed: none" in lines
@@ -235,7 +235,7 @@ def test_comment_marks_an_unproven_criterion_and_a_failed_suite():
         ("android/.env.production", True),
         # the one tracked env file: public VITE_* values only, committed by design (docs/BUILD_AND_DEPLOY.md)
         ("web/.env.production", False),
-        ("web\.env.production", False),
+        (r"web\.env.production", False),
         ("scripts/ticket_start.py", False),
         ("docs/environment.md", False),
     ],
@@ -842,3 +842,68 @@ def test_post_asks_the_real_ledger_when_no_check_is_injected(worktree, tmp_path,
     code, out = _post(worktree, Gh(), _report(tmp_path, suites=suites), tmp_path)
 
     assert code == 1 and "`npm test`" in out and "`uv run pytest`" not in out
+
+
+# --- Each context's static checks are a session_end suite like any other (#150) ---
+
+STATIC_CORE = "uv run scripts/static_checks.py core --coverage"  # src/hdttools/ is an owned path, so the floor is in
+STATIC_WEB = "uv run scripts/static_checks.py web"
+STATIC_PROXY = "uv run scripts/static_checks.py scan-proxy"
+STATIC_COMMANDS = [STATIC_CORE, STATIC_WEB, STATIC_PROXY]
+
+
+def _real_config_for(*contexts):
+    """The real planner config, narrowed to these contexts, so the commands are the ones that run for real."""
+    real = planner.load_config()
+    return {**real, "contexts": {name: real["contexts"][name] for name in contexts}, "interfaces": []}
+
+
+def _static_suites(repo, tmp_path, runner, ledger=None):
+    ledger = ledger or LedgerAt(tmp_path / "ledger.json")
+    results = finish.run_suites(shell=common.real_shell, root=repo, config=_real_config_for("core", "web", "scan-proxy"),
+                                markers=planner.load_markers(), ledger=ledger, git_state=vl.RealGit(repo),
+                                run_command=runner, out=lambda _: None)
+    return {r["command"]: r for r in results}
+
+
+def test_finish_runs_each_changed_contexts_static_checks_and_records_the_pass_against_the_tree(suite_repo, tmp_path):
+    runner = Runner()
+
+    results = _static_suites(suite_repo, tmp_path, runner)
+
+    assert all(command in runner.calls for command in STATIC_COMMANDS)
+    assert all(results[c]["passed"] and not results[c]["skipped"] for c in STATIC_COMMANDS)
+    ledger = LedgerAt(tmp_path / "ledger.json")
+    revision = vl.current_revision(vl.RealGit(suite_repo))
+    assert all(ledger.suite_verdict(c, revision).skip for c in STATIC_COMMANDS)
+
+
+def test_a_second_finish_on_the_same_tree_skips_the_static_checks(suite_repo, tmp_path):
+    _static_suites(suite_repo, tmp_path, Runner())
+    runner = Runner()
+
+    results = _static_suites(suite_repo, tmp_path, runner)
+
+    assert not [c for c in runner.calls if "static_checks" in c]
+    assert all(results[c]["skipped"] for c in STATIC_COMMANDS)
+
+
+def test_a_failing_static_check_is_reported_and_not_recorded_while_the_others_stay_recorded(suite_repo, tmp_path):
+    results = _static_suites(suite_repo, tmp_path, Runner(failing={STATIC_WEB}))
+
+    assert results[STATIC_WEB]["passed"] is False
+    ledger = LedgerAt(tmp_path / "ledger.json")
+    revision = vl.current_revision(vl.RealGit(suite_repo))
+    assert not ledger.suite_verdict(STATIC_WEB, revision).skip
+    assert ledger.suite_verdict(STATIC_PROXY, revision).skip
+
+
+def test_a_review_fix_reruns_the_static_checks_because_they_name_no_context_to_carry_by(suite_repo, tmp_path):
+    """The carry rule is conservative for a static check: any change after its pass reruns it."""
+    _static_suites(suite_repo, tmp_path, Runner())
+    _commit(suite_repo, "web/src/a.ts", "two\n")
+    runner = Runner()
+
+    _static_suites(suite_repo, tmp_path, runner)
+
+    assert STATIC_WEB in runner.calls

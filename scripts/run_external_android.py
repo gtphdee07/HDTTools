@@ -151,7 +151,7 @@ def default_run(command: list[str], *, capture: bool = False) -> subprocess.Comp
 
 def require_one_device(adb: str, run) -> str:
     """The serial of the one ready device or emulator, else why there is not exactly one."""
-    devices = android_release.connected_devices(adb=adb, run_command=lambda cmd, **kw: run(cmd, capture=True))
+    devices = android_release.connected_devices(adb=adb, run_command=lambda cmd, **_options: run(cmd, capture=True))
     if not devices:
         raise ExternalRunError(
             "No device or emulator attached (`adb devices` found none). Start the emulator "

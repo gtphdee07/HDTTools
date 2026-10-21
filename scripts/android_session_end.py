@@ -3,7 +3,8 @@ ticket, in this order, stopping at the first one that fails:
 
   1. the JVM unit tests (and the JVM coverage report they leave);
   2. the decision-logic coverage floor over that report (#130, android/coverage-logic.toml);
-  3. detekt (the dead-code sweep; offline).
+  3. the instrumented tests compile (`compileDebugAndroidTestKotlin`; compiles only, no device, #150);
+  4. detekt (the dead-code sweep over main, test and androidTest sources; offline).
 
 About 45 s warm. No emulator or device is touched. The instrumented tests are not part of it:
 the test planner (scripts/test_planner.py) lists the ones a diff needs next to this command.
@@ -38,6 +39,13 @@ STEPS = [
     {
         "name": "decision-logic coverage floor",
         "command": [sys.executable, str(REPO_ROOT / "scripts" / "coverage_gate.py"), "--android-logic"],
+        "cwd": REPO_ROOT,
+    },
+    {
+        # The JVM tests compile src/main and src/test only; without this an instrumented test that no longer
+        # compiles (#150) would first fail on the device run. Compiles only: no device, no test runs.
+        "name": "instrumented tests compile",
+        "command": [GRADLEW, "-p", "android", "compileDebugAndroidTestKotlin"],
         "cwd": REPO_ROOT,
     },
     {

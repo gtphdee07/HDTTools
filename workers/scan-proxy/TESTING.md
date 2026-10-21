@@ -34,6 +34,7 @@ Offline suite, real run 2026-10-21 (#64): **150 tests in 14 files, 150 passed**,
 | Type check | `npm run typecheck` |
 | Coverage | `npm run test:coverage` |
 | Dead code | `npm run check:dead-code` (exits 0 with no findings, see "Dead code") |
+| Static checks, session end (#150) | `uv run scripts/static_checks.py scan-proxy` (from the repo root): typecheck, oxlint, knip, the 100% coverage floor |
 | Full release (the Worker deploy) | `.\release.ps1` (run from `workers/scan-proxy/`) |
 | External, stale surfaces only | `.\test-external.ps1` |
 
@@ -226,6 +227,29 @@ was not dead code. `knip.json` now lists `uv` under `ignoreBinaries`. The entry 
 `anthropic`, `scan-proxy-worker` and `worker-token-verification`, so editing it marks all
 three stale. `tests/test_scan_proxy_knip_config.py` fails if `knip.json` stops listing `uv`
 while a `package.json` script still runs it, or if knip would read a second configuration.
+
+## Static checks (#150)
+
+The typecheck, lint, dead-code and coverage checks above are also one command,
+`uv run scripts/static_checks.py scan-proxy` (from the repo root), listed by the test planner at
+session level when a file under `workers/scan-proxy/` changes (never for a docs-only change) and
+run and recorded against the tree by `/ticket-finish`. Offline, no paid call. Every step runs
+even after a failure; exit 0 only when all pass:
+
+| Step | Command it wraps | Fails on |
+|---|---|---|
+| typecheck | `npm run typecheck` (`tsc --noEmit` over `src/`, which holds every `.ts` file here) | any error |
+| oxlint | `oxlint -f json .` from `workers/scan-proxy/` | an error, a warning not in `scripts/static_allowlists/oxlint.json`, or an entry in it that no longer occurs (there are no entries for Scan Proxy: it is clean) |
+| knip | `npm run check:dead-code` | any finding |
+| coverage floor | `scripts/coverage_gate.py --only scan-proxy` (runs `npm run test:coverage`) | line coverage below **100%** |
+
+Two choices follow from `package.json` being a dependency pin: oxlint is **not** added to this
+package (the command runs the binary Web installs, `web/node_modules/.bin/oxlint`, so there is no
+`devDependencies` change), and the one real finding of the first run, an unguarded
+`capturedBody?.tools` index in `claude.test.ts`, was fixed in the test. The two earlier failures
+this command would have reported on day one were #151 (the coverage floor, 99.84%) and #152
+(knip), both closed. What no check covers here (`*.ps1`, `wrangler.toml`, `package.json`), and
+the ticket for each: [`docs/agents/static-checks.md`](../../docs/agents/static-checks.md).
 
 ## What each test covers
 

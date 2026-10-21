@@ -199,3 +199,90 @@ def test_a_test_file_named_in_a_document_exists_unless_the_text_says_it_is_gone(
             if name not in existing and name.removesuffix(".kt") not in existing:
                 missing.append(name)
     assert not missing, f"{doc} names test files that do not exist: {sorted(set(missing))}"
+
+
+# --- The static checks (#150): each document gives the commands and thresholds the config runs ---
+
+PLANNER_CONFIG = ROOT / "scripts" / "test_planner_config.json"
+STATIC_DOC = "docs/agents/static-checks.md"
+DOC_OF_CONTEXT = {
+    "core": "tests/TESTING.md", "streamlit": "tests/TESTING.md", "web": "web/TESTING.md",
+    "scan-proxy": "workers/scan-proxy/TESTING.md", "android": "android/TESTING.md",
+}
+
+
+def _contexts() -> dict:
+    return json.loads(PLANNER_CONFIG.read_text(encoding="utf-8"))["contexts"]
+
+
+@pytest.mark.parametrize("context", DOC_OF_CONTEXT)
+def test_the_context_document_and_the_root_and_the_static_doc_give_the_session_end_command_the_config_runs(context):
+    ctx = _contexts()[context]
+    for doc in (DOC_OF_CONTEXT[context], "TESTING.md", STATIC_DOC):
+        text = read(doc)
+        assert ctx["session_end"] in text, f"{doc} does not give `{ctx['session_end']}`, the {context} session_end"
+        if "session_end_coverage" in ctx:
+            assert "--coverage" in text, f"{doc} never mentions --coverage for {context}"
+
+
+def _floor(name: str) -> float:
+    source = (ROOT / "scripts" / "coverage_gate.py").read_text(encoding="utf-8")
+    return float(re.search(rf"^{name} = ([\d.]+)", source, re.M).group(1))
+
+
+@pytest.mark.parametrize("doc, floors", [
+    ("tests/TESTING.md", ["PYTHON_BASELINE"]),
+    ("workers/scan-proxy/TESTING.md", ["SCAN_PROXY_BASELINE"]),
+    ("android/TESTING.md", ["ANDROID_LOGIC_FLOOR"]),
+    ("TESTING.md", ["PYTHON_BASELINE", "SCAN_PROXY_BASELINE", "ANDROID_LOGIC_FLOOR"]),
+    (STATIC_DOC, ["PYTHON_BASELINE", "SCAN_PROXY_BASELINE", "ANDROID_LOGIC_FLOOR"]),
+])
+def test_a_document_states_the_coverage_floor_the_gate_enforces(doc, floors):
+    text = read(doc)
+    for name in floors:
+        assert f"{_floor(name):g}%" in text, f"{doc} does not state the {name} floor ({_floor(name):g}%)"
+
+
+def test_the_static_doc_has_a_section_for_each_of_the_five_contexts():
+    text = read(STATIC_DOC)
+    for context in DOC_OF_CONTEXT:
+        assert re.search(rf"^### {re.escape(context)} \(", text, re.M), f"{STATIC_DOC} has no '### {context} (' section"
+
+
+def _inventory_rows() -> list[list[str]]:
+    """The cells of each inventory row: the table rows under the five `### <context> (` headings."""
+    text = read(STATIC_DOC).split("## Inventory", 1)[1].split("\n## ", 1)[0]
+    rows = []
+    for line in text.splitlines():
+        if line.startswith("|") and not set(line) <= set("|- "):
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if cells[0] != "Source":
+                rows.append(cells)
+    return rows
+
+
+def test_every_inventory_row_with_an_uncovered_check_names_a_reason_and_a_follow_up_ticket():
+    rows = _inventory_rows()
+    assert len(rows) >= 15
+    bad = []
+    for source, typecheck, lint, dead, coverage, why in rows:
+        uncovered = any(cell.startswith("none") for cell in (typecheck, lint, dead, coverage))
+        if uncovered and not re.search(r"#\d+", why):
+            bad.append(source)
+    assert not bad, f"{STATIC_DOC} has rows with a check marked none and no follow-up ticket: {bad}"
+
+
+def test_every_path_the_inventory_names_exists():
+    missing = []
+    for source, *_ in _inventory_rows():
+        for token in re.findall(r"`([^`]+)`", source):
+            first = token.split("/", 1)[0]
+            if "/" in token and (ROOT / first).exists() and not list(ROOT.glob(token.rstrip("/") + ("*" if token.endswith("/") else ""))):
+                missing.append(token)
+    assert not missing, f"{STATIC_DOC} names paths that match nothing: {missing}"
+
+
+def test_the_static_doc_names_every_allow_list_and_each_exists():
+    text = read(STATIC_DOC)
+    for name in ("scripts/static_allowlists/oxlint.json", "vulture_whitelist.py", "vulture_whitelist_tests.py"):
+        assert name in text and (ROOT / name).is_file(), name

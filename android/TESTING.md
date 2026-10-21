@@ -31,7 +31,7 @@ session end, release); the advisory planner
 | One file | `./gradlew testDebugUnitTest --tests com.rigcheck.app.domain.BreakdownTest` (run from `android/`) |
 | Minor and Major (per issue) | `./gradlew testDebugUnitTest`: the JVM tests are the Minor and the Major offline unit run; there is no separate Minor subset |
 | Whole context (JVM, no device) | `./gradlew testDebugUnitTest` |
-| Session end (JVM tests, coverage floor, detekt; no device) | `uv run scripts/android_session_end.py` (run from the repo root) |
+| Session end (JVM tests, coverage floor, instrumented-test compile, detekt; no device) | `uv run scripts/android_session_end.py` (run from the repo root) |
 | One instrumented class (needs the emulator) | `./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.rigcheck.app.ui.screens.AccountScreenTest` (run from `android/`) |
 | Full release | `.\release.ps1` (run from `android/`) |
 | Instrumented suite N times in a row | `uv run scripts/android_suite_loop.py --runs 5` (run from the repo root; needs the emulator, see below) |
@@ -51,12 +51,21 @@ An Android ticket ends with one command and no device:
 uv run scripts/android_session_end.py        # from the repo root, about 45 s warm
 ```
 
-It runs three steps in this order and stops at the first that fails, with that
+It runs four steps in this order and stops at the first that fails, with that
 step's exit code and its name: (1) the JVM unit tests, which also write the JVM
 coverage report; (2) the decision-logic coverage floor over that report
 (`scripts/coverage_gate.py --android-logic`, the 95% floor and allow-list from
-#130, `coverage-logic.toml`); (3) `detekt`. Its steps and their order are
-tested with a fake runner in `tests/test_android_session_end.py`.
+#130, `coverage-logic.toml`); (3) the instrumented tests compile
+(`compileDebugAndroidTestKotlin`, added by #150: the JVM tests compile only `src/main`
+and `src/test`, so an instrumented test that no longer compiled used to fail first on the
+device run; compiling needs no device and runs no test); (4) `detekt`, whose source set now
+includes `src/androidTest` (#150: its default left that directory out, so an unused private
+member in an instrumented test was never reported; the root `android/build.gradle.kts` adds it
+rather than `app/build.gradle.kts`, which pins the `revenuecat-android-sdk` External surface).
+Its steps and their order are tested with a fake runner in
+`tests/test_android_session_end.py`, and Android's row of the static-check inventory
+(what is and is not covered, with the ticket for each gap) is in
+[`docs/agents/static-checks.md`](../docs/agents/static-checks.md).
 
 **Which instrumented tests a diff needs.** The test planner
 (`uv run scripts/test_planner.py --level session`) lists the session-end

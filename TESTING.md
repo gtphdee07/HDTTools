@@ -295,10 +295,34 @@ issue level (`--level issue`, the default) lists exactly that, and adds the slow
 Run the whole file, context or application by the ladder above, so nothing in the
 affected area is left unverified. For Android that is one device-free command,
 `uv run scripts/android_session_end.py` (JVM tests, the decision-logic coverage floor,
-detekt); instrumented tests join only when the diff touches code they cover, and then
+the instrumented-test compile, detekt); instrumented tests join only when the diff touches code they cover, and then
 only the test classes for the screens and components touched (the full instrumented suite
 when it touches navigation, the view model, the activity, the manifest or anything the
-planner cannot map). The planner's `--level session` lists the commands. A suite that has
+planner cannot map). The planner's `--level session` lists the commands.
+
+**Static checks (#150).** Every context also has a `session_end` command for the checks that do
+not run tests: typecheck, lint, dead code and the coverage floor. They used to exist but nothing
+ran them, so they went red unseen. The planner lists a context's command at session level when
+a file of that context changed (a docs-only change lists none), and `/ticket-finish` runs it and
+records the pass in the ledger like any suite. Offline, no paid call, no device; every step of a
+context runs even after one fails, and the command exits 0 only when all pass. What each covers,
+and what no check covers yet (with the ticket for it), is the table in
+[`docs/agents/static-checks.md`](docs/agents/static-checks.md).
+
+| Context | Command | Steps | Thresholds and exit rule |
+|---|---|---|---|
+| Core | `uv run scripts/static_checks.py core` (`--coverage` when `src/hdttools/` or `scripts/` changed) | ruff, vulture (code), vulture (tests), Python coverage floor | ruff and vulture exit 0; floor 79% |
+| Streamlit | `uv run scripts/static_checks.py streamlit` (`--coverage` when `streamlit_app/` changed) | the same Python steps | the same |
+| Web | `uv run scripts/static_checks.py web` | `tsc -b`, oxlint, knip | no errors, no warning outside `scripts/static_allowlists/oxlint.json` |
+| Scan Proxy | `uv run scripts/static_checks.py scan-proxy` | `tsc --noEmit`, oxlint, knip, coverage floor | the same lint rule; floor 100% (line) |
+| Android | `uv run scripts/android_session_end.py` | JVM tests, decision-logic floor, instrumented-test compile, detekt | floor 95%; stops at the first failure |
+
+The four `static_checks.py` commands run beside the context's tests; Android's replaces its
+suite because it runs the JVM tests itself. A warning fails unless it is in an allow-list with a
+reason, and an allow-list entry for something that no longer occurs fails too, so a list cannot
+go stale.
+
+A suite that has
 already passed at this exact tree is marked `already passed at <tree>` and left out of
 `To run:` by the verification ledger ([`scripts/verification_ledger.py`](scripts/verification_ledger.py),
 #65, #128): a pass counts only for the exact tree it ran at, a dirty tree is never
@@ -521,8 +545,9 @@ Supabase project. The owner chose to keep the 100.00% floor and exclude the guar
 `/* node:coverage ignore next 3 */` comment on it (rule 9 of `docs/test-audit/rules.md`: the owner
 sets targets), pinned by `tests/test_scan_proxy_coverage_guard.py`. Neither
 `release.ps1` runs the full gate, so nothing blocks on it automatically; it is run by
-hand, and Android's session-end command runs only its own decision-logic floor
-(`--android-logic`).
+hand. At session end each context's own command runs only its own floor (#150): Android's
+`--android-logic`, Python's `--only python --refresh` (when `src/hdttools/`, `streamlit_app/` or
+`scripts/` changed) and Scan Proxy's `--only scan-proxy`; Web has none.
 
 **The Android gate is a JVM floor on decision logic, not an app-wide
 number.** It reads the JVM unit-test JaCoCo report (`./gradlew

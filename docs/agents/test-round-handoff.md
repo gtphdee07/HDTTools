@@ -106,7 +106,7 @@ Done: you chose to keep the 100% floor and exclude the run-as-script guard in `l
 
 ### #150 (merged 2026-10-21)
 
-Done: `uv run scripts/static_checks.py core|streamlit|web|scan-proxy` (and Android's `android_session_end.py`) are each context's session-end command, listed by the planner, run by `/ticket-finish` and recorded in the ledger. Every one exits 0 on its whole tree; a checked-in baseline holds the 16 accepted Web lint warnings; the inventory is `docs/agents/static-checks.md`. ruff and oxlint are pinned in the commands for now (see #160). Follow-ups #155 to #159 hold the gaps nothing covers yet.
+Done: `uv run scripts/static_checks.py core|streamlit|web|scan-proxy` (and Android's `android_session_end.py`) are each context's session-end command, listed by the planner, run by `/ticket-finish` and recorded in the ledger. Every one exits 0 on its whole tree; a checked-in baseline holds the 16 accepted Web lint warnings; the inventory is `docs/agents/static-checks.md`. ruff and oxlint were pinned in the commands at first; #160 moved them into the lockfiles. Follow-ups #155 to #159 hold the gaps nothing covers yet.
 
 ### #153 (merged 2026-10-21)
 

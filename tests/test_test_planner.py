@@ -1042,6 +1042,7 @@ VISION_SCHEMA_CHECKS = [
     "npm --prefix web test -- src/visionToolSchema.test.ts",
     "android/gradlew -p android testDebugUnitTest --tests com.rigcheck.app.data.ScanFieldKeysSchemaTest",
     "uv run pytest tests/test_ocr_output_key_contracts.py",
+    "uv run pytest tests/test_scan_form_fields_fixture.py",  # it also checks the form fields against the schemas
 ]
 FORM_FIELD_CHECKS = [
     "uv run pytest tests/test_scan_form_fields_fixture.py",

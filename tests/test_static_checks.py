@@ -54,10 +54,10 @@ def capture_returning(text, code=0):
     return lambda command, cwd=None: SimpleNamespace(stdout=text, stderr="", returncode=code)
 
 
-def run(argv, runner=None, capture=None):
+def run(argv, runner=None, capture=None, oxlint_installed=True):
     lines: list[str] = []
     code = sc.run(argv, run_command=runner or FakeRunner(), capture=capture or capture_returning(oxlint_output()),
-                  out=lines.append)
+                  out=lines.append, oxlint_installed=oxlint_installed)
     return code, lines
 
 
@@ -209,6 +209,13 @@ def test_the_lint_step_fails_on_a_new_warning_and_prints_it(monkeypatch):
     assert code == 1
     assert any("new warning src/a.tsx" in line for line in lines)
     assert any("1 finding(s), 0 allowed" in line for line in lines)
+
+
+def test_the_lint_step_says_to_install_web_when_the_oxlint_binary_is_missing():
+    code, lines = run(["scan-proxy"], FakeRunner(), oxlint_installed=False)
+
+    assert code == 1
+    assert any("npm --prefix web ci" in line for line in lines)
 
 
 def test_the_lint_step_fails_when_oxlint_prints_no_diagnostics_at_all():

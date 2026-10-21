@@ -4,7 +4,7 @@
 # its own test calls would count as used and real dead code would hide. On its own, vulture sees each
 # definition in tests/ that no other test references. Every name below is one that is used without a
 # visible reference, or a deliberate part of a fake's shape; the reason is the comment above it.
-# tests/test_vulture_whitelists.py fails when a name here is no longer reported, so an entry cannot outlive
+# tests/test_static_checks_real.py fails when a name here is no longer reported, so an entry cannot outlive
 # the code it excuses.
 
 # pytest calls these by name: plugin hooks in tests/conftest.py and fixtures that apply themselves (autouse).

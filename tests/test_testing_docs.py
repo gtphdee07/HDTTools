@@ -222,7 +222,7 @@ def test_the_context_document_and_the_root_and_the_static_doc_give_the_session_e
         text = read(doc)
         assert ctx["session_end"] in text, f"{doc} does not give `{ctx['session_end']}`, the {context} session_end"
         if "session_end_coverage" in ctx:
-            assert "--coverage" in text, f"{doc} never mentions --coverage for {context}"
+            assert ctx["session_end_coverage"] in text, f"{doc} does not give `{ctx['session_end_coverage']}`, the {context} coverage form"
 
 
 def _floor(name: str) -> float:

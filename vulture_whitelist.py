@@ -1,5 +1,6 @@
 # vulture whitelist (roadmap item #10) - hand-reviewed from real
-# `uv run vulture src/hdttools streamlit_app` output, 2026-08-24.
+# `uv run vulture src/hdttools streamlit_app` output, 2026-08-24 (the run now also scans scripts/, #150:
+# `uv run vulture src/hdttools streamlit_app scripts vulture_whitelist.py`).
 #
 # Every entry below was individually confirmed to be a genuine false
 # positive, not blindly kept from vulture's own --make-whitelist stub -
@@ -7,7 +8,7 @@
 # by *why* vulture can't see the real usage, not by file, so a future
 # addition to any of these categories has an obvious place to go.
 #
-# Run: uv run vulture src/hdttools streamlit_app vulture_whitelist.py
+# Run: uv run vulture src/hdttools streamlit_app scripts vulture_whitelist.py
 
 # --- Dataclass model fields (src/hdttools/models.py) - class-level
 # annotated attributes are a well-known vulture false-positive class:

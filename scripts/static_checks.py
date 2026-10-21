@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -141,13 +142,16 @@ def judge_lint(findings: list[dict], allowlist: list[dict]) -> list[str]:
 
 
 def run_capture(command: list[str], cwd: Path) -> subprocess.CompletedProcess:
-    import shutil
-
     exe = shutil.which(command[0]) or command[0]
     return subprocess.run([exe, *command[1:]], cwd=cwd, capture_output=True, text=True)
 
 
-def run_lint_step(step: Step, *, capture, out: Callable[[str], None]) -> int:
+def run_lint_step(step: Step, *, capture, out: Callable[[str], None], oxlint_installed=None) -> int:
+    if oxlint_installed is None:
+        oxlint_installed = shutil.which(OXLINT) is not None
+    if not oxlint_installed:
+        out(f"  oxlint is not installed ({OXLINT}); it comes from Web's install: run `npm --prefix web ci`")
+        return 1
     proc = capture(step.command, cwd=step.cwd)
     try:
         findings = parse_oxlint(proc.stdout)
@@ -155,8 +159,9 @@ def run_lint_step(step: Step, *, capture, out: Callable[[str], None]) -> int:
         out(proc.stdout + proc.stderr)
         out(f"oxlint did not produce JSON diagnostics (exit {proc.returncode})")
         return proc.returncode or 1
-    problems = judge_lint(findings, load_allowlist(step.lint_context))
-    allowed = sum(e["count"] for e in load_allowlist(step.lint_context))
+    allowlist = load_allowlist(step.lint_context)
+    problems = judge_lint(findings, allowlist)
+    allowed = sum(e["count"] for e in allowlist)
     for problem in problems:
         out(f"  {problem}")
     out(f"  {len(findings)} finding(s), {allowed} allowed by scripts/static_allowlists/oxlint.json, {len(problems)} problem(s)")
@@ -173,6 +178,7 @@ def run(
     run_command=default_run_command,
     capture=run_capture,
     out: Callable[[str], None] = _print,
+    oxlint_installed=None,
 ) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("context", choices=CONTEXTS)
@@ -186,7 +192,7 @@ def run(
     for number, step in enumerate(steps, 1):
         out(f"Static checks ({args.context}), step {number} of {len(steps)}: {step.name}")
         if step.lint_context:
-            code = run_lint_step(step, capture=capture, out=out)
+            code = run_lint_step(step, capture=capture, out=out, oxlint_installed=oxlint_installed)
         else:
             code = run_command(step.command, cwd=step.cwd).returncode
         if code != 0:

@@ -311,8 +311,8 @@ and what no check covers yet (with the ticket for it), is the table in
 
 | Context | Command | Steps | Thresholds and exit rule |
 |---|---|---|---|
-| Core | `uv run scripts/static_checks.py core` (`--coverage` when `src/hdttools/` or `scripts/` changed) | ruff, vulture (code), vulture (tests), Python coverage floor | ruff and vulture exit 0; floor 79% |
-| Streamlit | `uv run scripts/static_checks.py streamlit` (`--coverage` when `streamlit_app/` changed) | the same Python steps | the same |
+| Core | `uv run scripts/static_checks.py core`, or `uv run scripts/static_checks.py core --coverage` when `src/hdttools/` or `scripts/` changed | ruff, vulture (code), vulture (tests), Python coverage floor | ruff and vulture exit 0; floor 79% |
+| Streamlit | `uv run scripts/static_checks.py streamlit`, or `uv run scripts/static_checks.py streamlit --coverage` when `streamlit_app/` changed | the same Python steps | the same |
 | Web | `uv run scripts/static_checks.py web` | `tsc -b`, oxlint, knip | no errors, no warning outside `scripts/static_allowlists/oxlint.json` |
 | Scan Proxy | `uv run scripts/static_checks.py scan-proxy` | `tsc --noEmit`, oxlint, knip, coverage floor | the same lint rule; floor 100% (line) |
 | Android | `uv run scripts/android_session_end.py` | JVM tests, decision-logic floor, instrumented-test compile, detekt | floor 95%; stops at the first failure |

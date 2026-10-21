@@ -215,7 +215,7 @@ instead of them. Offline, no paid call. What each step covers, and what no check
 |---|---|---|
 | `uv run scripts/static_checks.py core` | ruff over `src/hdttools`, `streamlit_app`, `scripts`, `tests`; vulture on the code; vulture on `tests/` | 0 only when all three exit 0; every step runs even after one fails |
 | `uv run scripts/static_checks.py core --coverage` | the above, then the Python coverage floor (the whole suite under coverage.py, about a minute) | the floor is 79% (`scripts/coverage_gate.py --only python --refresh`); the planner uses this form when `src/hdttools/` or `scripts/` changed |
-| `uv run scripts/static_checks.py streamlit` (`--coverage` when `streamlit_app/` changed) | ruff over `streamlit_app`, the same two vulture passes, the floor with `--coverage` | the same |
+| `uv run scripts/static_checks.py streamlit`, or `uv run scripts/static_checks.py streamlit --coverage` when `streamlit_app/` changed | ruff over `streamlit_app`, the same two vulture passes, the floor with `--coverage` | the same |
 
 ruff runs through `uv tool run ruff@0.17.1` with the rules in `ruff.toml` (the correctness rules,
 pyflakes `F` and the pycodestyle `E4`, `E7`, `E9`); it is pinned in the command, not in

@@ -59,6 +59,7 @@ def test_the_vulture_whitelists_are_not_empty_so_the_staleness_check_reads_somet
 
 
 def test_whitelisted_names_of_production_code_are_not_hiding_in_the_tests_whitelist_too():
+    # `company` is the one name both need: a field of the shared models and of a stand-in record in the tests.
     assert not whitelist_names("vulture_whitelist.py") & whitelist_names("vulture_whitelist_tests.py") - {"company"}
 
 

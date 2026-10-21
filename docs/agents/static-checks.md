@@ -8,8 +8,8 @@ Each context has a `session_end` command in `scripts/test_planner_config.json`:
 
 | Context | `session_end` | Runs | Replaces the context's suites? |
 |---|---|---|---|
-| core | `uv run scripts/static_checks.py core` (`--coverage` when `src/hdttools/` or `scripts/` changed) | ruff, vulture on the code, vulture on the tests, Python coverage floor (with `--coverage`) | no, runs beside them |
-| streamlit | `uv run scripts/static_checks.py streamlit` (`--coverage` when `streamlit_app/` changed) | the same Python steps | no |
+| core | `uv run scripts/static_checks.py core`, or `uv run scripts/static_checks.py core --coverage` when `src/hdttools/` or `scripts/` changed | ruff, vulture on the code, vulture on the tests, Python coverage floor (with `--coverage`) | no, runs beside them |
+| streamlit | `uv run scripts/static_checks.py streamlit`, or `uv run scripts/static_checks.py streamlit --coverage` when `streamlit_app/` changed | the same Python steps | no |
 | web | `uv run scripts/static_checks.py web` | `tsc -b`, oxlint against the allow-list, knip | no |
 | scan-proxy | `uv run scripts/static_checks.py scan-proxy` | `tsc --noEmit`, oxlint against the allow-list, knip, coverage floor (100%) | no |
 | android | `uv run scripts/android_session_end.py` | JVM tests, decision-logic coverage floor (95%), instrumented-test compile, detekt | yes (it runs the JVM tests itself) |
@@ -18,6 +18,7 @@ Each context has a `session_end` command in `scripts/test_planner_config.json`:
 - **The Python coverage floor** needs the whole suite under coverage.py (about a minute), so it is in the command only when a file of `src/hdttools/`, `streamlit_app/` or `scripts/` changed (Decision 4); a change to `tests/` alone runs ruff and vulture but not the floor.
 - **Exit rule.** Every step of a context runs, even after one fails, so one run shows everything wrong; the command exits with the first failing step's code, and 0 only when all pass. Android's command stops at its first failure.
 - **Offline.** No step makes a paid call or touches a device. ruff runs through `uv tool run ruff@<pinned version>` (the pin is in `scripts/static_checks.py`, the rules in `ruff.toml`); the first run on a machine downloads that version, after which it is cached.
+- **Needs Web's install.** Scan Proxy's lint step runs `web/node_modules/.bin/oxlint`, so `npm --prefix web ci` must have run (a worktree has it after `scripts/worktree_setup.py`); without it the step fails and says so.
 - **Why no new dependency.** `pyproject.toml`, `uv.lock`, `web/package.json` and `workers/scan-proxy/package.json` pin External surfaces: an edit marks them stale. So ruff is pinned in the command, Scan Proxy lints with the oxlint that Web installs, and a Kotlin source root is added in `android/build.gradle.kts` rather than `android/app/build.gradle.kts`.
 
 ## Decisions (owner, 2026-10-21)
@@ -45,8 +46,9 @@ Every source directory and file type each context owns, and which check covers i
 |---|---|---|---|---|---|
 | `src/hdttools/*.py` | none | ruff | vulture | Python floor | no Python type checker exists yet: #155 |
 | `scripts/*.py` | none | ruff | vulture (code pass) | none | no type checker: #155; `scripts/` is outside coverage's `source`: #157 |
-| `scripts/*.sh`, `.githooks/*` | none | none | none | none | shell scripts have no linter: #156 |
+| `scripts/*.sh`, `.githooks/*`, root `test-external.ps1` | none | none | none | none | shell scripts have no linter: #156 |
 | `scripts/*.json`, `scripts/external_manifest/**/*.json`, `test-vectors/*.json` | none | none | none | none | read by tests but with no schema check: #159 |
+| `ruff.toml`, `vulture_whitelist.py`, `vulture_whitelist_tests.py` (root) | none | none (not scanned: bare names are not code) | read by vulture itself | none | config and lists; staleness of the whitelists is tested (`tests/test_static_checks_real.py`), not linted: #159 |
 | `tests/*.py` | none | ruff | vulture (tests pass) | n/a (tests are not measured) | no type checker: #155 |
 
 ### streamlit (`streamlit_app/`)
@@ -85,7 +87,7 @@ Every source directory and file type each context owns, and which check covers i
 
 ## What a check cannot see
 
-- vulture reports at 60% confidence and sees names, not meaning: a function only its own test calls counts as used, which is why `tests/` is scanned in a separate pass; a name used only by reflection or by pytest needs an allow-list entry with its reason.
+- vulture reports at 60% confidence and sees names, not meaning, so a whitelist entry for a generic name (`type`, `input`, `create`, `headers`) stays "reported" while any other definition of that name exists; the staleness test cannot tell those apart, so review such entries by hand: a function only its own test calls counts as used, which is why `tests/` is scanned in a separate pass; a name used only by reflection or by pytest needs an allow-list entry with its reason.
 - oxlint runs its default rules plus the `react` plugin in Web; it is not a type-aware linter.
 - The Scan Proxy floor is line coverage from Node's `--experimental-test-coverage`; branch coverage is printed but not gated.
 - The Python floor (79%) is far below what the tree measures (87.78% on 2026-10-21): #157.

@@ -1,7 +1,7 @@
 """One-command Android release run (#63, spec #51): the JVM (Minor)
 suite, the instrumented (device) suite, the stale surfaces in Android's
-chain (including the Worker's, since android/test-weekly.ps1 depends on
-a freshly deployed Worker) and the old weekly suite - in that order,
+chain (the Worker's wrapper, then Android's own, since android/test-weekly.ps1
+depends on a freshly deployed Worker) and the old weekly suite - in that order,
 stopping on the first failure. A missing device/emulator fails the run
 outright; it is never silently skipped.
 
@@ -65,20 +65,23 @@ INSTRUMENTED_STEP = {
     "command": [GRADLEW, "-p", "android", "connectedDebugAndroidTest"],
     "cwd": REPO_ROOT,
 }
-# Runs the Worker's own External suite (--platform scan-proxy, hard-coded
-# inside test-external.ps1), the only runner that exists today. This covers
-# revenuecat-rest (platforms ["scan-proxy", "android"], currently "active")
-# correctly, but android-only surfaces (revenuecat-android-sdk,
-# google-play-billing - currently "planned", so stale_surfaces() can't
-# report them as blocking yet) have no Android-side runner at all; #39/#40
-# need to add one before this step can cover them once they go "active".
-# Nothing here records a result itself: the Worker's wrapper does, and only for
-# the surfaces it owns (#142), so a chain surface another wrapper owns
-# (supabase-auth: web) is reported by it, never recorded as a false fail.
+# Each platform's External wrapper runs and records only the surfaces it owns
+# (#142), so a release with stale surfaces runs two: the Worker's wrapper
+# (--platform scan-proxy, hard-coded inside its test-external.ps1) for the
+# Worker's surfaces and revenuecat-rest, which also names the ones only Web can
+# run (supabase-auth); then Android's own (android/test-external.ps1, #39) for
+# the surfaces that need the attached device (revenuecat-android-sdk, later
+# google-play-billing). Neither records a surface the other owns, so a chain
+# surface another wrapper owns is reported, never recorded as a false fail.
 EXTERNAL_STEP = {
     "name": "Worker External suite (stale surfaces in Android's chain)",
     "command": powershell_command("test-external.ps1"),
     "cwd": REPO_ROOT / "workers" / "scan-proxy",
+}
+ANDROID_EXTERNAL_STEP = {
+    "name": "Android External suite (stale device surfaces; needs the attached device)",
+    "command": powershell_command("test-external.ps1"),
+    "cwd": ANDROID_DIR,
 }
 WEEKLY_STEP = {
     "name": "old weekly suite (redeploys the Worker; 2 real Claude calls, ~$0.02)",
@@ -88,7 +91,7 @@ WEEKLY_STEP = {
 }
 
 
-def _default_adb() -> str:
+def default_adb() -> str:
     found = shutil.which("adb")
     if found:
         return found
@@ -104,7 +107,7 @@ def _default_adb() -> str:
 def connected_devices(*, adb: str | None = None, run_command=subprocess.run) -> list[str]:
     """Device/emulator serials reported ready by `adb devices` (excludes
     "unauthorized"/"offline" entries, which can't run tests)."""
-    exe = adb or _default_adb()
+    exe = adb or default_adb()
     proc = run_command([exe, "devices"], capture_output=True, text=True)
     lines = proc.stdout.splitlines()[1:] if proc.stdout else []
     return [line.split("\t")[0] for line in lines if line.strip().endswith("\tdevice")]
@@ -156,12 +159,13 @@ def _run_steps(budget, run_command, devices, stale, gate, reason, out) -> int:
 
     stale_names = stale() if stale is not None else stale_surfaces(PLATFORMS)
     if stale_names:
-        out(f"Stale surfaces: {', '.join(stale_names)}; running the Worker's External suite.")
-        code = run_step(EXTERNAL_STEP, run_command=run_command, out=out)
-        if code != 0:
-            return code
+        out(f"Stale surfaces: {', '.join(stale_names)}; running the Worker's and Android's External suites.")
+        for step in (EXTERNAL_STEP, ANDROID_EXTERNAL_STEP):
+            code = run_step(step, run_command=run_command, out=out)
+            if code != 0:
+                return code
     else:
-        out("No stale surfaces; skipping the Worker External suite.")
+        out("No stale surfaces; skipping the External suites.")
 
     # The External release gate (ADR-0008): every surface in Android's chain, the Worker's included,
     # must be fresh before the weekly suite redeploys the Worker. Surfaces only another platform's

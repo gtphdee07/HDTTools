@@ -280,6 +280,37 @@ def test_tagged_in_supports_a_custom_glob_and_pytest_marker_tag_style(tmp_path):
     assert has("supabase") is False
 
 
+def test_tagged_in_finds_a_kotlin_annotation_tag_and_not_a_longer_surface_name(tmp_path):
+    (tmp_path / "RevenueCatAndroidSdkExternalTest.kt").write_text(
+        '@ExternalSurface("revenuecat-android-sdk")\n@RunWith(AndroidJUnit4::class)\nclass X'
+    )
+    (tmp_path / "NotATest.kt").write_text('@ExternalSurface("google-play-billing")\nclass Y')
+    has = ew.tagged_in(tmp_path, "*ExternalTest.kt", ew.TAG_FORMATS["annotation"])
+    assert has("revenuecat-android-sdk") is True
+    assert has("revenuecat-android") is False
+    assert has("google-play-billing") is False  # only files matching the glob count
+
+
+def test_surface_results_reads_an_annotation_tagged_surface_from_the_property_not_the_name():
+    xml = (
+        '<testsuites><testsuite name="com.rigcheck.app.RevenueCatAndroidSdkExternalTest">'
+        '<testcase classname="com.rigcheck.app.RevenueCatAndroidSdkExternalTest" name="offeringsWork">'
+        '<properties><property name="surface" value="revenuecat-android-sdk"/></properties></testcase>'
+        '<testcase classname="com.rigcheck.app.RevenueCatAndroidSdkExternalTest" name="loginFails">'
+        '<properties><property name="surface" value="revenuecat-android-sdk"/></properties><failure/></testcase>'
+        "</testsuite></testsuites>"
+    )
+    got = ew.surface_results(xml, ["revenuecat-android-sdk"], ew.TAG_FORMATS["annotation"])
+    assert got == {"revenuecat-android-sdk": counts(passed=1, failed=1)}
+
+
+def test_the_worker_wrapper_names_the_android_script_for_a_stale_android_owned_surface():
+    h = Harness(tagged=())
+    assert h.go([stale("sdk")], owned_elsewhere={"sdk": "android"}) == 0
+    assert h.ran == [] and h.recorded == []
+    assert any("sdk" in line and r"android\test-external.ps1" in line for line in h.lines)
+
+
 def test_a_hyphenated_surface_is_tagged_by_its_underscored_pytest_marker(tmp_path):
     (tmp_path / "test_vision_external.py").write_text(
         "pytestmark = [pytest.mark.external, pytest.mark.anthropic_python]"

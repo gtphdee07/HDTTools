@@ -64,6 +64,9 @@ from paid_call_budget import BudgetExceeded, PaidCallBudget  # noqa: E402
 TAG_FORMATS = {
     "bracket": lambda surface: f"[{surface}]",
     "marker": lambda surface: f"mark.{marker_name(surface)}",
+    # Android: a class-level `@ExternalSurface("<surface>")`. The tag never appears in a test's
+    # name, so the results come from the `surface` property scripts/run_external_android.py writes.
+    "annotation": lambda surface: f'@ExternalSurface("{surface}")',
 }
 
 
@@ -72,6 +75,7 @@ WRAPPER_SCRIPTS = {
     "web": r"web\test-external.ps1",
     "scan-proxy": r"workers\scan-proxy\test-external.ps1",
     "core": "test-external.ps1",
+    "android": r"android\test-external.ps1",
 }
 
 
@@ -259,7 +263,8 @@ def main(
     parser.add_argument("--tests-dir", required=True, type=Path)
     parser.add_argument("--cwd", required=True, type=Path)
     parser.add_argument("--skip", action="store_true")
-    parser.add_argument("--test-glob", default="*.external.test.ts")
+    parser.add_argument("--test-glob", default="*.external.test.ts",
+                        help="Pattern for the test files, matched directly inside --tests-dir (not recursively).")
     parser.add_argument("--tag-style", choices=sorted(TAG_FORMATS), default="bracket")
     parser.add_argument(
         "--max-paid-calls", type=int, default=None,

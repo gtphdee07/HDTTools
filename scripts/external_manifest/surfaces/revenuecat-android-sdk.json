@@ -1,6 +1,6 @@
 {
   "name": "revenuecat-android-sdk",
-  "status": "planned",
+  "status": "active",
   "platforms": ["android"],
   "owner": "android",
   "boundary_files": [

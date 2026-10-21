@@ -4,7 +4,7 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-All the round's tickets are merged, including epic #147's tree (epic closed). The merges since the last push are not pushed yet: Claude asks before the one push at the end. What is left is the optional #132.
+All the round's tickets are merged and pushed, including epic #147's tree (epic closed). What is left is the optional #132.
 
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
@@ -91,7 +91,7 @@ Test-round additions:
 ## History (for reference; nothing to do)
 
 - **Merged in the round:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105, #64, #140, #148, #152, #151, #150, #153, #160, #149, #162, #163, #164, #161 (epic #147 closed; #141 closed as a duplicate, #154 as a duplicate of #153).
-- **Pushed** up to 1f60cc3 on 2026-10-21 (the whole round, with the External pass records).
+- **Pushed** up to 1f87869 on 2026-10-21 (the whole round, epic #147, and the External pass records; a second External run that day re-passed `anthropic` and `anthropic-python` for new SDK releases, 6 paid calls).
 - **Final External run, 2026-10-21 (ceiling 10, 7 paid calls used):** `pages-site` (9 tests), `anthropic` (5), `scan-proxy-worker` (7), `worker-token-verification` (5), `anthropic-python` (5), `revenuecat-android-sdk` (6); all passed and all ten active surfaces are fresh.
 - **External runs, owner-approved:** 2026-10-19 sanity run of seven stale surfaces; 2026-10-20 and 2026-10-21 re-runs and the first runs of `anthropic`, `anthropic-python`, the Android SDK surface and the Pro entitlement test; all passed, with the records in `scripts/dashboard_data/external_status.json`.
 - **Verification debt (#67):** a committed SessionStart hook in `.claude/settings.json`; all five contexts have a recorded pass (a new machine or fresh clone needs the one-time commands in [verification-debt.md](verification-debt.md) again; #144 will automate it).

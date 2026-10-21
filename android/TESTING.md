@@ -773,6 +773,17 @@ root `TESTING.md`'s "Dashboard" section.
   "not read" notice cannot disagree. A typo or a one-sided rename would otherwise leave a
   field never merged and reported "not read" on every Scan. `ScanNoticeTest` checks the other
   direction (each list key fills a field) with literal JSON.
+- `ScanFormFieldsFixtureTest.kt` (#164, 4 tests) — the same three lists by name *and type*
+  against the shared `test-vectors/scan_form_fields.json` that Streamlit and Web check their
+  forms against: the `(key, type)` pairs in `TRUCK_SCAN_FIELDS`, `TRAILER_SCAN_FIELDS` and
+  `SCALE_SCAN_FIELDS` equal the fixture's `scanned` fields for `truck_tag`, `trailer_tag` and
+  `scale_ticket` (a missing field, an extra field or a `text`/`number` mismatch each fails,
+  and the helper that reports them is checked on its own), and no list holds a `manual_only`
+  name. `ScanField.numeric` is private, so the type is read through `wasReadIn` (a number
+  field does not read a non-numeric string, a text field does), with a test that this reading
+  gives `number` for `numeric = true` and `text` for `false`. JVM only. It fails on its own,
+  apart from `ScanFieldKeysSchemaTest`, so a form drifting from the fixture and a key drifting
+  from the tool schema are told apart.
 - `PinWeightTest.kt` (#137, 3 tests) — the pin weight slider's whole percent becomes the
   fraction the math uses (`pinWeightFraction`): the shared
   `test-vectors/pin_weight_pct_contract.json` value, the slider's default and both ends, and the

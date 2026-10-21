@@ -763,6 +763,16 @@ root `TESTING.md`'s "Dashboard" section.
   reports a notice, not an error. The state class: the notice is held after a delivered Scan
   and dropped by entering the document by hand, leaving the screen, starting another Scan or
   starting a rig, and a newer Scan replaces the older notice.
+- `ScanFieldKeysSchemaTest.kt` (#149, 4 tests) — the keys Android reads from a scan's `fields`
+  against the Claude-vision tool schema the Worker sends, shared as
+  `test-vectors/vision_tool_schemas.json`: every key in `TRUCK_SCAN_FIELDS`,
+  `TRAILER_SCAN_FIELDS` and `SCALE_SCAN_FIELDS` is a property of its own document's schema
+  (`truck_tag`, `trailer_tag`, `scale_ticket`), and a key that is not is reported; no list
+  holds `standalone_weight_lb` or `axle_count`; and the keys each `mergeScanFields` looks up
+  are exactly its list's keys (read by recording the lookups), so the merge and the
+  "not read" notice cannot disagree. A typo or a one-sided rename would otherwise leave a
+  field never merged and reported "not read" on every Scan. `ScanNoticeTest` checks the other
+  direction (each list key fills a field) with literal JSON.
 - `PinWeightTest.kt` (#137, 3 tests) — the pin weight slider's whole percent becomes the
   fraction the math uses (`pinWeightFraction`): the shared
   `test-vectors/pin_weight_pct_contract.json` value, the slider's default and both ends, and the

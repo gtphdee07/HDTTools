@@ -22,7 +22,7 @@ A second `claude` session can build these while the chain runs, because they tou
 
 | Order | Ticket | Files | Card |
 |---|---|---|---|
-| 1 | #140 Streamlit `FIELDS` against the shared tool schema | `tests/test_ocr_output_key_contracts.py`, one line of `tests/TESTING.md` | built, ready to merge: type `/ticket-merge 140` |
+| 1 | #140 Streamlit `FIELDS` against the shared tool schema | `tests/test_ocr_output_key_contracts.py`, one line of `tests/TESTING.md` | merged 2026-10-21 |
 | 2 | #148 Web `MODULES` field names against the shared tool schema | one new Vitest file, a row in `web/TESTING.md` | [#148](#148-web-field-names-against-the-shared-tool-schema) |
 | 3 | #149 Android `ScanFieldMapping` keys against the shared tool schema | one new JVM test, a row in `android/TESTING.md` | [#149](#149-android-scan-field-keys-against-the-shared-tool-schema) |
 | later | #147 the epic | owner decisions, one `CONTEXT-MAP.md` line | not built now: see the note after the cards |
@@ -269,7 +269,7 @@ Test-round additions:
 
 ## History (for reference; nothing to do)
 
-- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105, #64 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145, #146, #150, #151, #152 and #153 (all now in the round; #153 is `scripts/android_suite_loop.py` also running the excluded live `RevenueCatAndroidSdkExternalTest`: 154 tests reported, 6 failing, against an offline suite of 148).
+- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105, #64, #140 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145, #146, #150, #151, #152 and #153 (all now in the round; #153 is `scripts/android_suite_loop.py` also running the excluded live `RevenueCatAndroidSdkExternalTest`: 154 tests reported, 6 failing, against an offline suite of 148).
 - **Pushed** up to d0ea7b7 on 2026-10-20 (plus handoff-note commits), including #115's changed Web scan wording, which the owner approved.
 - **External runs, owner-approved:** 2026-10-19 sanity run of seven stale surfaces (4 paid calls; commit 95ae133); 2026-10-20 re-run of `pages-site` and `scan-proxy-worker` after a wrangler release (1 paid call); 2026-10-20 first runs of `anthropic` (Worker) and `anthropic-python` (6 paid calls, commit 615e552), both against `test-vectors/vision_external_cases.json` and `ExampleDocs/golden_fields.json`. All passed.
 - **Verification debt (#67):** a committed SessionStart hook in `.claude/settings.json`; all five contexts have a recorded pass from 2026-10-20 at d0ea7b7 (a new machine or fresh clone needs the one-time commands in [verification-debt.md](verification-debt.md) again; #144 will automate it).

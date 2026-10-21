@@ -8,11 +8,10 @@ One ticket at a time. Start the next only after the previous one is merged, so i
 
 | # | Ticket | Kind | Your part before or after | Card |
 |---|---|---|---|---|
-| 1 | #75 Android External suite with a funded Supabase test account | Android, emulator, 2 paid scans | confirm the two paid scans | [#75](#75-android-external-suite-with-a-funded-test-account-in-build) |
-| 2 | #39 RevenueCat Android SDK surface | Android, emulator, adds the first Android External runner | the live run after the merge | [#39](#39-revenuecat-android-sdk-surface) |
-| 3 | #40 Google Play Billing surface | Android, emulator with Play Services, builds on #39's runner | the live run after the merge | [#40](#40-google-play-billing-surface) |
-| 4 | #105 prove the RevenueCat `pro` entitlement | Web, free live run | **a RevenueCat dashboard step first** | [#105](#105-prove-the-revenuecat-pro-entitlement) |
-| 5 | #64 refresh each context's testing document | docs | none | [#64](#64-refresh-the-testing-documents) |
+| 1 | #39 RevenueCat Android SDK surface | Android, emulator, adds the first Android External runner | the live run after the merge | [#39](#39-revenuecat-android-sdk-surface) |
+| 2 | #40 Google Play Billing surface | Android, emulator with Play Services, builds on #39's runner | the live run after the merge | [#40](#40-google-play-billing-surface) |
+| 3 | #105 prove the RevenueCat `pro` entitlement | Web, free live run | **a RevenueCat dashboard step first** | [#105](#105-prove-the-revenuecat-pro-entitlement) |
+| 4 | #64 refresh each context's testing document | docs | none | [#64](#64-refresh-the-testing-documents) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
 After #64: a final run of whichever External surfaces went stale again (`uv run scripts/external_freshness.py` first, from the main checkout; Claude asks before each live run and before pushing). Deferred, not in this round: #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically) and #145 (check that a fresh clone builds on another computer).
@@ -32,41 +31,13 @@ A session-start report (verification debt, #67) prints when each session opens. 
 
 ## Run cards
 
-### #75 Android External suite with a funded test account (in build)
+### #75 (merged 2026-10-20)
 
-- **Step 1:** `/ticket-start 75` (already done).
-- **Step 2 block** (paste under the printed prompt):
-
-```
-Test-round additions:
-- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
-  The slow tooling tests are left out of planner runs unless the diff touches
-  what they check.
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- If you add or move a class in `domain`, `data` or `ui`, classify it in
-  `android/coverage-logic.toml` (allow-list, or waiver with a reason). The JVM
-  coverage floor is 95% over the allow-listed decision logic. The Android
-  end-of-session command is `uv run scripts/android_session_end.py` (JVM tests,
-  coverage floor, detekt; no device).
-- This needs the single emulator; no other Android ticket may be running. Start it
-  with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save
-  -gpu swangle_indirect` (the AVD's default host graphics caused the aborts #127
-  traced), wait for `sys.boot_completed`, and kill it when you are done.
-- Live runs: acceptance criterion 1 names `.\test-weekly.ps1`, which makes two paid
-  Claude scans. Ask the owner with AskUserQuestion to confirm the two paid scans
-  (ceiling 2 paid calls) before you run it; never run it without that answer.
-  Do not commit any change to `scripts/dashboard_data/external_status.json` or
-  `dashboard.svg` from the ticket branch.
-```
-
-- **If #75 was already started with the generic "No live or paid runs" line** (the old version of this page said that for every ticket): tell the session "Exception for this ticket: criterion 1 names the live run. Ask me with AskUserQuestion to confirm the two paid scans, then run `.\test-weekly.ps1` with a ceiling of 2 paid calls." Without the run it will finish as `PARTIAL` on criterion 1, which you can accept at merge with `--allow-status` and run later.
-- **Your part:** confirm the two paid scans when the session asks. Check that `WEB_EXTERNAL_TEST_EMAIL` and `WEB_EXTERNAL_TEST_PASSWORD` are set in the environment or in `web/.env.local` (`/ticket-start` copies `web/.env.local` into the worktree); a missing value fails the run naming the variable.
-- **Merge note:** the review does not run paid scans. It re-runs the free tests and checks the rest by reading.
+Done: `android/test-weekly.ps1` signs in the funded Supabase test account and the Android External suite ran `OK (6 tests)` with two paid scans. Nothing more to do for it.
 
 ### #39 RevenueCat Android SDK surface
 
-- **Step 1:** `/ticket-start 39`. Only one Android ticket may be in flight; start it after #75 is merged.
+- **Step 1:** `/ticket-start 39`. Only one Android ticket may be in flight.
 - **Step 2 block:**
 
 ```
@@ -167,7 +138,7 @@ Test-round additions:
 
 ## History (for reference; nothing to do)
 
-- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145.
+- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145.
 - **Pushed** up to d0ea7b7 on 2026-10-20 (plus handoff-note commits), including #115's changed Web scan wording, which the owner approved.
 - **External runs, owner-approved:** 2026-10-19 sanity run of seven stale surfaces (4 paid calls; commit 95ae133); 2026-10-20 re-run of `pages-site` and `scan-proxy-worker` after a wrangler release (1 paid call); 2026-10-20 first runs of `anthropic` (Worker) and `anthropic-python` (6 paid calls, commit 615e552), both against `test-vectors/vision_external_cases.json` and `ExampleDocs/golden_fields.json`. All passed.
 - **Verification debt (#67):** a committed SessionStart hook in `.claude/settings.json`; all five contexts have a recorded pass from 2026-10-20 at d0ea7b7 (a new machine or fresh clone needs the one-time commands in [verification-debt.md](verification-debt.md) again; #144 will automate it).

@@ -43,6 +43,15 @@
         "wrangler": "4.151.3"
       }
     },
+    "revenuecat-android-sdk": {
+      "commit": "2c519e4c5314aa7d2fef98985947e19c53d63684",
+      "passed": true,
+      "result": "pass",
+      "timestamp": "2026-10-21T02:56:49Z",
+      "versions": {
+        "com.revenuecat.purchases:purchases": "10.28.1"
+      }
+    },
     "revenuecat-rest": {
       "commit": "51dc229be878658671944c43dcb73eb073d5ec48",
       "passed": true,

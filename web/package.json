@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:external": "vitest run --config vitest.external.config.ts",
+    "fixture:revenuecat-pro-user": "node --env-file=.env.local scripts/createRevenueCatFixtureUser.mjs",
     "test:coverage": "vitest run --coverage",
     "test:report": "vitest run --reporter=junit --outputFile=test-results/junit.xml",
     "check:dead-code": "knip"

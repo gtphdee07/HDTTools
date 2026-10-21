@@ -4,17 +4,15 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-The round's tickets are merged and pushed. What is left is epic #147's tree (below) and the optional #132. #161 is unblocked: all three field checks are merged, so it is cut from the updated `MPSkills`. Start the next only after the previous one is merged, so it is cut from the updated `MPSkills`.
+All the round's tickets are merged, including epic #147's tree (epic closed). The merges since the last push are not pushed yet: Claude asks before the one push at the end. What is left is the optional #132.
 
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
-| 1 | #161 the planner names all the field checks when a shared vision fixture changes | planner config | none | [#161](#161-planner-names-the-field-checks) |
-| then | I close epic #147 with a comment; nothing for you to type | | | |
-| optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
+| 1 | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
 Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember"). The final External run is done (2026-10-21, see History); if #132 changes no code there is nothing more to run, and any later change to a boundary file or pin needs `uv run scripts/external_freshness.py` first.
 
-Not in this round: #40 (blocked on Play Console, see its card), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically), #145 (check that a fresh clone builds on another computer), #146 (check that `pro` is attached to the Pro product), #155 to #159 (static-check gaps: a Python type checker, a shell and PowerShell linter, the Python coverage floor, a Web coverage floor, Android Lint and config files), #138 and #139.
+Not in this round: #40 (blocked on Play Console, see its card), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically), #145 (check that a fresh clone builds on another computer), #146 (check that `pro` is attached to the Pro product), #165 (TESTING.md: name the scan-form-fields planner interface), #155 to #159 (static-check gaps: a Python type checker, a shell and PowerShell linter, the Python coverage floor, a Web coverage floor, Android Lint and config files), #138 and #139.
 
 ## How to run one ticket
 
@@ -30,40 +28,6 @@ The same six steps every time. The card for the ticket gives the exact command f
 A session-start report (verification debt, #67) prints when each session opens. With the five contexts recorded it says there is nothing to report; it is advisory and you do nothing with it.
 
 ## Run cards
-
-### #162 (merged 2026-10-21)
-
-Done: `test-vectors/scan_form_fields.json` (per doc type, the `scanned` and `manual_only` fields with a `text` or `number` type) and the Python tests that check it against the tool schema and Streamlit's `FIELDS`; `CONTEXT-MAP.md` names it. #163 and #164 are now unblocked.
-
-### #163 (merged 2026-10-21)
-
-Done: `web/src/scanFormFields.test.ts` checks every `MODULES` field (name and type) and the optional flags against the shared `scan_form_fields.json`.
-
-### #164 (merged 2026-10-21)
-
-Done: `ScanFormFieldsFixtureTest` checks Android's three scan-field lists (key and type) against the shared `scan_form_fields.json` and that no manual-only field is in a list. All three surfaces now check the fixture.
-
-### #161 planner names the field checks
-
-- **Step 1:** `/ticket-start 161` (#162, #163 and #164 are merged, so it is unblocked). Last ticket of the tree.
-- **Step 2 block:**
-
-```
-Test-round additions:
-- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
-  The slow tooling tests are left out of planner runs unless the diff touches
-  what they check.
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in its context's testing document, and a new
-  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
-- Only `scripts/test_planner_config.json` and the planner's tests change.
-- No live or paid runs.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
-  markers.
-```
-
-- **Your part:** none beyond the usual steps. After it merges, ask Claude to close epic #147.
 
 ### #132 (optional) mutation-testing research
 
@@ -126,7 +90,7 @@ Test-round additions:
 
 ## History (for reference; nothing to do)
 
-- **Merged in the round:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105, #64, #140, #148, #152, #151, #150, #153, #160, #149, #162, #163, #164 (#141 closed as a duplicate, #154 as a duplicate of #153).
+- **Merged in the round:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105, #64, #140, #148, #152, #151, #150, #153, #160, #149, #162, #163, #164, #161 (epic #147 closed; #141 closed as a duplicate, #154 as a duplicate of #153).
 - **Pushed** up to 1f60cc3 on 2026-10-21 (the whole round, with the External pass records).
 - **Final External run, 2026-10-21 (ceiling 10, 7 paid calls used):** `pages-site` (9 tests), `anthropic` (5), `scan-proxy-worker` (7), `worker-token-verification` (5), `anthropic-python` (5), `revenuecat-android-sdk` (6); all passed and all ten active surfaces are fresh.
 - **External runs, owner-approved:** 2026-10-19 sanity run of seven stale surfaces; 2026-10-20 and 2026-10-21 re-runs and the first runs of `anthropic`, `anthropic-python`, the Android SDK surface and the Pro entitlement test; all passed, with the records in `scripts/dashboard_data/external_status.json`.

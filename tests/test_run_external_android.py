@@ -145,6 +145,17 @@ def test_the_powershell_wrapper_passes_the_runners_directory_and_glob():
     assert "--tag-style annotation" in text and "--platform android" in text
 
 
+def test_the_runner_uses_the_marker_path_and_instrumentation_the_test_app_declares():
+    runner = (rea.TESTS_DIR / "CustomTestRunner.kt").read_text(encoding="utf-8")
+    assert f'WEEKLY_MARKER_PATH = "{rea.MARKER_PATH}"' in runner
+    # <test package>/<runner class>: the package is the app id plus ".test", the class is the one the file declares.
+    declared = re.search(r"^class (\w+) : AndroidJUnitRunner", runner, re.MULTILINE).group(1)
+    assert rea.INSTRUMENTATION == f"com.rigcheck.app.test/com.rigcheck.app.{declared}"
+    gradle = (_ROOT / "android" / "app" / "build.gradle.kts").read_text(encoding="utf-8")
+    assert f'applicationId = "{rea.INSTRUMENTATION.split(".test/")[0]}"' in gradle
+    assert f'testInstrumentationRunner = "com.rigcheck.app.{declared}"' in gradle
+
+
 def test_the_gradle_default_run_keeps_every_tagged_class_out_by_the_annotations_real_name():
     gradle = (_ROOT / "android" / "app" / "build.gradle.kts").read_text(encoding="utf-8")
     source = (rea.TESTS_DIR / "testsupport" / "ExternalSurface.kt").read_text(encoding="utf-8")

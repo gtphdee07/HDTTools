@@ -78,11 +78,11 @@ class RevenueCatAndroidSdkExternalTest {
         val current = offerings.current
         assertNotNull("RevenueCat returned no current offering for the project", current)
         assertTrue("The current offering has no packages", current!!.availablePackages.isNotEmpty())
-        // PaywallScreen renders exactly these three values for every package.
+        // PaywallScreen renders the title and the formatted price of every package (the
+        // description is optional there: it is shown only when not blank).
         for (pkg in current.availablePackages) {
             assertTrue("package ${pkg.identifier} has no product title", pkg.product.title.isNotBlank())
             assertTrue("package ${pkg.identifier} has no formatted price", pkg.product.price.formatted.isNotBlank())
-            assertNotNull("package ${pkg.identifier} has no description", pkg.product.description)
         }
     }
 
@@ -174,6 +174,9 @@ class RevenueCatAndroidSdkExternalTest {
             composeRule.waitUntil(timeoutMillis = 30_000) { restore.get() != null }
             val (success, error) = restore.get()
             assertTrue("Restore failed: $error", success)
+            // RigCheckViewModel discards the CustomerInfo, so all the app can depend on is
+            // which customer it describes.
+            assertEquals(fundedAccountId, RevenueCatManager.restorePurchases().originalAppUserId)
         }
     }
 

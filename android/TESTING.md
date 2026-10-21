@@ -351,8 +351,13 @@ What the SDK really does (measured on the emulator with the Test Store key,
 - **Restore on the Test Store makes no store call.** The SDK logs "Restoring
   purchases not available in test store. Returning current CustomerInfo." and
   answers from the cache. The restore journey step therefore proves the call
-  path and the `CustomerInfo` shape, not Google's restore; that belongs to #40
+  path and which customer comes back, not Google's restore; that belongs to #40
   and to a production key, which this suite does not have.
+- **"Customer-info shape" here means identity and entitlements.**
+  `RevenueCatManager` reads no `CustomerInfo` field (`RigCheckViewModel` discards
+  the restore result), so the tests check what could matter: `originalAppUserId`
+  (authentication, offline restore, restore journey) and `entitlements.active`
+  (a new customer has none). There is no richer shape to pin.
 - **A new user is not an error.** RevenueCat creates the customer on login and the
   balance reads 0. The tests use two fixed ids (`external-test-unknown-user`,
   `external-test-offline-user`) so reruns reuse one customer, and the unknown-user

@@ -194,7 +194,7 @@ and 4 shared a second boot.)
 |---|---|---|---|---|
 | **Minor (Unit, JVM)** | ✅ built | a Minor change (internal-only) | none | `./gradlew test` |
 | **Major (instrumented, offline)** | ✅ built | a Major change (public-interface/new-library) touching UI/navigation | none (no `Purchases.configure()`) | `./gradlew connectedDebugAndroidTest` |
-| **External (instrumented, real RevenueCat)** | ✅ built | event-driven: before pushing a major update to the Play Store, not a calendar cadence; also diff-driven whenever a Major change touches boundary-calling code (`RevenueCatManager.kt`) | real, bounded, dedicated test customer (`weekly-test-user`) | `.\test-weekly.ps1` |
+| **External (instrumented, real RevenueCat)** | ✅ built | event-driven: before pushing a major update to the Play Store, not a calendar cadence; also diff-driven whenever a Major change touches boundary-calling code (`RevenueCatManager.kt`) | real, bounded, the funded Supabase test account's RevenueCat customer (#75) | `.\test-weekly.ps1` |
 
 (Command names — `test-weekly.ps1` etc. — are unrenamed this pass; see
 `ARCHIVE_TESTING.md` for the full narrative on the deferred mechanical
@@ -213,18 +213,19 @@ unconfigured `Purchases.sharedInstance` fails gracefully instead of
 crashing (no production-code change was needed to make this possible).
 
 **Built and verified for real 2026-08-23** (`.\test-weekly.ps1` → `OK (3
-tests)`, real network throughout), using the dedicated `weekly-test-user`
-RevenueCat test customer (see `workers/scan-proxy/TESTING.md` for how it
-was created). Uses the *same* `CustomTestRunner` as the Major suite, not a
+tests)`, real network throughout), then using the dedicated
+`weekly-test-user` RevenueCat customer. Since the scan service began charging
+the account named by a Supabase access token (#21), the suite acts as the
+funded Supabase test account instead (#75; see "Test account" below). Uses the *same* `CustomTestRunner` as the Major suite, not a
 second runner — AGP's manifest merger only allows one `<instrumentation>`
 element per test APK, so a separately-named runner class silently loses
-its identity when merged. Instead, `test-weekly.ps1` touches a
+its identity when merged. Instead, `test-weekly.ps1` writes a
 device-side marker file
 (`/data/local/tmp/rigcheck_weekly_mode`) before invoking `am instrument`;
 `CustomTestRunner.newApplication()` checks for that file (plain
 synchronous `java.io.File.exists()` — no lifecycle-ordering dependency)
 and substitutes `WeeklyTestApplication` (real `Purchases.configure()`
-against `weekly-test-user`) instead of the Major suite's plain offline
+against the account id the marker holds) instead of the Major suite's plain offline
 `Application`. The marker is removed again afterward so a later
 `./gradlew connectedDebugAndroidTest` run is unaffected either way; that
 Gradle task also explicitly excludes `PaywallScreenWeeklyTest` via
@@ -253,6 +254,28 @@ RevenueCat, not just fake deps. **Real cost per full run**: two real
 case); the purchase case is free — RevenueCat's Test Store dialog states
 outright it's a dev-only purchase, confirmed hands-on by triggering one
 and reading its own text.
+
+**Test account (#75).** The scan service charges the account named by a
+Supabase access token and ignores `app_user_id`, so the suite signs in the
+same funded test user the Worker's live suites use. `test-weekly.ps1`'s
+first step runs `npm run --silent live-token` in `workers/scan-proxy`
+(`src/liveTokenCli.ts`, built on `liveToken.ts`), which reads
+`WEB_EXTERNAL_TEST_EMAIL` / `WEB_EXTERNAL_TEST_PASSWORD` plus
+`VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` from the environment,
+falling back to `web/.env.local`
+(`scripts/wizard_scan_proxy_live_accounts.sh` sets up the matching
+RevenueCat customer, named by the user's Supabase UUID, with a SCAN balance).
+A missing or rejected value stops the run there, naming the variable, before
+anything is deployed or bought; the credentials are never printed, committed
+or sent to the device. What reaches the device: the account id, as the text
+of the weekly marker file (`WeeklyTestApplication` configures RevenueCat with
+it, so the purchase test and the scan tests act on the same balance), and the
+access token, as the `weeklyAccessToken` instrumentation argument that
+`testsupport/WeeklyAccessToken.kt`'s `weeklyAccessToken()` returns. A run
+started any other way (no marker text, no argument) fails naming what is
+missing instead of scanning with a bad token. The functions that read those
+two values are function-tested offline in `WeeklyAccessTokenTest.kt`, the
+helper in `workers/scan-proxy/src/liveTokenCli.test.ts`.
 
 **Not the same test as `workers/scan-proxy`'s direct-provider-boundary
 External suite, despite sharing a gating trigger** — discussed and
@@ -845,7 +868,7 @@ depends on, and the scroll helper the screen and nav tests use:
 
 - `PaywallScreenWeeklyTest.kt` — six cases, run under the same
   `CustomTestRunner` as the Major suite but with the weekly marker file
-  set (`weekly-test-user`) — see the category description above:
+  set (the funded test account's id) — see the category description above:
   - `rendersRealOfferingsFromTestStore` — fetches the real package
     directly via `RevenueCatManager.getOfferings()` first (so the
     assertion checks a concrete known value, not a guess about UI
@@ -913,11 +936,6 @@ depends on, and the scroll helper the screen and nav tests use:
 
 ## Known gaps (deliberately not tested, or not yet)
 
-- **The External suite can't authenticate its real scans yet (#22).** The
-  Worker now needs an account token (#21); `testsupport/WeeklyAccessToken.kt`
-  fails loudly until `test-weekly.ps1` signs in a funded Supabase test user
-  and the suite buys against that account id instead of `weekly-test-user`.
-  Not run.
 - **Google sign-in is untested against the real provider.** The Supabase
   project had it disabled on 2026-10-07; `scripts/wizard_android_sign_in.sh`
   sets it up. Email sign-in against real Supabase is also not exercised by

@@ -12,6 +12,7 @@
     "test:weekly": "node --test src/weekly/*.test.ts",
     "test:release": "node --test src/release/*.test.ts",
     "test:external": "node src/external/run.ts",
+    "live-token": "node src/liveTokenCli.ts",
     "dev": "wrangler dev",
     "deploy": "uv run ../../scripts/scan_proxy_deploy.py",
     "typecheck": "tsc --noEmit",

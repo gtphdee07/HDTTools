@@ -79,9 +79,13 @@ export function liveSupabaseUrl(): string {
   return requireVars(["VITE_SUPABASE_URL"]).VITE_SUPABASE_URL!;
 }
 
-export async function signInTestAccount(account: TestAccount): Promise<string> {
+export async function signInTestAccount(
+  account: TestAccount,
+  env: Record<string, string | undefined> = process.env,
+  fileValues: Record<string, string> = readEnvFile(),
+): Promise<string> {
   const vars = ACCOUNT_VARS[account];
-  const values = requireVars([...SUPABASE_VARS, vars.email, vars.password]);
+  const values = requireVars([...SUPABASE_VARS, vars.email, vars.password], env, fileValues);
   const res = await fetch(`${values.VITE_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: { apikey: values.VITE_SUPABASE_PUBLISHABLE_KEY!, "Content-Type": "application/json" },

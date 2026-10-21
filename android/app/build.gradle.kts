@@ -42,8 +42,9 @@ android {
 
         testInstrumentationRunner = "com.rigcheck.app.CustomTestRunner"
 
-        // PaywallScreenWeeklyTest needs real network + weekly-test-user
-        // (via -e weekly true, only test-weekly.ps1 passes it) and would
+        // PaywallScreenWeeklyTest needs real network + the funded test
+        // account (marker file and -e weeklyAccessToken, only test-weekly.ps1
+        // supplies them) and would
         // otherwise be picked up by ./gradlew connectedDebugAndroidTest's
         // unfiltered run too, since JUnit discovers every @Test class in
         // the androidTest source set regardless of which tier "owns" it -

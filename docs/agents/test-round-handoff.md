@@ -9,7 +9,7 @@ The only build ticket left is the optional #132; everything else in the round is
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
-| 3 | The final External run, then one push | live runs, asks you first | give a paid-call ceiling and go-ahead | [Final External run and push](#final-external-run-and-push) |
+| 1 | The final External run, then one push | live runs, asks you first | give a paid-call ceiling and go-ahead | [Final External run and push](#final-external-run-and-push) |
 | later | #147 the field-name epic | three decisions, one `CONTEXT-MAP.md` line | decide with Claude whenever you like; its three children are merged | [#147](#147-the-epic-not-built-as-a-ticket-now) |
 
 Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember").
@@ -85,7 +85,7 @@ Test-round additions:
 
 ## Final External run and push
 
-Nothing has been pushed since a76a31f: `MPSkills` is 20 commits ahead of `origin/MPSkills`, and 9 changed files are under `web/`, `workers/scan-proxy/` or `android/`. The pre-push gate refuses that push while External surfaces in those platforms' chains are stale, so everything goes up in one push after the run below (pushing also rebuilds Web, which this push changes in tests and documents only, plus `web/vite.config.ts`).
+Nothing has been pushed since a76a31f: `MPSkills` is 29 commits ahead of `origin/MPSkills`, and 12 changed files are under `web/`, `workers/scan-proxy/` or `android/`. The pre-push gate refuses that push while External surfaces in those platforms' chains are stale, so everything goes up in one push after the run below (pushing also rebuilds Web, which this push changes in tests and documents only, plus `web/vite.config.ts`).
 
 Stale now (`uv run scripts/external_freshness.py`, 2026-10-21), and why:
 

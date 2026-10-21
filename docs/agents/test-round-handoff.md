@@ -9,10 +9,9 @@ The only build ticket left is the optional #132; everything else in the round is
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
-| 1 | The final External run, then one push | live runs, asks you first | give a paid-call ceiling and go-ahead | [Final External run and push](#final-external-run-and-push) |
 | later | #147 the field-name epic | three decisions, one `CONTEXT-MAP.md` line | decide with Claude whenever you like; its three children are merged | [#147](#147-the-epic-not-built-as-a-ticket-now) |
 
-Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember").
+Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember"). The final External run is done (2026-10-21, see History); if #132 changes no code there is nothing more to run, and any later change to a boundary file or pin needs `uv run scripts/external_freshness.py` first.
 
 Not in this round: #40 (blocked on Play Console, see its card), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically), #145 (check that a fresh clone builds on another computer), #146 (check that `pro` is attached to the Pro product), #161 (name Android's field-key test in the planner when the vision fixture changes), #155 to #159 (static-check gaps: a Python type checker, a shell and PowerShell linter, the Python coverage floor, a Web coverage floor, Android Lint and config files), #138 and #139.
 
@@ -24,7 +23,7 @@ The same six steps every time. The card for the ticket gives the exact command f
 2. **Build**: open a **new** `claude` session in `.claude/worktrees/ticket-N`. Paste the printed prompt as the first message, then paste the card's block directly under it (one message, nothing else added). A new session for every ticket.
 3. **Finish**: when the build session says it is done, type `/ticket-finish` in the same session. At the end it asks whether to move the shell out of the worktree into the main checkout; answer **Yes**, so the folder can be removed at merge.
 4. **Merge**: back in the main checkout session, type `/ticket-merge N` (add `--allow-status` only to go past a `PARTIAL` you have decided to accept). Claude carries out the review: ledger check, reading the diff, mutation checks, merge, closing comment. If it finds a gap (a test, a testing-document row, a planner-config entry) it asks to add it on the branch and merges after you agree.
-5. **Push**: not per ticket for now. See "Final External run and push" below.
+5. **Push**: Claude asks first, every time. The pre-push gate refuses a push that touches `web/`, `workers/scan-proxy/` or `android/` while an External surface is stale (`uv run scripts/external_freshness.py` says which); the honest way through is a real run (Claude runs the stale suites from the main checkout, asking for a paid-call ceiling first).
 6. **Clean up after an Android ticket**: stop the emulator (`G:\Android\Sdk\platform-tools\adb.exe emu kill`) and close any terminal still open in the ticket's folder, then `rmdir` the leftover `.claude/worktrees/ticket-N` if `/ticket-merge` says it could not remove it.
 
 A session-start report (verification debt, #67) prints when each session opens. With the five contexts recorded it says there is nothing to report; it is advisory and you do nothing with it.
@@ -83,26 +82,6 @@ Test-round additions:
   up; Claude can start the emulator and run it with your go-ahead and a paid-call
   ceiling if the ticket's maximum is above 0).
 
-## Final External run and push
-
-Nothing has been pushed since a76a31f: `MPSkills` is 29 commits ahead of `origin/MPSkills`, and 12 changed files are under `web/`, `workers/scan-proxy/` or `android/`. The pre-push gate refuses that push while External surfaces in those platforms' chains are stale, so everything goes up in one push after the run below (pushing also rebuilds Web, which this push changes in tests and documents only, plus `web/vite.config.ts`).
-
-Stale now (`uv run scripts/external_freshness.py`, 2026-10-21), and why:
-
-| Surface | Why stale | Cost | How it runs |
-|---|---|---|---|
-| `anthropic` (Worker) | `@anthropic-ai/sdk` 1.0.0 published after the last pass; its pins also changed (#160) | 3 paid calls | Worker wrapper `workers\scan-proxy\test-external.ps1 -MaxPaidCalls N` |
-| `anthropic-python` | `anthropic` 2.0.0 published after the last pass; `pyproject.toml` and `uv.lock` also changed (#160) | 3 paid calls | the Python vision test, shared golden data with the Worker's |
-| `pages-site` | `web/vite.config.ts` changed (a lint fix from #150) | free | `web\test-external.ps1` |
-| `revenuecat-android-sdk` | `com.revenuecat.purchases:purchases` 10.29.0 published | free; needs one emulator with Google Play Services | `android\test-external.ps1` |
-| `scan-proxy-worker` and `worker-token-verification` | `workers/scan-proxy/package.json` changed on purpose (#160: ruff and oxlint moved into the lockfiles) | 1 paid call and free | the Worker wrapper, same run as `anthropic` |
-
-Suggested ceiling: 7 paid calls (3 + 3 + 1). Order: build #132 first if you want it (it changes no code, so the table below stays the same), so one run covers everything. Then:
-
-1. Run `uv run scripts/external_freshness.py` in the main checkout and compare with the table (registries can publish new versions at any time).
-2. Tell Claude "run the External suites" and give the paid-call ceiling. Claude asks, runs from the main checkout (starting the emulator for the Android surface), and commits the pass records in `scripts/dashboard_data/external_status.json`. A new major SDK version may fail; that is worth learning before the push depends on it.
-3. Claude re-runs `external_gate.py check` for web, scan-proxy and android right before asking to push, then asks. Answer once; it pushes the whole branch.
-
 ## Things to remember
 
 - `--maxprocesses=8` caps `-n auto` because 24 workers ran this machine out of memory. Even at 8, the Python suite occasionally errors in tests that create a real git repo (`git init` or `git worktree add` exits 3221225773 or "WinError 1455: paging file too small") when the emulator, Gradle and other sessions are up (about 3 in 16 runs). It is memory, not a regression; re-run.
@@ -117,6 +96,7 @@ Suggested ceiling: 7 paid calls (3 + 3 + 1). Order: build #132 first if you want
 ## History (for reference; nothing to do)
 
 - **Merged in the round:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105, #64, #140, #148, #152, #151, #150, #153, #160, #149 (#141 closed as a duplicate, #154 as a duplicate of #153).
-- **Pushed** up to a76a31f on 2026-10-21; later commits are local.
+- **Pushed** up to 1f60cc3 on 2026-10-21 (the whole round, with the External pass records).
+- **Final External run, 2026-10-21 (ceiling 10, 7 paid calls used):** `pages-site` (9 tests), `anthropic` (5), `scan-proxy-worker` (7), `worker-token-verification` (5), `anthropic-python` (5), `revenuecat-android-sdk` (6); all passed and all ten active surfaces are fresh.
 - **External runs, owner-approved:** 2026-10-19 sanity run of seven stale surfaces; 2026-10-20 and 2026-10-21 re-runs and the first runs of `anthropic`, `anthropic-python`, the Android SDK surface and the Pro entitlement test; all passed, with the records in `scripts/dashboard_data/external_status.json`.
 - **Verification debt (#67):** a committed SessionStart hook in `.claude/settings.json`; all five contexts have a recorded pass (a new machine or fresh clone needs the one-time commands in [verification-debt.md](verification-debt.md) again; #144 will automate it).

@@ -8,6 +8,8 @@ tool over the real files and fails when a list names something the tool does not
   (tests) must still be reported when vulture runs without the whitelist. Fast.
 - oxlint: `scripts/static_allowlists/oxlint.json` must match what oxlint reports for Web and for Scan Proxy,
   exactly. These start Node, so they are `slow` (the planner owes them when `scripts/*` changes).
+- ruff: the pinned ruff, with the repo's `ruff.toml`, fails on an unused import and passes on a clean file, so
+  an emptied rule list or a changed pin that stops catching defects is noticed. Starts `uv tool run`, so `slow`.
 """
 
 from __future__ import annotations
@@ -78,3 +80,19 @@ def test_the_oxlint_allow_list_matches_what_oxlint_reports_for_the_context_exact
     code = sc.run_lint_step(step, capture=sc.run_capture, out=messages.append)
 
     assert code == 0, "\n".join(messages)
+
+
+@pytest.mark.slow
+def test_the_pinned_ruff_with_the_repos_config_fails_on_an_unused_import_and_passes_a_clean_file(tmp_path):
+    def ruff(source: str) -> subprocess.CompletedProcess:
+        probe = tmp_path / "probe.py"
+        probe.write_text(source, encoding="utf-8")
+        return subprocess.run(
+            [*sc.RUFF, "check", "--no-cache", "--config", str(ROOT / "ruff.toml"), str(probe)],
+            capture_output=True, text=True, timeout=180,
+        )
+
+    clean = ruff("print(1)\n")
+    assert clean.returncode == 0, clean.stdout + clean.stderr
+    defect = ruff("import os\n")
+    assert defect.returncode == 1 and "F401" in defect.stdout, defect.stdout + defect.stderr

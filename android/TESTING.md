@@ -124,7 +124,7 @@ need no device (`uv run scripts/android_session_end.py`).
 ### Running the instrumented suite N times in a row (#127)
 
 ```
-uv run scripts/android_suite_loop.py --runs 5        # from the repo root
+uv run scripts/android_suite_loop.py --runs 5 --expected-tests 148   # from the repo root
 ```
 
 The one supported way to get a "full suite N times in a row" count. Before
@@ -132,15 +132,15 @@ every run it kills the emulator and cold-boots a fresh one on the software GPU
 (`-gpu swangle_indirect -no-snapshot`), waits until `adb` and the input,
 activity, package and window services have answered three polls in a row,
 installs both APKs and runs the Major suite with `adb shell am instrument`
-(the weekly class excluded, as the Gradle task excludes it). It then labels
+(the weekly class and every `@ExternalSurface` class excluded, as the Gradle task
+excludes them; the tagged classes are found the way `scripts/run_external_android.py`
+finds them, so a newly tagged class needs no edit to the script). It then labels
 each run from its output and prints, per run and in total:
 
 - **passed**: `OK (N tests)`, the count in the run's line (the offline
-  instrumented suite is 148 tests, 2026-10-21, see below; `--expected-tests` fails a run
-  that ends with another count. **Today the script's run ends at 154**: it also runs the
-  6 live tests of `RevenueCatAndroidSdkExternalTest`, which Gradle keeps out with
-  `notAnnotation` and this script does not, so one run on 2026-10-21 reported 148
-  passed and 6 failed and was labelled `test-failed`. See Known gaps.);
+  instrumented suite is 148 tests, 2026-10-21, see below; pass `--expected-tests 148`
+  and a run that ends with another count is `test-failed`. The default is no check, so
+  the number is not hand-kept in the script);
 - **test-failed**: the suite reached its end and a test failed;
 - **infra-abort**: the emulator, `adb` or the system server died (`device
   offline`, `device ... not found`, `System has crashed`, `Can't find service`,
@@ -1129,12 +1129,14 @@ Each entry says whether it is closed or still open, and an open one names the ti
 that tracks it or says there is none (`tests/test_testing_docs.py` checks this). Refreshed 2026-10-21 (#64)
 against the test audit in `docs/test-audit/android.md`.
 
-- **Open (#153)**: `scripts/android_suite_loop.py` runs the External-surface class too.
-  Its `am instrument` run excludes the weekly class but not the `@ExternalSurface` classes
-  that Gradle excludes with `notAnnotation` (added by #39 after the script, #127), so it runs
-  `RevenueCatAndroidSdkExternalTest`'s 6 live tests without the weekly marker, they fail
-  with "There is no singleton instance", and the run is labelled `test-failed` at 154 tests
-  (148 pass). Seen on 2026-10-21; see "Running the instrumented suite N times in a row".
+- ✅ **Closed (#153)**: `scripts/android_suite_loop.py` ran the External-surface class too.
+  Its `am instrument` run excluded the weekly class but not the `@ExternalSurface` classes
+  that Gradle excludes with `notAnnotation` (added by #39 after the script, #127), so it ran
+  `RevenueCatAndroidSdkExternalTest`'s 6 live tests without the weekly marker, they failed
+  with "There is no singleton instance", and the run was labelled `test-failed` at 154 tests
+  (148 passed), so the "N times in a row" count was never green. The run now excludes every
+  tagged class, found by `run_external_android.surface_classes`
+  (`tests/test_android_suite_loop.py`); see "Running the instrumented suite N times in a row".
 - **Open (no ticket)**: Google and email sign-in have no automated test against the real
   provider. Google sign-in was checked by hand end to end when #22 closed (the Supabase Google
   provider enabled, `scripts/wizard_android_sign_in.sh` sets it up); the offline tests

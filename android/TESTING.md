@@ -12,11 +12,24 @@ sections for how this maps to that file's regression-scoping rules —
 the commands below are unchanged from before the rename, only the tier
 names changed.
 
+What to run, and when, follows the agreed rules in
+[`docs/test-audit/rules.md`](../docs/test-audit/rules.md) (the scope ladder, per issue,
+session end, release); the advisory planner
+[`scripts/test_planner.py`](../scripts/test_planner.py) prints the commands for a diff
+(`uv run scripts/test_planner.py --level issue|session|release`; it never blocks). The root
+[`TESTING.md`](../TESTING.md) has the ladder for all five contexts.
+
+**Real runs, 2026-10-21 (#64).** JVM suite (`./gradlew testDebugUnitTest --offline`):
+**176 tests in 20 classes, 176 passed, 0 failed**. Decision-logic coverage floor
+(`uv run scripts/coverage_gate.py`): **96.96%** of 3,716 instructions against the 95.0% floor
+(PASS). Instrumented suite: see "Instrumented suite, measured" below.
+
 ## Running tests
 
 | Level | Command |
 |---|---|
 | One file | `./gradlew testDebugUnitTest --tests com.rigcheck.app.domain.BreakdownTest` (run from `android/`) |
+| Minor and Major (per issue) | `./gradlew testDebugUnitTest`: the JVM tests are the Minor and the Major offline unit run; there is no separate Minor subset |
 | Whole context (JVM, no device) | `./gradlew testDebugUnitTest` |
 | Session end (JVM tests, coverage floor, detekt; no device) | `uv run scripts/android_session_end.py` (run from the repo root) |
 | One instrumented class (needs the emulator) | `./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.rigcheck.app.ui.screens.AccountScreenTest` (run from `android/`) |
@@ -86,6 +99,19 @@ behaviour are unit-tested with a fake runner and a fake device list in
 `tests/test_android_release.py` and `tests/test_paid_call_budget.py` — no
 real device, deploy or network call happens in those tests.
 
+### Instrumented suite, measured (2026-10-21, #64)
+
+`./gradlew connectedDebugAndroidTest` from `android/`, on the `medium_phone` emulator (API 36
+Google Play image, started with `-gpu swangle_indirect -no-snapshot-save`): **148 tests in 22
+classes, 148 passed, 0 failed, 0 skipped**; `BUILD SUCCESSFUL in 5m 35s` (that includes
+building and installing both APKs). The tree has 160 `@Test` methods under `androidTest`; the
+12 that do not run here are the live ones the Gradle task keeps out:
+`PaywallScreenWeeklyTest` (6, `notClass`; the old weekly suite, below) and
+`RevenueCatAndroidSdkExternalTest` (6, `notAnnotation`; the `revenuecat-android-sdk` surface). The
+slowest classes are `RigCheckNavHostTest` (11 tests, 49 s), `TruckTagEntryScreenTest` (20, 40 s)
+and `ScanInFlightNavigationTest` (11, 37 s). The decision-logic JVM floor and the 176 JVM tests
+need no device (`uv run scripts/android_session_end.py`).
+
 ### Running the instrumented suite N times in a row (#127)
 
 ```
@@ -100,8 +126,12 @@ installs both APKs and runs the Major suite with `adb shell am instrument`
 (the weekly class excluded, as the Gradle task excludes it). It then labels
 each run from its output and prints, per run and in total:
 
-- **passed**: `OK (N tests)`, the count in the run's line (the suite is 142
-  tests as of #124; `--expected-tests 142` fails a run that ends with another count);
+- **passed**: `OK (N tests)`, the count in the run's line (the offline
+  instrumented suite is 148 tests, 2026-10-21, see below; `--expected-tests` fails a run
+  that ends with another count. **Today the script's run ends at 154**: it also runs the
+  6 live tests of `RevenueCatAndroidSdkExternalTest`, which Gradle keeps out with
+  `notAnnotation` and this script does not, so one run on 2026-10-21 reported 148
+  passed and 6 failed and was labelled `test-failed`. See Known gaps.);
 - **test-failed**: the suite reached its end and a test failed;
 - **infra-abort**: the emulator, `adb` or the system server died (`device
   offline`, `device ... not found`, `System has crashed`, `Can't find service`,
@@ -577,6 +607,13 @@ the report fails the gate. Add a new decision-logic class to `allow`, or
 waive it with a reason. See the root `TESTING.md`'s "Coverage gate"
 section.
 
+**Measured 2026-10-21 (#64):** the decision-logic floor reads **96.96%** over 3,716
+instructions against the 95.0% floor (PASS; `uv run scripts/coverage_gate.py`, which reads the
+JVM report the 176 unit tests write). The device-based numbers earlier in this section
+(71%, 73.5%, the merged 78.38%, `PaywallScreenKt` at 51% and 86%) were measured on 2026-08-23
+to 2026-09-09; they gate nothing and were not re-measured for this refresh. Treat them as
+history: the instrumented suite has grown from 57 to 148 tests since.
+
 **Structured pass-rate reporting for the README dashboard** (roadmap
 item #7, new 2026-08-24): needs no new flags or scripts — AGP already
 writes real JUnit XML for both `./gradlew test`
@@ -699,6 +736,34 @@ root `TESTING.md`'s "Dashboard" section.
   Scan, the failure's own message with no next steps otherwise) and that the
   balance is read again, or set to 0 after `insufficient_credits`, as for a
   current Scan. The report is given no way to change the rig.
+- `ScanAttemptsTest.kt` (#116, 8 tests) — which `client_request_id` a Scan carries: kept for
+  the same photo and document while the last answer was lost (through several lost answers
+  in a row, and when the call throws), a fresh one once the service has answered (success or a
+  named failure), for a different photo, after going back to the first photo, and for the same
+  photo as a different document; the answer is passed through unchanged. Web's
+  `scanAttempts.test.ts` is the same rule; the shared fixture row is `ScanOutcomesFixtureTest`.
+- `ScanNoticeTest.kt` (#120, 20 tests) and `ScanNoticeStateTest.kt` (#120, 8) — what the entry
+  screens tell the user after a delivered Scan that read less than everything, with no
+  device: a Scan that read nothing says a Scan was used and nothing could be read; one that
+  read some names the unread fields (one alone; three or more with commas and "and"), by each
+  document's own on-screen labels; every field read shows no notice; null fields count as
+  not read; the fields a Scan read are still merged and scanning one document leaves the other
+  two alone; typing into unread fields drops them from the notice and a cleared field brings it
+  back; the notice is not shown on another document's screen; every key in a field table is one
+  the merge fills in; a delivered Scan reads the balance again once, and an all-blank Scan
+  reports a notice, not an error. The state class: the notice is held after a delivered Scan
+  and dropped by entering the document by hand, leaving the screen, starting another Scan or
+  starting a rig, and a newer Scan replaces the older notice.
+- `PinWeightTest.kt` (#137, 3 tests) — the pin weight slider's whole percent becomes the
+  fraction the math uses (`pinWeightFraction`): the shared
+  `test-vectors/pin_weight_pct_contract.json` value, the slider's default and both ends, and the
+  default percent equals the default fraction. The view model's own division by 100 is
+  `RigCheckViewModelPinWeightTest` (device, below).
+- `GuideRectMathTest.kt` (5 tests) — the camera-overlay spike's guide rectangle (centred, within
+  its fraction of the canvas in both directions, aspect ratio kept, width- or height-bound by the
+  canvas). The spike package is excluded from the coverage number
+  (`ANDROID_EXCLUDED_PACKAGES` in `scripts/coverage_gate.py`) and is not reachable from the
+  shipped app.
 
 ### Major (instrumented) — `./gradlew connectedDebugAndroidTest`
 
@@ -797,6 +862,17 @@ network involved:
   flight, forgot-password, Not now.
 - `PaywallScreenTest` also covers (#22) the "Buying for <account>" row and
   its Sign out button.
+- `ScanNoticeScreenTest` (#120, 11 tests) — the notice on the three entry screens, the half
+  `ScanNoticeTest` (JVM) cannot see: a Truck Tag, Trailer Tag or Scale Ticket Scan that read
+  nothing shows the notice and no Try again, one that read some fields names the unread ones,
+  one that read every field shows none, manual entry shows none, and the notice goes away once
+  the missing field is typed in.
+- `RigCheckViewModelPinWeightTest` (#137 merge review, 2 tests) — the view model's `breakdown`
+  divides the pin weight slider by 100: the default slider position breaks down at 20%, and both
+  ends at their fractions (the slider's conversion itself is `PinWeightTest`, JVM).
+- `CameraOverlaySpikeExifTest` (2 tests) — the camera-overlay spike's EXIF handling: a rotate-90
+  orientation is baked into the pixels and the tag cleared, a normal orientation is left alone.
+  Spike code, excluded from the coverage number.
 
 **Navigation-flow tests** (`ui/navigation/RigCheckNavHostTest.kt`) — the
 real `RigCheckNavHost` + `RigCheckViewModel`, offline via
@@ -1038,27 +1114,48 @@ depends on, and the scroll helper the screen and nav tests use:
     suite's `createComposeRule()`, since `purchasePackage` needs a real
     `Activity` (`composeRule.activity`).
 
-## Known gaps (deliberately not tested, or not yet)
+## Known gaps
 
-- **Google sign-in is untested against the real provider.** The Supabase
-  project had it disabled on 2026-10-07; `scripts/wizard_android_sign_in.sh`
-  sets it up. Email sign-in against real Supabase is also not exercised by
-  an automated Android test.
-- **Apple sign-in is built but hidden** (`APPLE_SIGN_IN_ENABLED = false`) and
-  untested against Apple; deferred to #77 with the iOS port.
+Each entry says whether it is closed or still open, and an open one names the ticket
+that tracks it (`tests/test_testing_docs.py` checks this). Refreshed 2026-10-21 (#64)
+against the test audit in `docs/test-audit/android.md`.
 
-- **Real camera/gallery intents** — `ChooserScreenTest` confirms the
+- **Open (no ticket)**: `scripts/android_suite_loop.py` runs the External-surface class too.
+  Its `am instrument` run excludes the weekly class but not the `@ExternalSurface` classes
+  that Gradle excludes with `notAnnotation` (added by #39 after the script, #127), so it runs
+  `RevenueCatAndroidSdkExternalTest`'s 6 live tests without the weekly marker, they fail
+  with "There is no singleton instance", and the run is labelled `test-failed` at 154 tests
+  (148 pass). Seen on 2026-10-21; see "Running the instrumented suite N times in a row".
+- **Open (no ticket)**: Google and email sign-in have no automated test against the real
+  provider. Google sign-in was checked by hand end to end when #22 closed (the Supabase Google
+  provider enabled, `scripts/wizard_android_sign_in.sh` sets it up); the offline tests
+  (`AccountManagerTest`, `GoogleSignInTest`, `AccountScreenTest`) use fakes.
+- **Open (#77)**: Apple sign-in is built but hidden (`APPLE_SIGN_IN_ENABLED = false`) and
+  untested against Apple; deferred with the iOS port.
+- **Open (#40)**: Google Play Billing itself (`google-play-billing`, a `planned` surface): the
+  app is configured with RevenueCat's Test Store key, so no test touches `BillingClient`.
+- ✅ **Closed (#122, #22)**: the audit's "no offline test of the Android to Worker request and
+  response contract". `ScanApiClientTest` (the bearer token, no `app_user_id`) and `ScanHttpTest`
+  (every Worker error code, a dropped connection, malformed replies, a stalled read) cover
+  `ScanApiClient`; `docTypes.test.ts` in the Worker checks the field names `ScanFieldMapping.kt` reads.
+- ✅ **Closed (#131, #137)**: logic that only device tests covered. `RecentRigsRepository` has JVM
+  tests on a real DataStore, the pin weight conversion is tested against the shared fixture, and the
+  two placeholder template tests were removed (#131).
+- ✅ **Closed (#130, #133)**: the gated Android number came from device-only tests. The
+  gate is now a JVM floor on decision logic (96.96% against 95.0%), and the session-end
+  command needs no device.
+- **Deliberately not tested**: real camera/gallery intents — `ChooserScreenTest` confirms the
   source-choice dialog appears and its options are present, not that
   tapping them dispatches the correct Android intent or that a real
   capture/pick completes. Low regression risk (well-understood platform
   API); real flows stay covered by manual on-device testing.
-- ✅ **Predictive standalone-only truck-side estimate — implemented
-  2026-08-21 ("Round 2").** Landed TDD-style: `predictive_truck_estimate`
+- ✅ **Closed 2026-08-21 ("Round 2")**: the predictive standalone-only truck-side estimate.
+  Landed TDD-style: `predictive_truck_estimate`
   was added to `BreakdownGoldenVectorTest.kt`'s `SUPPORTED_CAPABILITIES`
   and `BreakdownTest.kt` gained a red case *before* `computeBreakdown`
   gained the branch itself; both went green with no changes to the tests
   once the branch (mirroring `breakdown.py`'s `elif have_standalone:`)
-  landed. Golden vectors: 10/10 cases now fully supported, full parity
+  landed. Golden vectors: all cases fully supported (10 of 10 then; 18 now), full parity
   with Python. The UI half landed alongside it: a `pinWeightPct` state on
   `RigCheckViewModel` (threaded into `computeBreakdown`), a "Scan
   tow-vehicle-only ticket" entry point + pin-weight-% slider on

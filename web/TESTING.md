@@ -6,22 +6,40 @@ root `TESTING.md`. Written 2026-08-21, the same day the harness itself
 suite this package has ever had. See `ARCHIVE_TESTING.md` and
 `ARCHIVE_WEB_STREAMLIT.md` (repo root) for the narrative history.
 
-`npm test` (`vitest run`) — currently 353 tests, all passing (count last
-confirmed 2026-10-12; a fuller refresh of this document is #64).
+`npm test` (`vitest run`) — real run, 2026-10-21 (#64): **34 files, 550 tests: 547
+passed, 3 skipped, 0 failed**, in about 23 s (Vitest's own duration; `npm --prefix web test`
+from the repo root). The 3 skipped are `src/scanOutcomes.test.ts` declining to check
+"Try again" on the 3 rows of the shared `test-vectors/scan_outcomes.json` fixture whose
+trigger is a delivered Scan: a notice has no buttons (`App.scanNotice.test.tsx` covers
+that screen). No fixture field is pending for Web today, so nothing else is skipped.
 `npm run build` (`tsc -b && vite build`) typechecks `src/**`, test files
 included, since `tsconfig.app.json`'s `include` is just `["src"]`.
+
+**What to run, and when,** follows the agreed rules in
+[`docs/test-audit/rules.md`](../docs/test-audit/rules.md) (scope ladder, per issue,
+session end, release); the advisory planner
+[`scripts/test_planner.py`](../scripts/test_planner.py) prints the commands for a diff
+(`uv run scripts/test_planner.py --level issue|session|release`; it never blocks). The
+root [`TESTING.md`](../TESTING.md) has the ladder for all five contexts and the
+categories this file's tables use.
 
 ## Running tests
 
 | Level | Command |
 |---|---|
-| One file | `npm test -- src/breakdown.test.ts` (run from `web/`) |
-| Whole context (offline) | `npm test` |
+| One file (per issue, the targeted test first) | `npm test -- src/breakdown.test.ts` (run from `web/`), or `npm --prefix web test -- src/breakdown.test.ts` from the repo root |
+| Minor and Major (per issue) | `npm test`: this suite has no Minor subset, so Minor and Major are the same run (see below) |
+| Whole context (offline), session end | `npm test` |
+| Type check and build | `npm run build` (`tsc -b && vite build`) |
+| Coverage | `npm run test:coverage` |
+| Dead code | `npm run check:dead-code` |
+| Release | none: Web has no full-run release. A push to `MPSkills` that touches `web/` is guarded by the External release gate (`scripts/external_gate.py`, run by `.githooks/pre-push`; `uv run scripts/external_freshness.py --platform web` shows what it would block on) and nothing else |
+| External, stale surfaces only (live, free) | `web\test-external.ps1` (see below) |
 
 The one-file command is a Vitest path filter, not an exact match — a less
 specific path can select more than one file.
 
-Neither reaches a live provider: `vite.config.ts` excludes
+Neither of the first three reaches a live provider: `vite.config.ts` excludes
 `*.external.test.ts`, which only `npm run test:external` runs. A command
 check (`tests/test_context_test_commands.py`, #52) confirms both commands
 select the intended files and never an external one.
@@ -32,10 +50,12 @@ Per the root `TESTING.md`'s Minor/Major/External model (retired
 2026-08-24 — full narrative in `ARCHIVE_TESTING.md`): this suite has never tagged a fast subset,
 so today a full `npm test` run covers both **Minor** and **Major**
 undifferentiated — documented honestly here rather than inventing a
-split that doesn't exist. Scoping which specific test files a given
-change actually calls for (Minor vs. Major, per the root file's
-regression-scoping rules) is still a per-session judgment call against
-the real diff, same as any other platform. `npm test` runs no live
+split that doesn't exist. The planner agrees: its Web context runs
+`npm --prefix web test` for both, narrowed to the one changed file when the diff is
+small (`npm --prefix web test -- <file>`). Which test files a given
+change calls for (Minor vs. Major, per the root file's
+regression-scoping rules) is still a judgment call against
+the real diff, same as any other context. `npm test` runs no live
 call: every network call is faked (`api.test.ts` fakes `fetch`; the scan tests in `App.scan.test.tsx` use a fake Scan service, and `App.interaction.test.tsx` mocks `./api`), and
 `vite.config.ts` excludes `*.external.test.ts`.
 
@@ -244,10 +264,18 @@ npm run test:coverage
 
 (`vitest run --coverage`, configured in `vite.config.ts`'s `test.coverage`
 block — `provider: 'v8'`, `reporter: ['text', 'json-summary']`, so the
-machine-readable total lands at `coverage/coverage-summary.json`.) **No
-release event exists for Web yet** (see `NEXT_STEPS.md`'s "Deliberately
-not on this list" — local dev only), so `scripts/coverage_gate.py`
-reports this number **report-only**, not enforced — see the root
+machine-readable total lands at `coverage/coverage-summary.json`.) Real numbers,
+2026-10-21 (`uv run scripts/coverage_gate.py --refresh`): **95.95% of statements**
+(1,376 of 1,434), 92.96% of branches, 94.08% of functions, 97.69% of lines. The
+weakest files: `src/main.tsx` 0% (5 statements; the Vite entry point, deliberately
+not imported by any test, and what `coverage.include` below exists to show),
+`src/supabaseGarage.ts` 73%, `src/wizard/UploadStep.tsx` 88%, `src/scanImage.ts` 90%,
+`src/App.tsx` 92%, `src/garageImport.ts` 94%, `src/billing.tsx` 95%.
+`scripts/coverage_gate.py` reports this number **report-only**, not enforced: Web
+has a release event now (a push of `MPSkills` that touches `web/` deploys it to
+Cloudflare Pages, guarded by the External release gate), but no floor has been set,
+and rule 9 of `docs/test-audit/rules.md` leaves the number to the owner. The
+script's own "not gated — no release event yet" note is out of date. See the root
 `TESTING.md`'s "Coverage gate" section.
 
 `coverage.include: ['src/**']` (added for the #57 test audit) scopes the
@@ -331,9 +359,31 @@ writing.
 | `src/supabaseGarage.test.ts` | Module | The adapter between the app's Garage store and the table/RPC contract, with the Supabase client faked: `add_rig` gets the key and Rig; `garage_full` becomes a `GarageFullError` carrying the cap (or `null` when the server's detail is unreadable); any other server error stays a plain error. |
 | `src/components/DisclaimerModal.test.tsx` | Module | Renders the disclaimer heading; clicking "I Understand — Continue" calls `onAcknowledge`. Deliberately small — this component has exactly one behavior. |
 | `src/screens/History.test.tsx`, `src/screens/Dashboard.test.tsx` | Module | Both cover `verdictBadge.ts`'s `VERDICT_BADGE` map (`pass`→"Safe to Tow"/success, `fail`→"Over Limit"/warning, `partial`→"Partially Checked"/insufficient, `insufficient`→"Not Enough Info"/insufficient), which each file's verdict badge now reads from. **Regression tests for a real bug found 2026-08-21** auditing this suite's coverage: both files previously rendered *any* non-`'pass'` verdict as "Over Limit" with a warning badge — a partial or insufficient check (missing data, not an actual over-limit reading) got the same alarming label as a genuine failure. `History.test.tsx` also covers the title/per-entry rendering and, as of the #57 test audit, every filter pill (`All rigs`, a per-rig pill, `Within limits`, `Over limit`) and the "No checks match this filter." empty state — including that a partial or insufficient entry shows under neither `Within limits` nor `Over limit` (current behavior, asserted as such, not necessarily the last word on where those verdicts "should" sort). `Dashboard.test.tsx` now also covers the recent-rigs grid (card contents, the manufacturer-subtitle join, the truck/trailer line each being omitted when that half of the rig has none), the Recent Checks list (two-item cap, its own subtitle join, the "View history" link appearing only once there is a check), and every click target (`Start New Check`, `View History`, a rig card, "New rig") calling its handler. |
+| `src/breakdown.test.ts` | **Cross-platform interface** | The Web port of `compute_breakdown`/`verdict_for` (`breakdown.ts`) against the shared `test-vectors/breakdown_cases.json`, the same cases the Python and Kotlin runners check (26 tests): every Breakdown row has an over-limit case; a case that needs a capability the runner does not know **fails** rather than skips (#55); each row's note and badge and the verdict's headline and subline are asserted, with `note_android` only on the rows Android words differently. `createBreakdown` computes locally with no network call, stamps a "Mon DD, YYYY" date, converts the UI's whole-number pin weight percentage to the fraction the math uses (`test-vectors/pin_weight_pct_contract.json`) and treats a `NaN` reading like a missing one. |
+| `src/nickname.test.ts` | Function | The Rig nickname rule: names differing only by case or surrounding spaces are the same Rig, spaces inside a name are significant, `rigLookup` finds a Rig by that rule, and `rigSubtitle` joins the truck and trailer manufacturers (only one, or empty, when the other is missing). |
+| `src/scanError.test.ts` | Function | `ScanError.canTryAgain`: which of the Scan service's error codes offer Try again and which do not, one test per code. |
+| `src/App.auth.test.tsx` | **Interaction** | Web accounts through the real screens with an injected fake Supabase auth client: a visitor reaches the free manual-entry flow with no account; sign up, confirm by email, sign in, expose the token and sign out; the email and password fields are empty after sign out, after sign in and after a password reset (a shared browser), and show what was typed while signed out; a session is restored on load; wrong credentials show the error; a password reset email is sent, and its link lands on a new-password form that updates the password; a confirmation or recovery link opened in a browser that did not ask for it, an error redirect in the query string and an expired link in the fragment are each explained and sign nobody in (PKCE, #95); a normal page open says nothing about links; accounts are unavailable when Supabase is not configured. |
+| `src/App.billing.test.tsx` | **Interaction** | Buying Pro and scan packs through the real screens with a fake billing client (58 tests): a Free user sees the plan, the scan balance and the Pro paywall with the not-certified statement; checkout opens and closes (the Close control, the browser Back button, before the SDK has opened the modal), and a second checkout cannot start while one is open; after a purchase the user is Pro at once, the starter scans arrive late and are rechecked on an interval (an updating state, the balance once the grant lands, a plain message after the window, a reload request when every check failed, no recheck after sign-out, another account or unmount, a hanging check never wedging the state); a plan load racing the purchase cannot turn the buyer back to Free; a checkout that settles late never hands its Pro, error or cancel notice to the next account; a failed plan load offers Try again and a failed purchase does not; packs are sold to Pro users only, each adds its own scans and never changes the plan, and a Free user is offered Pro only. |
+| `src/App.scanInFlight.test.tsx` | **Interaction** | While a Truck Tag photo scan, or a stand-alone ticket scan, is in flight (#103): the check cannot be left or restarted and says why, is free again once the scan answers or fails, and a leave-and-restart attempt keeps the check. |
+| `src/App.scanStale.test.tsx` | **Interaction** | A scan that answers after its check is no longer the current one changes nothing in the new check (its fields, its failure, a stand-alone weight) and the balance on screen is still read again. |
+| `src/App.scanNotice.test.tsx` | **Interaction** | The review step after a Scan (#115): a Scan that read no field says one was used, offers no Try again and still counts; no second Scan goes out until the user picks a different photo; a Scan that read only some fields names the missing ones; none when every field was read (the optional ones are not counted); the same on the Trailer Tag and the Scale Ticket with that step's own field labels; none when the photo was skipped. |
+| `src/revenueCatBilling.test.ts` | Module | `revenueCatBilling.ts`, the adapter over `@revenuecat/purchases-js` (the boundary file of the `revenuecat-web-billing` surface), with the SDK faked (24 tests): configured once with the first account and switched on later sign-ins, once even when two identify calls overlap, ending on the latest account; the lifetime package (or the configured package id) is the Pro offer, and nothing is offered when there is none; Pro comes from the active entitlement and the `SCAN` balance is refetched fresh; the SDK's cancel error is a cancelled outcome and any other error is rethrown; a purchase before an offer is loaded is refused; scan packs are the web-purchasable consumables only, never the Pro package, forgotten when another account is identified; `readBillingConfig` needs the API key and offering id and defaults the entitlement to `pro`. |
+| `src/external/externalGuards.test.ts` | Structure | Static guards over the External suite, in `npm test` (30 tests): never collected by `npm test`; no external file creates a user, sends mail, starts a purchase or prints a secret; the wrapper can read each surface's own results (JUnit to `EXTERNAL_RESULTS_FILE`); the Pages test runs as its own project with only the `VITE_SUPABASE_` variables, scrubs any inherited `WEB_EXTERNAL_` variable, refuses fetched script or stylesheet URLs from another origin, and only reads. |
+| `src/external/config.test.ts` | Function | `readConfig` for the External suite: every value when present, a missing or empty variable throws naming each one that is missing, a subset can be checked, the RevenueCat Web Billing variables are read on request, and no value ever appears in a message. |
+| `src/external/bundleLoader.test.ts` | Function | The Pages journey's loader (`bundleLoader.ts`): follows static and dynamic imports from the entry once each (copes with a chunk importing the entry back and ignores strings that only look like imports), runs a split bundle that uses `import.meta` and `import()` in this process, names the chunk (or the entry) that failed to fetch, threw or has a syntax error, and removes its temporary files on dispose. |
+| `src/external/siteShell.test.ts` | Function | The Pages shell checks (`siteShell.ts`): `assetUrls` resolves the module script and stylesheet against the site URL (icons and inline scripts ignored), `bakedSupabaseHosts` lists each distinct host once and reports a placeholder such as `undefined.supabase.co`, `bakedSecretKinds` flags an `sb_secret_` key or a `service_role` JWT without returning its value (and not an anon one), `foreignUrls` treats another scheme, port or lookalike host as another origin, `hostOf`. |
 
-## Known gaps (identified 2026-08-21, not yet closed)
+## Known gaps
 
+Each entry says whether it is closed or still open, and an open one names the ticket
+that tracks it (`tests/test_testing_docs.py` checks this). Refreshed 2026-10-21 (#64)
+against the test audit in `docs/test-audit/web.md`.
+
+- ✅ **Closed (#42, #28, #85, #43)**: the audit's worst Web gap, that External
+  covered only `supabase-auth`, is closed: four active surfaces (`supabase-auth`,
+  `pages-site`, `supabase-tables`, `revenuecat-web-billing`, see "External suite"), and
+  the pre-push External gate for a push that deploys Web is installed
+  (`.githooks/pre-push`, root `TESTING.md`).
 - ✅ **Closed 2026-08-21**: function tests for `recentRigs.ts` and
   `api.ts` in isolation — see `src/recentRigs.test.ts` and
   `src/api.test.ts` above.
@@ -352,7 +402,7 @@ writing.
   with the FastAPI app. The keys the UI reads are asserted by the
   golden-vector runner in `src/breakdown.test.ts` (and the Python and
   Kotlin runners).
-- **Still not closed**: the three document-type shapes of the `fields`
+- **Open (no ticket)**: the three document-type shapes of the `fields`
   the Scan service returns (truck tag, trailer tag, scale ticket, plus
   their nested tire spec) have no contract test with Web; the Worker's
   `docTypes.ts` schemas are the source of truth for them now that the

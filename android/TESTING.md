@@ -53,7 +53,7 @@ command for any Android diff, and adds instrumented tests only by these rules
 
 | The diff touches | The planner lists |
 |---|---|
-| `domain/`, `data/`, or UI logic (`ui/Scan*.kt`, `ui/format/`); a `*WeeklyTest.kt` | the session-end command only, no instrumented test |
+| `domain/`, `data/`, or UI logic (`ui/Scan*.kt`, `ui/format/`); a `*WeeklyTest.kt` or `*ExternalTest.kt` | the session-end command only, no instrumented test |
 | A screen (`ui/screens/*Screen.kt`), a component (`ui/components/*.kt`), or an instrumented test class | the class-level command (the `-Pandroid.testInstrumentationRunnerArguments.class=` form above) for that screen's, component's or class's `androidTest` test class only; several changed files give one command with the classes comma-separated |
 | `RigCheckNavHost`, `RigCheckViewModel`, `MainActivity`, `AndroidManifest.xml` | the full instrumented suite |
 | Anything the mapping cannot place: an `androidTest/` helper, a screen or component with no test class of its own, any other `ui/` file | the full instrumented suite (the safe default) |
@@ -69,8 +69,9 @@ flakiness).
 
 `.\release.ps1` is the one command for a Play Store push: it runs the JVM
 suite, the instrumented suite on an attached device, the stale surfaces in
-Android's chain (including the Worker's, since the old weekly suite below
-depends on a freshly deployed Worker) and the old weekly suite, in that
+Android's chain (the Worker's wrapper, since the old weekly suite below
+depends on a freshly deployed Worker, then Android's own `test-external.ps1`)
+and the old weekly suite, in that
 order, stopping on the first failure. A missing device or emulator
 (`adb devices` reports none) fails the run outright — it is never silently
 skipped. The old weekly suite both redeploys the Worker and makes two real
@@ -195,6 +196,7 @@ and 4 shared a second boot.)
 | **Minor (Unit, JVM)** | ✅ built | a Minor change (internal-only) | none | `./gradlew test` |
 | **Major (instrumented, offline)** | ✅ built | a Major change (public-interface/new-library) touching UI/navigation | none (no `Purchases.configure()`) | `./gradlew connectedDebugAndroidTest` |
 | **External (instrumented, real RevenueCat)** | ✅ built | event-driven: before pushing a major update to the Play Store, not a calendar cadence; also diff-driven whenever a Major change touches boundary-calling code (`RevenueCatManager.kt`) | real, bounded, the funded Supabase test account's RevenueCat customer (#75) | `.\test-weekly.ps1` |
+| **External, per surface (instrumented, real RevenueCat SDK)** | ✅ built (#39) | whenever the surface is stale: its boundary files or pins changed, or `purchases` has a new stable release (ADR-0008) | real, free (no purchase, no scan), the same funded account | `.\test-external.ps1` |
 
 (Command names — `test-weekly.ps1` etc. — are unrenamed this pass; see
 `ARCHIVE_TESTING.md` for the full narrative on the deferred mechanical
@@ -278,6 +280,100 @@ started any other way (no marker text, no argument) fails naming what is
 missing instead of scanning with a bad token. The functions that read those
 two values are function-tested offline in `WeeklyAccessTokenTest.kt`, the
 helper in `workers/scan-proxy/src/liveTokenCli.test.ts`.
+
+### Per-surface External suite (#39, ADR-0008)
+
+```
+.\test-external.ps1          # from android/; -Skip records `skipped` and leaves the surfaces stale
+```
+
+The first Android External runner, and the one #40 (Google Play Billing)
+reuses. It adds to the old weekly suite above and replaces nothing: that suite
+keeps `test-weekly.ps1`, its triggers and its legacy status entry. The wrapper
+is a thin shell over `scripts/external_wrapper.py` (which decides what is stale,
+records each surface, and refuses a stale surface with no tagged test) and
+`scripts/run_external_android.py` (which does the device work and is
+function-tested in `tests/test_run_external_android.py` with a fake adb).
+
+**How it requires a device.** It runs only the surfaces Android owns that are
+stale (`uv run scripts/external_freshness.py --platform android`), and for those
+it needs exactly one attached device or emulator with Google Play Services (the
+`medium_phone` AVD qualifies) and no other Android ticket using it. Start it
+with `emulator -avd medium_phone -no-snapshot-save -gpu swangle_indirect`, wait
+for `sys.boot_completed`, and kill it afterwards. No device, two devices, an
+image without `com.google.android.gms`, or a funded test account that cannot sign
+in **fails the run** (nothing is built first) and the wrapper records the stale
+surfaces `fail`; nothing skips quietly. Only `-Skip` skips: it never starts this
+script, records `skipped` and leaves the surface stale. The release run
+(`release.ps1`) runs the Worker's wrapper and then this one whenever any surface
+in Android's chain is stale.
+
+**What runs.** The runner builds and installs both APKs, signs in the funded
+account exactly as `test-weekly.ps1` does (the access token is parsed away and
+never reaches the device or the screen; only the account id goes into the marker
+file), and runs `am instrument -e class ...` for the classes tagged
+`@ExternalSurface("<surface>")` (`testsupport/ExternalSurface.kt`). It turns the
+raw `-r` output into JUnit XML with each test's surface as a property, which is
+how the wrapper decides each surface pass or fail from its own tests. To add a
+surface: tag a class `@ExternalSurface("<name>")` in a file named
+`*ExternalTest.kt` directly in `app/src/androidTest/java/com/rigcheck/app/` (the
+wrapper's glob is not recursive), and set the surface `active` in
+`scripts/external_manifest/surfaces/`. `build.gradle.kts` excludes every tagged
+class from `connectedDebugAndroidTest` (`notAnnotation`), and the planner treats
+`*ExternalTest.kt` as live (not planned as an instrumented run).
+
+**Surface `revenuecat-android-sdk`** (`RevenueCatAndroidSdkExternalTest.kt`,
+boundary files `RevenueCatManager.kt` and `RigCheckApplication.kt`, pins
+`libs.versions.toml` and `app/build.gradle.kts`, Maven package
+`com.revenuecat.purchases:purchases`, **0 paid calls**: no purchase, no scan).
+
+| Depth | Test | What would break |
+|---|---|---|
+| Reachable and authenticated | `configuredSdkAuthenticatesAsTheFundedAccount` | a rejected key, or the SDK not acting as the account the marker names |
+| Response shape | `offeringsCarryTheFieldsThePaywallReads` | no current offering, or a package missing the title or price the paywall renders |
+| Response shape | `scanBalanceIsReadFromTheScanCurrency` | the `SCAN` currency renamed or removed (the app would show 0 scans); also fails if `RevenueCatManager` reads a different code |
+| Error contract, unknown user | `unknownUserHasAnEmptyScanBalance` | a new customer erroring instead of reading as zero scans and no entitlements |
+| Error contract, offline | `offlineReadsComeFromTheCacheAndNetworkCallsFailWithAMessage` | an offline fetch or login hanging or failing without a message |
+| Journey | `paywallLoadsOfferingsThenRestores` | loading the paywall, fetching offerings and restoring (the click path `RigCheckViewModel` takes), without buying |
+
+What the SDK really does (measured on the emulator with the Test Store key,
+2026-10-20), because the tests pin it:
+
+- **Offline**, offerings and restore are answered from the SDK's cache, while a
+  fresh customer fetch (`FETCH_CURRENT`) and a login for an id it has not seen fail
+  with a `PurchasesException` ("Error performing request."). The test goes offline
+  with airplane mode (`cmd connectivity airplane-mode enable` through
+  `UiAutomation`; `svc wifi disable` alone leaves the emulator's mobile data up)
+  and always turns it back on, and the runner turns it off again after the run.
+  The scan balance read is left out on purpose: offline it errored in one run and
+  was served from the disk cache in an otherwise identical earlier one, so
+  asserting either way would be flaky.
+- **Restore on the Test Store makes no store call.** The SDK logs "Restoring
+  purchases not available in test store. Returning current CustomerInfo." and
+  answers from the cache. The restore journey step therefore proves the call
+  path and which customer comes back, not Google's restore; that belongs to #40
+  and to a production key, which this suite does not have.
+- **"Customer-info shape" here means identity and entitlements.**
+  `RevenueCatManager` reads no `CustomerInfo` field (`RigCheckViewModel` discards
+  the restore result), so the tests check what could matter: `originalAppUserId`
+  (authentication, offline restore, restore journey) and `entitlements.active`
+  (a new customer has none). There is no richer shape to pin.
+- **A new user is not an error.** RevenueCat creates the customer on login and the
+  balance reads 0. The tests use two fixed ids (`external-test-unknown-user`,
+  `external-test-offline-user`) so reruns reuse one customer, and the unknown-user
+  test logs the funded account back in whatever happens.
+
+**Existing external tests reviewed against the four depths** (read-only; nothing
+converted or retired). `PaywallScreenWeeklyTest` covers the paywall rendering the
+first real package (a slice of response shape), and the Test Store purchase and the
+scan calls (journey and Worker surfaces, with real cost). It has no explicit
+identity check, no unknown-user or offline contract and no restore step, which are
+the gaps the new class fills. Its purchase and scans stay where they are.
+
+**Not covered here, by design.** A real purchase (the ticket forbids it, and
+`PaywallScreenWeeklyTest` already makes the free Test Store one); Google Play
+Billing itself (`google-play-billing`, #40; the app is configured with RevenueCat's
+Test Store key, so nothing here touches `BillingClient`).
 
 **Not the same test as `workers/scan-proxy`'s direct-provider-boundary
 External suite, despite sharing a gating trigger** — discussed and

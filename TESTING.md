@@ -116,7 +116,8 @@ interface, such as `anthropic`, `revenuecat-rest`, `supabase-auth`,
 `scan-proxy-worker` or `pages-site`. Each has its own last-pass record,
 and each platform keeps owning its own External suite (node, pytest,
 Android instrumentation), tagging each test with its surface name (node
-and pytest today; Android's surfaces are still `planned`, so it has none).
+and pytest by name or marker; Android by a class-level
+`@ExternalSurface("<surface>")`, #39).
 `scripts/external_manifest/surfaces/<name>.json` is the one source of
 truth for a surface: its boundary files, dependency pins, watched
 registry packages (npm, PyPI, Maven), maximum paid calls, the platforms
@@ -135,9 +136,12 @@ surface an owned wrapper finds no tagged test for is still recorded `fail`.
 A surface with no `owner`, one that is not among its platforms, or a list
 of owners is a manifest problem: `external_freshness.py` prints it and
 exits 1, and a wrapper refuses to start. Android's release run calls the
-Worker's wrapper for its chain, so it records nothing itself; the
-Android-only surfaces (`planned`, owner `android`) need an Android runner
-before they go `active` (#39, #40).
+Worker's wrapper for its chain and then Android's own
+(`android\test-external.ps1`, #39), which runs and records the Android-owned
+surfaces (`revenuecat-android-sdk` is `active`; `google-play-billing` is
+`planned` until #40). That wrapper needs exactly one attached device or
+emulator with Google Play Services and fails the run without one; see
+`android/TESTING.md`.
 
 **One surface per piece of our code that calls the provider** (#143). Claude
 is called from two places, so it is two surfaces: `anthropic` is the Worker's
@@ -544,7 +548,8 @@ as the pre-commit hook), and `uv` on the PATH, since the hook runs `uv run`. No
 other install. If the hook cannot run, the push fails rather than slipping through.
 
 **Unlocking a blocked gate.** Run the External suite that covers each named
-surface (`web\test-external.ps1`, `workers\scan-proxy\test-external.ps1`) and
+surface (`web\test-external.ps1`, `workers\scan-proxy\test-external.ps1`,
+`android\test-external.ps1`) and
 try again. The Worker's own surfaces are tested against the deployed Worker, so
 deploying changed Worker code in order to test it is the case that needs a force.
 

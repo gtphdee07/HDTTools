@@ -53,6 +53,10 @@ android {
         // Gradle-invoked runs (test-weekly.ps1's raw `adb shell am
         // instrument` is unaffected), so this excludes it from Daily only.
         testInstrumentationRunnerArguments["notClass"] = "com.rigcheck.app.ui.screens.PaywallScreenWeeklyTest"
+        // The same for every per-surface External class (#39): the ones tagged
+        // @ExternalSurface need the marker file and a real network, which only
+        // android/test-external.ps1 sets up.
+        testInstrumentationRunnerArguments["notAnnotation"] = "com.rigcheck.app.testsupport.ExternalSurface"
     }
 
     buildTypes {

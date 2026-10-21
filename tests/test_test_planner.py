@@ -520,6 +520,14 @@ def test_real_config_ui_logic_and_the_coverage_allow_list_need_no_device():
         assert not [c for c in commands(_real_plan([changed])) if "connectedDebugAndroidTest" in c], changed
 
 
+def test_real_config_a_per_surface_external_device_test_is_not_planned_as_an_instrumented_run():
+    # An *ExternalTest.kt needs the marker file and a real network; connectedDebugAndroidTest excludes it.
+    changed = "android/app/src/androidTest/java/com/rigcheck/app/RevenueCatAndroidSdkExternalTest.kt"
+    for level in ("issue", "session"):
+        plan = _real_plan([changed], level)
+        assert not [c for c in commands(plan) if "connectedDebugAndroidTest" in c], level
+
+
 def test_real_config_the_paid_weekly_device_test_and_number_formatting_need_no_device_run():
     # A changed *WeeklyTest.kt must never map to its own class-level command: that class is the paid live scan.
     for changed in (

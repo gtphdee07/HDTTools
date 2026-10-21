@@ -676,6 +676,7 @@ _SURFACES_NOW_ACTIVE = {
     "revenuecat-web-billing",
     "worker-token-verification",
     "scan-proxy-worker",
+    "revenuecat-android-sdk",
 }
 
 

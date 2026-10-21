@@ -45,10 +45,64 @@ def test_happy_path_runs_every_step_in_order():
     assert runner.calls == [
         f"{ar.GRADLEW} -p android testDebugUnitTest",
         f"{ar.GRADLEW} -p android connectedDebugAndroidTest",
-        "test-external.ps1",
+        "test-external.ps1",  # the Worker's wrapper
+        "test-external.ps1",  # Android's own wrapper
         "test-weekly.ps1",
     ]
     assert budget.spent == 2
+
+
+class _CwdRunner(FakeRunner):
+    """FakeRunner that also remembers which directory each command ran in."""
+
+    def __init__(self, exit_codes=None):
+        super().__init__(exit_codes)
+        self.cwds = []
+
+    def __call__(self, command, cwd=None):
+        self.cwds.append(cwd)
+        return super().__call__(command, cwd)
+
+
+def _external_dirs(runner):
+    return [cwd.name for name, cwd in zip(runner.calls, runner.cwds) if name == "test-external.ps1"]
+
+
+def test_stale_surfaces_run_the_workers_wrapper_then_androids_own_in_the_android_directory():
+    runner = _CwdRunner()
+    budget = pcb.PaidCallBudget(max_calls=2, confirm=always_confirm, out=lambda _: None)
+    ar.run([], budget=budget, run_command=runner, devices=lambda: ["emulator-5554"], stale=lambda: ["x"],
+           out=lambda _: None)
+    # The Android wrapper is the one that owns revenuecat-android-sdk; without it the gate would
+    # refuse every release for a surface nothing in the release run could refresh.
+    assert _external_dirs(runner) == ["scan-proxy", "android"]
+
+
+def test_a_failing_worker_wrapper_stops_the_release_before_androids_wrapper():
+    runner = _CwdRunner(exit_codes={"test-external.ps1": 4})
+    budget = pcb.PaidCallBudget(max_calls=2, confirm=always_confirm, out=lambda _: None)
+    code = ar.run([], budget=budget, run_command=runner, devices=lambda: ["emulator-5554"], stale=lambda: ["x"],
+                  out=lambda _: None)
+    assert code == 4
+    assert _external_dirs(runner) == ["scan-proxy"]
+    assert "test-weekly.ps1" not in runner.calls
+
+
+def test_a_failing_android_wrapper_stops_the_release_before_the_gate_and_the_weekly_suite():
+    class _FailsInAndroid(_CwdRunner):
+        def __call__(self, command, cwd=None):
+            proc = super().__call__(command, cwd)
+            if command[-1] == "test-external.ps1" and cwd == ar.ANDROID_DIR:
+                proc.returncode = 5
+            return proc
+
+    runner = _FailsInAndroid()
+    gate = FakeGate(0, log=runner.calls)
+    budget = pcb.PaidCallBudget(max_calls=2, confirm=always_confirm, out=lambda _: None)
+    code = ar.run([], budget=budget, run_command=runner, devices=lambda: ["emulator-5554"], stale=lambda: ["x"],
+                  gate=gate, out=lambda _: None)
+    assert code == 5
+    assert gate.calls == [] and "test-weekly.ps1" not in runner.calls
 
 
 def test_the_gate_covers_androids_chain_and_runs_before_the_weekly_suite_deploys_the_worker():
@@ -61,7 +115,7 @@ def test_the_gate_covers_androids_chain_and_runs_before_the_weekly_suite_deploys
         out=lambda _: None,
     )
 
-    assert runner.calls[-3:] == ["test-external.ps1", "gate", "test-weekly.ps1"]
+    assert runner.calls[-4:] == ["test-external.ps1", "test-external.ps1", "gate", "test-weekly.ps1"]
     # Android's chain includes the Worker's surfaces.
     assert gate.calls == [(["android", "scan-proxy"], None)]
 

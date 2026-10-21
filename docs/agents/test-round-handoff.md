@@ -8,8 +8,7 @@ One ticket at a time. Start the next only after the previous one is merged, so i
 
 | # | Ticket | Kind | Your part before or after | Card |
 |---|---|---|---|---|
-| 1 | #105 prove the RevenueCat `pro` entitlement | Web, free live run | **a RevenueCat dashboard step first** | [#105](#105-prove-the-revenuecat-pro-entitlement) |
-| 2 | #64 refresh each context's testing document | docs | none | [#64](#64-refresh-the-testing-documents) |
+| 1 | #64 refresh each context's testing document | docs | none | [#64](#64-refresh-the-testing-documents) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
 After #64: a final run of whichever External surfaces went stale again (`uv run scripts/external_freshness.py` first, from the main checkout; Claude asks before each live run and before pushing). Deferred, not in this round: #40 (blocked on Play Console), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically) and #145 (check that a fresh clone builds on another computer).
@@ -74,26 +73,9 @@ Test-round additions:
   up; Claude can start the emulator and run it with your go-ahead and a paid-call
   ceiling if the ticket's maximum is above 0).
 
-### #105 prove the RevenueCat `pro` entitlement
+### #105 (merged 2026-10-21)
 
-- **Before step 1 (your part):** in the RevenueCat dashboard (sandbox project), grant the `pro` entitlement as a promotional, non-expiring entitlement to the app user id `external-suite-pro`. No purchase. It is unverified that the sandbox customer page offers a promotional grant; if it does not, tell the session when it asks, because the ticket then needs another way to give a fixture user `pro`.
-- **Step 1:** `/ticket-start 105`.
-- **Step 2 block:**
-
-```
-Test-round additions:
-- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
-  The slow tooling tests are left out of planner runs unless the diff touches
-  what they check.
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- Live runs: do not run the live External suite. It is free, and the owner runs it
-  from the main checkout after the merge (`powershell web\test-external.ps1`).
-  Do not commit changes to `scripts/dashboard_data/external_status.json` or
-  `dashboard.svg` from the branch.
-```
-
-- **Your part after the merge:** the free live run of `powershell web\test-external.ps1` (Claude can run it with your go-ahead).
+Done: Web's External suite proves an entitlement named exactly `pro` exists (the fixture user `external-suite-pro`); the live run passed (33 tests) and can fail. The clause "attached to the Pro product" could not be proven without a purchase or a secret key and was accepted as is; #146 will check it in the Worker's External project. Keep the `external-suite-pro` grant non-expiring or far-dated.
 
 ### #64 refresh the testing documents
 
@@ -134,7 +116,7 @@ Test-round additions:
 
 ## History (for reference; nothing to do)
 
-- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145.
+- **Merged:** #134, #129, #130, #41, #128, #43, #127, #66, #44, #84, #115, #135, #124, #136, #142, #131, #133, #143, #137, #67, #75, #39, #105 (#141 closed as its duplicate). Follow-ups filed along the way: #138 (Worker preview deploy), #139 (cache the gate's registry lookups), #140 (Streamlit `FIELDS` vs the Claude extractor keys), #144, #145.
 - **Pushed** up to d0ea7b7 on 2026-10-20 (plus handoff-note commits), including #115's changed Web scan wording, which the owner approved.
 - **External runs, owner-approved:** 2026-10-19 sanity run of seven stale surfaces (4 paid calls; commit 95ae133); 2026-10-20 re-run of `pages-site` and `scan-proxy-worker` after a wrangler release (1 paid call); 2026-10-20 first runs of `anthropic` (Worker) and `anthropic-python` (6 paid calls, commit 615e552), both against `test-vectors/vision_external_cases.json` and `ExampleDocs/golden_fields.json`. All passed.
 - **Verification debt (#67):** a committed SessionStart hook in `.claude/settings.json`; all five contexts have a recorded pass from 2026-10-20 at d0ea7b7 (a new machine or fresh clone needs the one-time commands in [verification-debt.md](verification-debt.md) again; #144 will automate it).

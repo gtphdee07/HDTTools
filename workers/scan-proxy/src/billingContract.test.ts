@@ -7,6 +7,7 @@
 // both show the string RevenueCat gives them, which is what keeps one price on every
 // platform (ADR-0006). That the two RevenueCat products carry the same price is a
 // dashboard fact no offline test can see.
+import "./requireInstall.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";

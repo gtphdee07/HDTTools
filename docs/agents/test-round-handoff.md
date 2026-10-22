@@ -4,13 +4,21 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-All the round's tickets are merged, including epic #147's tree (epic closed) and the truck GCWR chain (#45, #46, #47, #168). The merges since the last push are not pushed yet: Claude runs the stale External suites first, then asks before the one push. #132 is still optional.
+The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): two lanes, **Web and server** (#29, #30, #20; one Web session at a time) and **Android** (#27, #101, #31, #32; one at a time, because there is one emulator). The lanes can build side by side. #132 is still optional. Claude runs the stale External suites and asks before each push.
 
-The shared breakdown fixture passes in Python, Web and Android. **Nothing is pushed until Claude has run the External bundle and you have said yes.**
+Order of the table: a row starts when the ticket it names has merged. #20 was narrowed to Google only (Apple stays with #77). Web goes live on every push of `MPSkills`, so Claude asks first, and runs the stale External suites before the push.
 
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
-| 1 (optional) | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
+| 1 | #146 prove the `pro` entitlement is attached (Worker External, free) | Worker | answer its decisions; maybe one dashboard permission | [#146](#146-prove-the-pro-entitlement-is-attached-to-the-pro-product) |
+| 1 | #29 History sync on Web (can build beside #146) | Web + Supabase | apply the migration SQL once | [#29](#29-history-sync-on-web) |
+| 2 | #30 Pro raises the Garage and History caps (after #29) | Web + Supabase | apply any new migration SQL | [#30](#30-pro-raises-the-garage-and-history-caps) |
+| 2 | #27 Pro and credits carry across Android and Web (after #146) | Android + Web | maybe a RevenueCat dashboard step | [#27](#27-pro-and-scan-credit-balance-carry-across-android-and-web) |
+| 3 | #101 Android scan packs for Pro users only (after #27) | Android | stop the emulator | [#101](#101-android-scan-packs-for-pro-users-only) |
+| 3 | #20 Continue with Google on Web (after #30; Google only) | Web | maybe a console setting | [#20](#20-continue-with-google-on-web) |
+| 4 | #31 Android uses the synced Garage (after #101) | Android | stop the emulator | [#31](#31-android-uses-the-synced-garage) |
+| 5 | #32 Android History (after #29 and #31) | Android | stop the emulator | [#32](#32-android-history) |
+| optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
 #46 and #47 can build at the same time (different surfaces, and only #47 touches the emulator). Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember"). The final External run is done (2026-10-21, see History); if #132 changes no code there is nothing more to run, and any later change to a boundary file or pin needs `uv run scripts/external_freshness.py` first.
 
@@ -46,6 +54,230 @@ Done: Android's optional GCWR field, hint and below-GVWR warning, the Kotlin bre
 ### #168 (merged 2026-10-22)
 
 Done: Android's Results screen shows the Verdict subline under the headline in the verdict pill, so the GCWR caveat is visible there as on Web. The pill is now a full-width row (20 dp corners): look at it on a device if the look matters.
+
+### #146 prove the pro entitlement is attached to the Pro product
+
+- **Step 1:** `/ticket-start 146`. Worker External project, free and read-only. Start it now; #27 comes after it merges.
+- **Step 2 block:**
+
+```
+Test-round additions:
+- The Worker end-of-session commands are `npm --prefix workers/scan-proxy test` and
+  `uv run scripts/static_checks.py scan-proxy`.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Live runs: do not run the live External suite or any paid call. The owner runs
+  the surface from the main checkout after the merge. Do not commit changes to
+  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+- The ticket's Decisions 1 to 3 are asked with `AskUserQuestion` and recorded in a `DECISIONS` comment, as its criteria say.
+- If the existing RevenueCat key lacks the project-configuration read permission, stop and list the exact dashboard step for the owner under "Owner actions needed" (post `PARTIAL`).
+```
+
+- **Your part:** answer its three decisions when the session asks. If the key lacks a permission, add the one read permission in the RevenueCat dashboard when it tells you. After the merge, Claude runs the Worker wrapper (free).
+
+### #29 History sync on Web
+
+- **Step 1:** `/ticket-start 29`. Web plus a Supabase migration. Start it now, beside #146.
+- **Step 2 block:**
+
+```
+Test-round additions:
+- The Web end-of-session commands are `npm --prefix web test` and
+  `uv run scripts/static_checks.py web`.
+- Only `web/`, `supabase/migrations/` and the testing documents change unless the card says otherwise.
+- A Supabase migration is written as a file under `supabase/migrations/` and is NOT
+  applied by you. Put the exact steps (Dashboard > SQL Editor > paste the file > Run)
+  under "Owner actions needed" in the report; the owner applies it once, then runs the
+  live External suite.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Live runs: do not run the live External suite or any paid call. The owner runs
+  the surface from the main checkout after the merge. Do not commit changes to
+  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+- Per its comment (ADR-0008, #35): also add the External suite for the Supabase History table surface (row-level security, the count cap with oldest-entry pruning, idempotent retry) and set the surface active in the External manifest. Follow what #28 did for `[supabase-tables]`.
+```
+
+- **Your part:** apply the migration SQL once in the Supabase SQL editor when the session's report says so, before `/ticket-merge 29`; Claude then runs the live External suite (free). #30, #32 wait for this merge.
+
+### #30 Pro raises the Garage and History caps
+
+- **Step 1:** `/ticket-start 30` (after #29 is merged).
+- **Step 2 block:**
+
+```
+Test-round additions:
+- The Web end-of-session commands are `npm --prefix web test` and
+  `uv run scripts/static_checks.py web`.
+- Only `web/`, `supabase/migrations/` and the testing documents change unless the card says otherwise.
+- A Supabase migration is written as a file under `supabase/migrations/` and is NOT
+  applied by you. Put the exact steps (Dashboard > SQL Editor > paste the file > Run)
+  under "Owner actions needed" in the report; the owner applies it once, then runs the
+  live External suite.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Live runs: do not run the live External suite or any paid call. The owner runs
+  the surface from the main checkout after the merge. Do not commit changes to
+  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+- Cap numbers are placeholders, configurable, pending launch pricing (#33); do not hard-code them in several places.
+```
+
+- **Your part:** apply any new migration SQL the same way as #29.
+
+### #20 Continue with Google on Web
+
+- **Step 1:** `/ticket-start 20` (Google only; Apple stays with #77). Run it after #29 and #30 so only one Web session is open at a time.
+- **Step 2 block:**
+
+```
+Test-round additions:
+- The Web end-of-session commands are `npm --prefix web test` and
+  `uv run scripts/static_checks.py web`.
+- Only `web/`, `supabase/migrations/` and the testing documents change unless the card says otherwise.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Live runs: do not run the live External suite or any paid call. The owner runs
+  the surface from the main checkout after the merge. Do not commit changes to
+  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+- Google only. Do not add Apple code or a button (#77).
+- The Supabase and Google console settings are outside the repo: check what you can, and report what is missing under "Owner actions needed" instead of guessing.
+```
+
+- **Your part:** if the session says a Supabase redirect URL or the Google client needs a setting, make that change in the console.
+
+### #27 Pro and Scan Credit balance carry across Android and Web
+
+- **Step 1:** `/ticket-start 27` (after #146 is merged). Android and Web; the single emulator.
+- **Step 2 block:**
+
+```
+Test-round additions:
+- If you add or move a class in `domain`, `data` or `ui`, classify it in
+  `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android
+  end-of-session command is `uv run scripts/android_session_end.py` (JVM tests,
+  coverage floor, detekt; no device).
+- A UI test needs the single emulator; no other Android ticket may be running.
+  Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save
+  -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are
+  done.
+- The Web end-of-session commands are `npm --prefix web test` and
+  `uv run scripts/static_checks.py web`.
+- Only `web/`, `supabase/migrations/` and the testing documents change unless the card says otherwise.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Live runs: do not run the live External suite or any paid call. The owner runs
+  the surface from the main checkout after the merge. Do not commit changes to
+  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+- The Android Test Store lifetime product must be attached to the `pro` entitlement (owner decision on #27; #146 checks it). If it is not, report the dashboard step under "Owner actions needed" (post `PARTIAL`).
+```
+
+- **Your part:** none beyond the usual steps, unless the session reports the RevenueCat dashboard step. Stop the emulator afterwards (step 6).
+
+### #101 Android scan packs for Pro users only
+
+- **Step 1:** `/ticket-start 101` (after #27 is merged). Android; the single emulator.
+- **Step 2 block:**
+
+```
+Test-round additions:
+- If you add or move a class in `domain`, `data` or `ui`, classify it in
+  `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android
+  end-of-session command is `uv run scripts/android_session_end.py` (JVM tests,
+  coverage floor, detekt; no device).
+- A UI test needs the single emulator; no other Android ticket may be running.
+  Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save
+  -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are
+  done.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Live runs: do not run the live External suite or any paid call. The owner runs
+  the surface from the main checkout after the merge. Do not commit changes to
+  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+- RevenueCat is faked in the Android tests; no live or paid run.
+```
+
+- **Your part:** none beyond the usual steps. Stop the emulator afterwards (step 6).
+
+### #31 Android uses the synced Garage
+
+- **Step 1:** `/ticket-start 31` (after #101 is merged; independent of #29). Android; the single emulator.
+- **Step 2 block:**
+
+```
+Test-round additions:
+- If you add or move a class in `domain`, `data` or `ui`, classify it in
+  `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android
+  end-of-session command is `uv run scripts/android_session_end.py` (JVM tests,
+  coverage floor, detekt; no device).
+- A UI test needs the single emulator; no other Android ticket may be running.
+  Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save
+  -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are
+  done.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Live runs: do not run the live External suite or any paid call. The owner runs
+  the surface from the main checkout after the merge. Do not commit changes to
+  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+- The Garage cap and idempotent retry must match Web's (`supabase/migrations/20261010000000_garage_rigs.sql`); do not change the migration.
+```
+
+- **Your part:** none beyond the usual steps. Stop the emulator afterwards (step 6).
+
+### #32 Android History
+
+- **Step 1:** `/ticket-start 32` (after #29 and #31 are merged). Android; the single emulator.
+- **Step 2 block:**
+
+```
+Test-round additions:
+- If you add or move a class in `domain`, `data` or `ui`, classify it in
+  `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android
+  end-of-session command is `uv run scripts/android_session_end.py` (JVM tests,
+  coverage floor, detekt; no device).
+- A UI test needs the single emulator; no other Android ticket may be running.
+  Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save
+  -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are
+  done.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Live runs: do not run the live External suite or any paid call. The owner runs
+  the surface from the main checkout after the merge. Do not commit changes to
+  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+- Cap and oldest-pruned behaviour must match Web (#29).
+```
+
+- **Your part:** none beyond the usual steps. Stop the emulator afterwards (step 6).
 
 ### #132 (optional) mutation-testing research
 

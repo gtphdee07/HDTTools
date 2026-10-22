@@ -10,6 +10,7 @@ import { REQUIRED, SECOND_ACCOUNT, readConfig } from './config';
 // It needs supabase/migrations/20261010000000_garage_rigs.sql applied to the project, and it
 // empties the two test accounts' Garages before and after, so it must only ever use throwaway
 // test accounts. It never creates a user and never triggers an email.
+// The second describe, further down, covers the History table surface the same way (#29).
 
 const FREE_CAP = 5;
 
@@ -208,5 +209,163 @@ describe('[supabase-tables] Supabase Garage table live contract', () => {
     expect((await add(alice, key('free-new'), 'Replacement')).error).toBeNull();
     expect(await countRigs(alice)).toBe(FREE_CAP);
     await emptyGarage(alice);
+  });
+});
+
+// The History table surface (#29): row-level security, the count cap with oldest-entry pruning, and
+// idempotent retry. It needs supabase/migrations/20261022000000_history_entries.sql applied to the
+// project. An account cannot delete its own History (the cap is the only thing that removes entries), so
+// unlike the Garage there is no emptying between tests: each test first fills the account's History to
+// the cap with its own checks, which pushes out everything older, then asserts on exactly those rows.
+// The two test accounts keep their last 10 checks between runs; they are throwaway accounts.
+
+const HISTORY_CAP = 10;
+
+describe('[supabase-tables] Supabase History table live contract', () => {
+  let alice: SupabaseClient;
+  let aliceAgain: SupabaseClient;
+  let bob: SupabaseClient;
+  let signedOut: SupabaseClient;
+
+  const runId = Date.now().toString(36);
+  const key = (name: string) => `external-history-${runId}-${name}`;
+  const rigName = (name: string) => `${runId} ${name}`;
+
+  const addCheck = (client: SupabaseClient, idempotencyKey: string, rigNickname: string, verdict = 'pass') =>
+    client.rpc('add_history_entry', { p_idempotency_key: idempotencyKey, p_rig_nickname: rigNickname, p_verdict: verdict });
+
+  // The account's checks, newest first, as the app reads them.
+  const listChecks = async (client: SupabaseClient) => {
+    const { data, error } = await client
+      .from('history_entries')
+      .select('id, rig_nickname, verdict, checked_at')
+      .order('checked_at', { ascending: false });
+    expect(error, 'migration 20261022000000_history_entries.sql must be applied to the project').toBeNull();
+    return data!;
+  };
+
+  // Fills the account's History to the cap with checks named "<run> <label> 1..10", the last the newest.
+  async function fillHistory(client: SupabaseClient, label: string) {
+    for (let i = 1; i <= HISTORY_CAP; i++) {
+      const added = await addCheck(client, key(`${label}-${i}`), rigName(`${label} ${i}`));
+      expect(added.error).toBeNull();
+    }
+  }
+
+  beforeAll(async () => {
+    const cfg = readConfig(import.meta.env as Record<string, string | undefined>, [...REQUIRED, ...SECOND_ACCOUNT]);
+    const fresh = () =>
+      createClient(cfg.VITE_SUPABASE_URL, cfg.VITE_SUPABASE_PUBLISHABLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      });
+    const signedIn = async (email: string, password: string) => {
+      const client = fresh();
+      const { error } = await client.auth.signInWithPassword({ email, password });
+      if (error) throw new Error('External test account could not sign in');
+      return client;
+    };
+    alice = await signedIn(cfg.WEB_EXTERNAL_TEST_EMAIL, cfg.WEB_EXTERNAL_TEST_PASSWORD);
+    // a second session of the same account, standing in for a second device
+    aliceAgain = await signedIn(cfg.WEB_EXTERNAL_TEST_EMAIL, cfg.WEB_EXTERNAL_TEST_PASSWORD);
+    bob = await signedIn(cfg.WEB_EXTERNAL_TEST_NOCREDITS_EMAIL, cfg.WEB_EXTERNAL_TEST_NOCREDITS_PASSWORD);
+    signedOut = fresh();
+  });
+
+  it('has the History table and add_history_entry function the app calls', async () => {
+    const added = await addCheck(alice, key('shape'), rigName('Shape Check'), 'fail');
+
+    expect(added.error, 'migration 20261022000000_history_entries.sql must be applied to the project').toBeNull();
+    expect(added.data).toMatchObject({ rig_nickname: rigName('Shape Check'), verdict: 'fail' });
+    expect(added.data.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(new Date(added.data.checked_at).getTime()).not.toBeNaN();
+    expect((await listChecks(alice))[0]).toMatchObject({ id: added.data.id, verdict: 'fail' });
+  });
+
+  it('shows an account only its own checks', async () => {
+    await fillHistory(alice, 'own-a');
+    await fillHistory(bob, 'own-b');
+
+    const aliceSees = (await listChecks(alice)).map((c) => c.rig_nickname);
+    const bobSees = (await listChecks(bob)).map((c) => c.rig_nickname);
+
+    expect(aliceSees).toHaveLength(HISTORY_CAP);
+    expect(aliceSees.every((n) => n.startsWith(rigName('own-a')))).toBe(true);
+    expect(bobSees).toHaveLength(HISTORY_CAP);
+    expect(bobSees.every((n) => n.startsWith(rigName('own-b')))).toBe(true);
+  });
+
+  it('gives a signed-out caller no access to the table or to add_history_entry', async () => {
+    expect((await signedOut.from('history_entries').select('id')).error).not.toBeNull();
+    expect((await addCheck(signedOut, key('anon'), rigName('Anon Check'))).error).not.toBeNull();
+  });
+
+  it('refuses a direct insert, so the cap cannot be skipped', async () => {
+    const before = (await listChecks(alice)).length;
+
+    const direct = await alice
+      .from('history_entries')
+      .insert({ rig_nickname: rigName('Direct'), verdict: 'pass', idempotency_key: key('direct') });
+
+    expect(direct.error).not.toBeNull();
+    expect(await listChecks(alice)).toHaveLength(before);
+  });
+
+  it('refuses any account a change to a check, so a past result cannot be rewritten', async () => {
+    const mine = await addCheck(alice, key('immutable'), rigName('Immutable'));
+    expect(mine.error).toBeNull();
+
+    const edit = await alice.from('history_entries').update({ verdict: 'fail' }).eq('id', mine.data.id);
+    const removal = await alice.from('history_entries').delete().eq('id', mine.data.id);
+    const theirEdit = await bob.from('history_entries').update({ verdict: 'fail' }).eq('id', mine.data.id);
+    const theirRemoval = await bob.from('history_entries').delete().eq('id', mine.data.id);
+
+    expect(edit.error).not.toBeNull();
+    expect(removal.error).not.toBeNull();
+    expect(theirEdit.error).not.toBeNull();
+    expect(theirRemoval.error).not.toBeNull();
+    expect((await listChecks(alice))[0]).toMatchObject({ id: mine.data.id, verdict: 'pass' });
+  });
+
+  it('keeps only the newest checks at the cap, dropping the oldest, newest first', async () => {
+    await fillHistory(alice, 'cap');
+    expect((await listChecks(alice)).map((c) => c.rig_nickname)[HISTORY_CAP - 1]).toBe(rigName('cap 1'));
+
+    expect((await addCheck(alice, key('cap-over'), rigName('cap over'))).error).toBeNull();
+
+    const kept = (await listChecks(alice)).map((c) => c.rig_nickname);
+    expect(kept).toHaveLength(HISTORY_CAP);
+    expect(kept[0]).toBe(rigName('cap over'));
+    expect(kept).not.toContain(rigName('cap 1'));
+    expect(kept[HISTORY_CAP - 1]).toBe(rigName('cap 2'));
+  });
+
+  it('never exceeds the cap when many checks arrive at the same moment', async () => {
+    await fillHistory(alice, 'race');
+
+    // Two sessions of one account (two devices) finishing checks together.
+    const attempts = await Promise.all(
+      Array.from({ length: 8 }, (_, i) => addCheck(i % 2 === 0 ? alice : aliceAgain, key(`race-extra-${i}`), rigName(`racer ${i}`))),
+    );
+
+    expect(attempts.every((a) => a.error === null)).toBe(true);
+    const kept = (await listChecks(alice)).map((c) => c.rig_nickname);
+    expect(kept).toHaveLength(HISTORY_CAP);
+    for (let i = 0; i < 8; i++) expect(kept).toContain(rigName(`racer ${i}`));
+  });
+
+  it('creates one check when the same add is retried', async () => {
+    await fillHistory(alice, 'retry');
+
+    const first = await addCheck(alice, key('retry-once'), rigName('retried'));
+    const retried = await addCheck(alice, key('retry-once'), rigName('retried'));
+
+    expect(first.error).toBeNull();
+    expect(retried.error).toBeNull();
+    expect(retried.data.id).toBe(first.data.id);
+    const kept = (await listChecks(alice)).map((c) => c.rig_nickname);
+    expect(kept.filter((n) => n === rigName('retried'))).toHaveLength(1);
+    // The retry did not push a second old check out.
+    expect(kept).toHaveLength(HISTORY_CAP);
+    expect(kept[HISTORY_CAP - 1]).toBe(rigName('retry 2'));
   });
 });

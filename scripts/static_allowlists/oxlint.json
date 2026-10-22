@@ -24,6 +24,13 @@
     },
     {
       "context": "web",
+      "file": "src/history.tsx",
+      "rule": "react(only-export-components)",
+      "count": 1,
+      "reason": "A provider component and its hook live in one file on purpose; the rule only costs a full reload instead of fast refresh in dev."
+    },
+    {
+      "context": "web",
       "file": "src/scanTestKit.tsx",
       "rule": "react(only-export-components)",
       "count": 7,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { HistoryEntry, RecentRig, Screen, WizardState } from './types';
+import type { RecentRig, Screen, WizardState } from './types';
 import { MODULES } from './mockData';
 import { extractScaleTicket, extractTrailerTag, extractTruckTag } from './api';
 import type { ScanContext } from './api';
@@ -13,6 +13,7 @@ import { createBreakdown } from './breakdown';
 import type { CreateBreakdownResult } from './breakdown';
 import { useGarage } from './garage';
 import type { SaveRigOutcome } from './garage';
+import { useHistory } from './history';
 import { useRigImport } from './garageImport';
 import { RigImportBanner } from './components/RigImportBanner';
 import { DisclaimerModal } from './components/DisclaimerModal';
@@ -56,12 +57,19 @@ function garageNoticeFor(nickname: string, outcome: SaveRigOutcome): string | nu
   return null;
 }
 
+const historyNotice = "We couldn't save this check to your History. Your check is not affected.";
+
 function App() {
   const [screen, setScreen] = useState<Screen>('home');
   const { rigs: recentRigs, saveRig, canDeleteRig, deleteRig, refresh: refreshGarage } = useGarage();
-  const [garageNotice, setGarageNotice] = useState<string | null>(null);
+  // What the last check could not save to the account (its Rig, its History entry); the check itself is never affected.
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  // Only a problem is shown: the Garage and History saves finish independently, so a success must not clear the other's.
+  const showSaveProblem = (message: string | null) => {
+    if (message) setSaveNotice(message);
+  };
   const rigImport = useRigImport(refreshGarage);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const { history, recordCheck, refresh: refreshHistory } = useHistory();
   const [wizard, setWizard] = useState<WizardState>(EMPTY_WIZARD);
   const [checkResult, setCheckResult] = useState<CreateBreakdownResult | null>(null);
   const [disclaimerAcknowledged, setDisclaimerAcknowledged] = useState(
@@ -103,6 +111,7 @@ function App() {
     setScreen('home');
   };
   const goHistory = () => {
+    refreshHistory();
     setAccountFromWizard(false);
     setScreen('history');
   };
@@ -134,7 +143,7 @@ function App() {
 
   const startWizard = () => {
     refreshGarage();
-    setGarageNotice(null);
+    setSaveNotice(null);
     setAccountFromWizard(false);
     setScreen('wizard');
     setCheckResult(null);
@@ -287,16 +296,8 @@ function App() {
       const result = createBreakdown(wizard.truck, wizard.trailer, wizard.scale, wizard.pinWeightPct);
       setCheckResult(result);
       const nickname = wizard.rigNickname;
-      void saveRig(nickname, wizard.truck, wizard.trailer).then((outcome) => setGarageNotice(garageNoticeFor(nickname, outcome)));
-      setHistory((h) => [
-        {
-          id: crypto.randomUUID(),
-          date: result.date,
-          rigNickname: wizard.rigNickname,
-          verdict: result.verdict,
-        },
-        ...h,
-      ]);
+      void saveRig(nickname, wizard.truck, wizard.trailer).then((outcome) => showSaveProblem(garageNoticeFor(nickname, outcome)));
+      void recordCheck(nickname, result.verdict, result.date).then((saved) => showSaveProblem(saved ? null : historyNotice));
       setWizard((w) => ({ ...w, step: 4, subStep: 'review' }));
     } catch (err) {
       setWizard((w) => ({
@@ -334,7 +335,7 @@ function App() {
 
       <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', padding: '36px 32px' }}>
         <RigImportBanner rigImport={rigImport} />
-        {garageNotice && (
+        {saveNotice && (
           <div
             role="status"
             style={{
@@ -349,9 +350,9 @@ function App() {
               fontSize: 14,
             }}
           >
-            <span style={{ flex: 1 }}>{garageNotice}</span>
+            <span style={{ flex: 1 }}>{saveNotice}</span>
             <button
-              onClick={() => setGarageNotice(null)}
+              onClick={() => setSaveNotice(null)}
               style={{ background: 'none', border: 'none', color: 'var(--fg-2)', cursor: 'pointer', fontSize: 13 }}
             >
               Dismiss

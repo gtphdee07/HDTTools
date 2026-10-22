@@ -177,7 +177,6 @@ Test-round additions:
   done.
 - The Web end-of-session commands are `npm --prefix web test` and
   `uv run scripts/static_checks.py web`.
-- Only `web/`, `supabase/migrations/` and the testing documents change unless the card says otherwise.
 - Judge each test by whether it would find or prevent a real bug and whether it
   adds run time; do not add tests only to raise a coverage number.
 - A new test file must be named in its context's testing document, and a new

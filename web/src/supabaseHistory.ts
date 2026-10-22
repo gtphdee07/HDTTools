@@ -20,7 +20,8 @@ export function createSupabaseHistoryBackend(client: SupabaseClient): HistoryBac
       const { data, error } = await client
         .from('history_entries')
         .select('id, rig_nickname, verdict, checked_at')
-        .order('checked_at', { ascending: false });
+        // Insertion order, not the timestamp: the timestamp is only what the entry's date shows.
+        .order('seq', { ascending: false });
       if (error) throw new Error(error.message);
       return (data as HistoryRow[]).map((row) => ({
         id: row.id,

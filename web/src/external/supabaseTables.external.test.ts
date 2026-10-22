@@ -239,7 +239,7 @@ describe('[supabase-tables] Supabase History table live contract', () => {
     const { data, error } = await client
       .from('history_entries')
       .select('id, rig_nickname, verdict, checked_at')
-      .order('checked_at', { ascending: false });
+      .order('seq', { ascending: false });
     expect(error, 'migration 20261022000000_history_entries.sql must be applied to the project').toBeNull();
     return data!;
   };

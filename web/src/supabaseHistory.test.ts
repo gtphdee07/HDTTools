@@ -59,7 +59,7 @@ describe('createSupabaseHistoryBackend', () => {
     const entries = await createSupabaseHistoryBackend(client).list();
 
     expect(from).toHaveBeenCalledWith('history_entries');
-    expect(order).toHaveBeenCalledWith('checked_at', { ascending: false });
+    expect(order).toHaveBeenCalledWith('seq', { ascending: false });
     expect(entries).toEqual([
       { id: 'h2', date: 'Oct 22, 2026', rigNickname: 'Truck A', verdict: 'fail' },
       { id: 'h1', date: 'Oct 05, 2026', rigNickname: 'Truck B', verdict: 'pass' },

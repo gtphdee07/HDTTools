@@ -10,13 +10,16 @@ create table public.history_entries (
   rig_nickname    text        not null check (char_length(btrim(rig_nickname)) between 1 and 80),
   verdict         text        not null check (verdict in ('pass', 'fail', 'partial', 'insufficient')),
   checked_at      timestamptz not null default clock_timestamp(),
+  -- Insertion order, which "newest" and "oldest" mean. checked_at is for display only: the wall clock can
+  -- step backwards, and ordering by it could then prune the entry that was just added.
+  seq             bigint      generated always as identity,
   -- the client-supplied key of the add that created this row; a retry of that add finds the row
   idempotency_key text        not null check (char_length(idempotency_key) between 1 and 100)
 );
 
--- One row per idempotency key per account; the index also serves "newest first" and "oldest to prune".
+-- One row per idempotency key per account; the second index serves "newest first" and "oldest to prune".
 create unique index history_entries_user_idempotency_key on public.history_entries (user_id, idempotency_key);
-create index history_entries_user_checked_at on public.history_entries (user_id, checked_at desc, id desc);
+create index history_entries_user_seq on public.history_entries (user_id, seq desc);
 
 alter table public.history_entries enable row level security;
 
@@ -74,7 +77,7 @@ begin
      and id in (
        select id from public.history_entries
         where user_id = uid
-        order by checked_at desc, id desc
+        order by seq desc
        offset free_cap
      );
 

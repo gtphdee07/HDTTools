@@ -73,7 +73,7 @@ async function addEntry(userId: string | null, key: string, rigNickname: string,
 const listEntries = (userId: string) =>
   asUser(userId, () =>
     db.query<{ rig_nickname: string; verdict: string }>(
-      'select rig_nickname, verdict from public.history_entries order by checked_at desc, id desc',
+      'select rig_nickname, verdict from public.history_entries order by seq desc',
     ),
   );
 const nicknames = async (userId: string) => (await listEntries(userId)).rows.map((r) => r.rig_nickname);
@@ -160,6 +160,20 @@ describe('add_history_entry cap', () => {
     expect(kept).toHaveLength(FREE_CAP);
     expect(kept[0]).toBe(`Check ${FREE_CAP + 3}`);
     expect(kept[FREE_CAP - 1]).toBe('Check 4');
+  });
+
+  it('goes by the order checks were added, not their timestamps, so a clock stepping back cannot prune the newest', async () => {
+    await clearHistory();
+    await addChecks(ALICE, FREE_CAP);
+    // As if the server clock had since stepped back: every stored check now looks newer than the next one will.
+    await db.exec(`update public.history_entries set checked_at = '2999-01-01T00:00:00Z'`);
+
+    await addEntry(ALICE, 'after-clock-step', `Check ${FREE_CAP + 1}`);
+
+    const kept = await nicknames(ALICE);
+    expect(kept[0]).toBe(`Check ${FREE_CAP + 1}`);
+    expect(kept).not.toContain('Check 1');
+    expect(kept).toHaveLength(FREE_CAP);
   });
 
   it('counts and prunes each account separately', async () => {

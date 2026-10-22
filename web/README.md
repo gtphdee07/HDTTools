@@ -7,8 +7,10 @@ package in `../src/` (which uses `uv` — see `../Claude.md`).
 
 Fully static: the breakdown math is a TypeScript port (`src/breakdown.ts`)
 run in the browser, so there is no hosted backend. Field names in `src/types.ts`
-mirror `../src/hdttools/models.py`. Remembers up to 5 recent rigs in
-browser `localStorage`; check history is session-only.
+mirror `../src/hdttools/models.py`. A signed-in user's saved rigs and check
+history live in their account (Supabase, capped per plan); a signed-out visitor
+keeps up to 5 recent rigs in browser `localStorage`, and their check history
+lasts only for the visit.
 
 ## Build
 

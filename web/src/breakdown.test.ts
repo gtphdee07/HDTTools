@@ -44,6 +44,13 @@ function checkCase(testCase: GoldenCase): void {
   expect(verdict.headline, `${testCase.name}: headline`).toBe(testCase.expected.headline);
   expect(verdict.subline, `${testCase.name}: subline`).toBe(testCase.expected.subline);
 
+  // The fixture does not list every row of every case, so an extra row would go unseen below: pin the one rule that
+  // decides whether Combined Rig Weight exists at all (a GCWR; a 0 means not entered).
+  const hasGcwr = Boolean((testCase.truck as { gcwr_lb?: number }).gcwr_lb);
+  expect(items.some((item) => item.label === 'Combined Rig Weight'), `${testCase.name}: Combined row only with a GCWR`).toBe(
+    hasGcwr,
+  );
+
   const byLabel = new Map(items.map((item) => [item.label, item]));
   for (const expected of testCase.expected.items) {
     const actual = byLabel.get(expected.label);

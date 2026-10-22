@@ -39,8 +39,8 @@ class AccountPlanTest {
         }
     }
 
-    private class Fixture(scope: TestScope, source: FakePlanSource = FakePlanSource()) {
-        val source = source
+    private class Fixture(scope: TestScope) {
+        val source = FakePlanSource()
         val accountState = MutableStateFlow<AccountState>(AccountState.Loading)
         val plan = AccountPlan(accountState, source, scope.backgroundScope)
 

@@ -152,7 +152,8 @@ fun RigCheckNavHost(
                 )
                 is AccountState.SignedIn -> {
                     // Pro or the balance may have changed on another device (Web) since last read.
-                    LaunchedEffect(account.account.id, account.billingLinked) { viewModel.refreshAccountStanding() }
+                    // Linking RevenueCat to the account reads both itself, so this is not keyed on it.
+                    LaunchedEffect(account.account.id) { viewModel.refreshAccountStanding() }
                     PaywallScreen(
                         creditBalance = viewModel.creditBalance,
                         isPro = isPro,

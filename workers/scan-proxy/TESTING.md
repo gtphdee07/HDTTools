@@ -380,7 +380,7 @@ Pro and the Scan Credit balance carry across platforms only while the three surf
 
 - `[sanity]` **the Worker, Android and Web all use the same Scan Credit currency code** — `REVENUECAT_CURRENCY_CODE`, Android's `SCAN_CURRENCY_CODE`, Web's `SCAN_CURRENCY_CODE`.
 - `[sanity]` **Android and Web read Pro from the same entitlement** — Android's `PRO_ENTITLEMENT_ID` and Web's `DEFAULT_PRO_ENTITLEMENT_ID`.
-- `[sanity]` **neither client writes a price into its screens** — no dollar amount in the Android Paywall or the Web Pro, pack and Account screens, and each still shows the string RevenueCat gives it (`price.formatted`, `formattedPrice`), which is what keeps one price on every platform (ADR-0006).
+- `[sanity]` **neither client writes a dollar amount into its screens and each shows RevenueCat's formatted price** — no dollar amount in the Android Paywall or the Web Pro, pack and Account screens, and each still shows the string RevenueCat gives it (`price.formatted`, `formattedPrice`), which is what keeps one price on every platform (ADR-0006).
 
 ### `http.test.ts` — `json`/`badRequest`, the response-shaping helpers used everywhere
 

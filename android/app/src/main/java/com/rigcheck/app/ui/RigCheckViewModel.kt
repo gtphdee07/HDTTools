@@ -208,8 +208,12 @@ class RigCheckViewModel internal constructor(
     }
 
     // Reads the plan and the balance again, for a screen that shows them: either may
-    // have changed on another device since they were last read.
+    // have changed on another device since they were last read. Only once RevenueCat is
+    // linked to the signed-in account: before that it answers for the customer it held
+    // last, which may be another account (see the init collector above).
     fun refreshAccountStanding() {
+        val state = accountState.value
+        if (state !is AccountState.SignedIn || !state.billingLinked) return
         accountPlan.refresh()
         refreshCreditBalance()
     }

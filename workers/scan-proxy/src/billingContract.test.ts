@@ -44,7 +44,7 @@ test("[sanity] Android and Web read Pro from the same entitlement", () => {
   assert.equal(android, web);
 });
 
-test("[sanity] neither client writes a price into its screens, so both show what RevenueCat gives them", () => {
+test("[sanity] neither client writes a dollar amount into its screens and each shows RevenueCat's formatted price", () => {
   const screens = [ANDROID_PAYWALL, ...WEB_SCREENS];
   for (const file of screens) {
     const text = readFileSync(file, "utf8");

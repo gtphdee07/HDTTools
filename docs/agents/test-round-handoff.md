@@ -55,7 +55,7 @@ Done: Android's Results screen shows the Verdict subline under the headline in t
 
 ### #146 (merged 2026-10-22)
 
-Done: the Worker External test that checks the `pro` entitlement has the Web paywall's product attached, read with the second read-only key (`REVENUECAT_CONFIG_READ_KEY`). **Not yet run live**: Claude runs `workers\scan-proxy\test-external.ps1` (free) once a fresh terminal sees the key; the surface `revenuecat-rest` is stale until then and blocks a scan-proxy or android push.
+Done: the Worker External test that checks the `pro` entitlement has the Web paywall's product attached, read with the second read-only key (`REVENUECAT_CONFIG_READ_KEY`). Run live on 2026-10-22: 11 of 11 passed (free), so the dashboard attachment is proven.
 
 ### #29 (merged 2026-10-22)
 

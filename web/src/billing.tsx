@@ -223,6 +223,27 @@ export function BillingProvider({
     void loadPlan(accountId);
   }, [loadPlan, scansUpdating]);
 
+  // Pro bought on another device shows here too, and with it the larger Garage and History caps: when this
+  // tab comes back into view, look at the plan again. It only ever turns Pro on (Pro is for life, and a
+  // read that lags a purchase must not flip anyone back), and it is quiet: no loading state, no error.
+  useEffect(() => {
+    if (!client || !userId) return;
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || checkoutOpenRef.current) return;
+      const accountId = accountRef.current;
+      client.getStatus().then(
+        (status) => {
+          if (accountRef.current === accountId && status.isPro) setIsPro(true);
+        },
+        () => {
+          // The plan on screen stays; the next time the tab is shown tries again.
+        },
+      );
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [client, userId]);
+
   const refreshScanBalance = useCallback(async (known?: number) => {
     const accountId = accountRef.current;
     if (!client || !accountId) return;

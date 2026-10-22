@@ -14,6 +14,8 @@ import type { CreateBreakdownResult } from './breakdown';
 import { useGarage } from './garage';
 import type { SaveRigOutcome } from './garage';
 import { useHistory } from './history';
+import { garageFullText, usePlan } from './plan';
+import type { Plan } from './plan';
 import { useRigImport } from './garageImport';
 import { RigImportBanner } from './components/RigImportBanner';
 import { DisclaimerModal } from './components/DisclaimerModal';
@@ -46,30 +48,42 @@ const EMPTY_WIZARD: WizardState = {
   pinWeightPct: 20,
 };
 
-function garageNoticeFor(nickname: string, outcome: SaveRigOutcome): string | null {
+// What the last check could not save to the account. `upgrade` marks a full Garage that Pro would make room in.
+interface SaveProblem {
+  message: string;
+  upgrade: boolean;
+}
+
+function garageNoticeFor(nickname: string, outcome: SaveRigOutcome, plan: Plan | null): SaveProblem | null {
   if (outcome.status === 'full') {
-    const limit = outcome.cap === null ? 'is full' : `is full (the Free plan holds ${outcome.cap} Rigs)`;
-    return `Your Garage ${limit}, so "${nickname}" wasn't saved to it. Your check is not affected.`;
+    return {
+      message: `Your Garage ${garageFullText(outcome.cap, plan)}, so "${nickname}" wasn't saved to it. Your check is not affected.`,
+      upgrade: plan === 'free',
+    };
   }
   if (outcome.status === 'failed') {
-    return `We couldn't save "${nickname}" to your Garage. Your check is not affected.`;
+    return { message: `We couldn't save "${nickname}" to your Garage. Your check is not affected.`, upgrade: false };
   }
   return null;
 }
 
-const historyNotice = "We couldn't save this check to your History. Your check is not affected.";
+const historyNotice: SaveProblem = {
+  message: "We couldn't save this check to your History. Your check is not affected.",
+  upgrade: false,
+};
 
 function App() {
   const [screen, setScreen] = useState<Screen>('home');
   const { rigs: recentRigs, saveRig, canDeleteRig, deleteRig, refresh: refreshGarage } = useGarage();
   // What the last check could not save to the account (its Rig, its History entry); the check itself is never affected.
-  const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<SaveProblem | null>(null);
   // Only a problem is shown: the Garage and History saves finish independently, so a success must not clear the other's.
-  const showSaveProblem = (message: string | null) => {
-    if (message) setSaveNotice(message);
+  const showSaveProblem = (problem: SaveProblem | null) => {
+    if (problem) setSaveNotice(problem);
   };
   const rigImport = useRigImport(refreshGarage);
-  const { history, recordCheck, refresh: refreshHistory } = useHistory();
+  const { history, caps: historyCaps, recordCheck, refresh: refreshHistory } = useHistory();
+  const plan = usePlan();
   const [wizard, setWizard] = useState<WizardState>(EMPTY_WIZARD);
   const [checkResult, setCheckResult] = useState<CreateBreakdownResult | null>(null);
   const [disclaimerAcknowledged, setDisclaimerAcknowledged] = useState(
@@ -123,6 +137,10 @@ function App() {
     setAccountFromWizard(true);
     setScreen('account');
   };
+  // The prompt shown when a Free account meets its Garage or History cap: the Account screen is where Pro is
+  // bought, and from a check it leads back to that check.
+  const goUpgrade = () => (screen === 'wizard' ? goAccountFromWizard() : goAccount());
+  const canUpgrade = billing.available && plan === 'free';
   const backToWizard = () => {
     setAccountFromWizard(false);
     setScreen('wizard');
@@ -296,7 +314,7 @@ function App() {
       const result = createBreakdown(wizard.truck, wizard.trailer, wizard.scale, wizard.pinWeightPct);
       setCheckResult(result);
       const nickname = wizard.rigNickname;
-      void saveRig(nickname, wizard.truck, wizard.trailer).then((outcome) => showSaveProblem(garageNoticeFor(nickname, outcome)));
+      void saveRig(nickname, wizard.truck, wizard.trailer).then((outcome) => showSaveProblem(garageNoticeFor(nickname, outcome, plan)));
       void recordCheck(nickname, result.verdict, result.date).then((saved) => showSaveProblem(saved ? null : historyNotice));
       setWizard((w) => ({ ...w, step: 4, subStep: 'review' }));
     } catch (err) {
@@ -334,7 +352,7 @@ function App() {
       />
 
       <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', padding: '36px 32px' }}>
-        <RigImportBanner rigImport={rigImport} />
+        <RigImportBanner rigImport={rigImport} onUpgrade={canUpgrade ? goUpgrade : undefined} />
         {saveNotice && (
           <div
             role="status"
@@ -350,7 +368,15 @@ function App() {
               fontSize: 14,
             }}
           >
-            <span style={{ flex: 1 }}>{saveNotice}</span>
+            <span style={{ flex: 1 }}>{saveNotice.message}</span>
+            {saveNotice.upgrade && canUpgrade && (
+              <button
+                onClick={goUpgrade}
+                style={{ background: 'none', border: 'none', color: 'var(--fg-1)', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
+              >
+                Upgrade to Pro
+              </button>
+            )}
             <button
               onClick={() => setSaveNotice(null)}
               style={{ background: 'none', border: 'none', color: 'var(--fg-2)', cursor: 'pointer', fontSize: 13 }}
@@ -368,7 +394,17 @@ function App() {
             onDeleteRig={canDeleteRig ? deleteRig : undefined}
           />
         )}
-        {screen === 'history' && <History history={history} recentRigs={recentRigs} />}
+        {screen === 'history' && (
+          <History
+            history={history}
+            recentRigs={recentRigs}
+            atLimit={
+              canUpgrade && historyCaps && history.length >= historyCaps.free
+                ? { freeKeeps: historyCaps.free, proKeeps: historyCaps.pro, onUpgrade: goUpgrade }
+                : undefined
+            }
+          />
+        )}
         {screen === 'account' && (
           <Account
             onDone={accountFromWizard ? backToWizard : goHome}

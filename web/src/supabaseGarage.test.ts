@@ -8,7 +8,7 @@ import { createSupabaseGarageBackend } from './supabaseGarage';
 // [supabase-tables] in the External suite.
 
 function fakeClient(rpcResult: { error: { message: string; details?: string } | null }) {
-  const rpc = vi.fn(async () => rpcResult);
+  const rpc = vi.fn(async (_name: string, _args: Record<string, unknown>) => rpcResult);
   return { client: { rpc } as unknown as SupabaseClient, rpc };
 }
 
@@ -20,20 +20,32 @@ describe('createSupabaseGarageBackend', () => {
       nickname: 'Big Blue',
       truck: { manufacturer: 'Ford' },
       trailer: {},
-    });
+    }, 'free');
 
     expect(rpc).toHaveBeenCalledWith('add_rig', {
       p_idempotency_key: 'key-1',
       p_nickname: 'Big Blue',
       p_truck: { manufacturer: 'Ford' },
       p_trailer: {},
+      p_pro: false,
     });
+  });
+
+  it('tells add_rig which cap applies: Pro, Free, or unknown when the plan could not be read', async () => {
+    const { client, rpc } = fakeClient({ error: null });
+    const rig = { nickname: 'Big Blue', truck: {}, trailer: {} };
+
+    await createSupabaseGarageBackend(client).addRig('key-1', rig, 'pro');
+    await createSupabaseGarageBackend(client).addRig('key-2', rig, 'free');
+    await createSupabaseGarageBackend(client).addRig('key-3', rig, null);
+
+    expect(rpc.mock.calls.map(([, args]) => args.p_pro)).toEqual([true, false, null]);
   });
 
   it('sends the nickname without its surrounding spaces', async () => {
     const { client, rpc } = fakeClient({ error: null });
 
-    await createSupabaseGarageBackend(client).addRig('key-1', { nickname: ' truck a ', truck: {}, trailer: {} });
+    await createSupabaseGarageBackend(client).addRig('key-1', { nickname: ' truck a ', truck: {}, trailer: {} }, 'free');
 
     expect(rpc).toHaveBeenCalledWith('add_rig', expect.objectContaining({ p_nickname: 'truck a' }));
   });
@@ -53,7 +65,7 @@ describe('createSupabaseGarageBackend', () => {
   it('turns the server\u2019s garage_full error into a GarageFullError carrying the cap', async () => {
     const { client } = fakeClient({ error: { message: 'garage_full', details: '5' } });
 
-    const attempt = createSupabaseGarageBackend(client).addRig('key-1', { nickname: 'Big Blue', truck: {}, trailer: {} });
+    const attempt = createSupabaseGarageBackend(client).addRig('key-1', { nickname: 'Big Blue', truck: {}, trailer: {} }, 'free');
 
     await expect(attempt).rejects.toBeInstanceOf(GarageFullError);
     await expect(attempt).rejects.toMatchObject({ cap: 5 });
@@ -63,14 +75,14 @@ describe('createSupabaseGarageBackend', () => {
     const { client } = fakeClient({ error: { message: 'garage_full' } });
 
     await expect(
-      createSupabaseGarageBackend(client).addRig('key-1', { nickname: 'Big Blue', truck: {}, trailer: {} }),
+      createSupabaseGarageBackend(client).addRig('key-1', { nickname: 'Big Blue', truck: {}, trailer: {} }, 'free'),
     ).rejects.toMatchObject({ cap: null });
   });
 
   it('lets any other server error through as a plain error', async () => {
     const { client } = fakeClient({ error: { message: 'connection reset' } });
 
-    const attempt = createSupabaseGarageBackend(client).addRig('key-1', { nickname: 'Big Blue', truck: {}, trailer: {} });
+    const attempt = createSupabaseGarageBackend(client).addRig('key-1', { nickname: 'Big Blue', truck: {}, trailer: {} }, 'free');
 
     await expect(attempt).rejects.toThrow('connection reset');
     await expect(attempt).rejects.not.toBeInstanceOf(GarageFullError);

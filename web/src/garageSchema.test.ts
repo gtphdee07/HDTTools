@@ -12,14 +12,18 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // What this cannot show: two *simultaneous* transactions (PGlite has one connection). The lock that
 // makes concurrent adds safe is exercised by the live External test, `[supabase-tables]`.
 
-const MIGRATION = readFileSync(
-  new URL('../../supabase/migrations/20261010000000_garage_rigs.sql', import.meta.url),
-  'utf8',
+const MIGRATIONS = [
+  '20261010000000_garage_rigs.sql',
+  '20261022000000_history_entries.sql',
+  '20261023000000_plan_caps.sql',
+].map((file) =>
+  readFileSync(new URL(`../../supabase/migrations/${file}`, import.meta.url), 'utf8'),
 );
 
 const ALICE = '00000000-0000-4000-8000-00000000000a';
 const BOB = '00000000-0000-4000-8000-00000000000b';
-const FREE_CAP = 5;
+// Read from plan_caps once the migrations have run, so the number is written in one place.
+let FREE_CAP: number;
 
 let db: PGlite;
 
@@ -37,7 +41,8 @@ beforeAll(async () => {
     grant execute on function auth.uid() to anon, authenticated;
     insert into auth.users values ('${ALICE}'), ('${BOB}');
   `);
-  await db.exec(MIGRATION);
+  for (const migration of MIGRATIONS) await db.exec(migration);
+  FREE_CAP = (await db.query<{ cap: number }>("select garage_cap as cap from public.plan_caps where plan = 'free'")).rows[0].cap;
 });
 
 afterAll(async () => {

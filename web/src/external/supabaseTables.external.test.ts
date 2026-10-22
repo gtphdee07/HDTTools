@@ -11,8 +11,21 @@ import { REQUIRED, SECOND_ACCOUNT, readConfig } from './config';
 // empties the two test accounts' Garages before and after, so it must only ever use throwaway
 // test accounts. It never creates a user and never triggers an email.
 // The second describe, further down, covers the History table surface the same way (#29).
+// Both also need supabase/migrations/20261023000000_plan_caps.sql (#30): the caps are read from the
+// plan_caps table, the one place they are written, so editing a placeholder cap does not break this suite.
 
-const FREE_CAP = 5;
+let FREE_CAP = 0;
+let PRO_RIGS = 0;
+
+async function readCaps(client: SupabaseClient) {
+  const { data, error } = await client.from('plan_caps').select('plan, garage_cap, history_cap');
+  expect(error, 'migration 20261023000000_plan_caps.sql must be applied to the project').toBeNull();
+  const of = (plan: string) => data!.find((r) => r.plan === plan)!;
+  return {
+    free: { rigs: of('free').garage_cap as number, checks: of('free').history_cap as number },
+    pro: { rigs: of('pro').garage_cap as number, checks: of('pro').history_cap as number },
+  };
+}
 
 const isMissingTable = (error: { message: string } | null) => /garage_rigs|schema cache/i.test(error?.message ?? '');
 
@@ -45,8 +58,15 @@ describe('[supabase-tables] Supabase Garage table live contract', () => {
     return data!.length;
   };
 
-  const add = (client: SupabaseClient, key: string, nickname: string) =>
-    client.rpc('add_rig', { p_idempotency_key: key, p_nickname: nickname, p_truck: {}, p_trailer: {} });
+  // `pro` is what the app reports; left out, the call is the Free one an older app build makes.
+  const add = (client: SupabaseClient, key: string, nickname: string, pro?: boolean | null) =>
+    client.rpc('add_rig', {
+      p_idempotency_key: key,
+      p_nickname: nickname,
+      p_truck: {},
+      p_trailer: {},
+      ...(pro === undefined ? {} : { p_pro: pro }),
+    });
 
   const runId = Date.now().toString(36);
   const key = (name: string) => `external-${runId}-${name}`;
@@ -60,6 +80,9 @@ describe('[supabase-tables] Supabase Garage table live contract', () => {
     aliceAgain = await signedIn(cfg.WEB_EXTERNAL_TEST_EMAIL, cfg.WEB_EXTERNAL_TEST_PASSWORD);
     bob = await signedIn(cfg.WEB_EXTERNAL_TEST_NOCREDITS_EMAIL, cfg.WEB_EXTERNAL_TEST_NOCREDITS_PASSWORD);
     signedOut = freshClient();
+    const caps = await readCaps(alice);
+    FREE_CAP = caps.free.rigs;
+    PRO_RIGS = caps.pro.rigs;
     await emptyGarage(alice);
     await emptyGarage(bob);
   });
@@ -210,6 +233,24 @@ describe('[supabase-tables] Supabase Garage table live contract', () => {
     expect(await countRigs(alice)).toBe(FREE_CAP);
     await emptyGarage(alice);
   });
+
+  it('lets an account that reports Pro past the Free cap, and still holds one that reports Free to it', async () => {
+    expect(PRO_RIGS).toBeGreaterThan(FREE_CAP);
+    await emptyGarage(alice);
+    for (let i = 1; i <= FREE_CAP; i++) {
+      expect((await add(alice, key(`pro-${i}`), `Rig ${i}`, false)).error).toBeNull();
+    }
+    expect((await add(alice, key('pro-over-free'), 'Over Free', false)).error?.message).toBe('garage_full');
+
+    const asPro = await add(alice, key('pro-over-free'), 'Over Free', true);
+
+    expect(asPro.error).toBeNull();
+    expect(await countRigs(alice)).toBe(FREE_CAP + 1);
+    const stillFree = await add(alice, key('pro-still-free'), 'Another', false);
+    expect(stillFree.error?.message).toBe('garage_full');
+    expect(stillFree.error?.details).toBe(String(FREE_CAP));
+    await emptyGarage(alice);
+  });
 });
 
 // The History table surface (#29): row-level security, the count cap with oldest-entry pruning, and
@@ -219,7 +260,8 @@ describe('[supabase-tables] Supabase Garage table live contract', () => {
 // the cap with its own checks, which pushes out everything older, then asserts on exactly those rows.
 // The two test accounts keep their last 10 checks between runs; they are throwaway accounts.
 
-const HISTORY_CAP = 10;
+let HISTORY_CAP = 0;
+let PRO_CHECKS = 0;
 
 describe('[supabase-tables] Supabase History table live contract', () => {
   let alice: SupabaseClient;
@@ -231,8 +273,13 @@ describe('[supabase-tables] Supabase History table live contract', () => {
   const key = (name: string) => `external-history-${runId}-${name}`;
   const rigName = (name: string) => `${runId} ${name}`;
 
-  const addCheck = (client: SupabaseClient, idempotencyKey: string, rigNickname: string, verdict = 'pass') =>
-    client.rpc('add_history_entry', { p_idempotency_key: idempotencyKey, p_rig_nickname: rigNickname, p_verdict: verdict });
+  const addCheck = (client: SupabaseClient, idempotencyKey: string, rigNickname: string, verdict = 'pass', pro?: boolean | null) =>
+    client.rpc('add_history_entry', {
+      p_idempotency_key: idempotencyKey,
+      p_rig_nickname: rigNickname,
+      p_verdict: verdict,
+      ...(pro === undefined ? {} : { p_pro: pro }),
+    });
 
   // The account's checks, newest first, as the app reads them.
   const listChecks = async (client: SupabaseClient) => {
@@ -269,6 +316,9 @@ describe('[supabase-tables] Supabase History table live contract', () => {
     aliceAgain = await signedIn(cfg.WEB_EXTERNAL_TEST_EMAIL, cfg.WEB_EXTERNAL_TEST_PASSWORD);
     bob = await signedIn(cfg.WEB_EXTERNAL_TEST_NOCREDITS_EMAIL, cfg.WEB_EXTERNAL_TEST_NOCREDITS_PASSWORD);
     signedOut = fresh();
+    const caps = await readCaps(alice);
+    HISTORY_CAP = caps.free.checks;
+    PRO_CHECKS = caps.pro.checks;
   });
 
   it('has the History table and add_history_entry function the app calls', async () => {
@@ -367,5 +417,20 @@ describe('[supabase-tables] Supabase History table live contract', () => {
     // The retry did not push a second old check out.
     expect(kept).toHaveLength(HISTORY_CAP);
     expect(kept[HISTORY_CAP - 1]).toBe(rigName('retry 2'));
+  });
+
+  it('keeps more checks for an account that reports Pro than for one that reports Free', async () => {
+    expect(PRO_CHECKS).toBeGreaterThan(HISTORY_CAP);
+    await fillHistory(alice, 'pro');
+
+    const asPro = await addCheck(alice, key('pro-extra'), rigName('pro extra'), 'pass', true);
+
+    expect(asPro.error).toBeNull();
+    const kept = (await listChecks(alice)).map((c) => c.rig_nickname);
+    expect(kept).toHaveLength(HISTORY_CAP + 1);
+    expect(kept[0]).toBe(rigName('pro extra'));
+    // A Free add prunes back to the Free count.
+    expect((await addCheck(alice, key('pro-then-free'), rigName('free again'), 'pass', false)).error).toBeNull();
+    expect(await listChecks(alice)).toHaveLength(HISTORY_CAP);
   });
 });

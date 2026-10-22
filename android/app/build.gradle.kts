@@ -37,6 +37,7 @@ val revenueCatReleaseKey: String =
     providers.gradleProperty("revenueCatReleaseKey")
         .orElse(providers.environmentVariable("REVENUECAT_RELEASE_API_KEY"))
         .getOrElse("")
+        .trim()
 
 android {
     namespace = "com.rigcheck.app"
@@ -111,7 +112,7 @@ val verifyRevenueCatReleaseKey = tasks.register("verifyRevenueCatReleaseKey") {
                 "The RevenueCat release API key is missing: set the $where to the production public SDK key.",
             )
         }
-        if (key.startsWith("test_")) {
+        if (key.startsWith("test_", ignoreCase = true)) {
             throw GradleException(
                 "The RevenueCat release API key is a Test Store key (it starts with test_): purchases made " +
                     "with it are fake. Set the $where to the production public SDK key.",

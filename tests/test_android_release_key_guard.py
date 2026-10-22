@@ -16,19 +16,24 @@ import pytest
 
 from tests._test_command_helpers import ANDROID, gradle, gradle_proc, read
 
-pytestmark = [pytest.mark.core, pytest.mark.xdist_group("gradle")]
-slow = pytest.mark.slow
+pytestmark = [pytest.mark.core]
+
+
+def gradle_check(test):
+    """The checks that start Gradle: `slow`, and on the one xdist worker the other Gradle checks share."""
+    return pytest.mark.slow(pytest.mark.xdist_group("gradle")(test))
+
 
 GUARD = ":app:verifyRevenueCatReleaseKey"
-KEY_ENV = "REVENUECAT_RELEASE_API_KEY"
+RELEASE_KEY_ENV = "REVENUECAT_RELEASE_API_KEY"
 TEST_STORE_KEY = "test_LFhGCYRgSfTFUpYRaWkEakLWOdS"
 
 
 def _env(key: str | None = None) -> dict[str, str]:
     """This process's environment with the release-key variable removed, or set to `key`."""
-    env = {k: v for k, v in os.environ.items() if k != KEY_ENV}
+    env = {k: v for k, v in os.environ.items() if k != RELEASE_KEY_ENV}
     if key is not None:
-        env[KEY_ENV] = key
+        env[RELEASE_KEY_ENV] = key
     return env
 
 
@@ -43,11 +48,13 @@ def test_application_reads_its_key_from_build_config_and_holds_no_literal():
     assert re.findall(r'"(?:test|goog|appl|amzn|rcb|sk)_[A-Za-z0-9]+"', source) == []
 
 
-@slow
+@gradle_check
 @pytest.mark.parametrize("args, message", [
     pytest.param([], "key is missing", id="no-key"),
     pytest.param(["-PrevenueCatReleaseKey="], "key is missing", id="empty-key"),
     pytest.param(["-PrevenueCatReleaseKey=test_abc123"], "starts with test_", id="test-store-key"),
+    pytest.param(["-PrevenueCatReleaseKey=TEST_abc123"], "starts with test_", id="upper-case-test-store-key"),
+    pytest.param(["-PrevenueCatReleaseKey=  test_abc123"], "starts with test_", id="padded-test-store-key"),
 ])
 def test_guard_refuses_a_missing_empty_or_test_store_key(args, message):
     proc = _guard(*args)
@@ -55,14 +62,14 @@ def test_guard_refuses_a_missing_empty_or_test_store_key(args, message):
     assert "RevenueCat release API key" in proc.stderr and message in proc.stderr
 
 
-@slow
+@gradle_check
 def test_guard_refuses_a_test_store_key_from_the_environment_too():
     proc = _guard(env_key=TEST_STORE_KEY)
     assert proc.returncode != 0 and "starts with test_" in proc.stderr
     assert TEST_STORE_KEY not in proc.stdout + proc.stderr  # the message names the key, never prints it
 
 
-@slow
+@gradle_check
 @pytest.mark.parametrize("args, env_key", [
     pytest.param(["-PrevenueCatReleaseKey=goog_abc123"], None, id="gradle-property"),
     pytest.param([], "goog_abc123", id="environment-variable"),
@@ -79,14 +86,14 @@ def _release_task_order(*tasks: str) -> list[str]:
     return re.findall(r"^(:\S+) SKIPPED", out, flags=re.MULTILINE)
 
 
-@slow
-@pytest.mark.parametrize("task", ["assembleRelease", "bundleRelease"])
+@gradle_check
+@pytest.mark.parametrize("task", ["assembleRelease", "bundleRelease", "packageRelease", "packageReleaseBundle"])
 def test_release_artifact_tasks_run_the_guard_first(task):
     order = _release_task_order(task)
     assert order[0] == GUARD, order[:5]
 
 
-@slow
+@gradle_check
 @pytest.mark.parametrize("tasks", [["assembleDebug"], ["test"]])
 def test_debug_builds_and_unit_tests_do_not_need_a_release_key(tasks):
     assert GUARD not in _release_task_order(*tasks)
@@ -97,7 +104,7 @@ def _build_config_key(variant: str) -> str:
     return re.search(r'REVENUECAT_PUBLIC_API_KEY = "([^"]*)"', read(path)).group(1)
 
 
-@slow
+@gradle_check
 def test_debug_uses_the_test_store_key_and_release_takes_its_own_with_no_default():
     gradle("generateDebugBuildConfig", "generateReleaseBuildConfig", "-PrevenueCatReleaseKey=goog_abc123")
     assert _build_config_key("debug") == TEST_STORE_KEY

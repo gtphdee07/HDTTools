@@ -116,8 +116,8 @@ paywall and External runner tests still run against the Test Store; release has 
 and reads the production key from the Gradle property `revenueCatReleaseKey` or the environment
 variable `REVENUECAT_RELEASE_API_KEY`. A Test Store key must never ship (purchases made with it
 are fake, so a release would sell nothing and grant entitlements for free), so the Gradle task
-`verifyRevenueCatReleaseKey` fails the build when that key is missing, empty or starts with
-`test_`, and `assembleRelease`, `bundleRelease`, `packageRelease` and `packageReleaseBundle`
+`verifyRevenueCatReleaseKey` fails the build when that key is missing, blank or starts with
+`test_` (surrounding whitespace is ignored and the prefix is matched in any case), and `assembleRelease`, `bundleRelease`, `packageRelease` and `packageReleaseBundle`
 depend on it and run it first. It is not wired to `preReleaseBuild`, so `./gradlew test`
 (which includes `testReleaseUnitTest`) needs no release key. The error names the key and where
 to set it and never prints its value.
@@ -128,9 +128,9 @@ to set it and never prints its value.
 ```
 
 `tests/test_android_release_key_guard.py` proves the rule without a release build: it runs the
-guard task alone (a missing, empty and `test_` key fail, a `goog_` key passes from the property
+guard task alone (a missing, empty, `test_`, `TEST_` and space-padded `test_` key fail, a `goog_` key passes from the property
 and from the environment variable), checks from Gradle's dry-run task graph that the release
-artifact tasks run it first and that debug builds and `./gradlew test` do not need it, and
+artifact tasks (all four) run it first and that debug builds and `./gradlew test` do not need it, and
 reads the generated `BuildConfig` of each build type. The Gradle checks are `slow` and offline
 (about 40 s); the planner owes them when `app/build.gradle.kts` changes. Putting the production
 key on the release-build machine is a launch step (#99, #40).

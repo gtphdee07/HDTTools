@@ -4,14 +4,13 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-All the round's tickets are merged and pushed, including epic #147's tree (epic closed). The work now is the optional truck GCWR chain: #45 (core) and #46 (Web) are merged, #47 (Android) is built and is next to merge, and **#168 (Android shows the Verdict subline, so the GCWR caveat is visible) should land before the push**. #132 is still optional.
+All the round's tickets are merged and pushed, including epic #147's tree (epic closed). The work now is the optional truck GCWR chain: #45, #46 and #47 are merged, and **#168 (Android shows the Verdict subline, so the GCWR caveat is visible) should land before the push**. #132 is still optional.
 
-**Red stretch in progress.** #45 changed the shared fixture (`test-vectors/breakdown_cases.json`); Web follows it (#46 merged), and Android follows it once #47 is merged. Until then Android's golden-vector test fails on `MPSkills` by design. **Nothing is pushed until #47 and #168 are merged.**
+The shared fixture now passes in Python, Web and Android, so the red stretch is over. **Nothing is pushed until #168 is merged** (without it Android users with no GCWR lose the Combined row and never see why).
 
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
-| 1 | #47 Android: GCWR field and Kotlin breakdown (the only ticket using the emulator) | Android | stop the emulator after (step 6) | [#47](#47-android-gcwr) |
-| 2 | #168 Android: show the Verdict subline on the Results screen (after #47 is merged; the GCWR caveat is invisible on Android without it) | Android | stop the emulator after (step 6) | [#168](#168-android-verdict-subline) |
+| 1 | #168 Android: show the Verdict subline on the Results screen (the GCWR caveat is invisible on Android without it) | Android | stop the emulator after (step 6) | [#168](#168-android-verdict-subline) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
 #46 and #47 can build at the same time (different surfaces, and only #47 touches the emulator). Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember"). The final External run is done (2026-10-21, see History); if #132 changes no code there is nothing more to run, and any later change to a boundary file or pin needs `uv run scripts/external_freshness.py` first.
@@ -41,39 +40,13 @@ Done: the truck GCWR in the core math, the Verdict rule, the shared fixture (`te
 
 Done: Web's optional GCWR field, hint and below-GVWR warning, the TypeScript breakdown and Verdict following the shared fixture, and the Rig round trip.
 
-### #47 Android GCWR
+### #47 (merged 2026-10-22)
 
-- **Step 1:** `/ticket-start 47` (#45 is merged; its title says Android, so no flag is needed).
-- **Step 2 block:**
-
-```
-Test-round additions:
-- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- If you add or move a class in `domain`, `data` or `ui`, classify it in
-  `android/coverage-logic.toml` (allow-list, or waiver with a reason). The JVM
-  coverage floor is 95% over the allow-listed decision logic. The Android
-  end-of-session command is `uv run scripts/android_session_end.py` (JVM tests,
-  coverage floor, detekt; no device).
-- The shared fixture `test-vectors/breakdown_cases.json` is already updated by #45;
-  do not change it. `BreakdownGoldenVectorTest` must pass against it. If you think the
-  fixture is wrong, say so in the report instead of editing it.
-- The UI test for the field and the hidden/shown row needs the single emulator; no
-  other Android ticket may be running. Start it with
-  `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save
-  -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are
-  done.
-- No live or paid runs.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
-  markers.
-```
-
-- **Your part:** after `/ticket-merge 47`, stop the emulator and clean up (step 6). A change to the truck entry screen may make `revenuecat-android-sdk` stale only if a boundary file changes; Claude checks the gate before any push.
+Done: Android's optional GCWR field, hint and below-GVWR warning, the Kotlin breakdown and Verdict following the shared fixture, and the Rig round trip. The fixture now passes in Python, Web and Android.
 
 ### #168 Android verdict subline
 
-- **Step 1:** `/ticket-start 168` (after #47 is merged, so it is cut with the GCWR subline; its title says Android, so no flag is needed). You answered its decision: the subline goes under the verdict headline in the verdict pill, as Web does.
+- **Step 1:** `/ticket-start 168` (#47 is merged, so it is cut with the GCWR subline; its title says Android, so no flag is needed). You answered its decision: the subline goes under the verdict headline in the verdict pill, as Web does.
 - **Step 2 block:**
 
 ```

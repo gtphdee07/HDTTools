@@ -119,7 +119,7 @@ Done: Android shows the account's plan (Pro or Free, from the `pro` entitlement,
 
 ### #101 Android scan packs for Pro users only
 
-- **Step 1:** `/ticket-start 101` (after #27 is merged). Android; the single emulator.
+- **Step 1:** `/ticket-start 101` (#27 is merged). Android; the single emulator.
 - **Step 2 block:**
 
 ```

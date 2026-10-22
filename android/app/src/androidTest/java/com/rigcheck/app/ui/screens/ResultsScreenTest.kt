@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.domain.BreakdownItem
+import com.rigcheck.app.domain.GCWR_UNCHECKED_CAVEAT
 import com.rigcheck.app.domain.Tone
 import com.rigcheck.app.domain.computeBreakdown
 import com.rigcheck.app.domain.model.ScaleTicket
@@ -104,6 +105,41 @@ class ResultsScreenTest {
         // The sixth row sits below the fold of the card's own list, which composes lazily.
         composeRule.onNode(hasScrollAction()).performScrollToNode(hasText("Combined Rig Weight"))
         composeRule.onNodeWithText("Combined Rig Weight").assertIsDisplayed()
+    }
+
+    // #168: the Verdict's subline sits under the headline. Without a GCWR the Safe to Tow
+    // subline carries the caveat, and a user who never sees it is never told the Combined
+    // weight went unchecked.
+
+    @Test
+    fun safeToTowSublineCarriesGcwrCaveatWhenNoGcwrWasEntered() {
+        showResultsFor(gcwrTruck)
+
+        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
+        composeRule.onNodeWithText(GCWR_UNCHECKED_CAVEAT, substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun safeToTowSublineHasNoGcwrCaveatWhenAGcwrWasChecked() {
+        showResultsFor(gcwrTruck.copy(gcwrLb = 26_000.0))
+
+        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
+        composeRule.onNodeWithText("Every axle checks out under its rated limit.").assertIsDisplayed()
+        composeRule.onNodeWithText(GCWR_UNCHECKED_CAVEAT, substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun overLimitSublineIsShownToo() {
+        val failing = listOf(item("Combined Rig Weight", Tone.WARNING, 108))
+        composeRule.setContent {
+            ResultsScreen(
+                rigNickname = "Goose + Addie",
+                breakdown = failing,
+                verdict = verdictFor(failing),
+                onStartAnother = {},
+            )
+        }
+        composeRule.onNodeWithText(verdictFor(failing).subline).assertIsDisplayed()
     }
 
     @Test

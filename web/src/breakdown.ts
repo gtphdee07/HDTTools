@@ -241,7 +241,7 @@ export function verdictFor(items: BreakdownItem[]): VerdictInfo {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-function formatDate(now: Date): string {
+export function formatDate(now: Date): string {
   const day = String(now.getUTCDate()).padStart(2, '0');
   return `${MONTHS[now.getUTCMonth()]} ${day}, ${now.getUTCFullYear()}`;
 }

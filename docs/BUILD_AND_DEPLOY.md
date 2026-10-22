@@ -176,6 +176,15 @@ the apps at a new project, all of it must be recreated or re-verified.
   `cd web && EXTERNAL_SURFACES=supabase-tables npx vitest run --config vitest.external.config.ts`.
   A new Supabase project needs the same step (section 7). Changing the cap means
   a new migration that redefines `add_rig`, never an edit to the applied one.
+- **History table (#29).** Run `supabase/migrations/20261022000000_history_entries.sql`
+  once, the same way (it is independent of the Garage one). It creates
+  `history_entries` (row-level security on, read-only to the owning account), the
+  `add_history_entry` function that keeps the newest 10 checks per account (the
+  Free cap), dropping the oldest, and makes a retried add count once, and the
+  grants. Without it a signed-in Web user's checks are not saved to the
+  account (the app says so) and the History half of the `supabase-tables`
+  External suite fails. Check it with the same command as above. Changing the
+  cap means a new migration that redefines `add_history_entry`.
 - Free tier: pauses after 7 idle days and has no automatic backups (accepted
   for now, ADR-0005). If sign-in suddenly stops working, check whether the
   project is paused.

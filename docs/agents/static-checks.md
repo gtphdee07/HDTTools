@@ -32,7 +32,7 @@ Each context has a `session_end` command in `scripts/test_planner_config.json`:
 
 | List | Excuses | Checked by |
 |---|---|---|
-| `scripts/static_allowlists/oxlint.json` | oxlint warnings, per context, file, rule and count, each with a reason (16 in Web, none in Scan Proxy) | the lint step itself, and `tests/test_static_checks_real.py` (slow) |
+| `scripts/static_allowlists/oxlint.json` | oxlint warnings, per context, file, rule and count, each with a reason (17 in Web, none in Scan Proxy) | the lint step itself, and `tests/test_static_checks_real.py` (slow) |
 | `vulture_whitelist.py` | vulture findings in `src/hdttools`, `streamlit_app` and `scripts` that are not dead code, grouped by why vulture cannot see the use | `tests/test_static_checks_real.py`: a name vulture no longer reports fails |
 | `vulture_whitelist_tests.py` | the same for `tests/`: pytest hooks, autouse fixtures, fakes' interface names | the same test |
 

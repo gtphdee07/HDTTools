@@ -624,8 +624,13 @@ def test_supabase_tables_is_in_the_real_manifest_active_with_the_web_chain():
     assert surface["status"] == "active"
     assert surface["max_paid_calls"] == 0
     assert surface["platforms"] == ["web"]
-    # The adapter that calls the table, and the migration that defines it: a change to either is a change to the surface.
-    assert {"web/src/supabaseGarage.ts", "supabase/migrations/20261010000000_garage_rigs.sql"} <= set(surface["boundary_files"])
+    # Each table's adapter and the migration that defines it (Garage #28, History #29): a change to either is a change to the surface.
+    assert {
+        "web/src/supabaseGarage.ts",
+        "supabase/migrations/20261010000000_garage_rigs.sql",
+        "web/src/supabaseHistory.ts",
+        "supabase/migrations/20261022000000_history_entries.sql",
+    } <= set(surface["boundary_files"])
     assert {"ecosystem": "npm", "package": "@supabase/supabase-js"} in surface["registry_packages"]
     assert "supabase-tables" in ef.surfaces_for_platform(ef.load_manifest(), "web")
 

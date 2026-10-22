@@ -116,18 +116,24 @@ pieces (`SupabaseAccountBackend.kt` and the `supabase-kt` pin in
 there makes it stale and Android's release gate waits on it; only this Web suite
 exercises it live.
 
-### `supabase-tables` (#28)
+### `supabase-tables` (#28, #29)
 
 Real calls to the live Supabase project's Garage table (`garage_rigs`) and its
-`add_rig` function, as the two throwaway test accounts (`WEB_EXTERNAL_TEST_*`
-and `WEB_EXTERNAL_TEST_NOCREDITS_*`; the second exists to prove one account
-cannot reach another's rows). Boundary files are `web/src/supabaseGarage.ts`
-and the migration `supabase/migrations/20261010000000_garage_rigs.sql`; the
-watched package is `@supabase/supabase-js`. **The migration must be applied to
-the project first** (`docs/BUILD_AND_DEPLOY.md`, Supabase section); until it is,
-the suite fails at its first call with a message saying so. It empties both
-accounts' Garages before and after every run, so it must only ever use
-throwaway accounts, and it never creates a user or sends mail.
+`add_rig` function (#28), and its History table (`history_entries`) and its
+`add_history_entry` function (#29), as the two throwaway test accounts
+(`WEB_EXTERNAL_TEST_*` and `WEB_EXTERNAL_TEST_NOCREDITS_*`; the second exists to
+prove one account cannot reach another's rows). Boundary files are
+`web/src/supabaseGarage.ts`, `web/src/supabaseHistory.ts` and the migrations
+`supabase/migrations/20261010000000_garage_rigs.sql` and
+`supabase/migrations/20261022000000_history_entries.sql`; the watched package is
+`@supabase/supabase-js`. **Both migrations must be applied to the project
+first** (`docs/BUILD_AND_DEPLOY.md`, Supabase section); until they are, the
+matching half of the suite fails at its first call with a message saying so. The
+Garage half empties both accounts' Garages before and after every run, so it must
+only ever use throwaway accounts. An account cannot delete its own History, so
+the History half instead fills an account's History to its cap with its own
+checks before each test (which pushes everything older out) and leaves the last 10
+checks behind. It never creates a user or sends mail.
 
 | ADR-0008 depth | Covered by |
 |---|---|
@@ -135,11 +141,13 @@ throwaway accounts, and it never creates a user or sends mail.
 | Response shape | `add_rig` returns the Rig row (`id`, `nickname`, `truck`, `trailer`, `last_used_at`). |
 | Error contract | Over the cap the server answers `garage_full` with the cap in `details`; a direct insert, a change of owner, and another account's update or delete are refused or touch nothing. |
 | Full journey | Fills a Garage to the Free cap, is refused the next add, races eight adds from two sessions of one account into the last free slot (exactly one lands), retries an add (one Rig, even once full), updates a Rig in a full Garage, and frees a slot by deleting. |
+| History (#29) | `add_history_entry` returns the entry row (`id`, `rig_nickname`, `verdict`, `checked_at`); an account sees only its own checks; a signed-out caller, a direct insert, and any edit or delete (own or another's) are refused; an add past the cap of 10 drops the oldest and the list reads newest first; eight checks arriving at once from two sessions of one account leave exactly 10; a retried add (same key) creates one entry and does not push another out. |
 
-The offline counterpart is `src/garageSchema.test.ts` (in `npm test`): it runs
-the same migration on a real Postgres (PGlite) as the `authenticated` role and
-checks row-level security, grants, the cap and idempotency. It cannot run two
-transactions at once, which is why the concurrent-add check lives here.
+The offline counterparts are `src/garageSchema.test.ts` and
+`src/historySchema.test.ts` (in `npm test`): each runs its migration on a real
+Postgres (PGlite) as the `authenticated` role and checks row-level security,
+grants, the cap and idempotency. They cannot run two transactions at once, which
+is why the concurrent-add checks live here.
 
 ### `revenuecat-web-billing` (#85)
 
@@ -384,6 +392,9 @@ the ticket for each: [`docs/agents/static-checks.md`](../docs/agents/static-chec
 | `src/App.garage.test.tsx` | **Interaction** | The account-synced Garage (#28), driven through the real screens with a fake Supabase auth client and an in-memory fake of the account's Garage store. Signed in: a finished check saves its Rig to the account and not to `localStorage`; a Rig saved on one "device" appears on a second; the account's Rigs replace the browser's while signed in and the browser's return after sign-out; a failed add is retried once with the same idempotency key and ends with one Rig; a full Garage shows the cap message, still shows the check and saves nothing; any other save failure says so without blocking the check; reusing a Rig already in a full Garage updates it instead of adding; an update that finds its Rig gone falls back to an add; and an older refresh answering late cannot overwrite a newer list. Signed out: Rigs stay in the browser and the account store is never called. The server's own rules are not here; see `src/garageSchema.test.ts`. |
 | `src/garageSchema.test.ts` | **Service boundary** | Runs `supabase/migrations/20261010000000_garage_rigs.sql` on a real Postgres (PGlite) as the `authenticated` and `anon` roles, with Supabase's `auth` schema stubbed. Row-level security (own rows only; a signed-out caller gets nothing; no update, hand-over or delete of another account's row; no direct insert); the Free cap of 5 with the cap in the error; accounts counted separately; a retried add (same key) creates one Rig, is not charged again, survives a rename, and is answered with the Rig even once the Garage is full; a nickname already present is refreshed without using capacity; last-used and tag updates work in a full Garage; deleting frees a slot. Cannot run two transactions at once, so concurrent adds are covered by the live `[supabase-tables]` External suite. |
 | `src/supabaseGarage.test.ts` | Module | The adapter between the app's Garage store and the table/RPC contract, with the Supabase client faked: `add_rig` gets the key and Rig; `garage_full` becomes a `GarageFullError` carrying the cap (or `null` when the server's detail is unreadable); any other server error stays a plain error. |
+| `src/App.history.test.tsx` | **Interaction** | The account-synced History (#29), driven through the real screens with a fake Supabase auth client and an in-memory fake of the account's History store. Signed in: a finished check is saved to the account and listed on the History screen; a check made on one "device" appears on a second; a check made elsewhere appears when History is opened; a failed save is retried once with the same idempotency key and ends with one entry; a save that fails twice says so, and the check's result still shows. Signed out: this visit's checks list on the History screen and the account store is never called; checks made before signing in are not uploaded, the account's own History replaces them on screen, and signing out brings them back. The cap, pruning and row-level rules are not here; see `src/historySchema.test.ts`. |
+| `src/historySchema.test.ts` | **Service boundary** | Runs `supabase/migrations/20261022000000_history_entries.sql` on a real Postgres (PGlite) as the `authenticated` and `anon` roles, with Supabase's `auth` schema stubbed. Row-level security (own checks only; a signed-out caller gets nothing; no direct insert; no update or delete by any account); the Free cap of 10 (the 11th add drops the oldest, further adds keep dropping the oldest, accounts are pruned separately, the same Rig's checks stay separate entries, and "oldest" goes by insertion order, not timestamp, so a clock stepping back cannot prune the newest); a retried add (same key) creates one entry and does not prune again at the cap, and the same key from two accounts is two adds; the nickname is stored trimmed, an unknown verdict or blank nickname is refused. Cannot run two transactions at once, so concurrent adds are covered by the live `[supabase-tables]` External suite. |
+| `src/supabaseHistory.test.ts` | Module | The adapter between the app's History store and the table/RPC contract, with the Supabase client faked: `add_history_entry` gets the key, the trimmed Rig nickname and the verdict; a server error stays an error so the caller can retry; the list is read newest first and each entry gets the same "Mon DD, YYYY" date a fresh check shows, from the server's timestamp. |
 | `src/components/DisclaimerModal.test.tsx` | Module | Renders the disclaimer heading; clicking "I Understand — Continue" calls `onAcknowledge`. Deliberately small — this component has exactly one behavior. |
 | `src/screens/History.test.tsx`, `src/screens/Dashboard.test.tsx` | Module | Both cover `verdictBadge.ts`'s `VERDICT_BADGE` map (`pass`→"Safe to Tow"/success, `fail`→"Over Limit"/warning, `partial`→"Partially Checked"/insufficient, `insufficient`→"Not Enough Info"/insufficient), which each file's verdict badge now reads from. **Regression tests for a real bug found 2026-08-21** auditing this suite's coverage: both files previously rendered *any* non-`'pass'` verdict as "Over Limit" with a warning badge — a partial or insufficient check (missing data, not an actual over-limit reading) got the same alarming label as a genuine failure. `History.test.tsx` also covers the title/per-entry rendering and, as of the #57 test audit, every filter pill (`All rigs`, a per-rig pill, `Within limits`, `Over limit`) and the "No checks match this filter." empty state — including that a partial or insufficient entry shows under neither `Within limits` nor `Over limit` (current behavior, asserted as such, not necessarily the last word on where those verdicts "should" sort). `Dashboard.test.tsx` now also covers the recent-rigs grid (card contents, the manufacturer-subtitle join, the truck/trailer line each being omitted when that half of the rig has none), the Recent Checks list (two-item cap, its own subtitle join, the "View history" link appearing only once there is a check), and every click target (`Start New Check`, `View History`, a rig card, "New rig") calling its handler. |
 | `src/breakdown.test.ts` | **Cross-platform interface** | The Web port of `compute_breakdown`/`verdict_for` (`breakdown.ts`) against the shared `test-vectors/breakdown_cases.json`, the same cases the Python and Kotlin runners check (34 tests, including the `truck_gcwr` cases: no Combined Rig Weight row without a GCWR, and the Safe to Tow caveat when it was not checked): every Breakdown row, Combined Rig Weight included, has an over-limit case; a case that needs a capability the runner does not know **fails** rather than skips (#55); each row's note and badge and the verdict's headline and subline are asserted, with `note_android` only on the rows Android words differently. `createBreakdown` computes locally with no network call, stamps a "Mon DD, YYYY" date, converts the UI's whole-number pin weight percentage to the fraction the math uses (`test-vectors/pin_weight_pct_contract.json`) and treats a `NaN` reading, a `NaN` GCWR included, like a missing one. |

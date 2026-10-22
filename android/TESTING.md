@@ -703,7 +703,19 @@ root `TESTING.md`'s "Dashboard" section.
   `Purchases.Companion` and the real callback-based
   `getVirtualCurrencies(...)` method — see `ARCHIVE_ANDROID.md` (repo
   root) for the two MockK deadlocks hit and worked around while writing
-  this.
+  this. Also `isPro()` (#27): true only when the `pro` entitlement is active
+  (another entitlement or none is Free), asks RevenueCat for the current
+  customer rather than the cached one (a Pro bought on Web reaches the server,
+  not this device's cache), and fails rather than answer Free when the fetch
+  fails.
+- `AccountPlanTest.kt` (#27) — whether the signed-in account is Pro, with a
+  fake RevenueCat behind `PlanSource`: an account that owns Pro (bought on
+  another platform) shows Pro on sign-in, one without shows Free, nothing is
+  read until RevenueCat is linked to the account, signing out clears the plan,
+  the next account never sees the previous account's plan (not even while its
+  own loads), an answer for an account that has since left is dropped, a refresh
+  picks up a Pro bought elsewhere while the app was open, and a failed read
+  leaves the plan as it was (unknown on a first read, never Free).
 
 - `AccountManagerTest.kt` (#22) — the Account ↔ RevenueCat link, with fake
   Supabase and RevenueCat behind `AccountBackend`/`BillingIdentity`: a
@@ -934,7 +946,9 @@ network involved:
   cancelled chooser shows nothing, the form disables while a call is in
   flight, forgot-password, Not now.
 - `PaywallScreenTest` also covers (#22) the "Buying for <account>" row and
-  its Sign out button.
+  its Sign out button, and (#27) the plan line: "Pro plan" for a Pro account,
+  "Free plan" for a Free one, and nothing while the plan is not known (never
+  "Free plan" for unknown).
 - `ScanNoticeScreenTest` (#120, 11 tests) — the notice on the three entry screens, the half
   `ScanNoticeTest` (JVM) cannot see: a Truck Tag, Trailer Tag or Scale Ticket Scan that read
   nothing shows the notice and no Try again, one that read some fields names the unread ones,

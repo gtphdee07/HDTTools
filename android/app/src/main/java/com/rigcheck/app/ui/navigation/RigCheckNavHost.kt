@@ -43,6 +43,7 @@ fun RigCheckNavHost(
 ) {
     val recentRigs by viewModel.recentRigs.collectAsStateWithLifecycle()
     val accountState by viewModel.accountState.collectAsStateWithLifecycle()
+    val isPro by viewModel.isPro.collectAsStateWithLifecycle()
 
     // Routes to the screen after the scale ticket - the disclaimer only
     // once per process lifetime (per the brief: "shown once per app
@@ -149,14 +150,19 @@ fun RigCheckNavHost(
                     onForgotPassword = { email, onResult -> viewModel.requestPasswordReset(email, onResult) },
                     onNotNow = { navController.popBackStack() },
                 )
-                is AccountState.SignedIn -> PaywallScreen(
-                    creditBalance = viewModel.creditBalance,
-                    onPurchase = { pkg, onResult -> viewModel.purchase(activity, pkg, onResult) },
-                    onRestore = { onResult -> viewModel.restorePurchases(onResult) },
-                    onDone = { navController.popBackStack() },
-                    accountLabel = account.account.email ?: account.account.id,
-                    onSignOut = { viewModel.signOut() },
-                )
+                is AccountState.SignedIn -> {
+                    // Pro or the balance may have changed on another device (Web) since last read.
+                    LaunchedEffect(account.account.id, account.billingLinked) { viewModel.refreshAccountStanding() }
+                    PaywallScreen(
+                        creditBalance = viewModel.creditBalance,
+                        isPro = isPro,
+                        onPurchase = { pkg, onResult -> viewModel.purchase(activity, pkg, onResult) },
+                        onRestore = { onResult -> viewModel.restorePurchases(onResult) },
+                        onDone = { navController.popBackStack() },
+                        accountLabel = account.account.email ?: account.account.id,
+                        onSignOut = { viewModel.signOut() },
+                    )
+                }
             }
         }
 

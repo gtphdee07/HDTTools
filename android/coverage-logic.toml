@@ -40,6 +40,7 @@ allow = [
   # data: account rules, saved-Rig rules, scan rules, field mapping
   "com.rigcheck.app.data.Account",
   "com.rigcheck.app.data.AccountManager",
+  "com.rigcheck.app.data.AccountPlan",
   "com.rigcheck.app.data.AccountResult.Failure",
   "com.rigcheck.app.data.AccountState.SignedIn",
   "com.rigcheck.app.data.BackendStatus.Authenticated",

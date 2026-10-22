@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.revenuecat.purchases.Offering
 import com.revenuecat.purchases.Package
@@ -42,6 +43,9 @@ fun PaywallScreen(
     // its id) - purchases land on this account across every device.
     accountLabel: String? = null,
     onSignOut: () -> Unit = {},
+    // The account's plan, Pro however it was bought (Web included); null = not known yet,
+    // which shows nothing rather than Free.
+    isPro: Boolean? = null,
 ) {
     val context = LocalContext.current
     var offering by remember { mutableStateOf<Offering?>(null) }
@@ -65,6 +69,13 @@ fun PaywallScreen(
                 Text("Buying for $label", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                 TextButton(enabled = !isBusy, onClick = onSignOut) { Text("Sign out") }
             }
+        }
+        isPro?.let { pro ->
+            Text(
+                if (pro) "Pro plan" else "Free plan",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 8.dp).testTag("plan_label"),
+            )
         }
         Text(
             "You have ${creditBalance ?: 0} scan${if (creditBalance == 1) "" else "s"} left. " +

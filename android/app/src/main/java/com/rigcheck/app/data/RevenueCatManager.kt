@@ -1,6 +1,7 @@
 package com.rigcheck.app.data
 
 import android.app.Activity
+import com.revenuecat.purchases.CacheFetchPolicy
 import com.revenuecat.purchases.CustomerInfo
 import com.revenuecat.purchases.Offerings
 import com.revenuecat.purchases.Package
@@ -21,13 +22,17 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 // REVENUECAT_CURRENCY_CODE and src/revenuecat.ts server-side.
 private const val SCAN_CURRENCY_CODE = "SCAN"
 
+// The RevenueCat entitlement that means Pro, matching Web's
+// DEFAULT_PRO_ENTITLEMENT_ID. Pro bought on any platform activates it.
+private const val PRO_ENTITLEMENT_ID = "pro"
+
 class PurchaseCancelledException : Exception("Purchase was cancelled by the user")
 
 // Thin wrapper around the RevenueCat SDK's callback-based APIs, exposing
 // suspend functions instead - keeps RigCheckViewModel from calling the
 // SDK directly, mirroring the injectable-dependency pattern already used
 // server-side (workers/scan-proxy/src/scan.ts's spendCredit/refundCredit).
-object RevenueCatManager : BillingIdentity {
+object RevenueCatManager : BillingIdentity, PlanSource {
 
     // Makes the signed-in account the RevenueCat customer, so purchases and
     // the SCAN balance are the account's, shared with every other device.
@@ -52,6 +57,25 @@ object RevenueCatManager : BillingIdentity {
         Purchases.sharedInstance.invalidateVirtualCurrenciesCache()
         val virtualCurrencies = Purchases.sharedInstance.awaitGetVirtualCurrencies()
         return virtualCurrencies.get(SCAN_CURRENCY_CODE)?.balance ?: 0
+    }
+
+    // Whether the account is Pro, however Pro was bought: the `pro` entitlement is
+    // RevenueCat's single source of truth (ADR-0003), shared with Web. A fresh fetch,
+    // because a Pro bought on Web reaches RevenueCat's server and not this device's
+    // cached customer. Fails rather than guessing Free when the fetch fails.
+    override suspend fun isPro(): Boolean = suspendCancellableCoroutine { continuation ->
+        Purchases.sharedInstance.getCustomerInfo(
+            CacheFetchPolicy.FETCH_CURRENT,
+            object : ReceiveCustomerInfoCallback {
+                override fun onReceived(customerInfo: CustomerInfo) {
+                    continuation.resume(PRO_ENTITLEMENT_ID in customerInfo.entitlements.active)
+                }
+
+                override fun onError(error: com.revenuecat.purchases.PurchasesError) {
+                    continuation.resumeWithException(Exception(error.message))
+                }
+            },
+        )
     }
 
     suspend fun getOfferings(): Offerings = suspendCancellableCoroutine { continuation ->

@@ -18,6 +18,9 @@ One run through the three Entry Modules for one rig, from picking or starting th
 **Account**:
 The shared RigCheck sign-in (Supabase Auth; email + password and Google; Apple is deferred to the iOS port, #77) that Android shares with Web — the same account on every device. Its id is also the RevenueCat app user id, so purchases and the Scan Credit balance follow the account (ADR-0003, ADR-0004). Asked for only when something needs it — buying or scanning; the free manual-entry flow never requires one. Signing out affects this device only. Anonymous-id beta users are not migrated.
 
+**Plan** (Free or Pro):
+Whether the signed-in Account has the RevenueCat `pro` entitlement, however and wherever Pro was bought — a Pro bought on Web shows as Pro here, and the other way round (#27, ADR-0003, ADR-0006). Shown on the Paywall; read again when the Paywall opens and after a purchase or restore, since it can change on another device. Not known (signed out, RevenueCat not yet linked to the Account, or the read failed) is shown as nothing, never as Free. The Scan Credit balance follows the Account the same way and is read from the same place. Android has no Pro-specific purchase screen: the Paywall lists whatever RevenueCat's current Offering returns.
+
 **Scan notice**:
 The note above the fields of the entry screen reached after a delivered Scan (Truck Tag, Trailer Tag, Scale Ticket) that did not read every field: "A Scan was used and nothing could be read…" when it read none, or the unread fields named when it read some (#120). The Scan was charged whatever it read, so this tells the user one was used. A notice, not a failure: no Try again. Manual entry never shows it; it goes away when the user leaves the screen or types in the missing fields.
 

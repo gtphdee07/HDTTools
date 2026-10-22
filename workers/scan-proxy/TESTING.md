@@ -374,6 +374,14 @@ Reads the two clients' limits from their own source (`ScanApiClient.kt`'s `.read
 - `[sanity]` **Android's read timeout is longer than the Worker's worst case**.
 - `[sanity]` **Web's Scan time limit is longer than the Worker's worst case**.
 
+### `billingContract.test.ts` — the Worker, Web and Android name the same things in RevenueCat (#27)
+
+Pro and the Scan Credit balance carry across platforms only while the three surfaces agree on the currency code and the entitlement id; a rename on one side shows the other a Free plan or a zero balance for an account that has both, and fails nowhere else. Reads the other surfaces' own source (`wrangler.toml`, `RevenueCatManager.kt`, `web/src/revenueCatBilling.ts`) rather than keeping copies. That the two RevenueCat products carry the same price is a dashboard fact no offline test can see (see #27's STATUS).
+
+- `[sanity]` **the Worker, Android and Web all use the same Scan Credit currency code** — `REVENUECAT_CURRENCY_CODE`, Android's `SCAN_CURRENCY_CODE`, Web's `SCAN_CURRENCY_CODE`.
+- `[sanity]` **Android and Web read Pro from the same entitlement** — Android's `PRO_ENTITLEMENT_ID` and Web's `DEFAULT_PRO_ENTITLEMENT_ID`.
+- `[sanity]` **neither client writes a price into its screens** — no dollar amount in the Android Paywall or the Web Pro, pack and Account screens, and each still shows the string RevenueCat gives it (`price.formatted`, `formattedPrice`), which is what keeps one price on every platform (ADR-0006).
+
 ### `http.test.ts` — `json`/`badRequest`, the response-shaping helpers used everywhere
 
 - `[sanity]` **json() defaults to status 200 with a JSON content-type**.

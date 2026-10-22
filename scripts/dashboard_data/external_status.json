@@ -44,10 +44,10 @@
       }
     },
     "revenuecat-android-sdk": {
-      "commit": "09854955463219abcaeec92002795504c3ba577b",
+      "commit": "49a480f518f1d69d20017a799f1a8197bc91a7d2",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-21T21:04:49Z",
+      "timestamp": "2026-10-22T04:31:16Z",
       "versions": {
         "com.revenuecat.purchases:purchases": "10.29.0"
       }
@@ -69,13 +69,13 @@
       }
     },
     "scan-proxy-worker": {
-      "commit": "09854955463219abcaeec92002795504c3ba577b",
+      "commit": "49a480f518f1d69d20017a799f1a8197bc91a7d2",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-21T21:01:35Z",
+      "timestamp": "2026-10-22T04:27:48Z",
       "versions": {
-        "@cloudflare/workers-types": "5.20261021.1",
-        "workerd": "1.20261021.1",
+        "@cloudflare/workers-types": "5.20261022.1",
+        "workerd": "1.20261022.1",
         "wrangler": "4.151.3"
       }
     },

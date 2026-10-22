@@ -4,16 +4,14 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): two lanes, **Web and server** (#29, #30, #20; one Web session at a time) and **Android** (#27, #101, #31, #32; one at a time, because there is one emulator). The lanes can build side by side. #132 is still optional. Claude runs the stale External suites and asks before each push.
+The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged (not pushed); #30, #20 (Web lane, one Web session at a time) and #27, #101, #31, #32 (Android lane, one at a time) are left. **Before anything else, Claude runs the Worker wrapper for `revenuecat-rest` (free) from a fresh terminal that sees `REVENUECAT_CONFIG_READ_KEY`**, then re-checks the gates and asks before the push (Web goes live with History).
 
 Order of the table: a row starts when the ticket it names has merged. #20 was narrowed to Google only (Apple stays with #77). Web goes live on every push of `MPSkills`, so Claude asks first, and runs the stale External suites before the push.
 
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
-| 1 | #146 prove the `pro` entitlement is attached (Worker External, free) | Worker | answer its decisions; maybe one dashboard permission | [#146](#146-prove-the-pro-entitlement-is-attached-to-the-pro-product) |
-| 1 | #29 History sync on Web (can build beside #146) | Web + Supabase | apply the migration SQL once | [#29](#29-history-sync-on-web) |
-| 2 | #30 Pro raises the Garage and History caps (after #29) | Web + Supabase | apply any new migration SQL | [#30](#30-pro-raises-the-garage-and-history-caps) |
-| 2 | #27 Pro and credits carry across Android and Web (after #146) | Android + Web | maybe a RevenueCat dashboard step | [#27](#27-pro-and-scan-credit-balance-carry-across-android-and-web) |
+| 1 | #30 Pro raises the Garage and History caps | Web + Supabase | apply any new migration SQL | [#30](#30-pro-raises-the-garage-and-history-caps) |
+| 1 | #27 Pro and credits carry across Android and Web (after Claude has live-passed the #146 check) | Android + Web | maybe a RevenueCat dashboard step | [#27](#27-pro-and-scan-credit-balance-carry-across-android-and-web) |
 | 3 | #101 Android scan packs for Pro users only (after #27) | Android | stop the emulator | [#101](#101-android-scan-packs-for-pro-users-only) |
 | 3 | #20 Continue with Google on Web (after #30; Google only) | Web | maybe a console setting | [#20](#20-continue-with-google-on-web) |
 | 4 | #31 Android uses the synced Garage (after #101) | Android | stop the emulator | [#31](#31-android-uses-the-synced-garage) |
@@ -55,57 +53,13 @@ Done: Android's optional GCWR field, hint and below-GVWR warning, the Kotlin bre
 
 Done: Android's Results screen shows the Verdict subline under the headline in the verdict pill, so the GCWR caveat is visible there as on Web. The pill is now a full-width row (20 dp corners): look at it on a device if the look matters.
 
-### #146 prove the pro entitlement is attached to the Pro product
+### #146 (merged 2026-10-22)
 
-- **Step 1:** `/ticket-start 146`. Worker External project, free and read-only. Start it now; #27 comes after it merges.
-- **Step 2 block:**
+Done: the Worker External test that checks the `pro` entitlement has the Web paywall's product attached, read with the second read-only key (`REVENUECAT_CONFIG_READ_KEY`). **Not yet run live**: Claude runs `workers\scan-proxy\test-external.ps1` (free) once a fresh terminal sees the key; the surface `revenuecat-rest` is stale until then and blocks a scan-proxy or android push.
 
-```
-Test-round additions:
-- The Worker end-of-session commands are `npm --prefix workers/scan-proxy test` and
-  `uv run scripts/static_checks.py scan-proxy`.
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in its context's testing document, and a new
-  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
-- Live runs: do not run the live External suite or any paid call. The owner runs
-  the surface from the main checkout after the merge. Do not commit changes to
-  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
-  markers.
-- Decision 1 is already answered on the ticket (a `DECISIONS` comment): the test reads a second, read-only key from the environment variable `REVENUECAT_CONFIG_READ_KEY`, not `REVENUECAT_SECRET_KEY`. Read the ticket's comments, ask only Decisions 2 and 3 with `AskUserQuestion`, and record them in a further `DECISIONS` comment.
-- A missing `REVENUECAT_CONFIG_READ_KEY`, or one without the project-configuration read permission, must fail the run naming the variable and the permission. It is read only from the shell environment of the Worker External project: nothing committed, no `wrangler secret`, nothing in the Web External project. If it is not visible in your session, say so under "Owner actions needed" (post `PARTIAL`); do not ask for the value.
-```
+### #29 (merged 2026-10-22)
 
-- **Your part:** the key (`REVENUECAT_CONFIG_READ_KEY`, set as a Windows User variable on 2026-10-22) is already in place: **close every terminal and VS Code window and open the build session fresh**, so it sees the variable. Answer Decisions 2 and 3 when the session asks. If the key lacks a permission, add it in the RevenueCat dashboard when the session says so. After the merge, Claude runs the Worker wrapper (free).
-
-### #29 History sync on Web
-
-- **Step 1:** `/ticket-start 29`. Web plus a Supabase migration. Start it now, beside #146.
-- **Step 2 block:**
-
-```
-Test-round additions:
-- The Web end-of-session commands are `npm --prefix web test` and
-  `uv run scripts/static_checks.py web`.
-- Only `web/`, `supabase/migrations/` and the testing documents change unless the card says otherwise.
-- A Supabase migration is written as a file under `supabase/migrations/` and is NOT
-  applied by you. Put the exact steps (Dashboard > SQL Editor > paste the file > Run)
-  under "Owner actions needed" in the report; the owner applies it once, then runs the
-  live External suite.
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in its context's testing document, and a new
-  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
-- Live runs: do not run the live External suite or any paid call. The owner runs
-  the surface from the main checkout after the merge. Do not commit changes to
-  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
-  markers.
-- Per its comment (ADR-0008, #35): also add the External suite for the Supabase History table surface (row-level security, the count cap with oldest-entry pruning, idempotent retry) and set the surface active in the External manifest. Follow what #28 did for `[supabase-tables]`.
-```
-
-- **Your part:** apply the migration SQL once in the Supabase SQL editor when the session's report says so, before `/ticket-merge 29`; Claude then runs the live External suite (free). #30, #32 wait for this merge.
+Done: History sync on Web (migration `20261022000000_history_entries.sql` applied by you; the live `supabase-tables` suite passed 18 of 18, and `pages-site` 9 of 9). Two tests for the late-reply guards were added after the merge.
 
 ### #30 Pro raises the Garage and History caps
 

@@ -20,7 +20,7 @@ session end, release); the advisory planner
 [`TESTING.md`](../../TESTING.md) has the ladder for all five contexts and the category
 definitions this file uses.
 
-Offline suite, real run (#146): **158 tests in 15 files, 158 passed**, in about 0.5 s
+Offline suite, real run 2026-10-22 (#146): **158 tests in 15 files, 158 passed**, in about 0.5 s
 (`npm test`); the Minor selection (`npm run test:sanity`, the `[sanity]` tests) is **30** of them.
 
 ## Running tests
@@ -177,7 +177,7 @@ npm run test:coverage
 
 (`node --test --experimental-test-coverage src/*.test.ts` — the same
 files `npm test` already runs, with coverage instrumentation added.)
-Real numbers (`npm run test:coverage`, 158 tests, after #146): **100.00% of lines,
+Real numbers, 2026-10-22 (`npm run test:coverage`, 158 tests, after #146): **100.00% of lines,
 95.60% of branches, 98.91% of functions** over every `src/*.ts` file. Every file is at 100% of
 lines. Branch gaps are in `accountTokenContract.ts` (93.75%), `installGuard.ts` (80%),
 `liveTokenCli.ts` (85.71%), `revenuecatProAttachment.ts` (91.11%) and `visionCases.ts` (75%). **The enforced baseline

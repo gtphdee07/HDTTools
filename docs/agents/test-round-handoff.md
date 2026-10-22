@@ -4,15 +4,14 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-All the round's tickets are merged and pushed, including epic #147's tree (epic closed). The work now is the optional truck GCWR chain (#45, then #46 and #47), a small feature that changes the shared Breakdown fixture. #132 is still optional.
+All the round's tickets are merged and pushed, including epic #147's tree (epic closed). The work now is the optional truck GCWR chain: #45 is merged, and #46 (Web) and #47 (Android) are unblocked and can build at the same time. #132 is still optional.
 
-**Expect one red stretch.** #45 changes the shared fixture (`test-vectors/breakdown_cases.json`), so Web's and Android's golden-vector tests fail on `MPSkills` from the moment #45 merges until #46 and #47 do. That is by design (the ports must fail, not skip, until they follow the fixture). So: #45's session reports those two failures as the not-done items and posts `PARTIAL`, I merge it past that (`/ticket-merge 45 --allow-status`, after checking the failures are only the GCWR cases), and **nothing is pushed until #46 and #47 are merged**.
+**Red stretch in progress.** #45 is merged and changed the shared fixture (`test-vectors/breakdown_cases.json`), so Web's and Android's golden-vector tests fail on `MPSkills` until #46 and #47 are merged. That is by design. **Nothing is pushed until both are merged.**
 
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
-| 1 | #45 truck GCWR: math, Verdict rule, shared fixture, Streamlit field | Python + Streamlit | none beyond the steps; type `--allow-status` at merge | [#45](#45-truck-gcwr-core-fixture-streamlit) |
-| 2 | #46 Web: GCWR field and TypeScript breakdown (after #45 is merged) | Web | none | [#46](#46-web-gcwr) |
-| 2 | #47 Android: GCWR field and Kotlin breakdown (after #45 is merged; the only ticket using the emulator) | Android | stop the emulator after (step 6) | [#47](#47-android-gcwr) |
+| 1 | #46 Web: GCWR field and TypeScript breakdown | Web | none | [#46](#46-web-gcwr) |
+| 1 | #47 Android: GCWR field and Kotlin breakdown (the only ticket using the emulator) | Android | stop the emulator after (step 6) | [#47](#47-android-gcwr) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
 #46 and #47 can build at the same time (different surfaces, and only #47 touches the emulator). Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember"). The final External run is done (2026-10-21, see History); if #132 changes no code there is nothing more to run, and any later change to a boundary file or pin needs `uv run scripts/external_freshness.py` first.
@@ -34,39 +33,13 @@ A session-start report (verification debt, #67) prints when each session opens. 
 
 ## Run cards
 
-### #45 truck GCWR: core, fixture, Streamlit
+### #45 (merged 2026-10-22)
 
-- **Step 1:** `/ticket-start 45`. Unblocked (#55, #131 and #136 are merged). Python and Streamlit only; no Web or Android code.
-- **Step 2 block:**
-
-```
-Test-round additions:
-- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
-  The slow tooling tests are left out of planner runs unless the diff touches
-  what they check.
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in its context's testing document, and a new
-  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
-- This changes the shared fixture `test-vectors/breakdown_cases.json`. Web's and
-  Android's golden-vector tests will then fail on the GCWR cases until tickets #46 and #47
-  land. Do not change Web or Android code. Run once
-  `npm --prefix web test -- src/breakdown.test.ts` and
-  `android/gradlew -p android testDebugUnitTest --tests com.rigcheck.app.domain.BreakdownGoldenVectorTest`,
-  confirm they fail only on cases your fixture change added or altered, and list those
-  failures under "not done" in the report. Post `PARTIAL` (the script refuses
-  `READY TO MERGE` when a suite failed); the merge review accepts that.
-- Give the new fixture cases a stable, readable name so #46 and #47 can find them.
-- No live or paid runs.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
-  markers.
-```
-
-- **Your part:** none beyond the usual steps. At merge, type `/ticket-merge 45 --allow-status`.
+Done: the truck GCWR in the core math, the Verdict rule, the shared fixture (`test-vectors/breakdown_cases.json`, 7 new `gcwr_*` cases) and the Streamlit field. Until #46 and #47 merge, Web's and Android's golden-vector tests fail on `MPSkills` by design; **nothing is pushed until both are merged.** Your decision: the caveat clause shows whenever the Combined row was not checked (recorded on #46 and #47).
 
 ### #46 Web GCWR
 
-- **Step 1:** `/ticket-start 46` (after #45 is merged, so it is cut with the new fixture).
+- **Step 1:** `/ticket-start 46` (#45 is merged, so it is cut with the new fixture).
 - **Step 2 block:**
 
 ```
@@ -90,7 +63,7 @@ Test-round additions:
 
 ### #47 Android GCWR
 
-- **Step 1:** `/ticket-start 47` (after #45 is merged; its title says Android, so no flag is needed).
+- **Step 1:** `/ticket-start 47` (#45 is merged; its title says Android, so no flag is needed).
 - **Step 2 block:**
 
 ```

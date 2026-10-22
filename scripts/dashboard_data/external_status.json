@@ -35,12 +35,12 @@
       }
     },
     "pages-site": {
-      "commit": "09854955463219abcaeec92002795504c3ba577b",
+      "commit": "498fe2da8cce3c5be02364952a4ae6828e083771",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-21T21:00:47Z",
+      "timestamp": "2026-10-22T15:52:30Z",
       "versions": {
-        "wrangler": "4.151.3"
+        "wrangler": "4.152.0"
       }
     },
     "revenuecat-android-sdk": {
@@ -60,23 +60,23 @@
       "versions": {}
     },
     "revenuecat-web-billing": {
-      "commit": "f2d5aefff76d1952576ee4d5aa4858df53cb83aa",
+      "commit": "498fe2da8cce3c5be02364952a4ae6828e083771",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-21T13:32:06Z",
+      "timestamp": "2026-10-22T15:52:30Z",
       "versions": {
-        "@revenuecat/purchases-js": "1.71.0"
+        "@revenuecat/purchases-js": "1.73.0"
       }
     },
     "scan-proxy-worker": {
-      "commit": "49a480f518f1d69d20017a799f1a8197bc91a7d2",
+      "commit": "498fe2da8cce3c5be02364952a4ae6828e083771",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-22T04:27:48Z",
+      "timestamp": "2026-10-22T15:52:50Z",
       "versions": {
         "@cloudflare/workers-types": "5.20261022.1",
         "workerd": "1.20261022.1",
-        "wrangler": "4.151.3"
+        "wrangler": "4.152.0"
       }
     },
     "supabase-auth": {

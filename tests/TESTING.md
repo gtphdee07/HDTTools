@@ -270,7 +270,7 @@ library API remain.
 
 | File | Category | Covers |
 |---|---|---|
-| `test_breakdown.py` | Module | `compute_breakdown`/`verdict_for`'s full public surface: axle-count/pin-weight/pin-weight-percentage math, the `estimated` flag, all four verdict tones, error-shaped edge cases (clamp-at-zero). |
+| `test_breakdown.py` | Module | `compute_breakdown`/`verdict_for`'s full public surface: axle-count/pin-weight/pin-weight-percentage math, the `estimated` flag, all four verdict tones, error-shaped edge cases (clamp-at-zero), and the optional truck GCWR (#45): the Combined Rig Weight row exists only with a GCWR, never uses the GVWR sum, and as the Advisory Item never lowers the verdict when insufficient. |
 | `test_breakdown_golden_vectors.py` | **Cross-platform interface** | Runs `compute_breakdown`/`verdict_for` against `test-vectors/breakdown_cases.json`, the same cases the Kotlin port's `BreakdownGoldenVectorTest.kt` checks itself against — see the root `TESTING.md`'s cross-platform section. |
 | `test_scale_ticket_ocr_parsing.py` | Function | `_parse_fields`/`_find_str`/`_find_num` against transcribed OCR text, including a real (garbled) tow-vehicle-only ticket transcription. |
 | `test_truck_tag_ocr_parsing.py` | Function | `_parse_fields`/`_kg_lb` against transcribed OCR text, including a real garbled "LB read as 1B" regression case. |

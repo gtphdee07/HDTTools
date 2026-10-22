@@ -54,7 +54,7 @@ import pytest
 pytestmark = [pytest.mark.core]
 
 _MANUAL_ONLY_FIELDS = {
-    "truck": {"standalone_weight_lb"},
+    "truck": {"standalone_weight_lb", "gcwr_lb"},
     "trailer": {"axle_count"},
     "scale": set(),
 }

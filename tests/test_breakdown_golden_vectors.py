@@ -40,6 +40,7 @@ _SUPPORTED_CAPABILITIES = {
     "gvwr_fallback_trailer_estimate",
     "adjustable_pin_weight_pct",
     "predictive_truck_estimate",
+    "truck_gcwr",
 }
 
 
@@ -78,6 +79,13 @@ def _check_case(case: dict):
     assert verdict["headline"] == case["expected"]["headline"], f"{case['name']}: headline"
     assert verdict["subline"] == case["expected"]["subline"], f"{case['name']}: subline"
 
+    # Some cases list only the rows they are about, so the full list is not compared. But
+    # Combined Rig Weight is present only with a GCWR, so a wrongly present or missing row must fail.
+    expected_labels = {e["label"] for e in case["expected"]["items"]}
+    assert ("Combined Rig Weight" in {item["label"] for item in items}) == ("Combined Rig Weight" in expected_labels), (
+        f"{case['name']}: Combined Rig Weight presence"
+    )
+
     by_label = {item["label"]: item for item in items}
     for expected_item in case["expected"]["items"]:
         label = expected_item["label"]
@@ -103,7 +111,9 @@ def test_every_breakdown_row_has_an_over_limit_case():
         for item in case["expected"]["items"]
         if item["tone"] == "warning"
     }
-    all_rows = {item["label"] for item in compute_breakdown({}, {}, {}, 0.20)}
+    # A GCWR is what brings the Combined Rig Weight row into the list.
+    all_rows = {item["label"] for item in compute_breakdown({"gcwr_lb": 1}, {}, {}, 0.20)}
+    assert "Combined Rig Weight" in all_rows
     assert all_rows - over_limit_rows == set()
 
 

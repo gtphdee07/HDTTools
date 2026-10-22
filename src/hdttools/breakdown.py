@@ -1,5 +1,6 @@
 """Axle-by-axle safety comparison: front axle, rear axle, tow vehicle
-total, trailer axle(s), trailer total, combined rig weight.
+total, trailer axle(s), trailer total, and (only with a truck GCWR)
+combined rig weight.
 
 Python port of `web/src/calc.ts`'s `breakdown()`/`verdictFor()` — this is
 now the single source of truth (the frontend no longer computes this
@@ -21,6 +22,11 @@ from typing import Any
 # measurement yet to divide. Overridable per-request; this is just the
 # default a caller gets if it doesn't say otherwise.
 DEFAULT_PIN_WEIGHT_PCT = 0.20
+
+# The product's one Advisory Item (see CONTEXT.md): shown only when the truck
+# has a GCWR, and an insufficient one never lowers the Verdict.
+COMBINED_RIG_WEIGHT_LABEL = "Combined Rig Weight"
+GCWR_UNCHECKED_CAVEAT = "Combined weight (GCWR) wasn't checked; add it if you have it."
 
 
 def _round_half_up(value: float) -> int:
@@ -65,6 +71,7 @@ def compute_breakdown(
     front_gawr_raw = truck.get("front_gawr_lb")
     rear_gawr_raw = truck.get("rear_gawr_lb")
     gawr_per_axle_raw = trailer.get("gawr_per_axle_lb")
+    gcwr_raw = truck.get("gcwr_lb")
 
     steer = _lb(steer_raw)
     drive = _lb(drive_raw)
@@ -206,15 +213,22 @@ def compute_breakdown(
             not trailer_gvwr_raw,
             trailer_total_estimated,
         ),
-        (
-            "Combined Rig Weight",
-            gross,
-            truck_gvwr + trailer_gvwr,
-            None,
-            gross_raw is None or not truck_gvwr_raw or not trailer_gvwr_raw,
-            False,
-        ),
     ]
+    # Combined Rig Weight is checked against the truck's GCWR only - never
+    # approximated from the two GVWRs - and is left out when no GCWR was
+    # entered (the usual case). Truthy, not just non-None, so an explicit 0
+    # means "not entered" like every other rated limit above.
+    if gcwr_raw:
+        raw_items.append(
+            (
+                COMBINED_RIG_WEIGHT_LABEL,
+                gross,
+                _lb(gcwr_raw),
+                None,
+                gross_raw is None,
+                False,
+            )
+        )
 
     items = []
     for label, actual, limit, note, insufficient, estimated in raw_items:
@@ -254,7 +268,16 @@ def compute_breakdown(
 
 
 def verdict_for(items: list[dict]) -> dict:
-    tones = [item["tone"] for item in items]
+    # An insufficient Advisory Item is treated as absent. A checked one counts
+    # like any other, so a failing Combined Rig Weight still wins below.
+    combined_checked = any(
+        item["label"] == COMBINED_RIG_WEIGHT_LABEL and item["tone"] != "insufficient" for item in items
+    )
+    tones = [
+        item["tone"]
+        for item in items
+        if item["label"] != COMBINED_RIG_WEIGHT_LABEL or item["tone"] != "insufficient"
+    ]
     any_fail = "warning" in tones
     all_insufficient = all(tone == "insufficient" for tone in tones)
     any_insufficient = "insufficient" in tones
@@ -288,7 +311,8 @@ def verdict_for(items: list[dict]) -> dict:
     return {
         "status": "pass",
         "headline": "Safe to Tow",
-        "subline": "Every axle checks out under its rated limit.",
+        "subline": "Every axle checks out under its rated limit."
+        + ("" if combined_checked else f" {GCWR_UNCHECKED_CAVEAT}"),
         "bandBg": "var(--state-success)",
         "icon": "check-circle-2",
     }

@@ -20,7 +20,7 @@ session end, release); the advisory planner
 [`TESTING.md`](../../TESTING.md) has the ladder for all five contexts and the category
 definitions this file uses.
 
-Offline suite, real run 2026-10-21 (#64): **150 tests in 14 files, 150 passed**, in about 0.5 s
+Offline suite, real run (#146): **158 tests in 15 files, 158 passed**, in about 0.5 s
 (`npm test`); the Minor selection (`npm run test:sanity`, the `[sanity]` tests) is **30** of them.
 
 ## Running tests
@@ -29,7 +29,7 @@ Offline suite, real run 2026-10-21 (#64): **150 tests in 14 files, 150 passed**,
 |---|---|
 | One file (per issue, the targeted test first) | `node --test src/docTypes.test.ts` (run from `workers/scan-proxy/`) |
 | Minor (per issue) | `npm run test:sanity` (30 tests, the `[sanity]` ones) |
-| Major (per issue, when an interface or dependency changed) | `npm test` (150 tests) |
+| Major (per issue, when an interface or dependency changed) | `npm test` (158 tests) |
 | Whole context (offline), session end | `npm test` |
 | Type check | `npm run typecheck` |
 | Coverage | `npm run test:coverage` |
@@ -177,10 +177,10 @@ npm run test:coverage
 
 (`node --test --experimental-test-coverage src/*.test.ts` — the same
 files `npm test` already runs, with coverage instrumentation added.)
-Real numbers, 2026-10-21 (`npm run test:coverage`, 150 tests, after #151): **100.00% of lines,
-96.34% of branches, 100.00% of functions** over every `src/*.ts` file. Every file is at 100% of
+Real numbers (`npm run test:coverage`, 158 tests, after #146): **100.00% of lines,
+95.60% of branches, 98.91% of functions** over every `src/*.ts` file. Every file is at 100% of
 lines. Branch gaps are in `accountTokenContract.ts` (93.75%), `installGuard.ts` (80%),
-`liveTokenCli.ts` (85.71%) and `visionCases.ts` (75%). **The enforced baseline
+`liveTokenCli.ts` (85.71%), `revenuecatProAttachment.ts` (91.11%) and `visionCases.ts` (75%). **The enforced baseline
 `scripts/coverage_gate.py` checks scan-proxy against is 100.00% of lines**, and the gate passes.
 
 **How the gate passes (#151).** It was at 99.84% before: `liveTokenCli.ts` ends with a guard that
@@ -343,6 +343,19 @@ These use a fake RevenueCat ledger that replays a repeated Idempotency-Key and 4
 - **uses the currency code from env, not a value baked into the module** — a non-`SCAN` currency code flows through into the adjustment body correctly.
 - **the real response body is returned to the caller, not discarded** — the success-path body isn't just treated as opaque.
 
+### `revenuecatProAttachment.test.ts` — the read-only "is `pro` attached to the Pro product" check (#146; `fetch` mocked, a fake project configuration served by URL)
+
+This is the logic behind the `[revenuecat-rest]` pro-entitlement External tests; it runs offline because the real project is always healthy, so its failure branches never run live.
+
+- **passes when `pro` exists and the product the Web paywall sells is attached to it, using only GETs** — every call is a GET with the read key as a bearer token; nothing writes.
+- **follows pagination** — `pro` on the second page of entitlements is still found.
+- **fails naming a missing entitlement, and lists what does exist** — a mistyped name points at the right one.
+- **fails naming an entitlement that exists with no product attached** — the "pays, unlocks nothing" state a promotional grant hides.
+- **fails when only the Android product is attached: the Web paywall's product is not** — the reason the Web Billing product is picked out by its app type (`rc_billing`) rather than "any product attached".
+- **fails naming a missing offering, a missing package, and a package with no Web Billing product** — one message each.
+- **a server error or a non-list answer names the call and status** — rather than a misleading "does not exist".
+- **a rejected key (403) names the call, `REVENUECAT_CONFIG_READ_KEY` and the permission, never the key.**
+
 ### `claude.test.ts` — `extractFields`, the only module touching the real `@anthropic-ai/sdk` (`fetch`-mocked at the HTTP boundary, not the SDK internals)
 
 - `[sanity]` **extracts fields from a matching tool_use block** — happy path, and asserts the actual HTTP request sent (URL, model, `tool_choice`, image `source`/`media_type`/`data`).
@@ -503,7 +516,30 @@ is 401); response shape (balance list, adjustment response); error contracts
 (empty balance is the 422 `scan.ts` relies on, unknown customer is a 404);
 journey (Spend then Refund restores the balance, same-key retries of both
 change nothing). Calls are free ledger adjustments, so `max_paid_calls` is 0
-and the shared paid-call counter does not apply. No registry package is watched:
+and the shared paid-call counter does not apply.
+
+**The `pro` entitlement is attached to the Pro product (#146).** Two more
+`[revenuecat-rest]` tests read the RevenueCat project configuration (GET only: no
+purchase, no write) and fail if the `pro` entitlement is missing, exists with no product
+attached, or lacks the product the Web paywall sells, each failure naming which. This is
+where the attachment is checked; the Web External suite cannot see it (a promotional
+grant works without any product). "The Pro product" is the Web Billing product on the
+package the site buys: the offering named by `VITE_REVENUECAT_WEB_OFFERING_ID` and its
+`$rc_lifetime` package (or `VITE_REVENUECAT_PRO_PACKAGE_ID`), both read from the
+environment or `web/.env.local`, the same variables the site is built with. It is the
+narrowest check and the exact "customer pays on Web, gets nothing" failure; the Android
+product's attachment is not asserted. The logic and its failure branches are
+`src/revenuecatProAttachment.ts`, tested offline in `revenuecatProAttachment.test.ts`;
+the second live test checks the messages against the real project with a wrong
+entitlement name and a wrong package name.
+
+It needs a second key, **`REVENUECAT_CONFIG_READ_KEY`** (environment only): a v2 secret
+key with read-only access to project configuration, specifically the
+`project_configuration:entitlements:read`, `offerings:read`, `packages:read` and
+`apps:read` permissions, kept separate from `REVENUECAT_SECRET_KEY` (Customer information
+read and write) so a leak of it can change nothing. A missing key fails those two tests
+naming the variable; a 401/403 names the call and the permission; `-Skip` is still the
+only way to not run them. No registry package is watched:
 RevenueCat REST v2 has no client library this Worker uses, so freshness comes
 from boundary-file changes only. Android's chain includes this surface.
 

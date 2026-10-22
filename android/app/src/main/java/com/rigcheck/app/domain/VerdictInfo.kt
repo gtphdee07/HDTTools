@@ -13,7 +13,12 @@ data class VerdictInfo(
 )
 
 fun verdictFor(items: List<BreakdownItem>): VerdictInfo {
-    val tones = items.map { it.tone }
+    // An insufficient Advisory Item (the Combined row) is treated as absent. A
+    // checked one counts like any other, so a failing Combined row still wins below.
+    val combinedChecked = items.any { it.label == COMBINED_RIG_WEIGHT_LABEL && it.tone != Tone.INSUFFICIENT }
+    val tones = items
+        .filter { it.label != COMBINED_RIG_WEIGHT_LABEL || it.tone != Tone.INSUFFICIENT }
+        .map { it.tone }
     val anyFail = tones.any { it == Tone.WARNING }
     val allInsufficient = tones.all { it == Tone.INSUFFICIENT }
     val anyInsufficient = tones.any { it == Tone.INSUFFICIENT }
@@ -41,7 +46,8 @@ fun verdictFor(items: List<BreakdownItem>): VerdictInfo {
         )
         else -> VerdictInfo(
             headline = "Safe to Tow",
-            subline = "Every axle checks out under its rated limit.",
+            subline = "Every axle checks out under its rated limit." +
+                if (combinedChecked) "" else " $GCWR_UNCHECKED_CAVEAT",
             tone = Tone.SUCCESS,
             status = VerdictStatus.PASS,
         )

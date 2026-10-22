@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.R
 import com.rigcheck.app.data.createScanPhotoUri
+import com.rigcheck.app.domain.gcwrBelowGvwr
 import com.rigcheck.app.domain.model.TruckTag
 import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanNotice
@@ -138,6 +139,29 @@ fun TruckTagEntryScreen(
                 value = truck.rearGawrLb,
                 onValueChange = { onTruckChange(truck.copy(rearGawrLb = it)) },
             )
+            Column {
+                LabeledNumberField(
+                    label = "GCWR, lb",
+                    value = truck.gcwrLb,
+                    onValueChange = { onTruckChange(truck.copy(gcwrLb = it)) },
+                    modifier = Modifier.testTag("truck_gcwr"),
+                    optionalHint = "optional",
+                )
+                Text(
+                    "From your owner's manual. Leave blank if you can't find it.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                if (gcwrBelowGvwr(truck)) {
+                    Text(
+                        "This is lower than your GVWR. Check it against your owner's manual. " +
+                            "We'll still use it.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp).testTag("truck_gcwr_warning"),
+                    )
+                }
+            }
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(

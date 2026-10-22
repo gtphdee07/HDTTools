@@ -104,10 +104,10 @@ class BreakdownTest {
         assertEquals(Tone.INSUFFICIENT, item(items, "Front Axle (Steer)").tone)
     }
 
-    // Android-only enhancement (not in tests/test_breakdown.py): dynamic,
-    // number-specific explanations on the two rows that sum other rows,
-    // matching the 2026-08-17 mockup instead of the Python/web originals'
-    // fixed generic sentence.
+    // Android-only enhancement (not in tests/test_breakdown.py): a dynamic,
+    // number-specific explanation on the row that sums other rows, matching
+    // the 2026-08-17 mockup instead of the Python/web originals' fixed
+    // generic sentence.
 
     @Test
     fun `tow vehicle total note spells out the arithmetic`() {
@@ -119,15 +119,32 @@ class BreakdownTest {
         )
     }
 
+    // Optional truck GCWR (#47). The Combined Rig Weight row's presence, limit, note
+    // and the Verdict caveat are asserted for every case in the shared fixture
+    // (BreakdownGoldenVectorTest); these are what the fixture cannot say.
+
     @Test
-    fun `combined rig weight note spells out the arithmetic`() {
+    fun `the old GVWR plus GVWR combined row is gone without a GCWR`() {
         val items = computeBreakdown(TRUCK, TRAILER, SCALE)
+        assertTrue(items.none { it.label == "Combined Rig Weight" })
+    }
+
+    @Test
+    fun `gcwr below the truck GVWR is flagged only when both are entered`() {
+        assertTrue(gcwrBelowGvwr(TRUCK.copy(gcwrLb = 13_999.0)))
+        assertEquals(false, gcwrBelowGvwr(TRUCK.copy(gcwrLb = 14_000.0)))
+        assertEquals(false, gcwrBelowGvwr(TRUCK.copy(gcwrLb = 26_000.0)))
+        assertEquals(false, gcwrBelowGvwr(TRUCK.copy(gcwrLb = null)))
+        assertEquals(false, gcwrBelowGvwr(TRUCK.copy(gcwrLb = 0.0)))
+        assertEquals(false, gcwrBelowGvwr(TRUCK.copy(gvwrLb = null, gcwrLb = 5_000.0)))
+    }
+
+    @Test
+    fun `a gcwr below the GVWR is still used as the combined limit`() {
+        val items = computeBreakdown(TRUCK.copy(gcwrLb = 13_000.0), TRAILER, SCALE)
         val row = item(items, "Combined Rig Weight")
-        assertEquals(
-            "Truck GVWR (14,000) + trailer GVWR (12,500) = 26,500 lb allowed combined " +
-                "weight — your 26,040 lb gross reading is 460 lb to spare.",
-            row.note,
-        )
+        assertEquals("13,000 lb", formatLb(row.limit))
+        assertEquals(Tone.WARNING, row.tone)
     }
 
     // Fixed 2026-08-21 - see NEXT_STEPS.md and

@@ -406,6 +406,48 @@ class TruckTagEntryScreenTest {
         composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
     }
 
+    // #47: the optional GCWR, typed by hand from the owner's manual.
+
+    @Test
+    fun gcwrFieldShowsItsHintAndTypingItSetsTheTruckGcwr() {
+        var current = TruckTag()
+        composeRule.setContent {
+            TruckTagEntryScreen(truck = current, onTruckChange = { current = it }, onContinue = {})
+        }
+
+        composeRule.onNodeWithText("GCWR, lb — optional").scrollToIfScrollable().assertIsDisplayed()
+        composeRule.onNodeWithText("From your owner's manual. Leave blank if you can't find it.")
+            .scrollToIfScrollable()
+            .assertIsDisplayed()
+        composeRule.onNodeWithTag("truck_gcwr").scrollToIfScrollable().performTextInput("26000")
+
+        assertEquals(26_000.0, current.gcwrLb)
+    }
+
+    @Test
+    fun gcwrBelowTheGvwrShowsAWarningAndTheValueIsKept() {
+        // State, so the screen recomposes with the typed value and the warning can appear.
+        var current by mutableStateOf(TruckTag(gvwrLb = 14_000.0))
+        composeRule.setContent {
+            TruckTagEntryScreen(truck = current, onTruckChange = { current = it }, onContinue = {})
+        }
+
+        composeRule.onNodeWithTag("truck_gcwr_warning").assertDoesNotExist()
+        composeRule.onNodeWithTag("truck_gcwr").scrollToIfScrollable().performTextInput("13000")
+
+        composeRule.onNodeWithTag("truck_gcwr_warning").scrollToIfScrollable().assertIsDisplayed()
+        assertEquals(13_000.0, current.gcwrLb)
+    }
+
+    @Test
+    fun noGcwrWarningWhenTheGvwrIsNotKnown() {
+        composeRule.setContent {
+            TruckTagEntryScreen(truck = TruckTag(gcwrLb = 13_000.0), onTruckChange = {}, onContinue = {})
+        }
+
+        composeRule.onNodeWithTag("truck_gcwr_warning").assertDoesNotExist()
+    }
+
     // The error a failed Scan with this code shows, as the app builds it.
     private fun failed(code: String) = scanErrorFor(ScanResult.Failure(code, "the Worker's own text"))
 }

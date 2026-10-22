@@ -71,6 +71,13 @@ class RecentRigsRepositoryTest {
     }
 
     @Test
+    fun aSavedGcwrLoadsBack() = runTest {
+        repository.saveRecentRig("Weekender", truck.copy(gcwrLb = 24_000.0), trailer)
+
+        assertEquals(24_000.0, repository.recentRigs.first()[0].truck.gcwrLb)
+    }
+
+    @Test
     fun nothingSavedLoadsAsAnEmptyList() = runTest {
         assertEquals(emptyList<RecentRig>(), repository.recentRigs.first())
     }
@@ -109,8 +116,8 @@ class RecentRigsRepositoryTest {
 
     @Test
     fun aStoredRigMissingAFieldTheModelDefaultsLoadsWithTheDefault() = runTest {
-        // Neither Rig has the truck's standaloneWeightLb or the trailer's uvwLb,
-        // which stand in for a field added after the Rig was saved.
+        // Neither Rig has the truck's standaloneWeightLb or gcwrLb, or the trailer's
+        // uvwLb: fields added after the Rig was saved (gcwrLb, #47, is the latest).
         seedStoredJson(
             """
             [
@@ -126,6 +133,7 @@ class RecentRigsRepositoryTest {
         assertEquals(listOf("Old", "Older"), loaded.map { it.nickname })
         assertEquals(TruckTag(name = "F-350", gvwrLb = 11_500.0), loaded[0].truck)
         assertNull(loaded[0].truck.standaloneWeightLb)
+        assertNull(loaded[0].truck.gcwrLb)
         assertEquals(TrailerTag(name = "Fifth wheel", axleCount = 2), loaded[0].trailer)
         assertEquals(TruckTag(), loaded[1].truck)
     }
@@ -135,7 +143,7 @@ class RecentRigsRepositoryTest {
         seedStoredJson(
             """
             [
-              {"nickname":"Newer","truck":{"name":"F-350","gcwrLb":24000.0},
+              {"nickname":"Newer","truck":{"name":"F-350","hitchClass":5},
                "trailer":{"name":"Fifth wheel"},"lastUsedAt":"2026-01-01T00:00:00Z","color":"blue"}
             ]
             """.trimIndent(),

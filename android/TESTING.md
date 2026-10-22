@@ -667,14 +667,22 @@ root `TESTING.md`'s "Dashboard" section.
 - `BreakdownTest.kt`, `VerdictTest.kt`, `NumberFormattingTest.kt` — the
   `compute_breakdown`/`verdict_for` Kotlin port, ported from
   `tests/test_breakdown.py` plus Android-only edge cases (see
-  `ARCHIVE_ANDROID.md` at the repo root for detail).
+  `ARCHIVE_ANDROID.md` at the repo root for detail). For the optional truck GCWR
+  (#47): `BreakdownTest` pins the no-GCWR rig having no Combined row, a GCWR below
+  the GVWR still being the limit, and `gcwrBelowGvwr` (the entry screen's warning
+  rule); `VerdictTest` pins the Advisory rule on bare tones (an insufficient
+  Combined row is ignored, a checked one counts, a failing one fails the rig, and
+  the caveat clause follows whether it was checked).
 - `BreakdownGoldenVectorTest.kt` — runs the shared
   `test-vectors/breakdown_cases.json` cases against this port, the same
   cases `tests/test_breakdown_golden_vectors.py` runs against Python (the fixture,
   not Python, is the source of truth). A case needing a capability this port doesn't
   have fails (it is never skipped), and notes, badges, headline and subline are
-  asserted too (`note_android` overrides `note` for the two rows Android words
-  differently; the badge is compared for checked rows only). See the root `TESTING.md`'s cross-platform
+  asserted too (`note_android` overrides `note` for the one row Android words
+  differently, Tow Vehicle Total; the badge is compared for checked rows only). The
+  runner knows the `truck_gcwr` capability (#47), maps `truck.gcwr_lb` onto
+  `TruckTag.gcwrLb`, and fails a case whose Combined Rig Weight row is present
+  when the case does not list it, or missing when it does. See the root `TESTING.md`'s cross-platform
   section and `ARCHIVE_TESTING.md` (repo root) for what running this the
   first time found (several generations of drift, including a live bug
   this exact mechanism proved and then verified fixed).
@@ -709,7 +717,8 @@ root `TESTING.md`'s "Dashboard" section.
   (DataStore's Okio storage, not its default file storage, whose second write
   fails on Windows): save then load most recent first, capped at five, a
   nickname in another letter case replaces the old entry; a stored Rig missing
-  a field the model defaults loads with the default and the other Rigs still
+  a field the model defaults loads with the default (including a Rig saved
+  before the truck GCWR, #47, which loads with none; a saved GCWR loads back) and the other Rigs still
   load; an unknown extra field is ignored; corrupt stored JSON loads as an
   empty list, and a save over it starts a fresh list.
 - `GoogleSignInTest.kt` (#22) — the Google nonce (Supabase gets the raw
@@ -832,7 +841,9 @@ network involved:
   renders "Not Safe to Tow"; row labels/percentages display correctly;
   all-insufficient renders "Not Enough Information", a mix renders
   "Partially Checked" (added 2026-08-21 alongside the `Tone.INSUFFICIENT`
-  correctness fixes below). The `EstimatedFiguresNotice` (Android port of
+  correctness fixes below). (#47) The real breakdown of a rig renders no
+  Combined Rig Weight row without a GCWR and shows it (scrolled to in the
+  card's own lazy list) with one. The `EstimatedFiguresNotice` (Android port of
   Web's `PredictiveEstimateNotice.tsx`) shows when any row is `estimated`,
   hidden otherwise.
 - `BreakdownRowTest` — a row's note is hidden until tapped, then appears
@@ -857,7 +868,9 @@ network involved:
   than every field, proportionate to what's meaningfully different per
   screen — the underlying `LabeledTextField`/`LabeledNumberField`
   wiring is shared and identical everywhere it's used.
-  `TruckTagEntryScreenTest` additionally covers the predictive-estimate
+  `TruckTagEntryScreenTest` covers the optional GCWR field (#47): label and hint
+  show, typing sets `gcwrLb`, and the below-GVWR warning shows (value kept) only
+  when both are entered. It additionally covers the predictive-estimate
   section (added 2026-08-21): the pin-weight-% slider shows only when
   `standaloneWeightLb` is unknown, hides once it's known; the "Scan
   tow-vehicle-only ticket" button opens the same Take Photo/Choose from

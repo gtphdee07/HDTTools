@@ -36,9 +36,16 @@ private data class Row(
     val estimated: Boolean = false,
 )
 
+// The product's one Advisory Item (see src/hdttools/CONTEXT.md): present only
+// when the truck has a GCWR, and an insufficient one never lowers the Verdict.
+// It carries no note - the Combined row is just the gross reading against the
+// GCWR, with nothing to spell out.
+const val COMBINED_RIG_WEIGHT_LABEL = "Combined Rig Weight"
+const val GCWR_UNCHECKED_CAVEAT = "Combined weight (GCWR) wasn't checked; add it if you have it."
+
 // Android-only enhancement, deliberately not ported back to breakdown.py/
-// calc.ts: these two rows are sums of other rows, so their notes spell out
-// the arithmetic with real numbers (matching the 2026-08-17 mockup) rather
+// calc.ts: the tow vehicle total is a sum of other rows, so its note spells
+// out the arithmetic with real numbers (matching the 2026-08-17 mockup) rather
 // than the Python/web originals' fixed generic sentence. Suppressed
 // entirely (null) when the row is insufficient - showing "0 + 0 = 0 lb"
 // arithmetic would misrepresent "no data" as "a real zero reading."
@@ -51,15 +58,11 @@ private fun towVehicleTotalNote(steer: Double, drive: Double, limit: Double): St
         "this truck's ${formatWholeNumber(limit)} lb GVWR."
 }
 
-private fun combinedRigWeightNote(truckGvwr: Double, trailerGvwr: Double, gross: Double): String {
-    val limit = truckGvwr + trailerGvwr
-    val margin = limit - gross
-    val overUnder = if (margin >= 0) "to spare" else "over"
-    return "Truck GVWR (${formatWholeNumber(truckGvwr)}) + trailer GVWR " +
-        "(${formatWholeNumber(trailerGvwr)}) = ${formatWholeNumber(limit)} lb allowed combined " +
-        "weight — your ${formatWholeNumber(gross)} lb gross reading is " +
-        "${formatWholeNumber(abs(margin))} lb $overUnder."
-}
+// A GCWR below the truck's own GVWR is almost certainly a typo (the combined
+// limit includes the truck itself), so the entry screen warns - but the value
+// is still used. Only when both are entered.
+fun gcwrBelowGvwr(truck: TruckTag): Boolean =
+    truck.gcwrLb.isProvided() && truck.gvwrLb.isProvided() && truck.gcwrLb!! < truck.gvwrLb!!
 
 fun computeBreakdown(
     truck: TruckTag,
@@ -173,10 +176,8 @@ fun computeBreakdown(
     // bogus zero data instead of INSUFFICIENT - fixed for parity.
     val towVehicleInsufficient = truckTotalActual == null || !truck.gvwrLb.isProvided()
     val trailerTotalInsufficient = !trailer.gvwrLb.isProvided()
-    val combinedInsufficient =
-        scale.grossWeightLb == null || !truck.gvwrLb.isProvided() || !trailer.gvwrLb.isProvided()
 
-    val rows = listOf(
+    val rows = listOfNotNull(
         Row(
             "Front Axle (Steer)", steer, frontGawr, null,
             scale.steerAxleLb == null || !truck.frontGawrLb.isProvided(),
@@ -201,13 +202,18 @@ fun computeBreakdown(
             "Trailer Total (GVWR)", trailerTotalActual, trailerGvwr, trailerTotalNote,
             trailerTotalInsufficient, trailerTotalEstimated,
         ),
-        Row(
-            "Combined Rig Weight",
-            gross,
-            truckGvwr + trailerGvwr,
-            if (combinedInsufficient) null else combinedRigWeightNote(truckGvwr, trailerGvwr, gross),
-            combinedInsufficient,
-        ),
+        // Checked against the truck's GCWR only - never approximated from the
+        // two GVWRs - and left out when none was entered (the usual case). An
+        // explicit 0 means "not entered," like every other rated limit above.
+        // Needs only a gross reading, not the trailer tag.
+        if (truck.gcwrLb.isProvided()) {
+            Row(
+                COMBINED_RIG_WEIGHT_LABEL, gross, lb(truck.gcwrLb), null,
+                scale.grossWeightLb == null,
+            )
+        } else {
+            null
+        },
     )
 
     return rows.map { row ->

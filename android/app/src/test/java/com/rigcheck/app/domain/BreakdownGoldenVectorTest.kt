@@ -40,6 +40,7 @@ private val SUPPORTED_CAPABILITIES = setOf(
     "gvwr_fallback_trailer_estimate",
     "adjustable_pin_weight_pct",
     "predictive_truck_estimate",
+    "truck_gcwr",
 )
 
 private fun unsupportedCapabilities(requires: List<String>): List<String> =
@@ -71,6 +72,7 @@ private fun truckFrom(case: JsonObject): TruckTag {
         frontGawrLb = t.double("front_gawr_lb"),
         rearGawrLb = t.double("rear_gawr_lb"),
         standaloneWeightLb = t.double("standalone_weight_lb"),
+        gcwrLb = t.double("gcwr_lb"),
     )
 }
 
@@ -96,8 +98,8 @@ private fun scaleFrom(case: JsonObject): ScaleTicket {
 private fun item(items: List<BreakdownItem>, label: String): BreakdownItem =
     items.first { it.label == label }
 
-// Rows Android words differently on purpose (see Breakdown.kt); only these may carry "note_android".
-private val ANDROID_NOTE_ROWS = setOf("Tow Vehicle Total (GVWR)", "Combined Rig Weight")
+// Rows Android words differently on purpose (see Breakdown.kt); only this one may carry "note_android".
+private val ANDROID_NOTE_ROWS = setOf("Tow Vehicle Total (GVWR)")
 
 private fun checkCase(case: JsonObject) {
         val name = case.string("name")
@@ -111,6 +113,15 @@ private fun checkCase(case: JsonObject) {
         assertEquals("$name: verdict status", expected.string("verdict_status"), verdict.status.name.lowercase())
         assertEquals("$name: headline", expected.string("headline"), verdict.headline)
         assertEquals("$name: subline", expected.string("subline"), verdict.subline)
+
+        // Some cases list only the rows they are about, so the full list is not compared. But
+        // Combined Rig Weight is present only with a GCWR, so a wrongly present or missing row must fail.
+        val expectedLabels = expected["items"]!!.jsonArray.map { it.jsonObject.string("label") }
+        assertEquals(
+            "$name: Combined Rig Weight presence",
+            COMBINED_RIG_WEIGHT_LABEL in expectedLabels,
+            items.any { it.label == COMBINED_RIG_WEIGHT_LABEL },
+        )
 
         for (expectedItemElement in expected["items"]!!.jsonArray) {
             val expectedItem = expectedItemElement.jsonObject
@@ -127,7 +138,7 @@ private fun checkCase(case: JsonObject) {
                 assertEquals("$name/$label: badge", expectedItem.string("badge"), badgeLabel(row))
             }
             // "note_android" overrides "note" where Android deliberately words a row differently
-            // (see towVehicleTotalNote/combinedRigWeightNote in Breakdown.kt); null means no note.
+            // (see towVehicleTotalNote in Breakdown.kt); null means no note.
             val noteKey = if ("note_android" in expectedItem) "note_android" else "note"
             assertEquals("$name/$label: note", expectedItem[noteKey]!!.jsonPrimitive.contentOrNull, row.note)
         }
@@ -166,7 +177,9 @@ class BreakdownGoldenVectorTest {
                 .filter { it.string("tone") == "warning" }
                 .map { it.string("label") }
         }.toSet()
-        val allRows = computeBreakdown(TruckTag(), TrailerTag(), ScaleTicket(), DEFAULT_PIN_WEIGHT_PCT).map { it.label }
+        // A GCWR is what brings the Combined Rig Weight row into the list.
+        val allRows = computeBreakdown(TruckTag(gcwrLb = 1.0), TrailerTag(), ScaleTicket(), DEFAULT_PIN_WEIGHT_PCT).map { it.label }
+        assertTrue(COMBINED_RIG_WEIGHT_LABEL in allRows)
         assertEquals(emptyList<String>(), allRows.filterNot { it in overLimitRows })
     }
 

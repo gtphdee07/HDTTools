@@ -129,7 +129,7 @@ class ResultsScreenTest {
     }
 
     @Test
-    fun overLimitSublineIsShownToo() {
+    fun notSafeToTowSublineIsDisplayed() {
         val failing = listOf(item("Combined Rig Weight", Tone.WARNING, 108))
         composeRule.setContent {
             ResultsScreen(

@@ -44,6 +44,8 @@ export interface TruckTagData {
   rear_gawr_kg?: number;
   rear_gawr_lb?: number;
   standalone_weight_lb?: number;
+  // Entered by hand from the owner's manual, never read from a Tag. A Rig keeps it with the rest of the truck data.
+  gcwr_lb?: number;
   front_tire?: TireSpec;
   rear_tire?: TireSpec;
 }

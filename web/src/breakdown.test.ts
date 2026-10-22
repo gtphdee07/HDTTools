@@ -14,6 +14,7 @@ const SUPPORTED_CAPABILITIES = new Set([
   'gvwr_fallback_trailer_estimate',
   'adjustable_pin_weight_pct',
   'predictive_truck_estimate',
+  'truck_gcwr',
 ]);
 
 function unsupportedCapabilities(requires: readonly string[]): string[] {
@@ -43,6 +44,13 @@ function checkCase(testCase: GoldenCase): void {
   expect(verdict.headline, `${testCase.name}: headline`).toBe(testCase.expected.headline);
   expect(verdict.subline, `${testCase.name}: subline`).toBe(testCase.expected.subline);
 
+  // The fixture does not list every row of every case, so an extra row would go unseen below: pin the one rule that
+  // decides whether Combined Rig Weight exists at all (a GCWR; a 0 means not entered).
+  const hasGcwr = Boolean((testCase.truck as { gcwr_lb?: number }).gcwr_lb);
+  expect(items.some((item) => item.label === 'Combined Rig Weight'), `${testCase.name}: Combined row only with a GCWR`).toBe(
+    hasGcwr,
+  );
+
   const byLabel = new Map(items.map((item) => [item.label, item]));
   for (const expected of testCase.expected.items) {
     const actual = byLabel.get(expected.label);
@@ -66,7 +74,8 @@ describe('golden vectors', () => {
     const overLimitRows = new Set(
       GOLDEN.cases.flatMap((c) => c.expected.items.filter((i) => i.tone === 'warning').map((i) => i.label)),
     );
-    const allRows = computeBreakdown({}, {}, {}, 0.2).map((item) => item.label);
+    // Combined Rig Weight only exists with a GCWR, so one is given to list every row.
+    const allRows = computeBreakdown({ gcwr_lb: 1 }, {}, {}, 0.2).map((item) => item.label);
     expect(allRows.filter((label) => !overLimitRows.has(label))).toEqual([]);
   });
 
@@ -125,5 +134,14 @@ describe('createBreakdown', () => {
     const withoutIt = createBreakdown({ gvwr_lb: 14000, front_gawr_lb: 6000 }, {}, {}, 20);
 
     expect(withNaN.breakdownItems).toEqual(withoutIt.breakdownItems);
+  });
+
+  it('treats a NaN GCWR (a half-typed field) as not entered: no Combined row, caveat on a pass', () => {
+    const full = GOLDEN.cases.find((c) => c.name === 'no_gcwr_omits_combined_row_and_adds_caveat')!;
+
+    const result = createBreakdown({ ...full.truck, gcwr_lb: Number.NaN }, full.trailer, full.scale, 20);
+
+    expect(result.breakdownItems.map((i) => i.label)).not.toContain('Combined Rig Weight');
+    expect(result.verdictInfo.subline).toBe(full.expected.subline);
   });
 });

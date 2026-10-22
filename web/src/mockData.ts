@@ -7,6 +7,8 @@ interface FieldDef {
   // Not something a Scan of this document is expected to fill (the label says "optional"), so a Scan that
   // leaves it blank has not missed anything.
   optional?: boolean;
+  // Short help shown under the input.
+  hint?: string;
 }
 
 export interface ModuleDef {
@@ -31,6 +33,13 @@ export const MODULES: Record<1 | 2 | 3, ModuleDef> = {
       { name: 'front_gawr_lb', label: 'Front GAWR (lb)', type: 'number' },
       { name: 'rear_gawr_lb', label: 'Rear GAWR (lb)', type: 'number' },
       { name: 'standalone_weight_lb', label: 'Stand-alone Weight (lb, optional)', type: 'number', optional: true },
+      {
+        name: 'gcwr_lb',
+        label: 'GCWR (lb), optional',
+        type: 'number',
+        optional: true,
+        hint: "From your owner's manual. Leave blank if you can't find it.",
+      },
     ],
   },
   2: {

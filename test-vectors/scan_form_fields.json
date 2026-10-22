@@ -8,7 +8,8 @@
       { "name": "rear_gawr_lb", "type": "number" }
     ],
     "manual_only": [
-      { "name": "standalone_weight_lb", "type": "number" }
+      { "name": "standalone_weight_lb", "type": "number" },
+      { "name": "gcwr_lb", "type": "number" }
     ]
   },
   "trailer_tag": {

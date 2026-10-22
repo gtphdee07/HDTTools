@@ -193,9 +193,10 @@ export function computeBreakdown(
 export function verdictFor(items: BreakdownItem[]): VerdictInfo {
   // An insufficient Advisory Item is treated as absent. A checked one counts like any other, so a failing
   // Combined Rig Weight still wins below.
-  const combinedChecked = items.some((item) => item.label === COMBINED_RIG_WEIGHT_LABEL && item.tone !== 'insufficient');
+  const isCheckedCombined = (item: BreakdownItem) => item.label === COMBINED_RIG_WEIGHT_LABEL && item.tone !== 'insufficient';
+  const combinedChecked = items.some(isCheckedCombined);
   const tones = items
-    .filter((item) => item.label !== COMBINED_RIG_WEIGHT_LABEL || item.tone !== 'insufficient')
+    .filter((item) => item.label !== COMBINED_RIG_WEIGHT_LABEL || isCheckedCombined(item))
     .map((item) => item.tone);
   const anyFail = tones.includes('warning');
   const allInsufficient = tones.every((tone) => tone === 'insufficient');

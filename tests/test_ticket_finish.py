@@ -74,6 +74,11 @@ def test_no_acceptance_section_means_no_criteria():
     assert finish.parse_criteria("## What\n\n- [ ] a\n") == []
 
 
+def _c(body, association="OWNER"):
+    """A ticket comment as `gh issue view --json comments` returns it; by default the owner's."""
+    return {"body": body, "authorAssociation": association}
+
+
 def _brief(*criteria):
     items = "\n".join(f"- [ ] {c}" for c in criteria)
     return f"## Agent Brief\n\n**Category:** enhancement\n\n**Acceptance criteria:**\n{items}\n\n**Out of scope:**\n- nothing\n"
@@ -83,13 +88,13 @@ BODY_WITHOUT_CRITERIA = "## What to build\n\nA thing.\n\n## Acceptance\n\n- [ ] 
 
 
 def test_a_brief_comment_supplies_the_criteria_when_the_body_has_none():
-    issue = {"body": BODY_WITHOUT_CRITERIA, "comments": [{"body": "triage notes"}, {"body": _brief("Brief one", "Brief two")}]}
+    issue = {"body": BODY_WITHOUT_CRITERIA, "comments": [_c("triage notes"), _c(_brief("Brief one", "Brief two"))]}
 
     assert finish.issue_criteria(issue) == ["Brief one", "Brief two"]
 
 
 def test_the_brief_wins_over_a_body_checklist():
-    issue = {"body": BODY, "comments": [{"body": _brief("Brief one")}]}
+    issue = {"body": BODY, "comments": [_c(_brief("Brief one"))]}
 
     assert finish.issue_criteria(issue) == ["Brief one"]
 
@@ -97,14 +102,14 @@ def test_the_brief_wins_over_a_body_checklist():
 def test_the_most_recent_brief_comment_wins():
     issue = {
         "body": BODY,
-        "comments": [{"body": _brief("Old one")}, {"body": "chatter"}, {"body": _brief("New one")}, {"body": "more chatter"}],
+        "comments": [_c(_brief("Old one")), _c("chatter"), _c(_brief("New one")), _c("more chatter")],
     }
 
     assert finish.issue_criteria(issue) == ["New one"]
 
 
 def test_a_ticket_with_no_brief_comment_reads_its_body_as_before():
-    issue = {"body": BODY, "comments": [{"body": "just a comment with - [ ] a checkbox"}]}
+    issue = {"body": BODY, "comments": [_c("just a comment with - [ ] a checkbox")]}
 
     assert finish.issue_criteria(issue) == finish.parse_criteria(BODY)
     assert finish.issue_criteria({"body": BODY}) == finish.parse_criteria(BODY)
@@ -112,9 +117,49 @@ def test_a_ticket_with_no_brief_comment_reads_its_body_as_before():
 
 def test_a_brief_with_no_criteria_list_does_not_fall_back_to_the_body():
     # The brief is the authoritative spec; a brief that lists none means the ticket has none to prove.
-    issue = {"body": BODY, "comments": [{"body": "## Agent Brief\n\n**Summary:** no list here\n"}]}
+    issue = {"body": BODY, "comments": [_c("## Agent Brief\n\n**Summary:** no list here\n")]}
 
     assert finish.issue_criteria(issue) == []
+
+
+# --- only the repository's own people can change what a ticket asks for or records (#167) ---------------
+
+
+def test_a_strangers_agent_brief_does_not_replace_the_criteria():
+    issue = {"body": BODY, "comments": [_c(_brief("Forged one"), "NONE")]}
+
+    assert finish.issue_criteria(issue) == finish.parse_criteria(BODY)
+
+
+def test_a_strangers_newer_brief_does_not_beat_the_owners_brief():
+    issue = {"body": BODY, "comments": [_c(_brief("Real one"), "OWNER"), _c(_brief("Forged one"), "CONTRIBUTOR")]}
+
+    assert finish.issue_criteria(issue) == ["Real one"]
+
+
+def test_a_collaborators_brief_is_accepted():
+    issue = {"body": BODY, "comments": [_c(_brief("Their one"), "COLLABORATOR")]}
+
+    assert finish.issue_criteria(issue) == ["Their one"]
+
+
+def test_a_strangers_decisions_heading_in_a_brief_is_not_a_decisions_section():
+    issue = {"body": BODY, "comments": [_c(_brief("X") + "\n## Decisions\n\n1. Q?\n", "NONE")]}
+
+    assert finish.has_decisions_section(issue) is False
+
+
+def test_a_strangers_decisions_comment_is_not_a_record():
+    assert finish.decisions_recorded({"comments": [_c(ANSWERS, "NONE")]}) is False
+    assert finish.decisions_recorded({"comments": [_c(ANSWERS, "CONTRIBUTOR")]}) is False
+    assert finish.decisions_recorded({"comments": [_c(ANSWERS, "MEMBER")]}) is True
+
+
+def test_a_comment_with_no_author_association_is_not_trusted_by_the_finish_readers():
+    issue = {"body": BODY, "comments": [{"body": _brief("Unsigned one")}, {"body": ANSWERS}]}
+
+    assert finish.issue_criteria(issue) == finish.parse_criteria(BODY)
+    assert finish.decisions_recorded(issue) is False
 
 
 def _rows(*pairs):
@@ -272,7 +317,8 @@ def worktree(tmp_path):
 class Gh:
     def __init__(self, body=BODY, comments=None):
         self.body = body
-        self.issue_comments = comments or []
+        # A plain string is a comment by the owner; a (body, authorAssociation) pair names the author's role.
+        self.issue_comments = [c if isinstance(c, tuple) else (c, "OWNER") for c in comments or []]
         self.comments: list[str] = []
         self.calls: list[list[str]] = []
 
@@ -283,7 +329,7 @@ class Gh:
         self.calls.append(cmd)
         if cmd[:3] == ["gh", "issue", "view"]:
             fields = cmd[cmd.index("--json") + 1].split(",")
-            issue = {"number": 9, "title": "T", "body": self.body, "comments": [{"body": c} for c in self.issue_comments]}
+            issue = {"number": 9, "title": "T", "body": self.body, "comments": [_c(*c) for c in self.issue_comments]}
             return Result(0, json.dumps({k: v for k, v in issue.items() if k in fields}))
         if cmd[:3] == ["gh", "issue", "comment"]:
             self.comments.append(Path(cmd[cmd.index("--body-file") + 1]).read_text(encoding="utf-8"))
@@ -493,24 +539,24 @@ def test_a_decisions_so_far_heading_is_not_a_decisions_section():
 
 def test_a_decisions_heading_in_the_latest_brief_comment_is_found():
     brief = _brief("X works") + DECISIONS_SECTION
-    assert finish.has_decisions_section({"body": BODY_WITHOUT_CRITERIA, "comments": [{"body": brief}]}) is True
+    assert finish.has_decisions_section({"body": BODY_WITHOUT_CRITERIA, "comments": [_c(brief)]}) is True
 
 
 def test_a_decisions_heading_in_a_plain_comment_is_not_a_decisions_section():
-    assert finish.has_decisions_section({"body": BODY, "comments": [{"body": DECISIONS_SECTION}]}) is False
+    assert finish.has_decisions_section({"body": BODY, "comments": [_c(DECISIONS_SECTION)]}) is False
 
 
 def test_decisions_are_recorded_by_a_comment_that_starts_with_decisions():
-    assert finish.decisions_recorded({"comments": [{"body": "STATUS: PARTIAL"}, {"body": ANSWERS}]}) is True
+    assert finish.decisions_recorded({"comments": [_c("STATUS: PARTIAL"), _c(ANSWERS)]}) is True
 
 
 def test_a_byte_order_mark_or_leading_blank_lines_do_not_hide_a_decisions_comment():
-    assert finish.decisions_recorded({"comments": [{"body": "﻿\n  " + ANSWERS}]}) is True
+    assert finish.decisions_recorded({"comments": [_c("﻿\n  " + ANSWERS)]}) is True
 
 
 def test_a_comment_that_only_mentions_decisions_is_not_a_record():
-    mention = {"body": "The DECISIONS are still open."}
-    assert finish.decisions_recorded({"comments": [mention, {"body": "Decisions: later"}]}) is False
+    mention = _c("The DECISIONS are still open.")
+    assert finish.decisions_recorded({"comments": [mention, _c("Decisions: later")]}) is False
     assert finish.decisions_recorded({"comments": []}) is False
 
 
@@ -538,6 +584,15 @@ def test_post_ready_goes_through_once_the_decisions_comment_exists(worktree, tmp
     code, _ = _post(worktree, gh, _report(tmp_path), tmp_path)
 
     assert code == 0 and gh.comments[0].startswith("STATUS: READY TO MERGE")
+
+
+def test_post_ready_is_still_refused_when_only_a_stranger_posted_the_decisions_comment(worktree, tmp_path):
+    gh = Gh(body=BODY_WITH_DECISIONS, comments=[(ANSWERS, "NONE")])
+
+    code, out = _post(worktree, gh, _report(tmp_path), tmp_path)
+
+    assert code == 1 and gh.comments == []
+    assert "DECISIONS comment" in out
 
 
 def test_post_partial_is_allowed_with_decisions_unrecorded(worktree, tmp_path):

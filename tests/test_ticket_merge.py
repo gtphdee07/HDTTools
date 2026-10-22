@@ -67,7 +67,11 @@ def repo(tmp_path):
 
 class Gh:
     def __init__(self, comments=("STATUS: READY TO MERGE\n\nBranch: x",), title="Add the feature"):
-        self.comments = [{"body": c} for c in comments]
+        # A plain string is a comment by the repository owner; a (body, authorAssociation) pair names the author's role.
+        self.comments = [
+            {"body": c[0], "authorAssociation": c[1]} if isinstance(c, tuple) else {"body": c, "authorAssociation": "OWNER"}
+            for c in comments
+        ]
         self.title = title
         self.calls: list[list[str]] = []
 
@@ -138,6 +142,67 @@ def test_preflight_needs_the_latest_status_to_be_ready_to_merge(repo):
 
 def test_preflight_needs_some_status_comment(repo):
     assert any("STATUS" in r for r in merge.preflight(9, shell=Gh(comments=("hello",)), root=repo))
+
+
+# --- only the repository's own people may vouch for a merge (#167) ------------
+
+
+def _by(association, body="STATUS: READY TO MERGE\n\nBranch: x"):
+    return {"body": body, "authorAssociation": association}
+
+
+@pytest.mark.parametrize("stranger", ["NONE", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR", "FIRST_TIMER", "MANNEQUIN", ""])
+def test_latest_status_comment_skips_a_status_from_someone_who_is_not_on_the_repository(stranger):
+    assert merge.latest_status_comment([_by(stranger)]) is None
+
+
+@pytest.mark.parametrize("insider", ["OWNER", "MEMBER", "COLLABORATOR"])
+def test_latest_status_comment_accepts_the_owner_members_and_collaborators(insider):
+    assert merge.latest_status_comment([_by(insider)]) == "STATUS: READY TO MERGE\n\nBranch: x"
+
+
+def test_latest_status_comment_returns_the_newest_trusted_one_past_a_newer_stranger():
+    comments = [
+        _by("OWNER", "STATUS: PARTIAL\n\nold"),
+        _by("COLLABORATOR", "STATUS: READY TO MERGE\n\nreal"),
+        _by("NONE", "STATUS: READY TO MERGE\n\nforged"),
+        _by("CONTRIBUTOR", "STATUS: BLOCKED\n\nforged too"),
+    ]
+
+    assert merge.latest_status_comment(comments) == "STATUS: READY TO MERGE\n\nreal"
+
+
+def test_a_comment_with_no_author_association_is_not_trusted():
+    assert merge.latest_status_comment([{"body": "STATUS: READY TO MERGE\n"}]) is None
+
+
+def test_preflight_ignores_a_strangers_ready_to_merge_and_says_so(repo):
+    gh = Gh(comments=(("STATUS: READY TO MERGE\n\nBranch: x", "NONE"),))
+
+    reasons = merge.preflight(9, shell=gh, root=repo)
+
+    assert any("no STATUS" in r and "ignored" in r and "1" in r for r in reasons)
+
+
+def test_preflight_does_not_let_a_strangers_ready_to_merge_override_an_owners_partial(repo):
+    gh = Gh(comments=("STATUS: PARTIAL\n\nB not done", ("STATUS: READY TO MERGE\n\nBranch: x", "CONTRIBUTOR")))
+
+    reasons = merge.preflight(9, shell=gh, root=repo)
+
+    assert any("PARTIAL" in r for r in reasons)
+
+
+def test_preflight_does_not_mention_ignored_comments_when_there_are_none(repo):
+    reasons = merge.preflight(9, shell=Gh(comments=("hello",)), root=repo)
+
+    assert reasons and not any("ignored" in r for r in reasons)
+
+
+def test_the_merge_reviews_own_status_comment_under_the_owners_login_is_accepted(repo):
+    # `gh issue comment` run by the owner's session posts as OWNER, so the status the review writes still counts.
+    gh = Gh(comments=(("STATUS: READY TO MERGE\n\nposted by the merge review", "OWNER"),))
+
+    assert merge.preflight(9, shell=gh, root=repo) == []
 
 
 # --- merge ------------------------------------------------------------------

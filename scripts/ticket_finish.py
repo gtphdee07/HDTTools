@@ -52,7 +52,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import test_planner as planner  # noqa: E402
 from ticket_common import (  # noqa: E402
-    BASE_BRANCH, Shell, gh_issue, git_out, real_shell, runs_here, scratch_path, ticket_from_branch,
+    BASE_BRANCH, Shell, gh_issue, git_out, real_shell, runs_here, scratch_path, ticket_from_branch, trusted_comments,
 )
 
 STATUSES = ("READY TO MERGE", "PARTIAL", "BLOCKED")
@@ -166,11 +166,16 @@ def issue_criteria(issue: dict) -> list[str]:
 
     `/triage` calls the brief the authoritative specification, so when one exists it wins even if the
     body also has a checklist (or none under a heading `parse_criteria` knows). `gh` lists comments
-    oldest first, so the last brief is the most recent.
+    oldest first, so the last brief is the most recent. Only the owner's, a member's or a collaborator's
+    brief counts (#167): anyone can comment on a public repository.
     """
-    bodies = [c.get("body") or "" for c in issue.get("comments") or []]
+    return parse_criteria(_latest_brief(issue) or issue.get("body") or "")
+
+
+def _latest_brief(issue: dict) -> str | None:
+    bodies = [c.get("body") or "" for c in trusted_comments(issue.get("comments"))]
     briefs = [b for b in bodies if re.search(r"^##\s+Agent Brief", b, re.MULTILINE)]
-    return parse_criteria(briefs[-1] if briefs else issue.get("body") or "")
+    return briefs[-1] if briefs else None
 
 
 # A ticket that needs decisions from the owner lists them under `## Decisions` (in the body or its Agent
@@ -181,17 +186,14 @@ DECISIONS_HEADING = re.compile(r"^##\s+Decisions\s*$", re.MULTILINE)
 
 
 def has_decisions_section(issue: dict) -> bool:
-    texts = [issue.get("body") or ""]
-    briefs = [c.get("body") or "" for c in issue.get("comments") or []]
-    briefs = [b for b in briefs if re.search(r"^##\s+Agent Brief", b, re.MULTILINE)]
-    if briefs:
-        texts.append(briefs[-1])
+    texts = [issue.get("body") or "", _latest_brief(issue) or ""]
     return any(DECISIONS_HEADING.search(t) for t in texts)
 
 
 def decisions_recorded(issue: dict) -> bool:
+    """A `DECISIONS` comment counts only from the owner, a member or a collaborator (#167)."""
     return any(
-        (c.get("body") or "").lstrip("﻿ \t\r\n").startswith("DECISIONS") for c in issue.get("comments") or []
+        (c.get("body") or "").lstrip("﻿ \t\r\n").startswith("DECISIONS") for c in trusted_comments(issue.get("comments"))
     )
 
 

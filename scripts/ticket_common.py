@@ -83,6 +83,21 @@ def main_checkout(shell: Shell, cwd: Path) -> Path | None:
     return Path(r.out.strip()).parent if r.ok and r.out.strip() else None
 
 
+# Anyone can comment on a public repository, so a STATUS:, DECISIONS or Agent Brief comment only counts when
+# its author is the repository's own people. `gh issue view --json comments` gives each comment an
+# `authorAssociation`; a comment without one is treated as untrusted. The merge review's own status comment
+# is posted under the owner's login, so it is OWNER like any other of the owner's comments.
+TRUSTED_ASSOCIATIONS = ("OWNER", "MEMBER", "COLLABORATOR")
+
+
+def is_trusted_comment(comment: dict) -> bool:
+    return (comment.get("authorAssociation") or "").upper() in TRUSTED_ASSOCIATIONS
+
+
+def trusted_comments(comments: list[dict] | None) -> list[dict]:
+    return [c for c in comments or [] if is_trusted_comment(c)]
+
+
 def gh_issue(shell: Shell, cwd: Path, n: int, fields: str = "number,title,state,assignees,labels,body,comments") -> dict | None:
     r = shell(["gh", "issue", "view", str(n), "--json", fields], cwd)
     return json.loads(r.out) if r.ok and r.out.strip() else None

@@ -73,11 +73,11 @@ Test-round additions:
   `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
 - Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
   markers.
-- The ticket's Decisions 1 to 3 are asked with `AskUserQuestion` and recorded in a `DECISIONS` comment, as its criteria say.
-- If the existing RevenueCat key lacks the project-configuration read permission, stop and list the exact dashboard step for the owner under "Owner actions needed" (post `PARTIAL`).
+- Decision 1 is already answered on the ticket (a `DECISIONS` comment): the test reads a second, read-only key from the environment variable `REVENUECAT_CONFIG_READ_KEY`, not `REVENUECAT_SECRET_KEY`. Read the ticket's comments, ask only Decisions 2 and 3 with `AskUserQuestion`, and record them in a further `DECISIONS` comment.
+- A missing `REVENUECAT_CONFIG_READ_KEY`, or one without the project-configuration read permission, must fail the run naming the variable and the permission. It is read only from the shell environment of the Worker External project: nothing committed, no `wrangler secret`, nothing in the Web External project. If it is not visible in your session, say so under "Owner actions needed" (post `PARTIAL`); do not ask for the value.
 ```
 
-- **Your part:** answer its three decisions when the session asks. If the key lacks a permission, add the one read permission in the RevenueCat dashboard when it tells you. After the merge, Claude runs the Worker wrapper (free).
+- **Your part:** the key (`REVENUECAT_CONFIG_READ_KEY`, set as a Windows User variable on 2026-10-22) is already in place: **close every terminal and VS Code window and open the build session fresh**, so it sees the variable. Answer Decisions 2 and 3 when the session asks. If the key lacks a permission, add it in the RevenueCat dashboard when the session says so. After the merge, Claude runs the Worker wrapper (free).
 
 ### #29 History sync on Web
 

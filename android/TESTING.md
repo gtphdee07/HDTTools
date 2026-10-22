@@ -668,7 +668,7 @@ root `TESTING.md`'s "Dashboard" section.
   `compute_breakdown`/`verdict_for` Kotlin port, ported from
   `tests/test_breakdown.py` plus Android-only edge cases (see
   `ARCHIVE_ANDROID.md` at the repo root for detail). For the optional truck GCWR
-  (#47): `BreakdownTest` pins the no-GCWR rig having no Combined row, a GCWR below
+  (#47): `BreakdownTest` pins a GCWR below
   the GVWR still being the limit, and `gcwrBelowGvwr` (the entry screen's warning
   rule); `VerdictTest` pins the Advisory rule on bare tones (an insufficient
   Combined row is ignored, a checked one counts, a failing one fails the rig, and

@@ -61,8 +61,11 @@ private fun towVehicleTotalNote(steer: Double, drive: Double, limit: Double): St
 // A GCWR below the truck's own GVWR is almost certainly a typo (the combined
 // limit includes the truck itself), so the entry screen warns - but the value
 // is still used. Only when both are entered.
-fun gcwrBelowGvwr(truck: TruckTag): Boolean =
-    truck.gcwrLb.isProvided() && truck.gvwrLb.isProvided() && truck.gcwrLb!! < truck.gvwrLb!!
+fun gcwrBelowGvwr(truck: TruckTag): Boolean {
+    val gcwr = truck.gcwrLb
+    val gvwr = truck.gvwrLb
+    return gcwr.isProvided() && gvwr.isProvided() && gcwr!! < gvwr!!
+}
 
 fun computeBreakdown(
     truck: TruckTag,

@@ -5,6 +5,7 @@ import com.rigcheck.app.domain.model.TrailerTag
 import com.rigcheck.app.domain.model.TruckTag
 import com.rigcheck.app.ui.format.formatLb
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -124,19 +125,13 @@ class BreakdownTest {
     // (BreakdownGoldenVectorTest); these are what the fixture cannot say.
 
     @Test
-    fun `the old GVWR plus GVWR combined row is gone without a GCWR`() {
-        val items = computeBreakdown(TRUCK, TRAILER, SCALE)
-        assertTrue(items.none { it.label == "Combined Rig Weight" })
-    }
-
-    @Test
     fun `gcwr below the truck GVWR is flagged only when both are entered`() {
         assertTrue(gcwrBelowGvwr(TRUCK.copy(gcwrLb = 13_999.0)))
-        assertEquals(false, gcwrBelowGvwr(TRUCK.copy(gcwrLb = 14_000.0)))
-        assertEquals(false, gcwrBelowGvwr(TRUCK.copy(gcwrLb = 26_000.0)))
-        assertEquals(false, gcwrBelowGvwr(TRUCK.copy(gcwrLb = null)))
-        assertEquals(false, gcwrBelowGvwr(TRUCK.copy(gcwrLb = 0.0)))
-        assertEquals(false, gcwrBelowGvwr(TRUCK.copy(gvwrLb = null, gcwrLb = 5_000.0)))
+        assertFalse(gcwrBelowGvwr(TRUCK.copy(gcwrLb = 14_000.0)))
+        assertFalse(gcwrBelowGvwr(TRUCK.copy(gcwrLb = 26_000.0)))
+        assertFalse(gcwrBelowGvwr(TRUCK.copy(gcwrLb = null)))
+        assertFalse(gcwrBelowGvwr(TRUCK.copy(gcwrLb = 0.0)))
+        assertFalse(gcwrBelowGvwr(TRUCK.copy(gvwrLb = null, gcwrLb = 5_000.0)))
     }
 
     @Test

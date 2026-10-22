@@ -12,7 +12,7 @@ Usage:
 
 `preflight` exits 1 unless this is the main checkout, MPSkills is checked out
 and clean, `ticket-<N>` has commits, and the ticket's latest `STATUS:` comment
-is READY TO MERGE (`--allow-status` accepts PARTIAL/BLOCKED when the owner has
+from the owner, a member or a collaborator (#167) is READY TO MERGE (`--allow-status` accepts PARTIAL/BLOCKED when the owner has
 decided to merge anyway). `baseline` says whether MPSkills has moved since the
 ticket was cut (BASELINE UNCHANGED means the merged tree equals the branch tip, so
 the merged-tree test run can be skipped). `verdicts` (#128) gives each suite the session-level plan lists for the ticket a `skip`
@@ -93,8 +93,8 @@ def preflight(n: int, *, shell: Shell, root: Path, allow_status: bool = False) -
         if comment is None:
             ignored = ignored_status_count(comments)
             note = (
-                f" ({ignored} STATUS: comment{'s' if ignored != 1 else ''} from someone other than the owner or a "
-                "collaborator ignored)"
+                f" ({ignored} STATUS: comment{'s' if ignored != 1 else ''} from someone other than the owner, a "
+                "member or a collaborator ignored)"
             ) if ignored else ""
             reasons.append(f"Ticket #{n} has no STATUS: comment{note}; run /ticket-finish in its worktree first.")
         else:

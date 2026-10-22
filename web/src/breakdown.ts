@@ -6,6 +6,10 @@ import type { BreakdownItem, ScaleTicketData, TrailerTagData, TruckTagData, Verd
 
 const DEFAULT_PIN_WEIGHT_PCT = 0.2;
 
+// The product's one Advisory Item: shown only when the truck has a GCWR, and an insufficient one never lowers the Verdict.
+const COMBINED_RIG_WEIGHT_LABEL = 'Combined Rig Weight';
+const GCWR_UNCHECKED_CAVEAT = "Combined weight (GCWR) wasn't checked; add it if you have it.";
+
 export interface CreateBreakdownResult {
   date: string;
   verdict: 'pass' | 'fail' | 'partial' | 'insufficient';
@@ -60,6 +64,7 @@ export function computeBreakdown(
   const frontGawrRaw = reading(truck.front_gawr_lb);
   const rearGawrRaw = reading(truck.rear_gawr_lb);
   const gawrPerAxleRaw = reading(trailer.gawr_per_axle_lb);
+  const gcwrRaw = reading(truck.gcwr_lb);
 
   const steer = lb(steerRaw);
   const drive = lb(driveRaw);
@@ -147,15 +152,13 @@ export function computeBreakdown(
       false,
     ],
     ['Trailer Total (GVWR)', trailerTotalActual, trailerGvwr, trailerTotalNote, !trailerGvwrRaw, trailerTotalEstimated],
-    [
-      'Combined Rig Weight',
-      gross,
-      truckGvwr + trailerGvwr,
-      null,
-      grossRaw === undefined || !truckGvwrRaw || !trailerGvwrRaw,
-      false,
-    ],
   ];
+  // Combined Rig Weight is checked against the truck's GCWR only - never approximated from the two GVWRs - and is
+  // left out when no GCWR was entered (the usual case). Truthy, so an explicit 0 means "not entered" like every
+  // other rated limit above.
+  if (gcwrRaw) {
+    rawItems.push([COMBINED_RIG_WEIGHT_LABEL, gross, gcwrRaw, null, grossRaw === undefined, false]);
+  }
 
   return rawItems.map(([label, actual, limit, note, insufficient, estimated]): BreakdownItem => {
     if (insufficient) {
@@ -188,7 +191,12 @@ export function computeBreakdown(
 }
 
 export function verdictFor(items: BreakdownItem[]): VerdictInfo {
-  const tones = items.map((item) => item.tone);
+  // An insufficient Advisory Item is treated as absent. A checked one counts like any other, so a failing
+  // Combined Rig Weight still wins below.
+  const combinedChecked = items.some((item) => item.label === COMBINED_RIG_WEIGHT_LABEL && item.tone !== 'insufficient');
+  const tones = items
+    .filter((item) => item.label !== COMBINED_RIG_WEIGHT_LABEL || item.tone !== 'insufficient')
+    .map((item) => item.tone);
   const anyFail = tones.includes('warning');
   const allInsufficient = tones.every((tone) => tone === 'insufficient');
   const anyInsufficient = tones.includes('insufficient');
@@ -224,7 +232,7 @@ export function verdictFor(items: BreakdownItem[]): VerdictInfo {
   return {
     status: 'pass',
     headline: 'Safe to Tow',
-    subline: 'Every axle checks out under its rated limit.',
+    subline: 'Every axle checks out under its rated limit.' + (combinedChecked ? '' : ` ${GCWR_UNCHECKED_CAVEAT}`),
     bandBg: 'var(--state-success)',
     icon: 'check-circle-2',
   };

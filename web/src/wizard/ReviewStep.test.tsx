@@ -290,3 +290,39 @@ describe('ReviewStep', () => {
     expect(input.value).toBe('');
   });
 });
+
+describe('ReviewStep GCWR field', () => {
+  const WARNING = /below the truck's GVWR/;
+
+  it('shows the optional GCWR field with its hint on the truck step only', () => {
+    const { rerender } = render(<ReviewStep {...baseProps()} />);
+    expect(screen.getByLabelText('GCWR (lb), optional')).toHaveAccessibleDescription(
+      "From your owner's manual. Leave blank if you can't find it.",
+    );
+
+    rerender(<ReviewStep {...baseProps({ module: TRAILER_MODULE })} />);
+    expect(screen.queryByLabelText('GCWR (lb), optional')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['below a known GVWR', { gvwr_lb: 14000, gcwr_lb: 10000 }, true],
+    ['equal to the GVWR', { gvwr_lb: 14000, gcwr_lb: 14000 }, false],
+    ['above the GVWR', { gvwr_lb: 14000, gcwr_lb: 28000 }, false],
+    ['with no GVWR to compare against', { gcwr_lb: 10000 }, false],
+    ['left blank', { gvwr_lb: 14000 }, false],
+  ])('warns only when the GCWR is below a known GVWR: %s', (_name, data, warns) => {
+    render(<ReviewStep {...baseProps({ data })} />);
+
+    if (warns) expect(screen.getByRole('alert')).toHaveTextContent(WARNING);
+    else expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('still reports the value typed under the GVWR: the warning does not block it', async () => {
+    const onFieldChange = vi.fn();
+    render(<ReviewStep {...baseProps({ data: { gvwr_lb: 14000 }, onFieldChange })} />);
+
+    await userEvent.type(screen.getByLabelText('GCWR (lb), optional'), '1');
+
+    expect(onFieldChange).toHaveBeenCalledWith('gcwr_lb', true, '1');
+  });
+});

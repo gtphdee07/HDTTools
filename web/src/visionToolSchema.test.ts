@@ -9,14 +9,14 @@ import { MODULES } from './mockData';
 // Worker and the Python readers are each pinned to; this checks Web's side of it. The Streamlit (#140) and
 // Android (#149) slices of the same check read the same file.
 //
-// The fields marked `optional: true` in mockData.ts (standalone_weight_lb, axle_count) are manual-only: no
-// Scan is expected to fill them, so they are not in the tool schema. They are excluded by that flag, and the
-// test below pins that exactly those two are the ones excluded, so a new optional field cannot slip out of
+// The fields marked `optional: true` in mockData.ts (standalone_weight_lb, gcwr_lb, axle_count) are manual-only:
+// no Scan is expected to fill them, so they are not in the tool schema. They are excluded by that flag, and the
+// test below pins that exactly those three are the ones excluded, so a new optional field cannot slip out of
 // the check unnoticed.
 
 const DOC_TYPE_FOR_MODULE = { truck: 'truck_tag', trailer: 'trailer_tag', scale: 'scale_ticket' } as const;
 
-const MANUAL_ONLY = ['standalone_weight_lb', 'axle_count'];
+const MANUAL_ONLY = ['standalone_weight_lb', 'gcwr_lb', 'axle_count'];
 
 const ALL_MODULES = Object.values(MODULES);
 

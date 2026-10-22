@@ -5,6 +5,7 @@ import App from './App';
 import * as api from './api';
 import * as breakdown from './breakdown';
 import { makeWorld, renderApp } from './scanTestKit';
+import GOLDEN from '../../test-vectors/breakdown_cases.json';
 import type { RecentRig } from './types';
 
 // Interaction tests: App.tsx has no exported handlers to unit-test in
@@ -192,5 +193,85 @@ describe('Disclaimer gate', () => {
 
     expect(await screen.findByText('Not Enough Information')).toBeInTheDocument();
     expect(screen.queryByText('⚠️ Experimental Tool — Not for Safety Decisions')).not.toBeInTheDocument();
+  });
+});
+
+// The optional truck GCWR (#46), driven through the real screens. Rigs and scale readings come from the shared
+// golden-vector fixture so the cases here are the same ones the math is held to.
+describe('Truck GCWR', () => {
+  const NO_GCWR = GOLDEN.cases.find((c) => c.name === 'no_gcwr_omits_combined_row_and_adds_caveat')!;
+  const WITH_GCWR = GOLDEN.cases.find((c) => c.name === 'gcwr_under_limit_safe_to_tow')!;
+
+  beforeEach(() => {
+    sessionStorage.setItem('rigcheck:disclaimerAcknowledged', 'true');
+  });
+
+  async function typeInto(user: ReturnType<typeof userEvent.setup>, label: string, value: number | undefined) {
+    if (value !== undefined) await user.type(screen.getByLabelText(label), String(value));
+  }
+
+  // Picks the saved Rig, keys in the case's scale readings by hand and goes to Results.
+  async function checkSavedRig(truck: RecentRig['truck'], testCase: typeof NO_GCWR) {
+    const rig: RecentRig = { nickname: 'Big Blue', truck, trailer: testCase.trailer, lastUsedAt: new Date().toISOString() };
+    localStorage.setItem('rigcheck:recentRigs', JSON.stringify([rig]));
+    render(<App />);
+    const user = userEvent.setup();
+    await user.click(screen.getAllByRole('button', { name: 'Start New Check' })[0]);
+    await user.click(screen.getByText('Big Blue'));
+    await user.click(screen.getByRole('button', { name: 'No Image / Enter Weight Manually' }));
+    await typeInto(user, 'Steer Axle (lb)', testCase.scale.steer_axle_lb);
+    await typeInto(user, 'Drive Axle (lb)', testCase.scale.drive_axle_lb);
+    await typeInto(user, 'Trailer Axle(s) (lb)', testCase.scale.trailer_axle_lb);
+    await typeInto(user, 'Gross Weight (lb)', testCase.scale.gross_weight_lb);
+    await user.click(screen.getByRole('button', { name: 'See My Results' }));
+    return user;
+  }
+
+  it('a Rig saved before GCWR existed still loads; its Results have no Combined row and the Safe to Tow caveat', async () => {
+    await checkSavedRig(NO_GCWR.truck, NO_GCWR);
+
+    expect(await screen.findByText('Safe to Tow')).toBeInTheDocument();
+    expect(screen.getByText(NO_GCWR.expected.subline)).toBeInTheDocument();
+    expect(screen.getByText('Trailer Total (GVWR)')).toBeInTheDocument();
+    expect(screen.queryByText('Combined Rig Weight')).not.toBeInTheDocument();
+  });
+
+  it('a Rig saved with a GCWR restores it when selected: Results show the Combined row and no caveat', async () => {
+    await checkSavedRig(WITH_GCWR.truck, WITH_GCWR);
+
+    expect(await screen.findByText('Safe to Tow')).toBeInTheDocument();
+    expect(screen.getByText(WITH_GCWR.expected.subline)).toBeInTheDocument();
+    expect(screen.getByText('Combined Rig Weight')).toBeInTheDocument();
+    expect(screen.getByText('28,000 lb rated')).toBeInTheDocument();
+    expect(screen.queryByText(/GCWR\) wasn't checked/)).not.toBeInTheDocument();
+  });
+
+  it('a GCWR typed on the truck review step is used, warns below the GVWR, and is saved with the Rig', async () => {
+    render(<App />);
+    const user = await startNewRig('Big Blue');
+    await user.click(screen.getByRole('button', { name: "I don't have this image" }));
+
+    expect(screen.getByText("From your owner's manual. Leave blank if you can't find it.")).toBeInTheDocument();
+    await user.type(screen.getByLabelText('GVWR (lb)'), '14000');
+    await user.type(screen.getByLabelText('GCWR (lb), optional'), '10000');
+    expect(screen.getByRole('alert')).toHaveTextContent("below the truck's GVWR");
+
+    await user.clear(screen.getByLabelText('GCWR (lb), optional'));
+    await user.type(screen.getByLabelText('GCWR (lb), optional'), '28000');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Next: Trailer Tag' }));
+    await user.click(screen.getByRole('button', { name: "I don't have this image" }));
+    await user.click(screen.getByRole('button', { name: 'Next: Scale Ticket' }));
+    await user.click(screen.getByRole('button', { name: 'No Image / Enter Weight Manually' }));
+    await user.type(screen.getByLabelText('Gross Weight (lb)'), '26000');
+    await user.click(screen.getByRole('button', { name: 'See My Results' }));
+
+    expect(await screen.findByText('Combined Rig Weight')).toBeInTheDocument();
+    expect(screen.getByText('26,000 lb actual')).toBeInTheDocument();
+    expect(screen.getByText('28,000 lb rated')).toBeInTheDocument();
+
+    const stored: RecentRig[] = JSON.parse(localStorage.getItem('rigcheck:recentRigs') ?? '[]');
+    expect(stored[0].truck.gcwr_lb).toBe(28000);
   });
 });

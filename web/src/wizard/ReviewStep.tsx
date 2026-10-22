@@ -58,6 +58,12 @@ export function ReviewStep({
   const [noWeight, setNoWeight] = useState(false);
   const standaloneWeightRef = useRef<HTMLInputElement>(null);
 
+  // Warn only: a GCWR under the GVWR is unusual but still used (the owner's manual may be right and the tag wrong).
+  // Needs a known GVWR to compare against; a blank or 0 field means "not entered".
+  const gcwr = typeof data.gcwr_lb === 'number' ? data.gcwr_lb : 0;
+  const gvwr = typeof data.gvwr_lb === 'number' ? data.gvwr_lb : 0;
+  const gcwrBelowGvwr = module.key === 'truck' && gcwr > 0 && gvwr > 0 && gcwr < gvwr;
+
   const showStandaloneTicketScan = module.key === 'truck' && onScanStandaloneTicket;
   const standaloneWeightKnown = Boolean(data.standalone_weight_lb);
   const canScanTicket = !scanAccess || scanAccess.kind === 'ready';
@@ -118,16 +124,31 @@ export function ReviewStep({
         {module.fields.map((f) => {
           const raw = data[f.name];
           const value = raw == null ? '' : String(raw);
+          const hintId = f.hint ? `hint-${f.name}` : undefined;
           return (
-            <label key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-1)' }}>{f.label}</span>
-              <input
-                ref={f.name === 'standalone_weight_lb' ? standaloneWeightRef : undefined}
-                type={f.type}
-                value={value}
-                onChange={(e) => onFieldChange(f.name, f.type === 'number', e.target.value)}
-              />
-            </label>
+            <div key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-1)' }}>{f.label}</span>
+                <input
+                  ref={f.name === 'standalone_weight_lb' ? standaloneWeightRef : undefined}
+                  type={f.type}
+                  value={value}
+                  aria-describedby={hintId}
+                  onChange={(e) => onFieldChange(f.name, f.type === 'number', e.target.value)}
+                />
+              </label>
+              {f.hint && (
+                <span id={hintId} style={{ fontSize: 12, color: 'var(--fg-2)' }}>
+                  {f.hint}
+                </span>
+              )}
+              {f.name === 'gcwr_lb' && gcwrBelowGvwr && (
+                <span role="alert" style={{ fontSize: 13, color: 'var(--state-danger)' }}>
+                  That GCWR ({gcwr.toLocaleString('en-US')} lb) is below the truck's GVWR ({gvwr.toLocaleString('en-US')}{' '}
+                  lb), which is unusual. Double-check it against your owner's manual. We'll still use it.
+                </span>
+              )}
+            </div>
           );
         })}
       </div>

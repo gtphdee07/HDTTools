@@ -5,13 +5,6 @@ import com.revenuecat.purchases.LogLevel
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchasesConfiguration
 
-// RevenueCat's PUBLIC SDK key - safe to embed in app code (this is what
-// "public key" means for RevenueCat: extractable from the APK trivially,
-// unlike the Worker's secret key which must never appear here). This is
-// specifically the Test Store key from the RevenueCat dashboard's
-// "Install the SDK" screen, not a production key.
-private const val REVENUECAT_PUBLIC_API_KEY = "test_LFhGCYRgSfTFUpYRaWkEakLWOdS"
-
 class RigCheckApplication : Application() {
     override fun onCreate() {
         super.onCreate()
@@ -20,6 +13,11 @@ class RigCheckApplication : Application() {
         // logs the signed-in account's id in (and back out) so purchases land
         // on the shared account (#22). The old shared "smoke-test-user" id
         // is gone - a signed-in account now owns its own SCAN balance.
-        Purchases.configure(PurchasesConfiguration.Builder(this, REVENUECAT_PUBLIC_API_KEY).build())
+        //
+        // The key is RevenueCat's PUBLIC SDK key (safe to embed: extractable from
+        // the APK, unlike the Worker's secret key). Debug builds get the Test
+        // Store key; a release build takes the production key and fails to build
+        // without one (verifyRevenueCatReleaseKey in app/build.gradle.kts, #166).
+        Purchases.configure(PurchasesConfiguration.Builder(this, BuildConfig.REVENUECAT_PUBLIC_API_KEY).build())
     }
 }

@@ -60,15 +60,27 @@ def relative(file: str, base: Path) -> str:
     return Path(file).resolve().relative_to(base).as_posix()
 
 
-def gradle(*args: str, timeout: int = 300) -> str:
-    """Run the Android Gradle wrapper offline, or skip: these checks need the Android SDK,
-    which isn't guaranteed on every machine that can run the Python suite. Run with `-rs`
-    to see why a check was skipped rather than mistaking a skip for a pass."""
+def gradle_proc(
+    *args: str, env: dict[str, str] | None = None, timeout: int = 300
+) -> subprocess.CompletedProcess[str]:
+    """Run the Android Gradle wrapper offline and return the finished process whatever its exit
+    code, or skip: these checks need the Android SDK, which isn't guaranteed on every machine that
+    can run the Python suite. Run with `-rs` to see why a check was skipped rather than mistaking a
+    skip for a pass. `env` replaces the child's whole environment (default: inherit this one)."""
     wrapper = ANDROID / ("gradlew.bat" if os.name == "nt" else "gradlew")
     has_sdk = (ANDROID / "local.properties").is_file() or os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
     if not wrapper.is_file() or not has_sdk:
         pytest.skip("no Gradle wrapper or Android SDK on this machine")
-    return run([str(wrapper), "--offline", *args], ANDROID, timeout)
+    return subprocess.run(
+        [str(wrapper), "--offline", *args], cwd=ANDROID, capture_output=True, text=True, timeout=timeout, env=env
+    )
+
+
+def gradle(*args: str, timeout: int = 300) -> str:
+    """`gradle_proc` that must exit 0; returns its stdout."""
+    proc = gradle_proc(*args, timeout=timeout)
+    assert proc.returncode == 0, f"gradlew {' '.join(args)} exited {proc.returncode}:\n{proc.stdout[-800:]}\n{proc.stderr[-800:]}"
+    return proc.stdout
 
 
 def require_proxy_install(package_dir: Path = PROXY) -> None:

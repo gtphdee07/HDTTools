@@ -27,6 +27,18 @@ jacoco {
     toolVersion = "0.8.14"
 }
 
+// RevenueCat public SDK key per build type (#166). It is public (extractable from any APK), so this is a
+// release-process guard, not a secret: the Test Store key ("test_...") makes purchases fake, so a release
+// built with it would sell nothing and grant entitlements for free. Debug uses the Test Store key (the
+// RevenueCat dashboard's "Install the SDK" screen). Release reads the production key from the Gradle
+// property revenueCatReleaseKey or the environment variable REVENUECAT_RELEASE_API_KEY, with no default.
+val revenueCatTestStoreKey = "test_LFhGCYRgSfTFUpYRaWkEakLWOdS"
+val revenueCatReleaseKey: String =
+    providers.gradleProperty("revenueCatReleaseKey")
+        .orElse(providers.environmentVariable("REVENUECAT_RELEASE_API_KEY"))
+        .getOrElse("")
+        .trim()
+
 android {
     namespace = "com.rigcheck.app"
     compileSdk {
@@ -65,11 +77,14 @@ android {
                 enableUnitTestCoverage = true
                 enableAndroidTestCoverage = true
             }
+            buildConfigField("String", "REVENUECAT_PUBLIC_API_KEY", "\"$revenueCatTestStoreKey\"")
         }
         release {
             optimization {
                 enable = false
             }
+            // No default: an unset key is "" here and verifyRevenueCatReleaseKey fails the build (#166).
+            buildConfigField("String", "REVENUECAT_PUBLIC_API_KEY", "\"$revenueCatReleaseKey\"")
         }
     }
     compileOptions {
@@ -77,8 +92,47 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures {
+        buildConfig = true
         compose = true
     }
+}
+
+// The release guard (#166). The rule is inline in doLast, not a script function: a task action that calls a build-script function
+// captures the script object, which the configuration cache (on in gradle.properties) cannot serialize.
+// The message names the key and where to set it but never prints its value.
+val verifyRevenueCatReleaseKey = tasks.register("verifyRevenueCatReleaseKey") {
+    group = "verification"
+    description = "Fails unless the release RevenueCat public key is set and is not a Test Store (test_) key."
+    val key = revenueCatReleaseKey
+    // No declared outputs, so Gradle never treats this task as up to date: it checks the key on every build.
+    doLast {
+        val where = "Gradle property revenueCatReleaseKey or environment variable REVENUECAT_RELEASE_API_KEY"
+        if (key.isBlank()) {
+            throw GradleException(
+                "The RevenueCat release API key is missing: set the $where to the production public SDK key.",
+            )
+        }
+        if (key.startsWith("test_", ignoreCase = true)) {
+            throw GradleException(
+                "The RevenueCat release API key is a Test Store key (it starts with test_): purchases made " +
+                    "with it are fake. Set the $where to the production public SDK key.",
+            )
+        }
+    }
+}
+
+// The tasks that produce a shippable APK or bundle. Not preReleaseBuild: that would also fail
+// testReleaseUnitTest, which a plain ./gradlew test runs without any release key.
+tasks.matching {
+    it.name in setOf("assembleRelease", "bundleRelease", "packageRelease", "packageReleaseBundle")
+}.configureEach {
+    dependsOn(verifyRevenueCatReleaseKey)
+}
+// And run first, so a bad key fails the build in seconds, not after the release variant has compiled.
+// mustRunAfter only orders the two when both are in the graph, so it does not pull the guard into
+// testReleaseUnitTest (which also depends on preReleaseBuild).
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    mustRunAfter(verifyRevenueCatReleaseKey)
 }
 
 // Dead-code sweep (roadmap item #10) - scoped narrow to the

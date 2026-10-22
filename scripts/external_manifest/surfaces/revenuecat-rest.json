@@ -3,7 +3,7 @@
   "status": "active",
   "platforms": ["scan-proxy", "android"],
   "owner": "scan-proxy",
-  "boundary_files": ["workers/scan-proxy/src/revenuecat.ts"],
+  "boundary_files": ["workers/scan-proxy/src/revenuecat.ts", "workers/scan-proxy/src/revenuecatProAttachment.ts"],
   "dependency_pins": [],
   "registry_packages": [],
   "max_paid_calls": 0

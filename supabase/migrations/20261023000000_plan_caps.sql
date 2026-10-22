@@ -18,9 +18,11 @@
 --
 --   p_pro = true     the Pro caps
 --   p_pro = false    the Free caps (also what a caller that omits it gets, such as an older app build)
---   p_pro = null     the app could not read the plan. Both functions use the Pro caps, so a Pro account
---                    whose RevenueCat read failed is neither refused a Rig it paid for nor has its
---                    History pruned to the Free count. Storage stays bounded by the Pro caps.
+--   p_pro = null     the app could not read the plan (RevenueCat unreachable, or blocked in the browser).
+--                    add_rig uses the Free cap: a Pro account is only told its Garage is full until the
+--                    read works, whereas Pro caps for everyone whose read fails would be a free upgrade.
+--                    add_history_entry uses the Pro count, because a wrong guess there deletes: pruning a
+--                    Pro account's History to the Free count cannot be undone. Storage stays bounded.
 
 create table public.plan_caps (
   plan        text primary key check (plan in ('free', 'pro')),
@@ -80,7 +82,11 @@ begin
   end if;
 
   select garage_cap into cap from public.plan_caps
-   where plan = case when p_pro is false then 'free' else 'pro' end;
+   where plan = case when p_pro is true then 'pro' else 'free' end;
+  -- A deleted row must stop the add, not leave the Garage without a limit.
+  if cap is null then
+    raise exception 'plan_caps_missing';
+  end if;
 
   if (select count(*) from public.garage_rigs where user_id = uid) >= cap then
     raise exception 'garage_full' using detail = cap::text, errcode = 'P0001';
@@ -132,6 +138,10 @@ begin
 
   select history_cap into cap from public.plan_caps
    where plan = case when p_pro is false then 'free' else 'pro' end;
+  -- A null offset prunes nothing, so a deleted row must stop the add instead.
+  if cap is null then
+    raise exception 'plan_caps_missing';
+  end if;
 
   delete from public.history_entries
    where user_id = uid

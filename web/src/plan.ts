@@ -3,8 +3,12 @@ import type { BillingState } from './billing';
 
 // The plan the account's saves report to the database, which picks the Garage and History cap from it
 // (supabase/migrations/20261023000000_plan_caps.sql). null means the plan could not be read yet or at
-// all; the database then uses the Pro caps so a Pro account is not refused or pruned over a failed read.
+// all; the database then holds the Garage to the Free cap and keeps History to the Pro count, so a Pro
+// account is never pruned over a failed read and a blocked read is no free upgrade.
 export type Plan = 'free' | 'pro';
+
+// The `p_pro` argument the database functions take: true for Pro, false for Free, null when unknown.
+export const proFlag = (plan: Plan | null): boolean | null => (plan === null ? null : plan === 'pro');
 
 function planOf(billing: Pick<BillingState, 'available' | 'isPro' | 'loading' | 'loadFailed' | 'scanBalance'>): Plan | null {
   // A build without purchases cannot hold Pro.
@@ -27,5 +31,5 @@ export function garageFullText(cap: number | null, plan: Plan | null): string {
   const rigs = `${cap} Rig${cap === 1 ? '' : 's'}`;
   if (plan === 'free') return `is full (the Free plan holds ${rigs})`;
   if (plan === 'pro') return `is full (Pro holds ${rigs})`;
-  return `is full (${rigs})`;
+  return `is full (${rigs}, which may be the Free limit because we couldn't check your plan)`;
 }

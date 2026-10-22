@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { formatDate } from './breakdown';
 import type { HistoryBackend } from './history';
+import { proFlag } from './plan';
 import type { Plan } from './plan';
 import type { Verdict } from './types';
 
@@ -49,7 +50,7 @@ export function createSupabaseHistoryBackend(client: SupabaseClient): HistoryBac
         p_idempotency_key: idempotencyKey,
         p_rig_nickname: entry.rigNickname.trim(),
         p_verdict: entry.verdict,
-        p_pro: plan === null ? null : plan === 'pro',
+        p_pro: proFlag(plan),
       });
       if (error) throw new Error(error.message);
     },

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { GarageFullError } from './garage';
 import type { GarageBackend } from './garage';
+import { proFlag } from './plan';
 import type { RecentRig } from './types';
 
 // The account's Garage over the `garage_rigs` table and `add_rig` function from
@@ -41,7 +42,7 @@ export function createSupabaseGarageBackend(client: SupabaseClient): GarageBacke
         p_nickname: rig.nickname.trim(),
         p_truck: rig.truck,
         p_trailer: rig.trailer,
-        p_pro: plan === null ? null : plan === 'pro',
+        p_pro: proFlag(plan),
       });
       if (!error) return;
       if (error.message === 'garage_full') {

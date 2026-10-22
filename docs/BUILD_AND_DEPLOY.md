@@ -174,8 +174,8 @@ the apps at a new project, all of it must be recreated or re-verified.
   idempotent retry, and the grants. Without it a signed-in Web user's Rigs
   fail to save and the `supabase-tables` External suite fails. Check it with
   `cd web && EXTERNAL_SURFACES=supabase-tables npx vitest run --config vitest.external.config.ts`.
-  A new Supabase project needs the same step (section 7). Changing the cap means
-  a new migration that redefines `add_rig`, never an edit to the applied one.
+  A new Supabase project needs the same step (section 7). The cap itself is in
+  `plan_caps` (below), not in this migration.
 - **History table (#29).** Run `supabase/migrations/20261022000000_history_entries.sql`
   once, the same way (it is independent of the Garage one). It creates
   `history_entries` (row-level security on, read-only to the owning account), the

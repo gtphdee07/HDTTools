@@ -258,7 +258,7 @@ describe('[supabase-tables] Supabase Garage table live contract', () => {
 // project. An account cannot delete its own History (the cap is the only thing that removes entries), so
 // unlike the Garage there is no emptying between tests: each test first fills the account's History to
 // the cap with its own checks, which pushes out everything older, then asserts on exactly those rows.
-// The two test accounts keep their last 10 checks between runs; they are throwaway accounts.
+// The two test accounts keep their last Free-cap checks between runs; they are throwaway accounts.
 
 let HISTORY_CAP = 0;
 let PRO_CHECKS = 0;

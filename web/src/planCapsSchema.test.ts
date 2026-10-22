@@ -140,12 +140,25 @@ describe('add_rig by plan', () => {
     }
   });
 
-  it('uses the Pro cap when the app could not read the plan, so a Pro account is not refused a Rig', async () => {
-    await fillRigs(FREE_RIGS, true);
+  it('holds an account whose plan the app could not read to the Free cap, so a blocked RevenueCat read is no free upgrade', async () => {
+    await fillRigs(FREE_RIGS, false);
 
-    await addRig('unknown-plan', 'Sixth Rig', null);
+    const refused = await refusal(addRig('unknown-plan', 'One Too Many', null));
 
-    expect(await rigCount()).toBe(FREE_RIGS + 1);
+    expect(refused?.message).toBe('garage_full');
+    expect(refused?.detail).toBe(String(FREE_RIGS));
+    expect(await rigCount()).toBe(FREE_RIGS);
+  });
+
+  it('stops the add, rather than leaving the Garage without a limit, when the cap row has been deleted', async () => {
+    await fillRigs(0, false);
+    await db.exec(`delete from public.plan_caps where plan = 'free'`);
+    try {
+      expect((await refusal(addRig('no-row', 'Rig', false)))?.message).toBe('plan_caps_missing');
+      expect(await rigCount()).toBe(0);
+    } finally {
+      await db.exec(`insert into public.plan_caps values ('free', ${FREE_RIGS}, ${FREE_CHECKS})`);
+    }
   });
 
   it('gives the larger cap straight away once the app reports Pro, with no change to the Rigs already saved', async () => {
@@ -214,6 +227,17 @@ describe('add_history_entry by plan', () => {
     await addEntry('unknown-plan', 'Check Newest', null);
 
     expect(await checks()).toHaveLength(PRO_CHECKS);
+  });
+
+  it('stops the add and keeps every check, rather than pruning nothing for good, when the cap row has been deleted', async () => {
+    await fillChecks(2, false);
+    await db.exec(`delete from public.plan_caps where plan = 'free'`);
+    try {
+      expect((await refusal(addEntry('no-row', 'Check Newest', false)))?.message).toBe('plan_caps_missing');
+      expect(await checks()).toHaveLength(2);
+    } finally {
+      await db.exec(`insert into public.plan_caps values ('free', ${FREE_RIGS}, ${FREE_CHECKS})`);
+    }
   });
 
   it('follows an edit to the cap row, so launch pricing needs no redeploy', async () => {

@@ -21,8 +21,10 @@ import type { HistoryEntry, RecentRig } from './types';
 // ones live in the plan_caps table.
 
 const CAPS = { free: { rigs: 2, checks: 3 }, pro: { rigs: 4, checks: 5 } };
-// What the database does with a plan: an unknown one (null) gets the Pro caps.
-const capsFor = (plan: Plan | null) => (plan === 'free' ? CAPS.free : CAPS.pro);
+// What the database does with a plan: an unknown one (null) is held to the Free Garage cap, but History is
+// kept to the Pro count so a failed read never prunes a Pro account's checks.
+const garageCapFor = (plan: Plan | null) => (plan === 'pro' ? CAPS.pro.rigs : CAPS.free.rigs);
+const historyCapFor = (plan: Plan | null) => (plan === 'free' ? CAPS.free.checks : CAPS.pro.checks);
 
 const SESSION: AuthSession = { access_token: 'token-pat', user: { id: 'acct-pat', email: 'pat@example.com' } };
 
@@ -74,7 +76,7 @@ function makeGarage(initial: string[] = []) {
   const backend = {
     list: vi.fn(async () => [...stored.values()]),
     addRig: vi.fn(async (_key: string, rig: Pick<RecentRig, 'nickname' | 'truck' | 'trailer'>, plan: Plan | null) => {
-      if (stored.size >= capsFor(plan).rigs) throw new GarageFullError(capsFor(plan).rigs);
+      if (stored.size >= garageCapFor(plan)) throw new GarageFullError(garageCapFor(plan));
       stored.set(rig.nickname, { ...rig, id: `rig-${stored.size}`, lastUsedAt: new Date().toISOString() });
     }),
     updateRig: vi.fn(async () => {}),
@@ -94,7 +96,7 @@ function makeHistory(count = 0) {
     list: vi.fn(async () => [...stored]),
     addEntry: vi.fn(async (_key: string, entry: Pick<HistoryEntry, 'rigNickname' | 'verdict'>, plan: Plan | null) => {
       stored.unshift({ id: `h-new-${stored.length}`, date: 'Oct 22, 2026', ...entry });
-      stored.length = Math.min(stored.length, capsFor(plan).checks);
+      stored.length = Math.min(stored.length, historyCapFor(plan));
     }),
     caps: vi.fn(async () => ({ free: CAPS.free.checks, pro: CAPS.pro.checks })),
   } satisfies HistoryBackend;
@@ -244,6 +246,7 @@ describe('Garage cap by plan', () => {
 
     await waitFor(() => expect(garage.backend.addRig).toHaveBeenCalled());
     expect(garage.backend.addRig.mock.calls[0][2]).toBeNull();
+    expect(await screen.findByText(/couldn't check your plan/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Upgrade to Pro' })).not.toBeInTheDocument();
   });
 

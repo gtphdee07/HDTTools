@@ -10,4 +10,7 @@ data class TruckTag(
     val frontGawrLb: Double? = null,
     val rearGawrLb: Double? = null,
     val standaloneWeightLb: Double? = null,
+    // Typed by hand from the owner's manual; a Scan never returns it. A Rig
+    // saved before this field existed decodes it as null (no Combined row).
+    val gcwrLb: Double? = null,
 )

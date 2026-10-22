@@ -46,6 +46,34 @@ class VerdictTest {
         assertEquals(VerdictStatus.FAIL, verdict.status)
     }
 
+    // The Combined Rig Weight row is the one Advisory Item (#47): insufficient, it is
+    // treated as absent; checked, it counts like any row. The sublines themselves are
+    // asserted per case by the golden vectors; these pin the rule on bare tones.
+
+    private fun combined(tone: Tone) = item(tone).copy(label = COMBINED_RIG_WEIGHT_LABEL)
+
+    @Test
+    fun `an insufficient combined row does not make a checked rig Partially Checked`() {
+        val verdict = verdictFor(listOf(item(Tone.SUCCESS), combined(Tone.INSUFFICIENT)))
+        assertEquals(VerdictStatus.PASS, verdict.status)
+        assertTrue(verdict.subline.endsWith(GCWR_UNCHECKED_CAVEAT))
+    }
+
+    @Test
+    fun `a checked combined row counts as checked, an insufficient one does not`() {
+        val verdict = verdictFor(listOf(item(Tone.INSUFFICIENT), combined(Tone.SUCCESS)))
+        assertEquals(VerdictStatus.PARTIAL, verdict.status)
+        val allBlank = verdictFor(listOf(item(Tone.INSUFFICIENT), combined(Tone.INSUFFICIENT)))
+        assertEquals(VerdictStatus.INSUFFICIENT, allBlank.status)
+    }
+
+    @Test
+    fun `a checked combined row removes the caveat, and a failing one fails the rig`() {
+        val pass = verdictFor(listOf(item(Tone.SUCCESS), combined(Tone.SUCCESS)))
+        assertEquals("Every axle checks out under its rated limit.", pass.subline)
+        assertEquals(VerdictStatus.FAIL, verdictFor(listOf(item(Tone.SUCCESS), combined(Tone.WARNING))).status)
+    }
+
     @Test
     fun `status is never derived from headline text`() {
         // Regression guard: "Not Safe to Tow" and "Not Enough Information"

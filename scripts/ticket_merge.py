@@ -43,17 +43,29 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import test_planner as planner  # noqa: E402
 from ticket_common import (  # noqa: E402
-    BASE_BRANCH, Shell, branch_name, gh_issue, git, main_checkout, real_shell, runs_here, worktree_relpath,
+    BASE_BRANCH, Shell, branch_name, gh_issue, git, is_trusted_comment, main_checkout, real_shell, runs_here,
+    trusted_comments, worktree_relpath,
 )
 
 
+def _status_body(comment: dict) -> str | None:
+    body = (comment.get("body") or "").lstrip()
+    return body if body.startswith("STATUS:") else None
+
+
 def latest_status_comment(comments: list[dict]) -> str | None:
-    """The newest comment that starts with `STATUS:`."""
-    for c in reversed(comments):
-        body = (c.get("body") or "").lstrip()
-        if body.startswith("STATUS:"):
+    """The newest comment that starts with `STATUS:` and was written by the owner, a member or a collaborator
+    (#167): on a public repository anyone can post one, so a stranger's `READY TO MERGE` is not a vouch."""
+    for c in reversed(trusted_comments(comments)):
+        body = _status_body(c)
+        if body is not None:
             return body
     return None
+
+
+def ignored_status_count(comments: list[dict]) -> int:
+    """How many `STATUS:` comments `latest_status_comment` skips because of who wrote them."""
+    return sum(1 for c in comments if _status_body(c) is not None and not is_trusted_comment(c))
 
 
 def preflight(n: int, *, shell: Shell, root: Path, allow_status: bool = False) -> list[str]:
@@ -76,9 +88,15 @@ def preflight(n: int, *, shell: Shell, root: Path, allow_status: bool = False) -
     if issue is None:
         reasons.append(f"Could not read ticket #{n} with gh.")
     else:
-        comment = latest_status_comment(issue.get("comments", []))
+        comments = issue.get("comments") or []
+        comment = latest_status_comment(comments)
         if comment is None:
-            reasons.append(f"Ticket #{n} has no STATUS: comment; run /ticket-finish in its worktree first.")
+            ignored = ignored_status_count(comments)
+            note = (
+                f" ({ignored} STATUS: comment{'s' if ignored != 1 else ''} from someone other than the owner or a "
+                "collaborator ignored)"
+            ) if ignored else ""
+            reasons.append(f"Ticket #{n} has no STATUS: comment{note}; run /ticket-finish in its worktree first.")
         else:
             status = comment.splitlines()[0].strip()
             if status != "STATUS: READY TO MERGE" and not allow_status:

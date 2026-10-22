@@ -161,3 +161,18 @@ def test_every_place_a_session_reads_tells_it_to_ask_decisions_directly_and_reco
     # The two places that tell the session how to ask name the tool.
     for path in (paths[0], paths[3]):
         assert "AskUserQuestion" in path.read_text(encoding="utf-8"), path.name
+
+
+def test_the_docs_and_the_skills_that_read_comments_state_who_is_trusted():
+    """#167: only the owner, members and collaborators steer the ticket skills; the rule is written where it is read."""
+    for rel in (
+        "docs/agents/session-handoff.md",
+        "docs/agents/ticket-skills.md",
+        "docs/agents/issue-tracker.md",
+    ):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert "authorAssociation" in text or "`OWNER`" in text, rel
+        assert "COLLABORATOR" in text, rel
+    for name in ("ticket-merge", "ticket-finish"):
+        text = (ROOT / ".claude" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+        assert "collaborator" in text, name

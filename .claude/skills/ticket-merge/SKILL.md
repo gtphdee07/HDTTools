@@ -12,7 +12,7 @@ Merge ticket $ARGUMENTS (a number, with or without `#`). Run this from the **mai
 uv run scripts/ticket_merge.py preflight <N>
 ```
 
-It stops unless this is the main checkout on a clean `MPSkills`, `ticket-<N>` has commits, and the ticket's newest `STATUS:` comment is `READY TO MERGE`. Report a stop and end. Merge past a `PARTIAL` or `BLOCKED` only when the owner says so in this session, then run `preflight <N> --allow-status`. Only `preflight` takes that flag; `merge` does not look at the status again.
+It stops unless this is the main checkout on a clean `MPSkills`, `ticket-<N>` has commits, and the ticket's newest `STATUS:` comment from the owner or a collaborator is `READY TO MERGE` (a stranger's comment is ignored; see "Whose comments count" in `docs/agents/session-handoff.md`). Report a stop and end. Merge past a `PARTIAL` or `BLOCKED` only when the owner says so in this session, then run `preflight <N> --allow-status`. Only `preflight` takes that flag; `merge` does not look at the status again.
 
 ## 2. Verify independently
 

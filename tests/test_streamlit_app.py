@@ -313,6 +313,79 @@ def test_full_mocked_walkthrough_reaches_a_pass_verdict(monkeypatch):
     # here comes from a real reading, so the predictive-estimate notice
     # must not appear.
     assert not any("Estimated Figures" in w.value for w in at.warning)
+    # The truck had no GCWR: the Combined row is left out, and the Safe to Tow
+    # banner says so (#45).
+    assert "Combined Rig Weight" not in [m.label for m in at.metric]
+    assert any("Combined weight (GCWR) wasn't checked" in s.value for s in at.success)
+
+
+_GCWR_HINT = "From your owner's manual. Leave blank if you can't find it."
+
+
+def _skip_truck_then_enter(at: AppTest, **truck_numbers: float) -> AppTest:
+    at.button(key="skip_truck").click().run()
+    for name, value in truck_numbers.items():
+        at.number_input(key=f"truck_{name}").set_value(value).run()
+    return at
+
+
+def _continue_to_results(at: AppTest, gross_weight_lb: float) -> AppTest:
+    at.button(key="continue_truck").click().run()
+    _skip_trailer_with_manual_gvwr(at)
+    at.button(key="skip_scale").click().run()
+    at.number_input(key="scale_gross_weight_lb").set_value(gross_weight_lb).run()
+    at.button(key="continue_scale").click().run()
+    [b for b in at.button if "Understand" in b.label][0].click().run()
+    assert not at.exception
+    return at
+
+
+def test_truck_step_offers_an_optional_gcwr_field_with_its_hint():
+    at = AppTest.from_file(str(_APP_PATH))
+    _start_test_rig(at)
+    _skip_truck_then_enter(at)
+
+    gcwr = at.number_input(key="truck_gcwr_lb")
+    assert gcwr.label == "GCWR (lb)"
+    assert gcwr.value is None
+    assert any(c.value == _GCWR_HINT for c in at.caption)
+    assert not at.warning
+
+
+def test_gcwr_below_the_known_gvwr_warns_inline_but_is_still_used():
+    at = AppTest.from_file(str(_APP_PATH))
+    _start_test_rig(at)
+    _skip_truck_then_enter(at, gvwr_lb=14000.0, gcwr_lb=12000.0)
+
+    assert any("below the truck's GVWR" in w.value for w in at.warning)
+    assert at.session_state["truck"]["gcwr_lb"] == 12000.0
+
+    _continue_to_results(at, gross_weight_lb=15000.0)
+    combined = [m for m in at.metric if m.label == "Combined Rig Weight"]
+    assert len(combined) == 1
+    assert combined[0].delta == "3,000 lb over"  # 15,000 against the 12,000 GCWR, not 14,000 + 10,000
+
+
+def test_gcwr_at_or_above_gvwr_or_with_no_gvwr_shows_no_warning():
+    for numbers in ({"gvwr_lb": 14000.0, "gcwr_lb": 14000.0}, {"gcwr_lb": 12000.0}):
+        at = AppTest.from_file(str(_APP_PATH))
+        _start_test_rig(at)
+        _skip_truck_then_enter(at, **numbers)
+        assert not at.warning, numbers
+
+
+def test_a_checked_gcwr_that_passes_leaves_the_safe_to_tow_banner_without_the_caveat(monkeypatch):
+    at = _complete_a_rig_via_mocked_claude_backend(
+        monkeypatch,
+        "GCWR Rig",
+        {**_RECENT_RIG_TRUCK_FIELDS, "gcwr_lb": 30000.0},
+        _RECENT_RIG_TRAILER_FIELDS,
+        _RECENT_RIG_SCALE_FIELDS,
+    )
+
+    assert [m for m in at.metric if m.label == "Combined Rig Weight"][0].delta == "9,500 lb to spare"
+    assert any("Safe to Tow" in s.value for s in at.success)
+    assert not any("GCWR" in s.value for s in at.success)
 
 
 def test_choosing_a_recent_rig_skips_to_scale_step_with_prefilled_data(monkeypatch):

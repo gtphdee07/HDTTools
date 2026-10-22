@@ -18,7 +18,7 @@ from pathlib import Path
 import streamlit as st
 from PIL import Image
 
-from fields import FIELDS, TITLES
+from fields import FIELDS, HINTS, TITLES
 from recent_rigs import load_recent_rigs, save_recent_rig
 
 # Make the sibling `src/hdttools` package importable without relying on it
@@ -217,7 +217,19 @@ def _render_review(module_key: str) -> None:
             )
         else:
             data[name] = st.text_input(label, value=current or "", key=f"{module_key}_{name}") or None
+        hint = HINTS.get((module_key, name))
+        if hint:
+            st.caption(hint)
     st.session_state[module_key] = data
+
+    # Warn only: an implausible GCWR is still used (the owner's manual may be right and the
+    # tag wrong). Needs a known GVWR to compare against.
+    gcwr, gvwr = data.get("gcwr_lb"), data.get("gvwr_lb")
+    if module_key == "truck" and gcwr and gvwr and gcwr < gvwr:
+        st.warning(
+            f"That GCWR ({gcwr:,.0f} lb) is below the truck's GVWR ({gvwr:,.0f} lb), "
+            "which is unusual. Double-check it against your owner's manual. We'll still use it."
+        )
 
 
 def _render_standalone_ticket_section() -> None:

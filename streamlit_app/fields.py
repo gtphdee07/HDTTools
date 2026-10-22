@@ -12,6 +12,7 @@ FIELDS: dict[str, list[tuple[str, str, str]]] = {
         ("front_gawr_lb", "Front GAWR (lb)", "number"),
         ("rear_gawr_lb", "Rear GAWR (lb)", "number"),
         ("standalone_weight_lb", "Stand-alone Weight (lb, optional)", "number"),
+        ("gcwr_lb", "GCWR (lb)", "number"),
     ],
     "trailer": [
         ("manufacturer", "Manufacturer", "text"),
@@ -27,6 +28,11 @@ FIELDS: dict[str, list[tuple[str, str, str]]] = {
         ("trailer_axle_lb", "Trailer Axle(s) (lb)", "number"),
         ("gross_weight_lb", "Gross Weight (lb)", "number"),
     ],
+}
+
+# Short help shown under a field, keyed by (module, field name).
+HINTS: dict[tuple[str, str], str] = {
+    ("truck", "gcwr_lb"): "From your owner's manual. Leave blank if you can't find it.",
 }
 
 TITLES: dict[str, str] = {

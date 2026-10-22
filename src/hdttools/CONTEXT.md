@@ -35,7 +35,7 @@ The manufacturer's maximum rated weight for one axle (or, for a trailer, per axl
 A trailer's own empty weight, read from its Tag. Captured and displayed, but **not currently consumed by `compute_breakdown`** — no Breakdown Item compares against it today.
 
 **GCWR** (Gross Combined Weight Rating):
-The truck manufacturer's maximum rated weight for the truck-plus-trailer combination, specified separately from GVWR (typically in the owner's manual, not the compliance Tag) and often lower than the sum of the two vehicles' individual GVWRs. An **optional, manually entered** truck value in pounds, never read from a Tag. For Class 3 trucks it is hard to find (many manufacturers don't publish it, even on the build sheet), so most checks will have none. **Not yet captured anywhere in this product** — see the "Combined Rig Weight" entry below and [issue #1](https://github.com/gtphdee07/HDTTools/issues/1).
+The truck manufacturer's maximum rated weight for the truck-plus-trailer combination, specified separately from GVWR (typically in the owner's manual, not the compliance Tag) and often lower than the sum of the two vehicles' individual GVWRs. An **optional, manually entered** truck value in pounds, never read from a Tag. For Class 3 trucks it is hard to find (many manufacturers don't publish it, even on the build sheet), so most checks will have none. Carried as `gcwr_lb` on the truck data. Streamlit has the input (with a warning, not a block, when it is below the truck's GVWR); Web and Android do not yet ([issue #1](https://github.com/gtphdee07/HDTTools/issues/1)). A value of 0 means "not entered".
 
 **Pin Weight**:
 The portion of a hitched fifth-wheel/gooseneck trailer's weight transferred onto the truck's hitch point, expressed as a percentage of the trailer's total weight (default 20%). Used for **Fifth-wheel / Gooseneck** Hitch Type. For a bumper-pull trailer the equivalent concept is Tongue Weight; the two are physically distinct and must not be used interchangeably in code or copy.
@@ -52,7 +52,7 @@ A truck's hitch-receiver limits for bumper-pull towing: maximum tongue weight an
 ## Breakdown
 
 **Breakdown**:
-The ordered list of weight comparisons (Front Axle, Rear Axle, Tow Vehicle Total, Trailer Axle(s), Trailer Total, Combined Rig Weight) produced by comparing each Item's actual weight against its rated limit. This is a *weight-margin report*, not a mechanical failure — the name is established throughout the codebase (`compute_breakdown`, `src/hdttools/breakdown.py`) and isn't being revisited, but don't let "breakdown" drift toward meaning "the rig broke down" in any new copy or comments.
+The ordered list of weight comparisons (Front Axle, Rear Axle, Tow Vehicle Total, Trailer Axle(s), Trailer Total, and Combined Rig Weight when the truck has a GCWR) produced by comparing each Item's actual weight against its rated limit. This is a *weight-margin report*, not a mechanical failure — the name is established throughout the codebase (`compute_breakdown`, `src/hdttools/breakdown.py`) and isn't being revisited, but don't let "breakdown" drift toward meaning "the rig broke down" in any new copy or comments.
 
 **Item**:
 One row of a Breakdown (e.g. "Front Axle (Steer)," "Combined Rig Weight") — an actual weight, a rated limit, a Margin, a Tone, and an Estimated flag.
@@ -67,10 +67,10 @@ An individual Item's own pass/fail/insufficient-data signal (`success` / `warnin
 A flag on an Item marking that its actual weight was derived (via Pin Weight math) rather than read directly from a Scale Ticket. A safety-relevant distinction: an Estimated Item is less certain than a directly-measured one.
 
 **Combined Rig Weight**:
-The Breakdown Item comparing the rig's actual gross weight against the truck's GCWR. Today it uses `truck GVWR + trailer GVWR` — an unintended approximation, since no real GCWR is ever captured. The intended behaviour ([issue #1](https://github.com/gtphdee07/HDTTools/issues/1)): compare against the entered GCWR when there is one, and otherwise leave the Item out of the Breakdown entirely (never approximate it). It is the product's one **Advisory Item**.
+The Breakdown Item comparing the rig's actual gross weight against the truck's GCWR. `compute_breakdown` includes it only when the truck data has a `gcwr_lb`, and never approximates the limit from the two GVWRs; with no GCWR the Item is left out of the Breakdown entirely. With a GCWR but no gross weight it is present and `insufficient`. It is the product's one **Advisory Item**. When every other Item passes, a Safe to Tow subline adds "Combined weight (GCWR) wasn't checked; add it if you have it." unless this Item was checked (a missing GCWR, or a GCWR with no gross weight, both count as not checked).
 
 **Advisory Item**:
 A Breakdown Item that is shown only when its own input exists, and whose missing data never lowers the Verdict: when its input is absent it is not shown, and when its input is present but its actual weight is missing (so it is `insufficient`) the Verdict is computed as if it were absent. If it *is* checked and fails, it counts like any other failure. Combined Rig Weight is advisory, and (once Receiver Ratings are supported) so are the two Receiver Rating Items, for the Class 3 reality above: nearly every user has no GCWR, so withholding "Safe to Tow" for it would make that verdict near-unreachable.
 
 **Verdict**:
-The overall `pass` / `fail` / `partial` / `insufficient` summary computed across every Item in a Breakdown (`verdict_for`). A single `fail` Tone anywhere always wins, even if other Items are `insufficient` — missing data never hides a genuine over-limit reading. An insufficient Advisory Item is ignored rather than counted toward `partial`.
+The overall `pass` / `fail` / `partial` / `insufficient` summary computed across every Item in a Breakdown (`verdict_for`). A single `fail` Tone anywhere always wins, even if other Items are `insufficient` — missing data never hides a genuine over-limit reading. An insufficient Advisory Item is ignored rather than counted toward `partial` (`verdict_for` finds it by the Combined Rig Weight label).

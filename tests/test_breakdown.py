@@ -138,15 +138,14 @@ def test_partial_rig_mixes_real_and_insufficient_rows():
     assert _item(items, "Tow Vehicle Total (GVWR)")["tone"] == "success"
     assert _item(items, "Trailer Axle(s)")["tone"] == "insufficient"  # no trailer GAWR
     assert _item(items, "Trailer Total (GVWR)")["tone"] == "insufficient"  # no trailer GVWR
-    assert _item(items, "Combined Rig Weight")["tone"] == "insufficient"  # no trailer GVWR
     verdict = verdict_for(items)
     assert verdict["status"] == "partial"
     assert verdict["headline"] == "Partially Checked"
 
 
 def test_all_missing_scale_data_is_partial_not_insufficient_when_tags_exist():
-    # Truck + trailer tags both entered, but no scale ticket at all: 5 of
-    # 6 rows have no real "actual" reading and are insufficient, but
+    # Truck + trailer tags both entered, but no scale ticket at all: 4 of
+    # 5 rows have no real "actual" reading and are insufficient, but
     # "Trailer Total (GVWR)" can still trivially self-compare against the
     # trailer's own rated GVWR in the no-scale-data estimate branch - so
     # this is "partial," not "insufficient" (verified behavior, not just
@@ -274,3 +273,72 @@ def test_verdict_status_is_never_derived_from_headline_text():
     blank_verdict = verdict_for(compute_breakdown({}, {}, {}))
     assert blank_verdict["headline"].startswith("Not")
     assert blank_verdict["status"] == "insufficient"
+
+
+# --- Optional truck GCWR (#45): the Combined Rig Weight row and the advisory verdict rule. The
+# golden vectors cover the per-scenario figures; these pin the rules around them.
+
+_CAVEAT = "Combined weight (GCWR) wasn't checked; add it if you have it."
+
+
+def test_combined_rig_weight_row_exists_only_when_a_gcwr_was_entered():
+    labels_without = [i["label"] for i in compute_breakdown(_TRUCK, _TRAILER, _SCALE)]
+    labels_with = [i["label"] for i in compute_breakdown({**_TRUCK, "gcwr_lb": 27000}, _TRAILER, _SCALE)]
+    assert "Combined Rig Weight" not in labels_without
+    assert labels_with[-1] == "Combined Rig Weight"
+    assert labels_with[:-1] == labels_without
+
+
+def test_combined_rig_weight_never_falls_back_to_the_gvwr_sum():
+    # Gross 26,040 is under GVWR + GVWR (26,500) but over a 25,000 lb GCWR.
+    items = compute_breakdown({**_TRUCK, "gcwr_lb": 25000}, _TRAILER, _SCALE)
+    combined = _item(items, "Combined Rig Weight")
+    assert combined["limitLabel"] == "25,000 lb"
+    assert combined["tone"] == "warning"
+
+
+def test_a_gcwr_of_zero_is_treated_as_not_entered():
+    items = compute_breakdown({**_TRUCK, "gcwr_lb": 0}, _TRAILER, _SCALE)
+    assert "Combined Rig Weight" not in [i["label"] for i in items]
+
+
+def test_an_insufficient_combined_row_does_not_lower_an_otherwise_clean_verdict():
+    scale = {"steer_axle_lb": 5000, "drive_axle_lb": 8000, "trailer_axle_lb": 9000}
+    items = compute_breakdown({**_TRUCK, "gcwr_lb": 30000}, _TRAILER, scale)
+    assert _item(items, "Combined Rig Weight")["tone"] == "insufficient"
+    verdict = verdict_for(items)
+    assert verdict["status"] == "pass"
+    assert verdict["headline"] == "Safe to Tow"
+
+
+def test_an_insufficient_combined_row_does_not_hide_a_partial_from_other_rows():
+    # The advisory row is ignored, not treated as a pass: a genuinely unchecked axle row still
+    # makes the verdict Partially Checked.
+    items = compute_breakdown({**_TRUCK, "gcwr_lb": 30000}, _TRAILER, {})
+    assert _item(items, "Combined Rig Weight")["tone"] == "insufficient"
+    assert verdict_for(items)["status"] == "partial"
+
+
+def test_a_failing_combined_row_fails_the_verdict_even_when_every_axle_row_passes():
+    scale = {"steer_axle_lb": 5000, "drive_axle_lb": 8000, "trailer_axle_lb": 9000, "gross_weight_lb": 27000}
+    items = compute_breakdown({**_TRUCK, "gcwr_lb": 26000}, _TRAILER, scale)
+    assert [i["tone"] for i in items[:-1]] == ["success"] * 5
+    assert verdict_for(items)["status"] == "fail"
+
+
+def test_blank_rig_with_only_a_gcwr_is_still_not_enough_information():
+    # The advisory row is dropped from the verdict, so a blank rig with a GCWR stays "insufficient".
+    verdict = verdict_for(compute_breakdown({"gcwr_lb": 30000}, {}, {}))
+    assert verdict["status"] == "insufficient"
+
+
+def test_the_caveat_clause_is_added_only_to_an_unchecked_safe_to_tow_subline():
+    clean_scale = {"steer_axle_lb": 5000, "drive_axle_lb": 8000, "trailer_axle_lb": 9000, "gross_weight_lb": 26000}
+    base = "Every axle checks out under its rated limit."
+    without = verdict_for(compute_breakdown(_TRUCK, _TRAILER, clean_scale))
+    checked = verdict_for(compute_breakdown({**_TRUCK, "gcwr_lb": 28000}, _TRAILER, clean_scale))
+    assert without["subline"] == f"{base} {_CAVEAT}"
+    assert checked["subline"] == base
+    # Not a pass: the other sublines never carry the clause.
+    for items in (compute_breakdown(_TRUCK, _TRAILER, {}), compute_breakdown(_TRUCK, _TRAILER, _SCALE)):
+        assert _CAVEAT not in verdict_for(items)["subline"]

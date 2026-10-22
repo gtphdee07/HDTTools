@@ -843,7 +843,10 @@ network involved:
   "Partially Checked" (added 2026-08-21 alongside the `Tone.INSUFFICIENT`
   correctness fixes below). (#47) The real breakdown of a rig renders no
   Combined Rig Weight row without a GCWR and shows it (scrolled to in the
-  card's own lazy list) with one. The `EstimatedFiguresNotice` (Android port of
+  card's own lazy list) with one. (#168) The Verdict's subline shows under the
+  headline in the verdict pill: the Safe to Tow subline carries the GCWR caveat
+  without a GCWR and not with a checked one, and the over-limit subline shows.
+  The `EstimatedFiguresNotice` (Android port of
   Web's `PredictiveEstimateNotice.tsx`) shows when any row is `estimated`,
   hidden otherwise.
 - `BreakdownRowTest` — a row's note is hidden until tapped, then appears

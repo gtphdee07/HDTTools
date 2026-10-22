@@ -51,34 +51,38 @@ fun ResultsScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.weight(1f).padding(20.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+            Text(rigNickname.ifBlank { "Rig" }, style = MaterialTheme.typography.titleLarge)
+            Text(LocalDate.now().format(DATE_FORMAT), style = MaterialTheme.typography.bodySmall)
+
+            // The subline is a full sentence, so the verdict pill takes the whole row
+            // rather than sharing it with the nickname.
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(2.dp, toneColor),
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(rigNickname.ifBlank { "Rig" }, style = MaterialTheme.typography.titleLarge)
-                    Text(LocalDate.now().format(DATE_FORMAT), style = MaterialTheme.typography.bodySmall)
-                }
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    border = BorderStroke(2.dp, toneColor),
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    ) {
-                        Icon(
-                            imageVector = when (verdict.tone) {
-                                Tone.SUCCESS -> Icons.Filled.CheckCircle
-                                Tone.WARNING -> Icons.Filled.Warning
-                                Tone.INSUFFICIENT -> Icons.Filled.Info
-                            },
-                            contentDescription = null,
-                            tint = toneColor,
-                            modifier = Modifier.padding(0.dp),
-                        )
+                    Icon(
+                        imageVector = when (verdict.tone) {
+                            Tone.SUCCESS -> Icons.Filled.CheckCircle
+                            Tone.WARNING -> Icons.Filled.Warning
+                            Tone.INSUFFICIENT -> Icons.Filled.Info
+                        },
+                        contentDescription = null,
+                        tint = toneColor,
+                    )
+                    Column {
                         Text(verdict.headline, style = MaterialTheme.typography.labelLarge, color = toneColor)
+                        Text(
+                            verdict.subline,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = toneColor.copy(alpha = 0.9f),
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
                     }
                 }
             }

@@ -1,10 +1,11 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { AuthProvider } from './auth';
 import type { AuthClient, AuthSession } from './auth';
-import { HistoryProvider } from './history';
+import { HistoryProvider, useHistory } from './history';
 import type { HistoryBackend } from './history';
 import type { HistoryEntry } from './types';
 
@@ -206,5 +207,67 @@ describe('signed-out History', () => {
 
     expect(await findHistoryRow('Visit Rig')).toBeInTheDocument();
     expect(screen.queryByText('Account Rig')).not.toBeInTheDocument();
+  });
+});
+
+// Replies can arrive out of order, or after the account changed. The hook drops a stale one, so the screen never
+// shows an older list over a newer one, or one account's History to another (history.tsx).
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
+
+const entryFor = (id: string, rigNickname: string): HistoryEntry => ({ id, date: 'Oct 22, 2026', rigNickname, verdict: 'pass' });
+
+function renderHistoryHook(backend: HistoryBackend, auth: AuthClient) {
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <AuthProvider client={auth}>
+      <HistoryProvider backend={backend}>{children}</HistoryProvider>
+    </AuthProvider>
+  );
+  return renderHook(() => useHistory(), { wrapper });
+}
+
+describe('History replies that arrive late', () => {
+  it('keeps the newest list when an older refresh answers after a newer one', async () => {
+    const slow = deferred<HistoryEntry[]>();
+    const list = vi
+      .fn<() => Promise<HistoryEntry[]>>()
+      .mockReturnValueOnce(slow.promise)
+      .mockResolvedValue([entryFor('2', 'Newer'), entryFor('1', 'Older')]);
+    const backend: HistoryBackend = { list, addEntry: vi.fn(async () => {}) };
+    const { result } = renderHistoryHook(backend, fakeAuth('a@example.com').client);
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
+
+    act(() => result.current.refresh());
+    await waitFor(() => expect(result.current.history.map((e) => e.rigNickname)).toEqual(['Newer', 'Older']));
+    await act(async () => {
+      slow.resolve([entryFor('1', 'Older')]);
+    });
+
+    expect(result.current.history.map((e) => e.rigNickname)).toEqual(['Newer', 'Older']);
+  });
+
+  it('does not show one account’s History to the account that signed in after it', async () => {
+    const slowForA = deferred<HistoryEntry[]>();
+    const list = vi
+      .fn<() => Promise<HistoryEntry[]>>()
+      .mockReturnValueOnce(slowForA.promise)
+      .mockResolvedValue([entryFor('b1', 'B Rig')]);
+    const backend: HistoryBackend = { list, addEntry: vi.fn(async () => {}) };
+    const auth = fakeAuth('a@example.com');
+    const { result } = renderHistoryHook(backend, auth.client);
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
+
+    await auth.signIn('b@example.com');
+    await waitFor(() => expect(result.current.history.map((e) => e.rigNickname)).toEqual(['B Rig']));
+    await act(async () => {
+      slowForA.resolve([entryFor('a1', 'A Rig')]);
+    });
+
+    expect(result.current.history.map((e) => e.rigNickname)).toEqual(['B Rig']);
   });
 });

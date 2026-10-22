@@ -77,6 +77,38 @@ class PaywallScreenTest {
         composeRule.onNodeWithText("Buying for alice@example.com").assertIsDisplayed()
     }
 
+    // The plan is the account's, however Pro was bought (#27): a Pro bought on Web
+    // reads as "Pro plan" here. Not known yet shows nothing, never "Free plan".
+    @Test
+    fun showsTheProPlanForAProAccount() {
+        composeRule.setContent {
+            PaywallScreen(creditBalance = 2, onPurchase = { _, _ -> }, onRestore = { }, onDone = { }, isPro = true)
+        }
+
+        composeRule.onNodeWithText("Pro plan").assertIsDisplayed()
+        composeRule.onNodeWithText("Free plan").assertDoesNotExist()
+    }
+
+    @Test
+    fun showsTheFreePlanForAFreeAccount() {
+        composeRule.setContent {
+            PaywallScreen(creditBalance = 0, onPurchase = { _, _ -> }, onRestore = { }, onDone = { }, isPro = false)
+        }
+
+        composeRule.onNodeWithText("Free plan").assertIsDisplayed()
+        composeRule.onNodeWithText("Pro plan").assertDoesNotExist()
+    }
+
+    @Test
+    fun showsNoPlanWhileItIsNotKnown() {
+        composeRule.setContent {
+            PaywallScreen(creditBalance = 0, onPurchase = { _, _ -> }, onRestore = { }, onDone = { }, isPro = null)
+        }
+
+        composeRule.onNodeWithText("Pro plan").assertDoesNotExist()
+        composeRule.onNodeWithText("Free plan").assertDoesNotExist()
+    }
+
     @Test
     fun signOutButtonInvokesOnSignOut() {
         var signedOut = false

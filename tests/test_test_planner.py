@@ -1061,3 +1061,24 @@ def test_real_config_a_form_field_fixture_change_plans_the_python_web_and_androi
     out = commands(_real_plan(["test-vectors/scan_form_fields.json"], "issue"))
     for check in FORM_FIELD_CHECKS:
         assert check in out, check
+
+
+# Pro and the Scan Credit balance carry across Android and Web (#27): the Worker's billingContract test reads the
+# other surfaces' billing files, so a change to one of them has to plan it.
+
+BILLING_CONTRACT_CHECK = "node --test workers/scan-proxy/src/billingContract.test.ts"
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        "android/app/src/main/java/com/rigcheck/app/data/RevenueCatManager.kt",
+        "android/app/src/main/java/com/rigcheck/app/ui/screens/PaywallScreen.kt",
+        "web/src/revenueCatBilling.ts",
+        "web/src/components/ProPaywall.tsx",
+        "web/src/components/ScanPacks.tsx",
+        "web/src/screens/Account.tsx",
+    ],
+)
+def test_real_config_a_billing_file_change_plans_the_cross_surface_billing_contract_test(changed):
+    assert BILLING_CONTRACT_CHECK in commands(_real_plan([changed], "issue"))

@@ -230,6 +230,34 @@
         "web": "npm --prefix web test -- src/scanOutcomes.test.ts",
         "android": "android/gradlew -p android testDebugUnitTest --tests com.rigcheck.app.ui.ScanOutcomesFixtureTest"
       }
+    },
+    {
+      "name": "billing-contract-android",
+      "context": "android",
+      "files": [
+        "android/app/src/main/java/com/rigcheck/app/data/RevenueCatManager.kt",
+        "android/app/src/main/java/com/rigcheck/app/ui/screens/PaywallScreen.kt"
+      ],
+      "tests": [],
+      "shares_with": ["scan-proxy"],
+      "shares_tests": {
+        "scan-proxy": "node --test workers/scan-proxy/src/billingContract.test.ts"
+      }
+    },
+    {
+      "name": "billing-contract-web",
+      "context": "web",
+      "files": [
+        "web/src/revenueCatBilling.ts",
+        "web/src/components/ProPaywall.tsx",
+        "web/src/components/ScanPacks.tsx",
+        "web/src/screens/Account.tsx"
+      ],
+      "tests": [],
+      "shares_with": ["scan-proxy"],
+      "shares_tests": {
+        "scan-proxy": "node --test workers/scan-proxy/src/billingContract.test.ts"
+      }
     }
   ]
 }

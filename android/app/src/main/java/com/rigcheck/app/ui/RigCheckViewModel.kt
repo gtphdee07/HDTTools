@@ -11,6 +11,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.rigcheck.app.data.AccountBackend
 import com.rigcheck.app.data.AccountManager
+import com.rigcheck.app.data.AccountPlan
 import com.rigcheck.app.data.AccountResult
 import com.rigcheck.app.data.AccountState
 import com.rigcheck.app.data.PurchaseCancelledException
@@ -137,6 +138,11 @@ class RigCheckViewModel internal constructor(
     )
     val accountState: StateFlow<AccountState> = accountManager.state
 
+    // Free or Pro for the signed-in account, from RevenueCat's `pro` entitlement, so a
+    // Pro bought on Web shows here (#27). null = not known, which is not Free.
+    private val accountPlan = AccountPlan(accountManager.state, RevenueCatManager, viewModelScope)
+    val isPro: StateFlow<Boolean?> = accountPlan.isPro
+
     init {
         // The SCAN balance belongs to whichever account RevenueCat is logged
         // in as. Clear it whenever that changes (so one account's balance is
@@ -199,6 +205,17 @@ class RigCheckViewModel internal constructor(
             runCatching { RevenueCatManager.getScanCreditBalance() }
                 .onSuccess { creditBalance = it }
         }
+    }
+
+    // Reads the plan and the balance again, for a screen that shows them: either may
+    // have changed on another device since they were last read. Only once RevenueCat is
+    // linked to the signed-in account: before that it answers for the customer it held
+    // last, which may be another account (see the init collector above).
+    fun refreshAccountStanding() {
+        val state = accountState.value
+        if (state !is AccountState.SignedIn || !state.billingLinked) return
+        accountPlan.refresh()
+        refreshCreditBalance()
     }
 
     fun selectRecentRig(rig: RecentRig) {
@@ -385,7 +402,7 @@ class RigCheckViewModel internal constructor(
             if (!billingLinkedOrReport(onResult)) return@launch
             runCatching { RevenueCatManager.purchasePackage(activity, pkg) }
                 .onSuccess {
-                    refreshCreditBalance()
+                    refreshAccountStanding()
                     onResult(true, null)
                 }
                 .onFailure { error ->
@@ -403,7 +420,7 @@ class RigCheckViewModel internal constructor(
             if (!billingLinkedOrReport(onResult)) return@launch
             runCatching { RevenueCatManager.restorePurchases() }
                 .onSuccess {
-                    refreshCreditBalance()
+                    refreshAccountStanding()
                     onResult(true, null)
                 }
                 .onFailure { onResult(false, it.message ?: "Restore failed.") }

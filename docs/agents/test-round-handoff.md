@@ -4,13 +4,18 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-All the round's tickets are merged and pushed, including epic #147's tree (epic closed). What is left is the optional #132.
+All the round's tickets are merged and pushed, including epic #147's tree (epic closed). The work now is the optional truck GCWR chain (#45, then #46 and #47), a small feature that changes the shared Breakdown fixture. #132 is still optional.
+
+**Expect one red stretch.** #45 changes the shared fixture (`test-vectors/breakdown_cases.json`), so Web's and Android's golden-vector tests fail on `MPSkills` from the moment #45 merges until #46 and #47 do. That is by design (the ports must fail, not skip, until they follow the fixture). So: #45's session reports those two failures as the not-done items and posts `PARTIAL`, I merge it past that (`/ticket-merge 45 --allow-status`, after checking the failures are only the GCWR cases), and **nothing is pushed until #46 and #47 are merged**.
 
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
-| 1 | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
+| 1 | #45 truck GCWR: math, Verdict rule, shared fixture, Streamlit field | Python + Streamlit | none beyond the steps; type `--allow-status` at merge | [#45](#45-truck-gcwr-core-fixture-streamlit) |
+| 2 | #46 Web: GCWR field and TypeScript breakdown (after #45 is merged) | Web | none | [#46](#46-web-gcwr) |
+| 2 | #47 Android: GCWR field and Kotlin breakdown (after #45 is merged; the only ticket using the emulator) | Android | stop the emulator after (step 6) | [#47](#47-android-gcwr) |
+| optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
-Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember"). The final External run is done (2026-10-21, see History); if #132 changes no code there is nothing more to run, and any later change to a boundary file or pin needs `uv run scripts/external_freshness.py` first.
+#46 and #47 can build at the same time (different surfaces, and only #47 touches the emulator). Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember"). The final External run is done (2026-10-21, see History); if #132 changes no code there is nothing more to run, and any later change to a boundary file or pin needs `uv run scripts/external_freshness.py` first.
 
 Not in this round: #40 (blocked on Play Console, see its card), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically), #145 (check that a fresh clone builds on another computer), #146 (check that `pro` is attached to the Pro product), #165 (TESTING.md: name the scan-form-fields planner interface), #155 to #159 (static-check gaps: a Python type checker, a shell and PowerShell linter, the Python coverage floor, a Web coverage floor, Android Lint and config files), #138 and #139.
 
@@ -28,6 +33,90 @@ The same six steps every time. The card for the ticket gives the exact command f
 A session-start report (verification debt, #67) prints when each session opens. With the five contexts recorded it says there is nothing to report; it is advisory and you do nothing with it.
 
 ## Run cards
+
+### #45 truck GCWR: core, fixture, Streamlit
+
+- **Step 1:** `/ticket-start 45`. Unblocked (#55, #131 and #136 are merged). Python and Streamlit only; no Web or Android code.
+- **Step 2 block:**
+
+```
+Test-round additions:
+- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
+  The slow tooling tests are left out of planner runs unless the diff touches
+  what they check.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- This changes the shared fixture `test-vectors/breakdown_cases.json`. Web's and
+  Android's golden-vector tests will then fail on the GCWR cases until tickets #46 and #47
+  land. Do not change Web or Android code. Run once
+  `npm --prefix web test -- src/breakdown.test.ts` and
+  `android/gradlew -p android testDebugUnitTest --tests com.rigcheck.app.domain.BreakdownGoldenVectorTest`,
+  confirm they fail only on cases your fixture change added or altered, and list those
+  failures under "not done" in the report. Post `PARTIAL` (the script refuses
+  `READY TO MERGE` when a suite failed); the merge review accepts that.
+- Give the new fixture cases a stable, readable name so #46 and #47 can find them.
+- No live or paid runs.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+```
+
+- **Your part:** none beyond the usual steps. At merge, type `/ticket-merge 45 --allow-status`.
+
+### #46 Web GCWR
+
+- **Step 1:** `/ticket-start 46` (after #45 is merged, so it is cut with the new fixture).
+- **Step 2 block:**
+
+```
+Test-round additions:
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in `web/TESTING.md`; a test fails otherwise.
+- The shared fixture `test-vectors/breakdown_cases.json` is already updated by #45;
+  do not change it. The goal is that `src/breakdown.test.ts` passes against it, plus
+  the review-step field and the Results row. If you think the fixture is wrong, say so
+  in the report instead of editing it.
+- The Web end-of-session commands are `npm --prefix web test` and
+  `uv run scripts/static_checks.py web`.
+- Only `web/` and its testing document change.
+- No live or paid runs.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+```
+
+- **Your part:** none beyond the usual steps. Do not push; Web goes live on a push of `MPSkills`.
+
+### #47 Android GCWR
+
+- **Step 1:** `/ticket-start 47` (after #45 is merged; its title says Android, so no flag is needed).
+- **Step 2 block:**
+
+```
+Test-round additions:
+- For a full Python run use `uv run pytest -n auto --maxprocesses=8` (about 45 s).
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- If you add or move a class in `domain`, `data` or `ui`, classify it in
+  `android/coverage-logic.toml` (allow-list, or waiver with a reason). The JVM
+  coverage floor is 95% over the allow-listed decision logic. The Android
+  end-of-session command is `uv run scripts/android_session_end.py` (JVM tests,
+  coverage floor, detekt; no device).
+- The shared fixture `test-vectors/breakdown_cases.json` is already updated by #45;
+  do not change it. `BreakdownGoldenVectorTest` must pass against it. If you think the
+  fixture is wrong, say so in the report instead of editing it.
+- The UI test for the field and the hidden/shown row needs the single emulator; no
+  other Android ticket may be running. Start it with
+  `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save
+  -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are
+  done.
+- No live or paid runs.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+```
+
+- **Your part:** after `/ticket-merge 47`, stop the emulator and clean up (step 6). A change to the truck entry screen may make `revenuecat-android-sdk` stale only if a boundary file changes; Claude checks the gate before any push.
 
 ### #132 (optional) mutation-testing research
 

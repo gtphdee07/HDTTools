@@ -10,7 +10,8 @@
     `npm run test:external`, narrowed to the stale surfaces' "[surface]" tags.
 
     Needs REVENUECAT_SECRET_KEY/ANTHROPIC_API_KEY in this shell's
-    environment for whichever surfaces are stale (scan-proxy-worker needs the
+    environment for whichever surfaces are stale (revenuecat-rest also needs
+    the read-only REVENUECAT_CONFIG_READ_KEY; scan-proxy-worker needs the
     RevenueCat key and the Supabase test users, and tests whatever is
     deployed: `npm run deploy -- --force --reason "..."` first after changing
     the Worker, since the deploy gate refuses while it is stale); a missing

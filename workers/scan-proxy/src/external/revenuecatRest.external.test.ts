@@ -5,11 +5,16 @@
 //
 // A missing REVENUECAT_SECRET_KEY fails the run; skipping is only ever the wrapper's
 // explicit -Skip, which records `skipped` and leaves the surface stale. Calls are free
-// (ledger adjustments), and every journey ends back at its starting balance.
+// (ledger adjustments), and every journey ends back at its starting balance. The two
+// "pro entitlement" tests read project configuration with a second, read-only key
+// (REVENUECAT_CONFIG_READ_KEY), checked per test so a missing one fails only them, by name.
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readEnvFile, requireVars } from "../liveToken.ts";
 import { refundCredit, spendCredit } from "../revenuecat.ts";
 import type { TransactionResult } from "../revenuecat.ts";
+import { CONFIG_READ_KEY_VAR, checkProAttachment } from "../revenuecatProAttachment.ts";
+import type { ProAttachmentCheck } from "../revenuecatProAttachment.ts";
 import type { Env } from "../types.ts";
 
 const SECRET_KEY = process.env.REVENUECAT_SECRET_KEY;
@@ -150,6 +155,48 @@ test("[revenuecat-rest] error contract: an unknown customer is a 404 resource_mi
   assert.equal(result.status, 404, JSON.stringify(result.body));
   assert.equal(result.ok, false);
   assert.equal((result.body as { type?: string }).type, "resource_missing");
+});
+
+// #146: the Web External suite proves a `pro` entitlement exists (via a promotional grant) but
+// cannot see whether the Pro product is attached to it. The project configuration can, read with
+// a separate read-only key (never the ledger key above). Free, GET-only. The offering and package
+// come from the same variables the Web site is built with (env or web/.env.local), so a changed
+// paywall changes this check with it; the entitlement is the literal "pro" for the same reason the
+// Web suite uses it: the dashboard id is what both sites must carry.
+function proAttachmentCheck(overrides: Partial<ProAttachmentCheck> = {}): ProAttachmentCheck {
+  const apiKey = process.env[CONFIG_READ_KEY_VAR];
+  if (!apiKey) {
+    assert.fail(
+      `External test credentials missing: ${CONFIG_READ_KEY_VAR} is not set in the environment ` +
+        "(a read-only v2 secret key with read access to project configuration: entitlements, offerings, packages and apps).",
+    );
+  }
+  const fileValues = readEnvFile();
+  const { VITE_REVENUECAT_WEB_OFFERING_ID: offeringKey } = requireVars(["VITE_REVENUECAT_WEB_OFFERING_ID"], process.env, fileValues);
+  return {
+    apiKey,
+    projectId: env.REVENUECAT_PROJECT_ID,
+    entitlementKey: "pro",
+    offeringKey: offeringKey!,
+    // Same default as web/src/revenueCatBilling.ts: the offering's lifetime package.
+    packageKey: process.env.VITE_REVENUECAT_PRO_PACKAGE_ID || fileValues.VITE_REVENUECAT_PRO_PACKAGE_ID || "$rc_lifetime",
+    ...overrides,
+  };
+}
+
+test("[revenuecat-rest] pro entitlement: it exists and the Pro product the Web paywall sells is attached to it", async () => {
+  await checkProAttachment(proAttachmentCheck());
+});
+
+test("[revenuecat-rest] pro entitlement check fails naming what is wrong for a wrong entitlement name or package", async () => {
+  await assert.rejects(
+    checkProAttachment(proAttachmentCheck({ entitlementKey: "pro-no-such-entitlement" })),
+    /entitlement "pro-no-such-entitlement" does not exist/,
+  );
+  await assert.rejects(
+    checkProAttachment(proAttachmentCheck({ packageKey: "$rc_no_such_package" })),
+    /package "\$rc_no_such_package" does not exist/,
+  );
 });
 
 test("[revenuecat-rest] journey: Spend then Refund restores the balance, and retrying either with the same key changes nothing", async () => {

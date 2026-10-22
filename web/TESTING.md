@@ -189,8 +189,12 @@ fixture is missing or the grant lapses, the Pro test fails with a message saying
 to grant it, which is a setup fault, not a code bug. What this does not prove: that
 the Pro *product* is attached to the entitlement, because a promotional grant
 works without it and seeing the attachment needs a purchase or the REST API's
-secret key (neither is allowed here). The attachment stays with the human
-sandbox checklist in #11. `createRevenueCatFixtureUser.mjs` is a setup helper, not
+secret key (neither is allowed in this project). The attachment is checked where a
+secret already lives, by the Worker's `[revenuecat-rest]` External tests (#146):
+they read the project configuration with a read-only key and fail if `pro` is
+missing, has no product, or lacks the product this site's paywall sells (see
+`workers/scan-proxy/TESTING.md`). A real sandbox purchase stays the human checklist
+in #11. `createRevenueCatFixtureUser.mjs` is a setup helper, not
 a boundary file: it is not run by the suite, and `web/package.json` (which holds its
 npm script) is already a pin of this surface.
 

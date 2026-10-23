@@ -44,10 +44,10 @@
       }
     },
     "revenuecat-android-sdk": {
-      "commit": "0e602ad41d825522f7a5f27ec7012ebcab0050b2",
+      "commit": "97dc46e57d87b8269497c537a6da1f2a7e2143ec",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-23T00:58:47Z",
+      "timestamp": "2026-10-23T04:10:45Z",
       "versions": {
         "com.revenuecat.purchases:purchases": "10.29.0"
       }
@@ -80,10 +80,10 @@
       }
     },
     "supabase-auth": {
-      "commit": "b4de5e62c103bd0fc7bc3b3197c3d634b6cd1fcc",
+      "commit": "97dc46e57d87b8269497c537a6da1f2a7e2143ec",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-23T02:26:23Z",
+      "timestamp": "2026-10-23T04:06:50Z",
       "versions": {
         "@supabase/supabase-js": "2.118.0"
       }

@@ -4,7 +4,7 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-The shared-accounts chain and #20 are merged and pushed (last push 04490db). The work now is the **Alpha round** from [BETA_PLAN.md](../BETA_PLAN.md): eight tickets run as **two lanes, one worker session each**. As before, every ticket gets a **new** session; "two workers" means two lanes running at the same time. Claude merges them one at a time (`/ticket-merge N`) and asks before every push (Web goes live on a push; nobody is invited yet, so that is fine for now).
+The shared-accounts chain and #20 are merged and pushed (last push 04490db). The work now is the **Alpha round** from [BETA_PLAN.md](../BETA_PLAN.md): eight tickets run as **two lanes, one worker session each**. As before, every ticket gets a **new** session; "two workers" means two lanes running at the same time. Claude merges them one at a time (`/ticket-merge N`) and asks before the push (one push, at the end of the round).
 
 | Round | Lane A: Android (the one emulator, one ticket at a time) | Lane B: Web, Worker, tooling (no emulator, no Gradle) |
 |---|---|---|
@@ -32,11 +32,11 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - **Same files:** `docs/BUILD_AND_DEPLOY.md` (#174 and #180), `docs/BETA_TESTER_GUIDE.md` (#181 creates it, #184 adds a line), `tests/TESTING.md` (#180 and #182), `scripts/test_planner_config.json` (any new slow test). Claude merges one ticket at a time and settles any text clash at the merge; the second ticket of a round may need a refresh onto the new baseline, and Claude says so.
 - **Merge order inside a round:** whichever worker finishes first. Type `/ticket-finish` in the worker, then `/ticket-merge N` here.
 
-**Pushes and External runs** (Claude asks first each time)
-- After #174: `revenuecat-android-sdk` goes stale (free, needs the emulator, so Claude runs it between lane A tickets).
-- After #181 and #179: Web External suites are free; Web goes live on the push.
-- After #183: you redeploy the Worker (`npm run deploy` in `workers/scan-proxy`), then Claude runs the live `scan-proxy-worker` suite (one paid scan; Claude asks for the ceiling) before any push.
-- Suggested pushes: after round 1 (#174 and #179), after round 2, and after round 4. Do not invite testers before round 4 and the owner steps below are done.
+**Pushes and External runs** (owner decision, 2026-10-23: **one push, at the end**; Claude still asks before it)
+- Merged tickets stay local on `MPSkills` until all eight are merged. Nothing goes live in between, so the Web site does not change under you while the workers run.
+- At the end Claude runs every stale External suite in one bundle, then asks for the push: `revenuecat-android-sdk` (stale after #174; free; needs the emulator, so lane A must be finished), the Web suites (free), and `scan-proxy-worker` (one paid scan; Claude asks for your ceiling). The `anthropic` surface declares three paid calls if a new SDK release has made it stale again.
+- Before that run, you redeploy the Worker (`npm run deploy` in `workers/scan-proxy`) after #183 has merged, because the live Worker suite tests whatever is deployed.
+- Do not invite testers before the push and the owner steps below are done.
 
 **Owner steps, in the order they come up**
 - [ ] After #174 merges: put the three signing values in `~/.gradle/gradle.properties`, build the APK (`android\gradlew.bat -p android assembleBeta`), confirm `keytool -printcert -jarfile <apk>` shows the SHA-1 in `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`, install it on a phone (uninstall any debug build first) and sign in with Google.

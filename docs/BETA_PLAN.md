@@ -61,7 +61,7 @@ These were filed by the build sessions (all open, all `needs-triage`). My recomm
 - [x] Generate the Android **upload keystore**, keep it and its password outside the repo, and register its SHA-1 in the Google OAuth Android client (`bash scripts/wizard_android_upload_key.sh`; run 2026-10-23, files in `G:\Secrets\rigcheck`). Checks confirmed by you on 2026-10-23: the password is in your password manager, a second copy of the file exists, and the Google client `RigCheck-Android-beta` shows the SHA-1 from the notes file.
 - [x] If the Google OAuth consent screen is in "Testing" mode, add each tester's Google account as a test user. Done for the first testers (2026-10-23); repeat for each tester added later.
 - [ ] Choose how to protect Supabase: the paid tier, or a weekly keep-alive plus a manual export. The free tier pauses after 7 idle days and has no backups.
-- [ ] Commit the sandbox Web key and offering id to `web/.env.production` (public values; see [BUILD_AND_DEPLOY.md](BUILD_AND_DEPLOY.md) section 3).
+- [x] Commit the sandbox Web key and offering id to `web/.env.production` (public values; see [BUILD_AND_DEPLOY.md](BUILD_AND_DEPLOY.md) section 3). Committed 2026-10-23 (`19058de`; offering id `default`), with the free `pages-site` check passed. It goes live on the next push of `MPSkills`, until #175 moves publishing to a release branch. **Before going live:** replace the sandbox key with the production one using `scripts/wizard_web_revenuecat.sh`.
 - [ ] Check the Supabase Redirect URLs allow-list (the unspecified "Pages preview hosts" entry from audit lead 3).
 - [x] Apply the Supabase migration SQL that #29 and #30 produced (`20261022000000_history_entries.sql`, `20261023000000_plan_caps.sql`). Done; the live `supabase-tables` suite passed.
 

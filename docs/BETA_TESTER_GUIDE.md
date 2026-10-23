@@ -13,7 +13,7 @@ The web site can change under you without warning, because it updates whenever a
 
 The app comes as a file instead of from the Play Store, so Android will ask you to allow it once.
 
-1. **If you ever installed an earlier test version of RigCheck, uninstall it first.** The test version you were sent is signed with a different key, so Android refuses to install it over the old one. (If you never had RigCheck on that phone, skip this step.)
+1. **If you ever installed an earlier test ("debug") build of RigCheck, uninstall it first.** The beta file you were sent is signed with a different key, so Android refuses to install it over the old one. (If you never had RigCheck on that phone, skip this step.)
 2. Open the `.apk` file on your phone (from the email, message or download).
 3. Android will say it cannot install apps from this source. Tap **Settings**, switch on **Allow from this source** for the app you opened the file from (for example your email app or your browser), then go back.
 4. Tap **Install**, then **Open**.
@@ -25,23 +25,24 @@ You can use the weight check without an account. An account is needed to scan do
 
 1. Open the sign-in screen (on the web, **Sign in** at the top of the page; in the Android app, its sign-in or account screen).
 2. Choose **Create an account**, enter your email and a password, and submit.
-3. **Check your email for a confirmation message and open its link.** Look in your spam folder if it does not arrive within a few minutes. You cannot sign in until you have confirmed.
+3. **Check your email for a confirmation message and open its link.** Look in your spam folder if it does not arrive within a few minutes. Confirm before you try to sign in.
 4. Come back to the app and sign in. You can also use **Continue with Google** if we added your Gmail address as a tester.
 
 The same account works on the web and on Android, and your saved trucks and past checks should show up on both.
 
 ## What is fake
 
-**Every purchase is a test purchase. No real money moves, and you must never enter a real card.** Pro and the scan packs are on sale so you can try buying them, but the checkout only accepts test cards.
+**Every purchase is a test purchase. No real money moves, and you must never enter a real card.** Pro and the scan packs are on sale so you can try buying them, but nothing you buy is real.
 
-- Test card number: `4242 4242 4242 4242`
-- Expiry: any date in the future (for example `12/34`)
-- CVC: any three digits
-- Postal code: any valid one
+- **On the web**, the checkout only accepts test cards. The purchase screens are marked **Beta: test payments**.
+  - Test card number: `4242 4242 4242 4242`
+  - Expiry: any date in the future (for example `12/34`)
+  - CVC: any three digits
+  - Postal code: any valid one
+  - To see what a failed payment looks like, use `4000 0000 0000 0002` (declined), `4000 0000 0000 9995` (insufficient funds) or `4000 0000 0000 0127` (wrong CVC), with the same expiry and CVC rules.
+- **On Android**, purchases go through a test store instead of Google Play. Follow what the screen shows; the card numbers above are for the web checkout. Nothing is charged.
 
-The full list of test cards, including cards that fail on purpose so you can see what a declined payment looks like, is in [CreditCardTest.md](CreditCardTest.md). On the web, the purchase screens are marked **Beta: test payments**.
-
-The prices, the size of the scan packs and the limits on how many trucks and checks you can save are placeholders. They will change before the real launch.
+Pro gives you a larger Garage and History plus a starter bundle of scans; scan packs add more scans only. The prices, the size of the scan packs and the limits (Free: 5 saved trucks and 10 saved checks; Pro: 25 and 50) are placeholders and will change before the real launch.
 
 ## What RigCheck is not
 
@@ -52,6 +53,7 @@ RigCheck is an educational tool. Its results are estimates, not certified DOT we
 So you do not waste time looking for it:
 
 - **No real payments, no refunds and no legal terms yet.** Android has no Google Play billing at all in this test; it uses a test store.
+- **No Garage upgrade offer and no fleet management** (managing several trucks as a business).
 - **No privacy page or terms page yet.** See the privacy note below.
 - **No iPhone app** and no "Sign in with Apple".
 - **Android does not copy trucks you saved on the phone before signing in.** If you saved a truck while signed out and then sign in, it will seem to disappear from the list. It is not copied into your account. (The web site does copy them.)
@@ -60,6 +62,7 @@ So you do not waste time looking for it:
 - **No way to delete your account inside the app.** See the privacy note below.
 - **No limit on how many scans one account can make.** Please scan sensibly; each scan costs us a little.
 - **The free storage we use can pause** after a quiet week or lose data, since there are no backups. If sign-in suddenly fails for everyone, tell us.
+- **No security or code review has been done yet.** The app runs as it stands today.
 - **The older demo site** is not part of this test.
 
 ## Privacy

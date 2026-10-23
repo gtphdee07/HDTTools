@@ -8,7 +8,7 @@ The shared-accounts chain and #20 are merged and pushed (last push 04490db). The
 
 | Round | Lane A: Android (the one emulator, one ticket at a time) | Lane B: Web, Worker, tooling (no emulator, no Gradle) |
 |---|---|---|
-| 1 | **#174** signed beta APK build | **#179** Web dates in the viewer's local time |
+| 1 | **#174** signed beta APK build | ~~#179~~ Web dates in the viewer's local time (merged) |
 | 2 | **#169** delete a Rig on Android | **#181** Web beta kit: feedback link, "Beta: test payments" label, tester guide |
 | 3 | **#182** Android beta kit (waits for #174 and #181 merged) | **#180** grant tool (gives a tester Pro and scans) |
 | 4 | **#184** Android crash capture (waits for #182 merged) | **#183** Worker log lines |
@@ -18,7 +18,6 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 | Ticket | What | Lane | Waits for | Your part | Card |
 |---|---|---|---|---|---|
 | #174 | Signed `beta` build type for the APK | A | | build the APK yourself after the merge | [#174](#174-signed-beta-build) |
-| #179 | Web shows the viewer's local day | B | | none | [#179](#179-web-dates-in-local-time) |
 | #169 | Delete a Rig from the synced Garage | A | #174 merged | none | [#169](#169-android-delete-a-rig) |
 | #181 | Web feedback link, beta label, tester guide | B | | read the guide | [#181](#181-web-beta-kit) |
 | #182 | Android feedback link and beta label | A | #174, #181 merged | none | [#182](#182-android-beta-kit) |
@@ -208,16 +207,9 @@ Test-round additions:
 
 - **Your part:** after the merge, the first owner step above (signing values, build, SHA-1, install, Google sign-in).
 
-### #179 Web dates in local time
+### #179 (merged 2026-10-23, not pushed)
 
-- **Lane B, round 1.** **Step 1:** `/ticket-start 179`.
-- **Step 2:** paste Block W, then this line:
-
-```
-- The new tests must not depend on the machine's own time zone: set the zone in the test or inject it.
-```
-
-- **Your part:** none.
+Done: Web dates (Results and each History entry) show the viewer's local day, not UTC; 5 mutations killed. Nothing for you to do except, at some point, compare a History date on a phone with the same entry on Web.
 
 ### #169 Android delete a Rig
 

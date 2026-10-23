@@ -4,13 +4,12 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged and pushed (cf305df); #20 (Web lane) and #31, #32 (Android lane, one at a time) are left; #101 is merged, not yet pushed; #27 and #30 are merged and pushed (6ea870c). The live `revenuecat-rest` check passed (the `pro` entitlement has the Web paywall's product attached), so all push gates are clear. Claude asks before each push (Web goes live on a push).
+The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged and pushed (cf305df); #31 and #32 (Android lane, one at a time) are left; #101 and #20 are merged, not yet pushed; #27 and #30 are merged and pushed (6ea870c). The live `revenuecat-rest` check passed (the `pro` entitlement has the Web paywall's product attached), so all push gates are clear. Claude asks before each push (Web goes live on a push).
 
 Order of the table: a row starts when the ticket it names has merged. #20 was narrowed to Google only (Apple stays with #77). Web goes live on every push of `MPSkills`, so Claude asks first, and runs the stale External suites before the push.
 
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
-| 1 | #20 Continue with Google on Web (Google only) | Web | maybe a console setting | [#20](#20-continue-with-google-on-web) |
 | 4 | #31 Android uses the synced Garage (after #101) | Android | stop the emulator | [#31](#31-android-uses-the-synced-garage) |
 | 5 | #32 Android History (after #29 and #31) | Android | stop the emulator | [#32](#32-android-history) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
@@ -62,30 +61,9 @@ Done: History sync on Web (migration `20261022000000_history_entries.sql` applie
 
 Done: Pro raises the Garage and History caps (Free 5 Rigs / 10 checks, Pro 25 / 50 as placeholders in the `plan_caps` table), with an upgrade prompt. The app reports the plan to the database (your decision). You applied `supabase/migrations/20261023000000_plan_caps.sql`, the live `supabase-tables` suite passed (20/20) and the push is out (6ea870c).
 
-### #20 Continue with Google on Web
+### #20 (merged 2026-10-22)
 
-- **Step 1:** `/ticket-start 20` (Google only; Apple stays with #77). Run it after #29 and #30 so only one Web session is open at a time.
-- **Step 2 block:**
-
-```
-Test-round additions:
-- The Web end-of-session commands are `npm --prefix web test` and
-  `uv run scripts/static_checks.py web`.
-- Only `web/`, `supabase/migrations/` and the testing documents change unless the card says otherwise.
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in its context's testing document, and a new
-  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
-- Live runs: do not run the live External suite or any paid call. The owner runs
-  the surface from the main checkout after the merge. Do not commit changes to
-  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
-  markers.
-- Google only. Do not add Apple code or a button (#77).
-- The Supabase and Google console settings are outside the repo: check what you can, and report what is missing under "Owner actions needed" instead of guessing.
-```
-
-- **Your part:** if the session says a Supabase redirect URL or the Google client needs a setting, make that change in the console.
+Done: "Continue with Google" on Web (sign in and create account), PKCE, errors in the usual style, and a failed Google return is named as Google's. Your by-hand check on the local dev server showed email and Google reach the same account. The live `supabase-auth` suite passed (9/9, including the Google first hop). **Still yours, after the push:** try Continue with Google once on https://rigcheck-web.pages.dev (if you land back signed out with the Google message, add `https://rigcheck-web.pages.dev/**` to the Supabase Redirect URLs); if the Google consent screen is in Testing mode, each tester's Google account must be a test user. The folder `.claude/worktrees/ticket-20` could not be deleted because a node process (probably your dev server from the Google check) still holds it; stop it, then run `cmd /c rmdir /s /q "\\?\G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-20"`.
 
 ### #27 (merged 2026-10-22)
 

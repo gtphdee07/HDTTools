@@ -69,21 +69,21 @@
       }
     },
     "scan-proxy-worker": {
-      "commit": "498fe2da8cce3c5be02364952a4ae6828e083771",
+      "commit": "b4de5e62c103bd0fc7bc3b3197c3d634b6cd1fcc",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-22T15:52:50Z",
+      "timestamp": "2026-10-23T02:32:13Z",
       "versions": {
-        "@cloudflare/workers-types": "5.20261022.1",
-        "workerd": "1.20261022.1",
+        "@cloudflare/workers-types": "5.20261023.1",
+        "workerd": "1.20261023.1",
         "wrangler": "4.152.0"
       }
     },
     "supabase-auth": {
-      "commit": "f2d5aefff76d1952576ee4d5aa4858df53cb83aa",
+      "commit": "b4de5e62c103bd0fc7bc3b3197c3d634b6cd1fcc",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-21T13:32:06Z",
+      "timestamp": "2026-10-23T02:26:23Z",
       "versions": {
         "@supabase/supabase-js": "2.118.0"
       }

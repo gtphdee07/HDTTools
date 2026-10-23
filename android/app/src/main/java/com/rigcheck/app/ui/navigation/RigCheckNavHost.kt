@@ -157,6 +157,7 @@ fun RigCheckNavHost(
                     PaywallScreen(
                         creditBalance = viewModel.creditBalance,
                         isPro = isPro,
+                        onRetryPlan = { viewModel.refreshAccountStanding() },
                         onPurchase = { pkg, onResult -> viewModel.purchase(activity, pkg, onResult) },
                         onRestore = { onResult -> viewModel.restorePurchases(onResult) },
                         onDone = { navController.popBackStack() },

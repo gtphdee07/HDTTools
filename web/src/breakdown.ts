@@ -241,9 +241,10 @@ export function verdictFor(items: BreakdownItem[]): VerdictInfo {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// The viewer's local calendar day, like Android, so a check made on a US evening is not dated tomorrow.
 export function formatDate(now: Date): string {
-  const day = String(now.getUTCDate()).padStart(2, '0');
-  return `${MONTHS[now.getUTCMonth()]} ${day}, ${now.getUTCFullYear()}`;
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${MONTHS[now.getMonth()]} ${day}, ${now.getFullYear()}`;
 }
 
 // The UI works in whole percentage points (15-25); the math works in the 0-1 fraction.

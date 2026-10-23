@@ -12,10 +12,10 @@ Drafted 2026-10-22 for the owner to edit; ticket status updated 2026-10-23. It p
 ## Status on 2026-10-23
 
 - **The Phase 1 build chain is finished.** All eight tickets are closed and pushed: #146, #29, #30, #20, #27, #101, #31 and #32 (closed 2026-10-22 and 2026-10-23, much faster than the sizing guess). The Supabase migrations for #29 (History) and #30 (plan caps) are applied and their live External suites passed. `supabase-auth`, `revenuecat-web-billing` and `anthropic` were re-run live after the last merges. `MPSkills` carries one unpushed run-sheet commit.
-- **Not started:** none of the five "new tickets" below is filed, no audit has run, and #97 (the Anthropic spend cap) is open.
+- **Filed 2026-10-23 (all `ready-for-agent`, not started):** the five Phase 1 tickets: #174 Android beta build, #175 Web release branch, #176 tester kit, #177 privacy notice and beta terms, #178 visibility (Worker logs and Android crashes). No audit has run, and #97 (the Anthropic spend cap) is open.
 - **Done by you:** the upload keystore exists (wizard run 2026-10-23; file and notes in `G:\Secrets\rigcheck`) and an Android client for it was created in Google Cloud. Still to confirm: the password is in your password manager, a second copy of the file exists, the Google client's SHA-1 matches the notes file, and testers are listed as Google test users.
 - **New open tickets since the plan:** #169, #170, #171, #172, #173 (see "Tickets the chain left behind"). #166, #167 and #168 also closed since the plan was drafted.
-- **Next step:** freeze feature work, start the read-only refactor analysis (Phase 2), and file the five Phase 1 tickets.
+- **Next step:** run the five new tickets, and start the read-only refactor analysis (Phase 2) beside them. #174 and #175 first: the tester guide (#176) needs the beta flag and the one Web address.
 
 ## What the beta must let a tester do
 
@@ -43,17 +43,17 @@ These were filed by the build sessions (all open, all `needs-triage`). My recomm
 | #172 | Web Release Back Log (running list; first item: show dates in the viewer's local time zone, not UTC) | **should.** Today an evening check can read as tomorrow on Web but as today on Android, so the same History entry differs between platforms. The list stays open until release. |
 | #173 | Android History: add the filters Web has | **later** (labelled `future`). Not needed for a beta. |
 
-### New tickets to file for Phase 1
+### New tickets for Phase 1 (filed 2026-10-23)
 
-1. **Android beta build.** The release guard (#166) refuses a release build with the Test Store key, so a test-payments APK cannot be a normal release build. Add a signed beta build type that is allowed the test key, is not debuggable, and is clearly labelled. #166 stays for the real release.
-2. **Release branch for Web.** Cloudflare Pages publishes on every push to `MPSkills`. During the beta testers would see half-finished work. Decide on a release branch (for example `beta`) that you promote deliberately, and point the Pages production branch at it.
-3. **Tester kit.**
+1. **Android beta build (#174).** The release guard (#166) refuses a release build with the Test Store key, so a test-payments APK cannot be a normal release build. Add a signed beta build type that is allowed the test key, is not debuggable, and is clearly labelled. #166 stays for the real release.
+2. **Release branch for Web (#175).** Cloudflare Pages publishes on every push to `MPSkills`. During the beta testers would see half-finished work. Decide on a release branch (for example `beta`) that you promote deliberately, and point the Pages production branch at it.
+3. **Tester kit (#176).**
    - A script or wizard that grants a tester Pro and a number of scans in RevenueCat (see the #105 wizard for the pattern).
    - A one-page install and report-a-problem guide, built on [CreditCardTest.md](CreditCardTest.md).
    - A feedback link in both apps.
    - A "Beta: test payments" label in both apps.
-4. **Privacy notice and beta terms (lightweight).** Split out of #34. Say what is stored (email, Rigs, History), that scale-ticket photos go to Anthropic, and that manual deletion is on request. The full legal review (#34) stays a pre-live item.
-5. **Minimum visibility.** Worker logs you can read, an Anthropic usage alert below the cap, and a decision on how to capture Android crashes from testers.
+4. **Privacy notice and beta terms (lightweight) (#177).** Split out of #34. Say what is stored (email, Rigs, History), that scale-ticket photos go to Anthropic, and that manual deletion is on request. The full legal review (#34) stays a pre-live item.
+5. **Minimum visibility (#178).** Worker logs you can read and a decision on how to capture Android crashes from testers. The Anthropic usage alert below the cap is part of #97, not #178.
 
 ### Owner-only steps in Phase 1
 

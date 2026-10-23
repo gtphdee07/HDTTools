@@ -28,4 +28,7 @@ sealed interface RigCheckRoute {
 
     @Serializable
     data object Results : RigCheckRoute
+
+    @Serializable
+    data object History : RigCheckRoute
 }

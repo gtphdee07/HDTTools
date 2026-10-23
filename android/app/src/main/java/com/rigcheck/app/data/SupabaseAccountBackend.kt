@@ -105,6 +105,9 @@ class SupabaseAccountBackend private constructor(private val client: SupabaseCli
     // The account's Garage, over the same client so every call carries the signed-in session.
     val garage: GarageBackend by lazy { SupabaseGarageBackend(client) }
 
+    // The account's History, the same way.
+    val history: HistoryBackend by lazy { SupabaseHistoryBackend(client) }
+
     fun handleDeepLink(intent: Intent) {
         client.handleDeeplinks(intent)
     }

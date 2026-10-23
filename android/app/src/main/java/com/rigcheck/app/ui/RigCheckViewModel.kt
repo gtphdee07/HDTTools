@@ -16,6 +16,10 @@ import com.rigcheck.app.data.AccountResult
 import com.rigcheck.app.data.AccountState
 import com.rigcheck.app.data.Garage
 import com.rigcheck.app.data.GarageBackend
+import com.rigcheck.app.data.History
+import com.rigcheck.app.data.HistoryBackend
+import com.rigcheck.app.data.HistoryCaps
+import com.rigcheck.app.data.HistoryEntry
 import com.rigcheck.app.data.PurchaseCancelledException
 import com.rigcheck.app.data.RecentRigsRepository
 import com.rigcheck.app.data.RevenueCatManager
@@ -25,6 +29,7 @@ import com.rigcheck.app.data.ScanResult
 import com.rigcheck.app.data.SupabaseAccountBackend
 import com.rigcheck.app.data.UnavailableAccountBackend
 import com.rigcheck.app.data.UnavailableGarageBackend
+import com.rigcheck.app.data.UnavailableHistoryBackend
 import com.rigcheck.app.data.encodePhotoForScan
 import com.rigcheck.app.data.googleFailureMessage
 import com.rigcheck.app.data.requestGoogleIdentity
@@ -62,11 +67,12 @@ sealed interface ScanUiState {
 //
 // The account backend is a parameter so an instrumented test can be signed in
 // or out without Supabase; the app always uses the one-argument constructor.
-// The Garage backend defaults to the one over the same Supabase client.
+// The Garage and History backends default to the ones over the same Supabase client.
 class RigCheckViewModel internal constructor(
     application: Application,
     accountBackend: AccountBackend,
     garageBackend: GarageBackend = (accountBackend as? SupabaseAccountBackend)?.garage ?: UnavailableGarageBackend,
+    historyBackend: HistoryBackend = (accountBackend as? SupabaseAccountBackend)?.history ?: UnavailableHistoryBackend,
 ) : AndroidViewModel(application) {
     constructor(application: Application) : this(application, SupabaseAccountBackend.get() ?: UnavailableAccountBackend)
 
@@ -157,6 +163,26 @@ class RigCheckViewModel internal constructor(
     var garageNotice by mutableStateOf<GarageNotice?>(null)
         private set
 
+    // The past checks (#32): the signed-in account's History, the same on every device with the plan's cap
+    // enforced by the server; this app session's own checks while signed out.
+    private val history = History(
+        accountState = accountManager.state,
+        backend = historyBackend,
+        isPro = { isPro.value },
+        scope = viewModelScope,
+    )
+    val historyEntries: StateFlow<List<HistoryEntry>> = history.entries
+    val historyCaps: StateFlow<HistoryCaps?> = history.caps
+
+    // Said on the Results screen when the last check could not be saved to the History; cleared like the
+    // Garage notice.
+    var historyNotice by mutableStateOf<String?>(null)
+        private set
+
+    // The check on show has been recorded: Results is composed again after turning the device, and the same
+    // check must not be recorded twice. Cleared when the user starts or picks another Rig.
+    private var checkRecorded = false
+
     init {
         // The SCAN balance belongs to whichever account RevenueCat is logged
         // in as. Clear it whenever that changes (so one account's balance is
@@ -235,8 +261,13 @@ class RigCheckViewModel internal constructor(
     // Reads the Garage again, to pick up Rigs saved on another device.
     fun refreshGarage() = garage.refresh()
 
+    // Reads the History again, to pick up checks made on another device.
+    fun refreshHistory() = history.refresh()
+
     fun selectRecentRig(rig: RecentRig) {
         garageNotice = null
+        historyNotice = null
+        checkRecorded = false
         rigNickname = rig.nickname
         truck = rig.truck
         trailer = rig.trailer
@@ -248,6 +279,8 @@ class RigCheckViewModel internal constructor(
 
     fun startNewRig(nickname: String) {
         garageNotice = null
+        historyNotice = null
+        checkRecorded = false
         rigNickname = nickname
         truck = TruckTag()
         trailer = TrailerTag()
@@ -265,6 +298,8 @@ class RigCheckViewModel internal constructor(
         disclaimerAcknowledged = true
     }
 
+    // Saves the finished check's Rig to the Garage and the check itself to the History. The two saves
+    // finish on their own, so a problem with one never clears the other's notice.
     fun saveCurrentRig() {
         val nickname = rigNickname
         val savedTruck = truck
@@ -272,6 +307,12 @@ class RigCheckViewModel internal constructor(
         viewModelScope.launch {
             val outcome = garage.saveRig(nickname, savedTruck, savedTrailer)
             garageNotice = garageNoticeFor(nickname, outcome, isPro.value)
+        }
+        if (checkRecorded) return
+        checkRecorded = true
+        val result = verdict.status
+        viewModelScope.launch {
+            historyNoticeFor(history.recordCheck(nickname, result))?.let { historyNotice = it }
         }
     }
 

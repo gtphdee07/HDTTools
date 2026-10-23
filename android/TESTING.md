@@ -137,7 +137,7 @@ key on the release-build machine is a launch step (#99, #40).
 
 ### Beta build (#174)
 
-`beta` is a third build type for the APK sent to testers: it is `release` (not debuggable, package
+`beta` is a third build type for the APK sent to testers: it is `release` but debuggable (package
 `com.rigcheck.app` with no suffix, `versionName` `1.0-beta`), signed with the owner's upload keystore,
 and the only type besides `debug` that may carry the RevenueCat Test Store key (the beta uses test
 payments). `BuildConfig.IS_BETA` is true only in it (#176 reads it for the "Beta: test payments"
@@ -164,6 +164,11 @@ testers update in place only if `versionCode` rises.
 .\gradlew.bat :app:verifyBetaSigning              # the guard alone, seconds, no build
 keytool -printcert -jarfile app\build\outputs\apk\beta\app-beta.apk    # the SHA-1 of the signing key
 ```
+
+It is debuggable on purpose (#185): RevenueCat's SDK checks the app's debuggable flag and, when it is off, closes the
+app with a "Wrong API Key" dialog if the key is a Test Store key, with no setting to allow it. The cost is that someone
+with a cable and USB debugging on can read the app's data on their own phone, which the Alpha accepts (a few trusted
+testers, test payments only). The Release build is not debuggable and uses a production key.
 
 A beta APK cannot be installed over a debug build: they are signed with different keys, so Android
 refuses the update. Uninstall the debug build first. Google sign-in works only on a build with this

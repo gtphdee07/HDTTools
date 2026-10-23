@@ -1,8 +1,9 @@
 """The Android beta build type (#174): signed with the owner's upload key, allowed the Test Store key.
 
-`beta` sits between `debug` and `release` in `android/app/build.gradle.kts`: same package name, not
-debuggable, signed from three settings that live outside the repo, and the only non-debug type that
-may carry the RevenueCat Test Store key. `verifyBetaSigning` is the guard for the settings; like the
+`beta` sits between `debug` and `release` in `android/app/build.gradle.kts`: same package name as
+`release`, debuggable (RevenueCat's SDK closes any non-debuggable app that uses a Test Store key, #185),
+signed from three settings that live outside the repo, and the only type besides `debug` that may carry
+the RevenueCat Test Store key. `verifyBetaSigning` is the guard for the settings; like the
 release guard (#166) it runs alone here, so most checks are offline and need no device. One check
 packages a real beta APK with a throwaway keystore (never the owner's). The Gradle checks are `slow`
 (the planner owes them when `android/app/build.gradle.kts` changes) and share the `gradle` xdist worker.
@@ -158,7 +159,7 @@ def _sha1(*keytool_args: str) -> str:
 
 
 @gradle_check
-def test_beta_apk_is_signed_with_the_given_keystore_and_is_the_release_package_not_debuggable(tmp_path):
+def test_beta_apk_is_signed_with_the_given_keystore_is_the_release_package_and_is_debuggable(tmp_path):
     password = secrets.token_hex(8)
     keystore = tmp_path / "throwaway.p12"
     made = subprocess.run(
@@ -186,5 +187,7 @@ def test_beta_apk_is_signed_with_the_given_keystore_and_is_the_release_package_n
     assert element["applicationId"] == "com.rigcheck.app"
     assert (element["elements"][0]["versionCode"], element["elements"][0]["versionName"]) == (7, "1.0-beta")
     manifests = list((ANDROID / "app/build/intermediates").glob("merged_manifest*/beta/**/AndroidManifest.xml"))
-    assert manifests and not any('android:debuggable="true"' in read(m) for m in manifests)
-    assert "boolean DEBUG = false" in _build_config("beta")
+    # Debuggable on purpose (#185): the RevenueCat SDK closes a non-debuggable app that uses the Test Store key
+    # ("Wrong API Key"), and the beta uses that key.
+    assert manifests and any('android:debuggable="true"' in read(m) for m in manifests)
+    assert 'boolean DEBUG = Boolean.parseBoolean("true")' in _build_config("beta")

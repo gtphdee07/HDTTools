@@ -336,7 +336,8 @@ few minutes (apt packages, then pip).
 Be explicit about these so nobody assumes they work:
 
 - **The beta APK (#174) is built; the Play Store release is not.** The
-  `beta` build type signs with your upload keystore, is not debuggable, keeps
+  `beta` build type signs with your upload keystore, is debuggable (RevenueCat's
+  SDK closes a non-debuggable app that uses a Test Store key, #185), keeps
   the package `com.rigcheck.app`, and may use the RevenueCat Test Store key
   (test payments only). Put the three signing values from section 3 in
   `gradle.properties` in your Gradle user home (the `GRADLE_USER_HOME` folder; on this machine `G:\GradleUserHome\gradle.properties`, not `C:\Users\Angela\.gradle`), raise `appVersionCode`, then from `android/`

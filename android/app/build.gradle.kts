@@ -115,12 +115,13 @@ android {
             // No default: an unset key is "" here and verifyRevenueCatReleaseKey fails the build (#166).
             buildConfigField("String", "REVENUECAT_PUBLIC_API_KEY", "\"$revenueCatReleaseKey\"")
         }
-        // The APK sent to beta testers (#174): signed with the owner's upload key, not debuggable, and the
-        // only non-debug build allowed the Test Store key (beta uses test payments). It keeps the release
-        // package name, so Google sign-in works on it, and so a debug build cannot be updated by it.
+        // The APK sent to beta testers (#174): signed with the owner's upload key and the only build besides
+        // debug allowed the Test Store key (beta uses test payments). It keeps the release package name, so
+        // Google sign-in works on it, and so a debug build cannot be updated by it. It is debuggable on
+        // purpose (#185): RevenueCat's SDK closes any non-debuggable app that uses a Test Store key.
         create("beta") {
             initWith(getByName("release"))
-            isDebuggable = false
+            isDebuggable = true
             signingConfig = signingConfigs.getByName("beta")
             versionNameSuffix = "-beta"
             buildConfigField("String", "REVENUECAT_PUBLIC_API_KEY", "\"$revenueCatTestStoreKey\"")

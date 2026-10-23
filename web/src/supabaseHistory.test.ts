@@ -124,14 +124,14 @@ describe('createSupabaseHistoryBackend', () => {
       ],
       error: null,
     };
-    const dates = async (zone: string) => {
+    const datesShownIn = async (zone: string) => {
       process.env.TZ = zone;
       return (await createSupabaseHistoryBackend(fakeListClient(rows).client).list()).map((e) => e.date);
     };
 
     // Chicago is UTC-5 in October: 03:15Z is still the evening before. Auckland is UTC+13: 23:30Z is already the next day.
-    expect(await dates('America/Chicago')).toEqual(['Oct 21, 2026', 'Oct 05, 2026']);
-    expect(await dates('Pacific/Auckland')).toEqual(['Oct 22, 2026', 'Oct 06, 2026']);
+    expect(await datesShownIn('America/Chicago')).toEqual(['Oct 21, 2026', 'Oct 05, 2026']);
+    expect(await datesShownIn('Pacific/Auckland')).toEqual(['Oct 22, 2026', 'Oct 06, 2026']);
   });
 
   it('rejects a list the server refused, so the caller keeps what it shows', async () => {

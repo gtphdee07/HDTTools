@@ -4,15 +4,46 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged and pushed (cf305df); #31 is merged and pushed (6ab852d), and #32 is merged and pushed (04490db; the Android lane is done); #101 and #20 are merged and pushed (bd69ac0); #27 and #30 are merged and pushed (6ea870c). The live `revenuecat-rest` check passed (the `pro` entitlement has the Web paywall's product attached), so all push gates are clear. Claude asks before each push (Web goes live on a push).
+The shared-accounts chain and #20 are merged and pushed (last push 04490db). The work now is the **Alpha round** from [BETA_PLAN.md](../BETA_PLAN.md): eight tickets run as **two lanes, one worker session each**. As before, every ticket gets a **new** session; "two workers" means two lanes running at the same time. Claude merges them one at a time (`/ticket-merge N`) and asks before every push (Web goes live on a push; nobody is invited yet, so that is fine for now).
 
-Order of the table: a row starts when the ticket it names has merged. #20 was narrowed to Google only (Apple stays with #77). Web goes live on every push of `MPSkills`, so Claude asks first, and runs the stale External suites before the push.
+| Round | Lane A: Android (the one emulator, one ticket at a time) | Lane B: Web, Worker, tooling (no emulator, no Gradle) |
+|---|---|---|
+| 1 | **#174** signed beta APK build | **#179** Web dates in the viewer's local time |
+| 2 | **#169** delete a Rig on Android | **#181** Web beta kit: feedback link, "Beta: test payments" label, tester guide |
+| 3 | **#182** Android beta kit (waits for #174 and #181 merged) | **#180** grant tool (gives a tester Pro and scans) |
+| 4 | **#184** Android crash capture (waits for #182 merged) | **#183** Worker log lines |
 
-| # | What | Kind | Your part | Card |
-|---|---|---|---|---|
-| optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
+A ticket starts when the tickets it waits for have merged, not when the round ends: lane B can run ahead, and lane A's round 3 waits only for #181 (lane B's round 2). #176 and #178 are now containers (split into #180 to #182 and #183, #184); #172 stays open for later Web items, with its first item moved to #179. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.
 
-#46 and #47 can build at the same time (different surfaces, and only #47 touches the emulator). Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember"). The final External run is done (2026-10-21, see History); if #132 changes no code there is nothing more to run, and any later change to a boundary file or pin needs `uv run scripts/external_freshness.py` first.
+| Ticket | What | Lane | Waits for | Your part | Card |
+|---|---|---|---|---|---|
+| #174 | Signed `beta` build type for the APK | A | | build the APK yourself after the merge | [#174](#174-signed-beta-build) |
+| #179 | Web shows the viewer's local day | B | | none | [#179](#179-web-dates-in-local-time) |
+| #169 | Delete a Rig from the synced Garage | A | #174 merged | none | [#169](#169-android-delete-a-rig) |
+| #181 | Web feedback link, beta label, tester guide | B | | read the guide | [#181](#181-web-beta-kit) |
+| #182 | Android feedback link and beta label | A | #174, #181 merged | none | [#182](#182-android-beta-kit) |
+| #180 | Tester grant tool | B | | run it for each tester | [#180](#180-grant-tool) |
+| #184 | Android crash capture | A | #182 merged | none | [#184](#184-android-crash-capture) |
+| #183 | Worker log lines | B | | redeploy the Worker, open the logs | [#183](#183-worker-log-lines) |
+| optional | #132 is mutation testing worth running? (research) | any | | none | [#132](#132-optional-mutation-testing-research) |
+
+**How the two lanes stay out of each other's way**
+- **Memory:** only lane A may use the emulator or Gradle. Lane B runs vitest, node and pytest only. If the machine runs short of memory, pause lane B.
+- **Same files:** `docs/BUILD_AND_DEPLOY.md` (#174 and #180), `docs/BETA_TESTER_GUIDE.md` (#181 creates it, #184 adds a line), `tests/TESTING.md` (#180 and #182), `scripts/test_planner_config.json` (any new slow test). Claude merges one ticket at a time and settles any text clash at the merge; the second ticket of a round may need a refresh onto the new baseline, and Claude says so.
+- **Merge order inside a round:** whichever worker finishes first. Type `/ticket-finish` in the worker, then `/ticket-merge N` here.
+
+**Pushes and External runs** (Claude asks first each time)
+- After #174: `revenuecat-android-sdk` goes stale (free, needs the emulator, so Claude runs it between lane A tickets).
+- After #181 and #179: Web External suites are free; Web goes live on the push.
+- After #183: you redeploy the Worker (`npm run deploy` in `workers/scan-proxy`), then Claude runs the live `scan-proxy-worker` suite (one paid scan; Claude asks for the ceiling) before any push.
+- Suggested pushes: after round 1 (#174 and #179), after round 2, and after round 4. Do not invite testers before round 4 and the owner steps below are done.
+
+**Owner steps, in the order they come up**
+- [ ] After #174 merges: put the three signing values in `~/.gradle/gradle.properties`, build the APK (`android\gradlew.bat -p android assembleBeta`), confirm `keytool -printcert -jarfile <apk>` shows the SHA-1 in `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`, install it on a phone (uninstall any debug build first) and sign in with Google.
+- [ ] After #180 merges: run the grant tool once as a dry run, then with `--apply` for each tester. Leave one tester on Free so someone tests buying Pro.
+- [ ] After #183 merges: redeploy the Worker and open the Cloudflare logs once to see a line.
+- [ ] After #181, #182 and #184: read `docs/BETA_TESTER_GUIDE.md` once, send yourself a feedback email from each app, and raise `versionCode` for each APK you send.
+- [ ] Before inviting: add each Alpha tester's Gmail as a Google test user (up to 5); send the APK and the guide.
 
 Not in this round: #40 (blocked on Play Console, see its card), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically), #145 (check that a fresh clone builds on another computer), #146 (check that `pro` is attached to the Pro product), #165 (TESTING.md: name the scan-form-fields planner interface), #155 to #159 (static-check gaps: a Python type checker, a shell and PowerShell linter, the Python coverage floor, a Web coverage floor, Android Lint and config files), #138 and #139.
 
@@ -78,6 +109,184 @@ Done: Android reads and writes the account's Garage (the same Rigs as Web, the p
 ### #32 (merged 2026-10-23)
 
 Done: Android has a History screen over the account's History (the same checks as Web, newest first, the plan's cap enforced by the database), each finished check is saved once, and a Free account at the cap is told what each plan keeps. The full instrumented suite (184) passes on the merged tree. **Still yours:** a by-hand round trip on the real project (finish a check on Android and see it in Web's History, then the other way round); decide the date question in #172 (Web shows UTC, Android the phone's local day); triage #173 (Android History filters).
+
+### Paste blocks for the Alpha round (the cards below say which one)
+
+**Block A (Android):**
+
+```
+Test-round additions:
+- If you add or move a class in `domain`, `data` or `ui`, classify it in
+  `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android
+  end-of-session command is `uv run scripts/android_session_end.py` (JVM tests,
+  coverage floor, detekt; no device).
+- A UI test needs the single emulator; no other Android ticket may be running.
+  Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save
+  -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are
+  done.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Live runs: do not run the live External suite or any paid call. The owner runs
+  the surface from the main checkout after the merge. Do not commit changes to
+  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+- RevenueCat is faked in the Android tests; no live or paid run.
+- The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
+```
+
+**Block W (Web):**
+
+```
+Test-round additions:
+- The Web end-of-session commands are `npm --prefix web test` and
+  `uv run scripts/static_checks.py web`. Do not start Gradle or the emulator.
+- Only `web/`, `docs/` and the testing documents change unless the card says otherwise.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Live runs: do not run the live External suite or any paid call. The owner runs
+  the surface from the main checkout after the merge. Do not commit changes to
+  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+- The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
+```
+
+**Block K (Worker):**
+
+```
+Test-round additions:
+- The Worker end-of-session commands are `npm --prefix workers/scan-proxy test` and
+  `uv run scripts/static_checks.py scan-proxy`. Do not start Gradle or the emulator.
+- Only `workers/scan-proxy/` and the testing documents change unless the card says otherwise.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in its context's testing document, and a new
+  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Live runs: do not run the live External suite, any paid call, or `npm run deploy`.
+  The owner redeploys and the merge review runs the surface. Do not commit changes to
+  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
+- Never print, log or commit a key, token, image or email.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+- The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
+```
+
+**Block T (tooling, Python in `scripts/` and `tests/`):**
+
+```
+Test-round additions:
+- The end-of-session commands are `uv run scripts/static_checks.py core` and the
+  offline tests that `uv run scripts/test_planner.py` lists. Do not start Gradle or the emulator.
+- Only `scripts/`, `tests/`, `docs/` and the testing documents change.
+- Judge each test by whether it would find or prevent a real bug and whether it
+  adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in `tests/TESTING.md`, and a new `slow`-marked test
+  file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Live runs: do not run the tool against the real RevenueCat project or make any paid
+  call. Never print or log `REVENUECAT_SECRET_KEY`.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
+  markers.
+- The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
+```
+
+### #174 Signed beta build
+
+- **Lane A, round 1.** **Step 1:** `/ticket-start 174`. Android; the single emulator.
+- **Step 2:** paste Block A, then these lines:
+
+```
+- Build type is `beta` (task `assembleBeta`); `versionCode` is a Gradle property raised by hand (default 1) with `versionName` `1.0-beta` (recorded decisions).
+- Never put the real keystore path, alias or password in the repo, a test or a comment. Prove signing with a throwaway keystore made in a temp folder. Do not build the real APK: the owner does.
+- #166's guard stays exactly as strict for `release`; its tests must pass unchanged.
+- `docs/BUILD_AND_DEPLOY.md` (secrets table and section 8) and `android/TESTING.md` explain the beta build, why a debug build cannot be updated by it (uninstall first), and where the signing values live.
+```
+
+- **Your part:** after the merge, the first owner step above (signing values, build, SHA-1, install, Google sign-in).
+
+### #179 Web dates in local time
+
+- **Lane B, round 1.** **Step 1:** `/ticket-start 179`.
+- **Step 2:** paste Block W, then this line:
+
+```
+- The new tests must not depend on the machine's own time zone: set the zone in the test or inject it.
+```
+
+- **Your part:** none.
+
+### #169 Android delete a Rig
+
+- **Lane A, round 2** (start after #174 has merged). **Step 1:** `/ticket-start 169`. Android; the single emulator.
+- **Step 2:** paste Block A, then these lines:
+
+```
+- Delete asks for confirmation first, frees the slot at once, says so if it fails (and keeps the Rig), and treats a Rig already deleted on another device as success. Signed out, the phone-only list has no delete control. Test the Garage logic with a fake backend and the control in the Rig picker.
+```
+
+- **Your part:** none.
+
+### #181 Web beta kit
+
+- **Lane B, round 2.** **Step 1:** `/ticket-start 181`.
+- **Step 2:** paste Block W, then these lines:
+
+```
+- The feedback address is WTIAppDev@gmail.com (decided); keep it in one Web constant. The beta label is controlled by a public flag in `web/.env.production`.
+- `docs/BETA_TESTER_GUIDE.md` is written for a non-developer; the Alpha limits and the privacy paragraph come from `docs/BETA_PLAN.md`. A test checks that the guide names the same Web address and feedback address that the Web app uses.
+```
+
+- **Your part:** read the guide once after the merge.
+
+### #182 Android beta kit
+
+- **Lane A, round 3** (start after **#174 and #181** have merged). **Step 1:** `/ticket-start 182`. Android; the single emulator.
+- **Step 2:** paste Block A, then these lines:
+
+```
+- Before you start, confirm from `git log` that #174 (the beta flag, `BuildConfig.IS_BETA`) and #181 (the guide and the Web feedback constant) are both in this branch; if either is missing, stop and say so.
+- The feedback address is WTIAppDev@gmail.com (decided); keep it in one Kotlin constant. A Python test in `tests/` checks that the Web constant, the Android constant and the guide carry the same address.
+```
+
+- **Your part:** none.
+
+### #180 Grant tool
+
+- **Lane B, round 3.** **Step 1:** `/ticket-start 180`.
+- **Step 2:** paste Block T, then this line:
+
+```
+- The tool is a dry run unless `--apply` is given; scans default to 20; it reads `REVENUECAT_SECRET_KEY` from the environment. If the key in use cannot do a call you need, report it under "Owner actions needed" instead of guessing.
+```
+
+- **Your part:** after the merge, run it as a dry run, then with `--apply`, for each tester (account id from the Supabase dashboard, Authentication, Users). Leave one tester on Free.
+
+### #184 Android crash capture
+
+- **Lane A, round 4** (start after **#182** has merged). **Step 1:** `/ticket-start 184`. Android; the single emulator.
+- **Step 2:** paste Block A, then these lines:
+
+```
+- Save the report on the phone; ask once on the next launch; nothing is sent until the tester taps Send; no Firebase. The report holds the stack trace, app version, Android version and device model, and no email, token, password, account id or user-entered Rig data.
+- Send to the feedback address constant that #182 added; if it is not in this branch, stop and say so.
+```
+
+- **Your part:** none.
+
+### #183 Worker log lines
+
+- **Lane B, round 4.** **Step 1:** `/ticket-start 183`.
+- **Step 2:** paste Block K, then this line:
+
+```
+- One structured log line per scan (outcome code, document type, duration in milliseconds, refunded yes or no); the account id is not logged (decided). Tests must show no token, image, key, email or account id reaches the log.
+```
+
+- **Your part:** after the merge, redeploy the Worker (`npm run deploy` in `workers/scan-proxy`) and open the Cloudflare logs once; Claude then runs the live `scan-proxy-worker` suite (one paid scan, with your ceiling) before the push.
 
 ### #132 (optional) mutation-testing research
 

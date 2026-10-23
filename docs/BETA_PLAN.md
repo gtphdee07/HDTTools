@@ -18,7 +18,7 @@ Rule (owner, 2026-10-23): tickets labelled `enhancement` or `future` wait until 
 - **Payments in Alpha and Beta:** test payments only. Web uses RevenueCat Web Billing sandbox and Android uses RevenueCat's Test Store. No real money moves, so Google Play Console, final pricing (#33) and the full legal review (#34) gate the Release, not Alpha or Beta.
 - **Android install:** a signed APK file sent to testers. No Play Store listing before Release.
 - **Alpha size:** at most 5 tech-savvy testers. **Beta size:** under 20 invited people.
-- **Alpha scope (2026-10-23):** #174, #176 and #178 plus the small fixes #169 and #172. #175 and #177 move to the Beta prep.
+- **Alpha scope (2026-10-23):** #174, #176 and #178 (split into #180 to #184) plus the small fixes #169 and #179 (from #172). #175 and #177 move to the Beta prep.
 - **Alpha end:** open-ended; the owner calls it.
 - **Audits:** the refactor analysis and the security audit both run after Alpha as read-only reports first; findings become tickets. Only high and medium security findings, and refactors that reduce risk or block the Beta, are done before Beta.
 - **Supabase:** stay on the Free plan for Alpha; upgrade to Pro ($25 a month: no inactivity pause, daily backups kept 7 days) before the Beta widens, and before Release.
@@ -30,25 +30,26 @@ Rule (owner, 2026-10-23): tickets labelled `enhancement` or `future` wait until 
 - **Done by you:** the Android upload keystore (files and notes in `G:\Secrets\rigcheck`, backed up, SHA-1 registered in Google Cloud), the first testers listed as Google test users, the sandbox Web key committed and live (Pro bought with a fresh test account on the live site), the Supabase Redirect URLs checked, the Supabase plan decided, and the Anthropic spend limit set.
 - **Filed, not started:** #174 Android beta build, #175 Web release branch, #176 tester kit, #177 privacy notice and terms, #178 visibility (Worker logs and Android crashes). Their titles say "beta"; they serve both rounds.
 - **Not run yet:** the refactor analysis and the security audit.
-- **`MPSkills`** carries a few unpushed documentation commits; they do not change Web.
+- **`MPSkills`** is pushed up to the shared-accounts chain (04490db). On 2026-10-23 #176 and #178 were split by surface and #172's first item became #179, so two worker sessions can run the Alpha tickets in parallel; see the run sheet.
 
 ## Stage 1: Alpha
 
 ### Tickets to finish before inviting anyone
 
-| Order | Ticket | What | Surface |
-|---|---|---|---|
-| 1 | **#174** | A signed, non-debuggable Android build that may use the Test Store key, with a beta flag | Android |
-| 2 | **#176** | A script that grants a tester Pro and scans; a tester guide; a feedback link and a "Beta: test payments" label in both apps | Web, Android, script |
-| 3 | **#169** | Android: delete a Rig from the synced Garage (a Free tester at the 5-Rig cap is stuck without it) | Android |
-| 4 | **#178** | Worker logs you can read, and a way to see Android crashes | Worker, Android |
-| beside any of them | **#172** | Web: show dates in the viewer's local time, not UTC (first item of the Web Release Back Log; the ticket stays open for later items) | Web |
+| Round | Lane A: Android (one emulator, serial) | Lane B: Web, Worker, tooling |
+|---|---|---|
+| 1 | **#174** signed `beta` APK build | **#179** Web dates in the viewer's local time (from #172) |
+| 2 | **#169** delete a Rig on Android | **#181** Web feedback link, "Beta: test payments" label and tester guide (from #176) |
+| 3 | **#182** Android feedback link and label (from #176; waits for #174 and #181) | **#180** grant tool (from #176) |
+| 4 | **#184** Android crash capture (from #178; waits for #182) | **#183** Worker log lines (from #178) |
 
-Android tickets run one at a time because there is one emulator; #172 is Web-only and can run beside them. The Worker change in #178 means the owner redeploys the Worker (`npm run deploy`) and the External run described in `TESTING.md` precedes the push. Run each ticket with the steps on the run sheet ([agents/test-round-handoff.md](agents/test-round-handoff.md)); `/ticket-merge` reviews each.
+#176 and #178 are now containers; #172 stays open for later Web items. The decisions (build type `beta`, `versionCode` by hand, feedback by email to WTIAppDev@gmail.com, Pro plus 20 scans, crash report saved and sent on the next launch only if the tester agrees, no account id in Worker logs) are recorded on the tickets.
+
+Android tickets run one at a time because there is one emulator; lane B has no Gradle and runs beside lane A. The Worker change in #183 means the owner redeploys the Worker (`npm run deploy`) and the External run described in `TESTING.md` precedes the push. Run each ticket with the steps on the run sheet ([agents/test-round-handoff.md](agents/test-round-handoff.md)); `/ticket-merge` reviews each.
 
 ### Owner steps for Alpha
 
-- [ ] Create the feedback form if #176's decision picks one.
+- [x] Feedback goes to WTIAppDev@gmail.com (an email address, not a form), so there is no form to create.
 - [ ] Add each Alpha tester's Gmail as a Google test user (consent screen in Testing mode), up to 5.
 - [ ] Build the APK on your machine with the signing values in `~/.gradle/gradle.properties` (#174) and confirm its SHA-1 matches `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`.
 - [ ] Run the grant tool for each tester. Leave one tester on Free (no Pro grant) so someone tests buying Pro, because Pro cannot be bought twice on one account.

@@ -89,10 +89,10 @@
       }
     },
     "supabase-tables": {
-      "commit": "6caea0b6cafa6136ae8b2863c4f5bbed1a9e4781",
+      "commit": "cead5fdd8ee509a17ccc382485ddd122adb167b1",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-22T20:49:27Z",
+      "timestamp": "2026-10-23T00:40:03Z",
       "versions": {
         "@supabase/supabase-js": "2.118.0"
       }

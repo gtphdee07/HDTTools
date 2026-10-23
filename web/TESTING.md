@@ -116,6 +116,37 @@ pieces (`SupabaseAccountBackend.kt` and the `supabase-kt` pin in
 there makes it stale and Android's release gate waits on it; only this Web suite
 exercises it live.
 
+"Continue with Google" on Web (#20) is covered live only as far as it can be without a
+Google login: the project reports the Google provider enabled, and the first hop
+(`/auth/v1/authorize?provider=google`, with a PKCE challenge) is a 302 to
+`accounts.google.com` whose `redirect_uri` is this project's `/auth/v1/callback`; an
+unknown provider gets the `validation_failed` error. The offline `App.auth.test.tsx`
+covers the button, the call it makes (`signInWithOAuth`, provider `google`, back to the
+site root, on the PKCE client), the error style when it cannot start, the return signed
+in, and the message when the visitor comes back from Google without being signed in
+(cancelled, expired, or the code unusable in this browser).
+
+**Checked by hand for Google on Web (#20)** — nothing below is visible to a test:
+
+- *Google Cloud*: the Web OAuth client's authorized redirect URI is the Supabase
+  callback. Checked 2026-10-22 without a login: Google's authorize page accepts the
+  client ID and that `redirect_uri` and shows its sign-in page (a mismatch would show
+  `redirect_uri_mismatch`). If the consent screen is in "Testing" mode, each tester's
+  Google account must be listed as a test user.
+- *Supabase Redirect URLs*: Supabase checks `redirect_to` against the allow-list when
+  Google sends the visitor back, not at the first hop, so only a real sign-in proves it.
+  Web sends the visitor back to the site root (`window.location.origin`), which is the
+  Site URL (`https://rigcheck-web.pages.dev`) and already in the list (#78); local dev
+  needs `http://localhost:5173/**` and a preview host needs its own entry. A host that
+  is missing falls back to the Site URL, so the visitor lands on the live site, not on
+  the preview.
+- *One account for Google and email*: Supabase links a Google sign-in to an existing
+  email account when the Google email is verified and matches (automatic linking is its
+  default). The settings endpoint does not expose this and no test can see it without a
+  real Google login. To check: create an email account with a Gmail address, confirm it,
+  sign out, then "Continue with Google" with the same Gmail; the Garage, History and
+  plan must be the same account's. Record the result here with the date.
+
 ### `supabase-tables` (#28, #29)
 
 Real calls to the live Supabase project's Garage table (`garage_rigs`) and its
@@ -268,7 +299,7 @@ Pages preview hosts. Web signs in with the PKCE flow (#95), so a confirmation or
 reset link only signs in the browser that asked for it: opened elsewhere it lands
 with `?code=` and the Account screen explains that instead. If a confirmation link ever lands on `localhost` again,
 this setting was reset. Google sign-in is enabled under Authentication →
-Providers (Android's Google flow, #22); Apple is not, until #77.
+Providers (Android's Google flow, #22; Web's, #20); Apple is not, until #77.
 
 ## Coverage
 

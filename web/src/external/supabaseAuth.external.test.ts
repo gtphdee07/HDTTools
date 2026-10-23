@@ -45,6 +45,41 @@ describe('[supabase-auth] Supabase Auth live contract', () => {
     expect(rejected.status).toBeLessThan(500);
   });
 
+  it('has the Google provider enabled and sends the browser on to Google with this project as the callback', async () => {
+    const settings = (await (
+      await fetch(`${cfg.VITE_SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: cfg.VITE_SUPABASE_PUBLISHABLE_KEY } })
+    ).json()) as { external?: { google?: boolean } };
+    expect(settings.external?.google).toBe(true);
+
+    // The first hop of "Continue with Google", without anyone logging in: a PKCE challenge in, a redirect to
+    // Google out. What follows (Google's page, the callback, the redirect allow-list) is only checked by hand.
+    const challenge = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
+    const siteRoot = 'https://rigcheck-web.pages.dev';
+    const response = await fetch(
+      `${cfg.VITE_SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(siteRoot)}` +
+        `&code_challenge=${challenge}&code_challenge_method=s256`,
+      { headers: { apikey: cfg.VITE_SUPABASE_PUBLISHABLE_KEY }, redirect: 'manual' },
+    );
+
+    expect(response.status).toBe(302);
+    const location = new URL(response.headers.get('location') ?? '');
+    expect(location.origin + location.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
+    expect(location.searchParams.get('client_id')).toMatch(/^\d+-[\w-]+\.apps\.googleusercontent\.com$/);
+    expect(location.searchParams.get('redirect_uri')).toBe(`${cfg.VITE_SUPABASE_URL}/auth/v1/callback`);
+    expect(location.searchParams.get('response_type')).toBe('code');
+    expect(location.searchParams.get('scope')).toContain('email');
+  });
+
+  it('rejects a sign-in request for a provider the project has not enabled with a validation error', async () => {
+    const response = await fetch(`${cfg.VITE_SUPABASE_URL}/auth/v1/authorize?provider=not-a-provider`, {
+      headers: { apikey: cfg.VITE_SUPABASE_PUBLISHABLE_KEY },
+      redirect: 'manual',
+    });
+
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { error_code?: string }).error_code).toBe('validation_failed');
+  });
+
   it('returns a session with a three-part JWT, user id and confirmed email on sign-in', async () => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email: cfg.WEB_EXTERNAL_TEST_EMAIL,

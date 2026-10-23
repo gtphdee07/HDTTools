@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -37,6 +37,14 @@ function makeFakeSupabase() {
       emit('SIGNED_IN', sessionFor(email));
       return { data: null, error: null };
     }),
+    // The real call sends the browser to Google, so nothing comes back here; tests that need the
+    // visitor to return build a new app (see the Google tests below).
+    signInWithOAuth: vi.fn(
+      async (_creds: { provider: 'google'; options?: { redirectTo?: string } }): Promise<{
+        data: null;
+        error: { message: string } | null;
+      }> => ({ data: null, error: null }),
+    ),
     signOut: vi.fn(async () => {
       emit('SIGNED_OUT', null);
       return { error: null };
@@ -243,6 +251,106 @@ describe('Web accounts', () => {
     await user.click(screen.getByRole('button', { name: 'Update password' }));
     await waitFor(() => expect(fake.client.updateUser).toHaveBeenCalledWith({ password: 'brand-new-pass' }));
     expect(await screen.findByText('Signed in as pat@example.com')).toBeInTheDocument();
+  });
+
+  it('offers Continue with Google on sign in and create account, and starts it for this site', async () => {
+    const fake = makeFakeSupabase();
+    const user = renderApp(fake);
+
+    await user.click(headerSignIn());
+    await user.click(screen.getByRole('button', { name: 'Create an account' }));
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Back to sign in' }));
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
+
+    expect(fake.client.signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+  });
+
+  it('does not offer Google on the password reset form, and offers no Apple button anywhere (#77)', async () => {
+    const user = renderApp(makeFakeSupabase());
+    await user.click(headerSignIn());
+    expect(screen.queryByRole('button', { name: /apple/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Forgot password?' }));
+    expect(screen.queryByRole('button', { name: 'Continue with Google' })).not.toBeInTheDocument();
+  });
+
+  it('shows the error in the usual style when Google sign-in cannot start', async () => {
+    const fake = makeFakeSupabase();
+    fake.client.signInWithOAuth.mockResolvedValueOnce({ data: null, error: { message: 'Unsupported provider: provider is not enabled' } });
+    const user = renderApp(fake);
+
+    await user.click(headerSignIn());
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unsupported provider: provider is not enabled');
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeEnabled();
+  });
+
+  it('lands the visitor signed in when they return from Google', async () => {
+    const fake = makeFakeSupabase();
+    const user = renderApp(fake);
+    await user.click(headerSignIn());
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    cleanup();
+
+    // The page reloads at the site root; Supabase has already exchanged the ?code= for a session.
+    const returned = makeFakeSupabase();
+    returned.emit('SIGNED_IN', returned.sessionFor('pat@gmail.com'));
+    renderApp(returned);
+
+    await waitFor(() => expect(screen.getByTestId('token')).toHaveTextContent('token-for-pat@gmail.com'));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Account' }));
+    expect(screen.getByText('Signed in as pat@gmail.com')).toBeInTheDocument();
+  });
+
+  it('tells the visitor Google did not sign them in when they cancel or it fails, not that an email link is dead', async () => {
+    const user = renderApp(makeFakeSupabase());
+    await user.click(headerSignIn());
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    cleanup();
+
+    window.history.replaceState(null, '', '/?error=access_denied&error_code=server_error&error_description=denied');
+    renderApp(makeFakeSupabase());
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/google sign-in did not finish/i);
+    expect(alert).not.toHaveTextContent(/email link/i);
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+    expect(window.location.search).toBe('');
+    expect(screen.getByTestId('token')).toHaveTextContent('none');
+  });
+
+  it('says the same when the code from Google could not be used in this browser', async () => {
+    const user = renderApp(makeFakeSupabase());
+    await user.click(headerSignIn());
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    cleanup();
+
+    window.history.replaceState(null, '', '/?code=abc123');
+    renderApp(makeFakeSupabase());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/google sign-in did not finish/i);
+    expect(window.location.search).toBe('');
+  });
+
+  it('does not blame Google for a later email link once the Google return has been handled', async () => {
+    const user = renderApp(makeFakeSupabase());
+    await user.click(headerSignIn());
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    cleanup();
+
+    // The visitor backed out of Google: the page reloaded with nothing in the URL.
+    renderApp(makeFakeSupabase());
+    await screen.findByRole('button', { name: 'Sign in' });
+    cleanup();
+
+    window.history.replaceState(null, '', '/?code=abc123');
+    renderApp(makeFakeSupabase());
+    expect(await screen.findByRole('alert')).toHaveTextContent(/different browser or device/i);
   });
 
   it('explains that accounts are unavailable when Supabase is not configured', async () => {

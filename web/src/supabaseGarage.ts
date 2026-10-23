@@ -1,11 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { GarageFullError } from './garage';
 import type { GarageBackend } from './garage';
+import { proFlag } from './plan';
 import type { RecentRig } from './types';
 
 // The account's Garage over the `garage_rigs` table and `add_rig` function from
 // supabase/migrations/20261010000000_garage_rigs.sql. Row-level security scopes every call to the
-// signed-in account; the cap and idempotency live in add_rig, not here.
+// signed-in account; the cap and idempotency live in add_rig, not here. The plan only tells add_rig which
+// cap to use (supabase/migrations/20261023000000_plan_caps.sql).
 
 interface GarageRow {
   id: string;
@@ -34,12 +36,13 @@ export function createSupabaseGarageBackend(client: SupabaseClient): GarageBacke
       return (data as GarageRow[]).map(toRig);
     },
 
-    async addRig(idempotencyKey, rig) {
+    async addRig(idempotencyKey, rig, plan) {
       const { error } = await client.rpc('add_rig', {
         p_idempotency_key: idempotencyKey,
         p_nickname: rig.nickname.trim(),
         p_truck: rig.truck,
         p_trailer: rig.trailer,
+        p_pro: proFlag(plan),
       });
       if (!error) return;
       if (error.message === 'garage_full') {

@@ -3,6 +3,8 @@ import { useAuth } from './auth';
 import { GarageFullError, useGarageBackend } from './garage';
 import type { GarageBackend } from './garage';
 import { nicknameKey } from './nickname';
+import type { Plan } from './plan';
+import { usePlan } from './plan';
 import { loadRecentRigs } from './recentRigs';
 import type { RecentRig } from './types';
 
@@ -18,6 +20,8 @@ export interface ImportResult {
   // Nicknames the Garage had no room for, and the cap that refused them when the server named one.
   notFit: string[];
   cap: number | null;
+  // The plan the import ran under (null when it could not be read), which is whose cap `cap` is.
+  plan: Plan | null;
   // True when the import stopped on an error before every Rig was dealt with.
   interrupted: boolean;
 }
@@ -78,8 +82,9 @@ async function importRigs(
   keys: Keys,
   persistKeys: () => void,
   stillSignedIn: () => boolean,
+  plan: Plan | null,
 ): Promise<ImportResult> {
-  const result: ImportResult = { imported: [], alreadyThere: [], notFit: [], cap: null, interrupted: false };
+  const result: ImportResult = { imported: [], alreadyThere: [], notFit: [], cap: null, plan, interrupted: false };
   let inAccount: RecentRig[];
   try {
     inAccount = await backend.list();
@@ -99,7 +104,7 @@ async function importRigs(
     keys[slot] ??= crypto.randomUUID();
     persistKeys();
     try {
-      await backend.addRig(keys[slot], { nickname: rig.nickname, truck: rig.truck, trailer: rig.trailer });
+      await backend.addRig(keys[slot], { nickname: rig.nickname, truck: rig.truck, trailer: rig.trailer }, plan);
       result.imported.push(rig.nickname);
     } catch (err) {
       if (!(err instanceof GarageFullError)) return { ...result, interrupted: true };
@@ -120,6 +125,7 @@ export interface RigImport {
 export function useRigImport(onImported: () => void): RigImport {
   const { user } = useAuth();
   const backend = useGarageBackend();
+  const plan = usePlan();
   const accountId = user?.id ?? null;
   const remote = accountId !== null ? backend : null;
   const [phase, setPhase] = useState<ImportPhase>({ kind: 'none' });
@@ -142,7 +148,7 @@ export function useRigImport(onImported: () => void): RigImport {
     setPhase({ kind: 'importing', rigs });
     const keys = readKeys(accountId);
     const stillSignedIn = () => current.current === accountId;
-    const result = await importRigs(remote, rigs, keys, () => writeStorage(keysKey(accountId), JSON.stringify(keys)), stillSignedIn);
+    const result = await importRigs(remote, rigs, keys, () => writeStorage(keysKey(accountId), JSON.stringify(keys)), stillSignedIn, plan);
     if (!stillSignedIn()) return;
     if (result.interrupted) {
       setPhase({ kind: 'interrupted', rigs });
@@ -152,7 +158,7 @@ export function useRigImport(onImported: () => void): RigImport {
       setPhase({ kind: 'done', result });
     }
     onImported();
-  }, [remote, accountId, phase, onImported]);
+  }, [remote, accountId, phase, onImported, plan]);
 
   const decline = useCallback(() => {
     if (accountId) writeStorage(answeredKey(accountId), new Date().toISOString());

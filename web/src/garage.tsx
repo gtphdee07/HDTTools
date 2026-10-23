@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { ReactNode } from 'react';
 import { useAuth } from './auth';
 import { sameNickname } from './nickname';
+import type { Plan } from './plan';
+import { usePlan } from './plan';
 import { loadRecentRigs, saveRecentRig } from './recentRigs';
 import type { RecentRig, TrailerTagData, TruckTagData } from './types';
 
@@ -23,8 +25,9 @@ type NewRig = Pick<RecentRig, 'nickname' | 'truck' | 'trailer'>;
 export interface GarageBackend {
   // The account's Rigs, most recently used first.
   list(): Promise<RecentRig[]>;
-  // Adds a Rig. Rejects with GarageFullError at the cap. The same key sent twice creates one Rig.
-  addRig(idempotencyKey: string, rig: NewRig): Promise<void>;
+  // Adds a Rig. Rejects with GarageFullError at the cap, which `plan` (null when it could not be read)
+  // picks. The same key sent twice creates one Rig.
+  addRig(idempotencyKey: string, rig: NewRig, plan: Plan | null): Promise<void>;
   // Rewrites an existing Rig (its tags and last-used time). Uses no capacity.
   updateRig(rig: RecentRig & { id: string }): Promise<void>;
   // Removes a Rig, which frees its slot. Removing one that is already gone succeeds.
@@ -69,19 +72,20 @@ async function tryUpdate(backend: GarageBackend, rig: RecentRig & { id: string }
 // One key per save, reused on the retry, so a request that did land but whose reply was lost is
 // recognised by the server instead of counted twice. A full Garage is an answer, not a failure, so
 // it is not retried.
-async function addWithOneRetry(backend: GarageBackend, rig: NewRig): Promise<void> {
+async function addWithOneRetry(backend: GarageBackend, rig: NewRig, plan: Plan | null): Promise<void> {
   const key = crypto.randomUUID();
   try {
-    await backend.addRig(key, rig);
+    await backend.addRig(key, rig, plan);
   } catch (err) {
     if (err instanceof GarageFullError) throw err;
-    await backend.addRig(key, rig);
+    await backend.addRig(key, rig, plan);
   }
 }
 
 export function useGarage(): Garage {
   const { user } = useAuth();
   const backend = useContext(GarageBackendContext);
+  const plan = usePlan();
   const accountId = user?.id ?? null;
   const remote = accountId !== null ? backend : null;
 
@@ -132,14 +136,14 @@ export function useGarage(): Garage {
       try {
         const existing = rigs.find((r) => sameNickname(r.nickname, nickname));
         const updated = existing?.id ? await tryUpdate(remote, { ...existing, id: existing.id, truck, trailer }) : false;
-        if (!updated) await addWithOneRetry(remote, { nickname, truck, trailer });
+        if (!updated) await addWithOneRetry(remote, { nickname, truck, trailer }, plan);
       } catch (err) {
         return err instanceof GarageFullError ? { status: 'full', cap: err.cap } : { status: 'failed' };
       }
       await load();
       return { status: 'saved' };
     },
-    [remote, rigs, load],
+    [remote, rigs, load, plan],
   );
 
   const deleteRig = useCallback(

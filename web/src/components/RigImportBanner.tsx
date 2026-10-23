@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { ImportResult, RigImport } from '../garageImport';
+import { garageFullText } from '../plan';
 
 const banner: CSSProperties = {
   display: 'flex',
@@ -24,14 +25,14 @@ function resultText(r: ImportResult): string {
     parts.push(`Already in your Garage under the same nickname, so left as they are: ${r.alreadyThere.join(', ')}.`);
   }
   if (r.notFit.length > 0) {
-    const limit = r.cap === null ? 'is full' : `is full (the Free plan holds ${rigs(r.cap)})`;
-    parts.push(`Your Garage ${limit}, so these were not imported: ${r.notFit.join(', ')}. They are still saved in this browser.`);
+    parts.push(`Your Garage ${garageFullText(r.cap, r.plan)}, so these were not imported: ${r.notFit.join(', ')}. They are still saved in this browser.`);
   }
   return parts.join(' ');
 }
 
 // Offers Rigs saved in this browser before signing in to the account's Garage, then reports how it went.
-export function RigImportBanner({ rigImport }: { rigImport: RigImport }) {
+// `onUpgrade` is given when the account is on Free and can buy Pro; it leads to the purchase.
+export function RigImportBanner({ rigImport, onUpgrade }: { rigImport: RigImport; onUpgrade?: () => void }) {
   const { phase, accept, decline, dismiss } = rigImport;
 
   if (phase.kind === 'offer' || phase.kind === 'importing') {
@@ -78,6 +79,11 @@ export function RigImportBanner({ rigImport }: { rigImport: RigImport }) {
     return (
       <div role="status" style={banner}>
         <span style={{ flex: 1 }}>{resultText(phase.result)}</span>
+        {onUpgrade && phase.result.notFit.length > 0 && phase.result.plan === 'free' && (
+          <button onClick={onUpgrade} style={action}>
+            Upgrade to Pro
+          </button>
+        )}
         <button onClick={dismiss} style={link}>
           Dismiss
         </button>

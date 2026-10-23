@@ -7,7 +7,8 @@
     "web/src/supabaseGarage.ts",
     "supabase/migrations/20261010000000_garage_rigs.sql",
     "web/src/supabaseHistory.ts",
-    "supabase/migrations/20261022000000_history_entries.sql"
+    "supabase/migrations/20261022000000_history_entries.sql",
+    "supabase/migrations/20261023000000_plan_caps.sql"
   ],
   "dependency_pins": ["web/package.json", "web/package-lock.json"],
   "registry_packages": [

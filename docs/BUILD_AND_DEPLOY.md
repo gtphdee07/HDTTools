@@ -170,21 +170,34 @@ the apps at a new project, all of it must be recreated or re-verified.
   and look for `"email"`, `"google"`, `"apple"` as true or false.
 - **Garage table (#28).** Run `supabase/migrations/20261010000000_garage_rigs.sql`
   once: Dashboard, SQL Editor, paste the file, Run. It creates `garage_rigs`
-  (row-level security on), the `add_rig` function that enforces the Free cap of 5
-  and idempotent retry, and the grants. Without it a signed-in Web user's Rigs
+  (row-level security on), the `add_rig` function that enforces the cap and
+  idempotent retry, and the grants. Without it a signed-in Web user's Rigs
   fail to save and the `supabase-tables` External suite fails. Check it with
   `cd web && EXTERNAL_SURFACES=supabase-tables npx vitest run --config vitest.external.config.ts`.
-  A new Supabase project needs the same step (section 7). Changing the cap means
-  a new migration that redefines `add_rig`, never an edit to the applied one.
+  A new Supabase project needs the same step (section 7). The cap itself is in
+  `plan_caps` (below), not in this migration.
 - **History table (#29).** Run `supabase/migrations/20261022000000_history_entries.sql`
   once, the same way (it is independent of the Garage one). It creates
   `history_entries` (row-level security on, read-only to the owning account), the
-  `add_history_entry` function that keeps the newest 10 checks per account (the
-  Free cap), dropping the oldest, and makes a retried add count once, and the
+  `add_history_entry` function that keeps the newest checks per account (the
+  plan's cap), dropping the oldest, and makes a retried add count once, and the
   grants. Without it a signed-in Web user's checks are not saved to the
   account (the app says so) and the History half of the `supabase-tables`
-  External suite fails. Check it with the same command as above. Changing the
-  cap means a new migration that redefines `add_history_entry`.
+  External suite fails. Check it with the same command as above.
+- **Plan caps (#30).** Run `supabase/migrations/20261023000000_plan_caps.sql`
+  once, the same way, **after** the two above. It creates `plan_caps`, the one
+  place the Garage and History caps for Free and Pro are written, and replaces
+  `add_rig` and `add_history_entry` with versions that read it. The numbers in it
+  are placeholders until launch pricing (#33). To change one, edit its row in the
+  SQL Editor, for example `update public.plan_caps set garage_cap = 30 where plan = 'pro';`
+  (no new migration, no redeploy). The app tells the functions whether the account
+  is Pro, so the cap is only as honest as the app (owner's decision on #30; a
+  server-verified plan would be a later ticket). **Run it before the Web build
+  that sends the plan is deployed** (Pages deploys on every push to `MPSkills`):
+  that build calls the two functions with a `p_pro` argument the old ones do not
+  have, so every Rig and History save fails until the migration is applied. The
+  other order is safe: an older Web build omits `p_pro` and is treated as Free.
+  Check it with the same command as above.
 - Free tier: pauses after 7 idle days and has no automatic backups (accepted
   for now, ADR-0005). If sign-in suddenly stops working, check whether the
   project is paused.

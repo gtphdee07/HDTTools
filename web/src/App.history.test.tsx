@@ -23,6 +23,7 @@ function makeFakeAccountHistory() {
       if (stored.some((e) => e.key === key)) return;
       stored.unshift({ id: `h-${stored.length + 1}`, date: 'Oct 22, 2026', ...entry, key });
     }),
+    caps: vi.fn(async () => ({ free: 10, pro: 50 })),
   } satisfies HistoryBackend;
   return { backend, stored };
 }
@@ -238,7 +239,7 @@ describe('History replies that arrive late', () => {
       .fn<() => Promise<HistoryEntry[]>>()
       .mockReturnValueOnce(slow.promise)
       .mockResolvedValue([entryFor('2', 'Newer'), entryFor('1', 'Older')]);
-    const backend: HistoryBackend = { list, addEntry: vi.fn(async () => {}) };
+    const backend: HistoryBackend = { list, addEntry: vi.fn(async () => {}), caps: vi.fn(async () => ({ free: 10, pro: 50 })) };
     const { result } = renderHistoryHook(backend, fakeAuth('a@example.com').client);
     await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
 
@@ -257,7 +258,7 @@ describe('History replies that arrive late', () => {
       .fn<() => Promise<HistoryEntry[]>>()
       .mockReturnValueOnce(slowForA.promise)
       .mockResolvedValue([entryFor('b1', 'B Rig')]);
-    const backend: HistoryBackend = { list, addEntry: vi.fn(async () => {}) };
+    const backend: HistoryBackend = { list, addEntry: vi.fn(async () => {}), caps: vi.fn(async () => ({ free: 10, pro: 50 })) };
     const auth = fakeAuth('a@example.com');
     const { result } = renderHistoryHook(backend, auth.client);
     await waitFor(() => expect(list).toHaveBeenCalledTimes(1));

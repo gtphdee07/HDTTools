@@ -8,11 +8,14 @@ import { VERDICT_BADGE } from '../verdictBadge';
 interface HistoryProps {
   history: HistoryEntry[];
   recentRigs?: RecentRig[];
+  // Given to a Free account whose History is full: how many checks Free keeps and how many Pro keeps, and
+  // where to go to buy Pro.
+  atLimit?: { freeKeeps: number; proKeeps: number; onUpgrade: () => void };
 }
 
 type Filter = 'all' | 'within' | 'over' | `rig:${string}`;
 
-export function History({ history, recentRigs = [] }: HistoryProps) {
+export function History({ history, recentRigs = [], atLimit }: HistoryProps) {
   const [filter, setFilter] = useState<Filter>('all');
   const findRig = rigLookup(recentRigs);
   // One pill per rig, however its nickname was spelled in each check (case, surrounding spaces).
@@ -53,6 +56,33 @@ export function History({ history, recentRigs = [] }: HistoryProps) {
       <p style={{ fontSize: 'var(--text-body-lg)', color: 'var(--fg-2)', margin: '0 0 24px' }}>
         Every check you have run and where you stood.
       </p>
+
+      {atLimit && (
+        <div
+          role="status"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            background: 'var(--color-tint-purple)',
+            borderRadius: 12,
+            padding: '12px 16px',
+            marginBottom: 20,
+            fontSize: 14,
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            The Free plan keeps your last {atLimit.freeKeeps} checks, and the oldest drops off as you add more. Pro keeps your last{' '}
+            {atLimit.proKeeps}.
+          </span>
+          <button
+            onClick={atLimit.onUpgrade}
+            style={{ background: 'none', border: 'none', color: 'var(--fg-1)', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
+          >
+            Upgrade to Pro
+          </button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
         <button style={pillStyle(filter === 'all')} onClick={() => setFilter('all')}>

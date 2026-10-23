@@ -4,7 +4,7 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged and pushed (cf305df); #20 (Web lane) and #101, #31, #32 (Android lane, one at a time); #27 and #30 are merged are left. The live `revenuecat-rest` check passed (the `pro` entitlement has the Web paywall's product attached), so all push gates are clear. Claude asks before each push (Web goes live on a push).
+The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged and pushed (cf305df); #20 (Web lane) and #101, #31, #32 (Android lane, one at a time) are left; #27 and #30 are merged and pushed (6ea870c). The live `revenuecat-rest` check passed (the `pro` entitlement has the Web paywall's product attached), so all push gates are clear. Claude asks before each push (Web goes live on a push).
 
 Order of the table: a row starts when the ticket it names has merged. #20 was narrowed to Google only (Apple stays with #77). Web goes live on every push of `MPSkills`, so Claude asks first, and runs the stale External suites before the push.
 
@@ -61,7 +61,7 @@ Done: History sync on Web (migration `20261022000000_history_entries.sql` applie
 
 ### #30 (merged 2026-10-22)
 
-Done: Pro raises the Garage and History caps (Free 5 Rigs / 10 checks, Pro 25 / 50 as placeholders in the `plan_caps` table), with an upgrade prompt. The app reports the plan to the database (your decision). **Before the next push you apply `supabase/migrations/20261023000000_plan_caps.sql`** in the Supabase SQL editor; Claude then runs the live `supabase-tables` suite (free).
+Done: Pro raises the Garage and History caps (Free 5 Rigs / 10 checks, Pro 25 / 50 as placeholders in the `plan_caps` table), with an upgrade prompt. The app reports the plan to the database (your decision). You applied `supabase/migrations/20261023000000_plan_caps.sql`, the live `supabase-tables` suite passed (20/20) and the push is out (6ea870c).
 
 ### #20 Continue with Google on Web
 

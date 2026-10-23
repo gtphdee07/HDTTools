@@ -96,7 +96,7 @@ place listed.
 | Supabase **service-role / secret key** | Full database access | **Not used anywhere. Do not put it anywhere in this repo.** The Web External test of the deployed site flags one if it ever ends up in the bundle. | nothing |
 | Cloudflare login | Account access | Interactive: `npx wrangler login`. For non-interactive use: the standard `CLOUDFLARE_API_TOKEN` (and `CLOUDFLARE_ACCOUNT_ID`) environment variables. The repo doesn't use these itself. | Worker deploy |
 | GitHub login | Issues, push | `gh auth login` and your normal git credentials | everything |
-| Android upload/release keystore and its passwords | Signs a Play Store build | **Not set up yet.** When it is, keep the keystore file and passwords outside the repo (see section 8). | Play release |
+| Android upload/release keystore and its password | Signs a beta APK, and later a Play Store build | Create it with `bash scripts/wizard_android_upload_key.sh` (from the repo root). The file lives in a folder **outside the repo**, the password in your password manager, a second copy of the file somewhere separate. Never commit either. See section 8. | Beta APK; Play release |
 | Apple client secret, Services ID, key | Sign in with Apple | **Not set up.** Deferred to #77 with the iOS app. | future |
 
 There are no GitHub Actions secrets: the repo has no CI workflows. The one

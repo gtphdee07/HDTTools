@@ -38,7 +38,7 @@ Two lanes. They can build side by side; Android runs one ticket at a time becaus
 ### Owner-only steps in Phase 1
 
 - [ ] **#97:** set the Anthropic spend limit and an alert, and record the figure and date on the ticket.
-- [ ] Generate the Android **upload keystore**, keep it and its passwords outside the repo, and register its SHA-1 in the Google OAuth Android client. Without that, Google sign-in fails on testers' phones.
+- [ ] Generate the Android **upload keystore**, keep it and its password outside the repo, and register its SHA-1 in the Google OAuth Android client. Without that, Google sign-in fails on testers' phones. Run `bash scripts/wizard_android_upload_key.sh` from the repo root; it does all of this step by step.
 - [ ] If the Google OAuth consent screen is in "Testing" mode, add each tester's Google account as a test user.
 - [ ] Choose how to protect Supabase: the paid tier, or a weekly keep-alive plus a manual export. The free tier pauses after 7 idle days and has no backups.
 - [ ] Commit the sandbox Web key and offering id to `web/.env.production` (public values; see [BUILD_AND_DEPLOY.md](BUILD_AND_DEPLOY.md) section 3).

@@ -4,13 +4,12 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged and pushed (cf305df); #32 (Android lane) is left, and #31 is merged and pushed (6ab852d); #101 and #20 are merged and pushed (bd69ac0); #27 and #30 are merged and pushed (6ea870c). The live `revenuecat-rest` check passed (the `pro` entitlement has the Web paywall's product attached), so all push gates are clear. Claude asks before each push (Web goes live on a push).
+The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged and pushed (cf305df); #31 is merged and pushed (6ab852d), and #32 is merged, not yet pushed (the Android lane is done); #101 and #20 are merged and pushed (bd69ac0); #27 and #30 are merged and pushed (6ea870c). The live `revenuecat-rest` check passed (the `pro` entitlement has the Web paywall's product attached), so all push gates are clear. Claude asks before each push (Web goes live on a push).
 
 Order of the table: a row starts when the ticket it names has merged. #20 was narrowed to Google only (Apple stays with #77). Web goes live on every push of `MPSkills`, so Claude asks first, and runs the stale External suites before the push.
 
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
-| 1 | #32 Android History (after #29 and #31) | Android | stop the emulator | [#32](#32-android-history) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
 
 #46 and #47 can build at the same time (different surfaces, and only #47 touches the emulator). Do not run Gradle in two sessions at once with the emulator up: the machine runs out of memory (see "Things to remember"). The final External run is done (2026-10-21, see History); if #132 changes no code there is nothing more to run, and any later change to a boundary file or pin needs `uv run scripts/external_freshness.py` first.
@@ -76,34 +75,9 @@ Done: the Android Paywall offers Pro (and no packs) to a Free account and the sc
 
 Done: Android reads and writes the account's Garage (the same Rigs as Web, the plan's cap enforced by the database, a retried add creates one Rig), with a notice and a Pro offer on the Results screen when the Garage is full. The full instrumented suite (174) passes on the merged tree. **Still yours:** on a device, add a Rig on Web and see it in the Android picker; finish a check with a full Garage and look at the notice. Follow-ups filed: #169 (delete a Rig on Android), #170 (import the phone's Rigs on first sign-in), #171 (live External coverage of Android's Garage client; decide before an Android release).
 
-### #32 Android History
+### #32 (merged 2026-10-23)
 
-- **Step 1:** `/ticket-start 32` (after #29 and #31 are merged). Android; the single emulator.
-- **Step 2 block:**
-
-```
-Test-round additions:
-- If you add or move a class in `domain`, `data` or `ui`, classify it in
-  `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android
-  end-of-session command is `uv run scripts/android_session_end.py` (JVM tests,
-  coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running.
-  Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save
-  -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are
-  done.
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in its context's testing document, and a new
-  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
-- Live runs: do not run the live External suite or any paid call. The owner runs
-  the surface from the main checkout after the merge. Do not commit changes to
-  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
-  markers.
-- Cap and oldest-pruned behaviour must match Web (#29).
-```
-
-- **Your part:** none beyond the usual steps. Stop the emulator afterwards (step 6).
+Done: Android has a History screen over the account's History (the same checks as Web, newest first, the plan's cap enforced by the database), each finished check is saved once, and a Free account at the cap is told what each plan keeps. The full instrumented suite (184) passes on the merged tree. **Still yours:** a by-hand round trip on the real project (finish a check on Android and see it in Web's History, then the other way round); decide the date question in #172 (Web shows UTC, Android the phone's local day); triage #173 (Android History filters).
 
 ### #132 (optional) mutation-testing research
 

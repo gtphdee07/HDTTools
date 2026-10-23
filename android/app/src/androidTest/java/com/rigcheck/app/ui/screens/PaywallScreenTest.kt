@@ -1,20 +1,29 @@
 package com.rigcheck.app.ui.screens
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.revenuecat.purchases.Package
+import com.revenuecat.purchases.PackageType
+import com.rigcheck.app.testsupport.fakePackage
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 // The daily-tier custom test Application (CustomTestRunner) never calls
 // Purchases.configure(), so RevenueCatManager.getOfferings() always throws
-// here - these tests cover the resulting error-state rendering, which is
-// genuinely what an unconfigured/offline device would see. Real Test Store
+// here - unless a test passes its own `loadPackages`, as the #101 cases at the
+// end of this file do. The rest cover the resulting error-state rendering,
+// which is genuinely what an unconfigured/offline device would see. Real Test Store
 // offerings/pricing is the weekly-equivalent tier, deferred until the
 // dedicated RevenueCat test customer exists (see NEXT_STEPS.md).
 @RunWith(AndroidJUnit4::class)
@@ -231,5 +240,216 @@ class PaywallScreenTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("Restore purchase").assertIsEnabled()
+    }
+
+    // Scan packs are for Pro accounts only (#101, ADR-0006's 2026-10-12 amendment).
+    // RevenueCat is faked as the Offering's packages: the ids are arbitrary and the
+    // prices are the fakes' own, so what tells Pro from a pack is the reported
+    // package type alone, and what is shown is the store's own price text.
+    private val proPackage = fakePackage("pkg-a", PackageType.LIFETIME, "Pro (lifetime)", "\$14.99")
+    private val smallPack = fakePackage("pkg-b", PackageType.CUSTOM, "10 scans", "\$2.99")
+    private val largePack = fakePackage("pkg-c", PackageType.CUSTOM, "50 scans", "\$9.99")
+
+    private fun waitForText(text: String) {
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test
+    fun aFreeAccountIsOfferedProAndNoScanPacks() {
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 0,
+                onPurchase = { _, _ -> },
+                onRestore = { },
+                onDone = { },
+                isPro = false,
+                loadPackages = { listOf(smallPack, proPackage, largePack) },
+            )
+        }
+
+        waitForText("Pro (lifetime)")
+        composeRule.onNodeWithText("Unlock Pro").assertIsDisplayed()
+        composeRule.onNodeWithText("\$14.99").assertIsDisplayed()
+        composeRule.onNodeWithText("10 scans").assertDoesNotExist()
+        composeRule.onNodeWithText("50 scans").assertDoesNotExist()
+        composeRule.onNodeWithText("\$2.99").assertDoesNotExist()
+    }
+
+    @Test
+    fun aProAccountIsOfferedScanPacksAndNotPro() {
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 3,
+                onPurchase = { _, _ -> },
+                onRestore = { },
+                onDone = { },
+                isPro = true,
+                loadPackages = { listOf(smallPack, proPackage, largePack) },
+            )
+        }
+
+        waitForText("10 scans")
+        composeRule.onNodeWithText("50 scans").assertIsDisplayed()
+        composeRule.onNodeWithText("\$2.99").assertIsDisplayed()
+        composeRule.onNodeWithText("\$9.99").assertIsDisplayed()
+        composeRule.onNodeWithText("Pro (lifetime)").assertDoesNotExist()
+        composeRule.onNodeWithText("\$14.99").assertDoesNotExist()
+    }
+
+    // Nothing is offered while the plan is not known: showing packs to an account
+    // that turns out to be Free would let it buy scans without Pro.
+    @Test
+    fun nothingIsOfferedWhileThePlanIsNotKnownAndTryAgainReadsItAgain() {
+        var planReads = 0
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 0,
+                onPurchase = { _, _ -> },
+                onRestore = { },
+                onDone = { },
+                isPro = null,
+                onRetryPlan = { planReads++ },
+                loadPackages = { listOf(smallPack, proPackage) },
+            )
+        }
+
+        waitForText("Checking your plan")
+        composeRule.onNodeWithText("Pro (lifetime)").assertDoesNotExist()
+        composeRule.onNodeWithText("10 scans").assertDoesNotExist()
+
+        composeRule.onNodeWithText("Try again").performClick()
+
+        assertEquals(1, planReads)
+    }
+
+    // Buying Pro does not close the screen: once the account is Pro (and the starter
+    // scans are in its balance) the packs replace the Pro offer where it stands.
+    @Test
+    fun buyingProOnThePaywallSwapsInTheScanPacksWithoutLeavingIt() {
+        val isPro = mutableStateOf<Boolean?>(false)
+        val balance = mutableStateOf<Int?>(0)
+        var bought: Package? = null
+        var done = false
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = balance.value,
+                onPurchase = { pkg, report ->
+                    bought = pkg
+                    isPro.value = true
+                    balance.value = 25
+                    report(true, null)
+                },
+                onRestore = { },
+                onDone = { done = true },
+                isPro = isPro.value,
+                loadPackages = { listOf(proPackage, smallPack, largePack) },
+            )
+        }
+        waitForText("Pro (lifetime)")
+
+        composeRule.onNodeWithText("\$14.99").performClick()
+
+        waitForText("10 scans")
+        assertEquals(proPackage, bought)
+        assertFalse("buying Pro must not leave the Paywall", done)
+        composeRule.onNodeWithText("Pro (lifetime)").assertDoesNotExist()
+        composeRule.onNodeWithText("You have 25 scans left.", substring = true).assertIsDisplayed()
+    }
+
+    // The plan is read again after the purchase, so for a moment the account has Pro but
+    // still reads as Free. Pro must not be buyable a second time in that gap.
+    @Test
+    fun proCannotBeBoughtAgainWhileThePlanCatchesUp() {
+        val isPro = mutableStateOf<Boolean?>(false)
+        var purchases = 0
+        var planReads = 0
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 0,
+                onPurchase = { _, report ->
+                    purchases++
+                    report(true, null)
+                },
+                onRestore = { },
+                onDone = { },
+                isPro = isPro.value,
+                onRetryPlan = { planReads++ },
+                loadPackages = { listOf(proPackage, smallPack) },
+            )
+        }
+        waitForText("Pro (lifetime)")
+
+        composeRule.onNodeWithText("\$14.99").performClick()
+
+        composeRule.onNodeWithText("\$14.99").assertIsNotEnabled()
+        composeRule.onNodeWithText("Pro is yours.", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Try again").performClick()
+        assertEquals(1, planReads)
+        assertEquals(1, purchases)
+
+        composeRule.runOnUiThread { isPro.value = true }
+        waitForText("10 scans")
+        composeRule.onNodeWithText("Pro is yours.", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun buyingAScanPackLeavesThePaywall() {
+        var bought: Package? = null
+        var done = false
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 3,
+                onPurchase = { pkg, report ->
+                    bought = pkg
+                    report(true, null)
+                },
+                onRestore = { },
+                onDone = { done = true },
+                isPro = true,
+                loadPackages = { listOf(proPackage, smallPack, largePack) },
+            )
+        }
+        waitForText("10 scans")
+
+        composeRule.onNodeWithText("\$2.99").performClick()
+
+        assertEquals(smallPack, bought)
+        assertTrue("buying a pack ends the visit", done)
+    }
+
+    @Test
+    fun aFreeAccountWithNoProPackageInTheOfferingIsToldProIsUnavailable() {
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 0,
+                onPurchase = { _, _ -> },
+                onRestore = { },
+                onDone = { },
+                isPro = false,
+                loadPackages = { listOf(smallPack, largePack) },
+            )
+        }
+
+        waitForText("Pro isn't available to buy right now.")
+        composeRule.onNodeWithText("10 scans").assertDoesNotExist()
+    }
+
+    @Test
+    fun aProAccountWithNoScanPacksInTheOfferingIsToldSo() {
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 3,
+                onPurchase = { _, _ -> },
+                onRestore = { },
+                onDone = { },
+                isPro = true,
+                loadPackages = { listOf(proPackage) },
+            )
+        }
+
+        waitForText("No scan packs are available right now.")
+        composeRule.onNodeWithText("Pro (lifetime)").assertDoesNotExist()
     }
 }

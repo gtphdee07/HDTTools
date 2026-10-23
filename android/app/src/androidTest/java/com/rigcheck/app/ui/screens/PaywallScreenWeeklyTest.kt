@@ -17,6 +17,7 @@ import com.rigcheck.app.data.RevenueCatManager
 import com.rigcheck.app.data.ScanApiClient
 import com.rigcheck.app.data.ScanResult
 import com.rigcheck.app.data.encodePhotoForScan
+import com.rigcheck.app.data.paywallOffers
 import com.rigcheck.app.testsupport.AssetFixtureFileSource
 import com.rigcheck.app.testsupport.ScanFixturePool
 import com.rigcheck.app.testsupport.weeklyAccessToken
@@ -82,8 +83,10 @@ class PaywallScreenWeeklyTest {
             // UI structure) - the same pkg.product.title/price.formatted
             // fields PaywallScreen itself renders.
             val offerings = RevenueCatManager.getOfferings()
-            val pkg = offerings.current?.availablePackages?.firstOrNull()
-            assertNotNull("Test Store offering must have at least one package", pkg)
+            // The paywall offers scan packs to a Pro account only (#101), so this
+            // renders as one and expects the first scan pack the Offering has.
+            val pkg = paywallOffers(offerings.current?.availablePackages.orEmpty()).scanPacks.firstOrNull()
+            assertNotNull("Test Store offering must have at least one scan pack", pkg)
             val expectedTitle = pkg!!.product.title
             val expectedPrice = pkg.product.price.formatted
 
@@ -93,6 +96,7 @@ class PaywallScreenWeeklyTest {
                     onPurchase = { _, _ -> },
                     onRestore = { },
                     onDone = { },
+                    isPro = true,
                 )
             }
 

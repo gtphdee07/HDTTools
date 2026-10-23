@@ -934,10 +934,9 @@ network involved:
   actually tapping it: a success case, a failure case, and a
   busy-then-reenabled interaction test that holds the fake `onRestore`
   callback open to observe the button disable/re-enable. Real Test Store
-  offerings/pricing, the loading spinner, and the purchase-button states
-  all need `PaywallScreen`'s own internal `RevenueCatManager` call to
-  return real package data (no injection point to fake it here) — that
-  stays the External suite's job.
+  offerings/pricing stay the External suite's job; since #101 the screen
+  takes its packages through `loadPackages`, so the cases below fake the
+  Offering (`testsupport/FakeOfferingPackages.kt`) instead.
 
 - `AccountScreenTest` (#22) — the sign-in / create-account screen with fake
   callbacks: all three methods present, submit disabled until a valid
@@ -949,6 +948,18 @@ network involved:
   its Sign out button, and (#27) the plan line: "Pro plan" for a Pro account,
   "Free plan" for a Free one, and nothing while the plan is not known (never
   "Free plan" for unknown).
+- `PaywallScreenTest` also covers (#101) who may buy what, with RevenueCat faked as the
+  Offering's packages (arbitrary ids and prices, so only the reported package type can tell
+  Pro from a pack): a Free account sees the Pro offer and no pack, a Pro account the packs
+  and not Pro, nothing is offered while the plan is not known (Try again reads it again),
+  buying Pro swaps the packs in with the new balance and does not close the screen (and Pro
+  cannot be bought a second time while the plan is still catching up), buying a pack does
+  close it, and an Offering without a lifetime package (Free) or without packs
+  (Pro) shows a plain message.
+- `PaywallOffersTest.kt` (#101, JVM, 5 tests) — the split of an Offering into Pro and scan
+  packs: the lifetime package is Pro and the other one-time packages are packs whatever their
+  ids, Pro is never also a pack, no lifetime package means no Pro offer, a subscription is
+  neither, an empty Offering offers nothing.
 - `ScanNoticeScreenTest` (#120, 11 tests) — the notice on the three entry screens, the half
   `ScanNoticeTest` (JVM) cannot see: a Truck Tag, Trailer Tag or Scale Ticket Scan that read
   nothing shows the notice and no Try again, one that read some fields names the unread ones,

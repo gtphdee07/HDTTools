@@ -13,6 +13,7 @@ import com.revenuecat.purchases.awaitCustomerInfo
 import com.revenuecat.purchases.awaitGetVirtualCurrencies
 import com.revenuecat.purchases.awaitLogIn
 import com.rigcheck.app.data.RevenueCatManager
+import com.rigcheck.app.data.paywallOffers
 import com.rigcheck.app.testsupport.ExternalSurface
 import com.rigcheck.app.testsupport.weeklyAccountIdFromMarker
 import com.rigcheck.app.testsupport.whileOffline
@@ -140,12 +141,15 @@ class RevenueCatAndroidSdkExternalTest {
     @Test
     fun paywallLoadsOfferingsThenRestores() {
         runBlocking {
-            val expectedTitle = RevenueCatManager.getOfferings().current!!.availablePackages.first().product.title
+            // The paywall offers scan packs to a Pro account only (#101), so it renders as one.
+            val expectedTitle = paywallOffers(RevenueCatManager.getOfferings().current!!.availablePackages)
+                .scanPacks.first().product.title
             val restore = AtomicReference<Pair<Boolean, String?>>()
 
             composeRule.setContent {
                 PaywallScreen(
                     creditBalance = null,
+                    isPro = true,
                     onPurchase = { _, _ -> },
                     // The same call RigCheckViewModel.restorePurchases makes.
                     onRestore = { report ->

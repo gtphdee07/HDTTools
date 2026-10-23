@@ -44,6 +44,8 @@ allow = [
   "com.rigcheck.app.data.AccountResult.Failure",
   "com.rigcheck.app.data.AccountState.SignedIn",
   "com.rigcheck.app.data.BackendStatus.Authenticated",
+  "com.rigcheck.app.data.PaywallOffers",
+  "com.rigcheck.app.data.PaywallOffersKt",
   "com.rigcheck.app.data.RecentRigsRepository",
   "com.rigcheck.app.data.ScanApiClientKt",
   "com.rigcheck.app.data.ScanAttempts",

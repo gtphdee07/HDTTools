@@ -241,6 +241,23 @@ class GarageTest {
         assertEquals(listOf("On this phone"), f.garage.rigs.value.map { it.nickname })
     }
 
+    // A refresh is its own read, not the one sign-in started, so signing out does not cancel it.
+    @Test
+    fun `a refresh that answers after sign-out does not put the account's Rigs on this phone's list`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val f = Fixture(this)
+            f.local.seed(rig("On this phone"))
+            f.server.seed(alice, rig("In the account"))
+            f.signIn(alice)
+            f.backend.listGate = CompletableDeferred()
+            f.garage.refresh() // reads the account's Rigs and waits
+
+            f.signOut()
+            f.backend.listGate!!.complete(Unit)
+
+            assertEquals(listOf("On this phone"), f.garage.rigs.value.map { it.nickname })
+        }
+
     @Test
     fun `an older refresh that answers late does not overwrite a newer list`() = runTest(UnconfinedTestDispatcher()) {
         val f = Fixture(this)
@@ -398,6 +415,18 @@ class GarageTest {
         val updated = f.server.garages.getValue(alice.id).first { it.nickname == "Two" }
         assertEquals(newTruck, updated.truck)
         assertEquals("2026-10-22T00:00:00Z", updated.lastUsedAt)
+    }
+
+    @Test
+    fun `a nickname with spaces around it is the same Rig, used again and not added`() = runTest(UnconfinedTestDispatcher()) {
+        val f = Fixture(this, freeCap = 2)
+        f.server.seed(alice, rig("One"), rig("Two"))
+        f.signIn(alice)
+
+        val outcome = f.garage.saveRig("  Two ", truck, trailer)
+
+        assertEquals(SaveRigOutcome.Saved, outcome)
+        assertEquals(emptyList<String>(), f.backend.addKeys)
     }
 
     @Test

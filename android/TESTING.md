@@ -738,10 +738,10 @@ root `TESTING.md`'s "Dashboard" section.
   per idempotency key): a Rig saved on another device is here on sign-in and after a refresh, newest
   first; signed out the Garage is this phone's Rigs and the account's are never mixed in; the next
   account never sees the previous one's Rigs and a late answer for a left account or an older read is
-  dropped; a failed read keeps what is shown; a save goes to the account (never the phone's list when
+  dropped (including a refresh that lands after sign-out); a failed read keeps what is shown; a save goes to the account (never the phone's list when
   signed in); a retried add carries one key and creates one Rig, even when the first reply was lost at
   the cap; a full Garage names its cap and is not retried; a Rig already in a full Garage is updated,
-  not added, in any letter case; a Rig deleted elsewhere is added back; the Pro, Free and unknown plan
+  not added, in any letter case and with spaces around the name; a Rig deleted elsewhere is added back; the Pro, Free and unknown plan
   reach `add_rig` as true, false and null; saving a Rig that Web saved keeps what only Web keeps.
 - `GarageWireTest.kt` (#31) — how a Rig is stored in the Garage, shared with Web: Web's field names
   open on Android with the same figures, Android's are written in Web's names, fields only Web keeps

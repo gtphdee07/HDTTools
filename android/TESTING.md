@@ -875,8 +875,7 @@ network involved:
 - `RigPickerScreenTest` (see below) shows whichever Rigs it is given, so it is unchanged by the Garage
   (#31): where the Rigs come from (the account or this phone) is `GarageTest` and
   `GarageNavigationTest`.
-- `ResultsScreenTest` — (#31) a Garage notice shows beside the verdict when the check's Rig was not
-  saved, offers Pro only when told to, and is absent when the Rig was saved. All-passing renders "Safe to Tow", any failure
+- `ResultsScreenTest` — all-passing renders "Safe to Tow", any failure
   renders "Not Safe to Tow"; row labels/percentages display correctly;
   all-insufficient renders "Not Enough Information", a mix renders
   "Partially Checked" (added 2026-08-21 alongside the `Tone.INSUFFICIENT`
@@ -887,7 +886,8 @@ network involved:
   without a GCWR and not with a checked one, and the over-limit subline shows.
   The `EstimatedFiguresNotice` (Android port of
   Web's `PredictiveEstimateNotice.tsx`) shows when any row is `estimated`,
-  hidden otherwise.
+  hidden otherwise. (#31) A Garage notice shows beside the verdict when the check's Rig was not saved,
+  offers Pro only when told to, and is absent when the Rig was saved.
 - `BreakdownRowTest` — a row's note is hidden until tapped, then appears
   (the dynamic pin-weight-explanation feature); a note-less row's tap
   is a no-op, doesn't crash; an insufficient row renders without crashing

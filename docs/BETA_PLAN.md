@@ -1,109 +1,135 @@
-# Beta plan
+# Release plan: Alpha, fixes and audits, Beta, production
 
-Drafted 2026-10-22 for the owner to edit; ticket status updated 2026-10-23. It plans the first beta (a small invited group), what must be done before going live, and what can ship later as feature releases. Ticket numbers are GitHub issues in `gtphdee07/HDTTools`. "New" means no ticket exists yet. Check ticket state with `gh issue list` before relying on this page, because tickets change faster than this file.
+Drafted 2026-10-22 as a beta plan; restructured 2026-10-23 into four stages after the owner added an Alpha round. The file keeps its name because tickets #174 to #178 link to it. Ticket numbers are GitHub issues in `gtphdee07/HDTTools`. Check ticket state with `gh issue list` before relying on this page, because tickets change faster than this file.
 
-## Decisions behind the plan (owner, 2026-10-22)
+## The stages
 
-- **Payments in the beta:** test payments only. Web uses RevenueCat Web Billing sandbox and Android uses RevenueCat's Test Store. No real money moves, so Google Play Console, final pricing (#33) and the full legal review (#34) are not beta gates.
-- **Android install:** a signed APK file sent to testers. No Play Store listing in the beta.
-- **Testers:** fewer than 20 invited people; the first round is 2 testers (owner, 2026-10-23). The Anthropic spend cap (#97) is a must-do; the per-account rate limit (#114) is a should-do. Widening the beta also means upgrading Supabase to Pro (see the Phase 1 owner steps).
-- **Audits:** the refactor analysis and the security audit both run first as read-only reports. Findings become tickets. Only high and medium security findings, and refactors that block the beta, are fixed before it.
+| Stage | Who tests | Goal | Starts when | Ends when |
+|---|---|---|---|---|
+| **1. Alpha** | up to 5 tech-savvy people | Get Web and Android into testable shape and collect rough feedback | the Alpha tickets below are merged and pushed, the APK is built, testers are invited | the owner calls it (open-ended) |
+| **2. Fix and audit** | nobody new | Fix what Alpha found, then run the refactor analysis and the security audit, fix what they find, and finish the Beta prep tickets | Alpha ends | Beta-ready checklist is done |
+| **3. Beta** | a larger invited group (under 20 unless the owner changes it) | Check the fixed product with more people and more devices | stage 2 is done | the owner decides to release |
+| **4. Release** | the public | Real payments, store listing, legal, production keys | Beta ends | live |
+
+Rule (owner, 2026-10-23): tickets labelled `enhancement` or `future` wait until after the production release.
+
+## Decisions behind the plan (owner)
+
+- **Payments in Alpha and Beta:** test payments only. Web uses RevenueCat Web Billing sandbox and Android uses RevenueCat's Test Store. No real money moves, so Google Play Console, final pricing (#33) and the full legal review (#34) gate the Release, not Alpha or Beta.
+- **Android install:** a signed APK file sent to testers. No Play Store listing before Release.
+- **Alpha size:** at most 5 tech-savvy testers. **Beta size:** under 20 invited people.
+- **Alpha scope (2026-10-23):** #174, #176 and #178 plus the small fixes #169 and #172. #175 and #177 move to the Beta prep.
+- **Alpha end:** open-ended; the owner calls it.
+- **Audits:** the refactor analysis and the security audit both run after Alpha as read-only reports first; findings become tickets. Only high and medium security findings, and refactors that reduce risk or block the Beta, are done before Beta.
+- **Supabase:** stay on the Free plan for Alpha; upgrade to Pro ($25 a month: no inactivity pause, daily backups kept 7 days) before the Beta widens, and before Release.
+- **Anthropic spend:** $30 a month limit with an alarm at $15 (#97, closed 2026-10-23). Five Alpha testers at 20 scans each cost under $2 in the worst case.
 
 ## Status on 2026-10-23
 
-- **The Phase 1 build chain is finished.** All eight tickets are closed and pushed: #146, #29, #30, #20, #27, #101, #31 and #32 (closed 2026-10-22 and 2026-10-23, much faster than the sizing guess). The Supabase migrations for #29 (History) and #30 (plan caps) are applied and their live External suites passed. `supabase-auth`, `revenuecat-web-billing` and `anthropic` were re-run live after the last merges. `MPSkills` carries one unpushed run-sheet commit.
-- **Filed 2026-10-23 (all `ready-for-agent`, not started):** the five Phase 1 tickets: #174 Android beta build, #175 Web release branch, #176 tester kit, #177 privacy notice and beta terms, #178 visibility (Worker logs and Android crashes). No audit has run. #97 (the Anthropic spend cap) is set ($30 a month, alarm at $15) and the ticket is closed.
-- **Done by you:** the upload keystore exists (wizard run 2026-10-23; file and notes in `G:\Secrets\rigcheck`) and an Android client for it was created in Google Cloud. You confirmed the checks on 2026-10-23: the password is in your password manager, a second copy of the file exists, and the Google client's SHA-1 matches the notes file. You also added the first testers as Google test users; add each new tester's Gmail the same way before inviting them.
-- **New open tickets since the plan:** #169, #170, #171, #172, #173 (see "Tickets the chain left behind"). #166, #167 and #168 also closed since the plan was drafted.
-- **Next step:** run the five new tickets, and start the read-only refactor analysis (Phase 2) beside them. #174 and #175 first: the tester guide (#176) needs the beta flag and the one Web address.
+- **The shared-accounts build chain is finished.** #146, #29, #30, #20, #27, #101, #31 and #32 are closed and pushed. The Supabase migrations for History (#29) and plan caps (#30) are applied and their live External suites passed.
+- **Done by you:** the Android upload keystore (files and notes in `G:\Secrets\rigcheck`, backed up, SHA-1 registered in Google Cloud), the first testers listed as Google test users, the sandbox Web key committed and live (Pro bought with a fresh test account on the live site), the Supabase Redirect URLs checked, the Supabase plan decided, and the Anthropic spend limit set.
+- **Filed, not started:** #174 Android beta build, #175 Web release branch, #176 tester kit, #177 privacy notice and terms, #178 visibility (Worker logs and Android crashes). Their titles say "beta"; they serve both rounds.
+- **Not run yet:** the refactor analysis and the security audit.
+- **`MPSkills`** carries a few unpushed documentation commits; they do not change Web.
 
-## What the beta must let a tester do
+## Stage 1: Alpha
 
-Sign up (email, and Google if #20 is in), use manual entry without an account, scan a truck tag, trailer tag and scale ticket, buy Pro and scan packs with test cards, and see the same Garage, History, Pro status and scan balance on Android and Web.
+### Tickets to finish before inviting anyone
 
-## Phase 1: build the beta product
-
-Two lanes. They can build side by side; Android runs one ticket at a time because there is one emulator. Run each ticket with the steps on the run sheet ([agents/test-round-handoff.md](agents/test-round-handoff.md)).
-
-| Lane | Tickets, in order | Beta need | Status |
+| Order | Ticket | What | Surface |
 |---|---|---|---|
-| Web and server | #29 History sync on Web, #30 Pro raises the Garage and History caps | must | **done**, closed and pushed |
-| Web and server | #20 Continue with Google on Web (Google only) | should | **done**, closed and pushed |
-| Android | #146 prove the `pro` entitlement is attached, #27 Pro and credits carry across, #101 scan packs for Pro only, #31 synced Garage, #32 History | must (#101 is marked "do not release Android before it is done") | **done**, closed and pushed |
+| 1 | **#174** | A signed, non-debuggable Android build that may use the Test Store key, with a beta flag | Android |
+| 2 | **#176** | A script that grants a tester Pro and scans; a tester guide; a feedback link and a "Beta: test payments" label in both apps | Web, Android, script |
+| 3 | **#169** | Android: delete a Rig from the synced Garage (a Free tester at the 5-Rig cap is stuck without it) | Android |
+| 4 | **#178** | Worker logs you can read, and a way to see Android crashes | Worker, Android |
+| beside any of them | **#172** | Web: show dates in the viewer's local time, not UTC (first item of the Web Release Back Log; the ticket stays open for later items) | Web |
 
-### Tickets the chain left behind
+Android tickets run one at a time because there is one emulator; #172 is Web-only and can run beside them. The Worker change in #178 means the owner redeploys the Worker (`npm run deploy`) and the External run described in `TESTING.md` precedes the push. Run each ticket with the steps on the run sheet ([agents/test-round-handoff.md](agents/test-round-handoff.md)); `/ticket-merge` reviews each.
 
-These were filed by the build sessions (all open, all `needs-triage`). My recommendation for the beta; you decide.
+### Owner steps for Alpha
 
-| Ticket | What | Recommendation |
-|---|---|---|
-| #169 | Android: delete a Rig from the synced Garage | **should.** A Free tester at the 5-Rig cap on Android cannot free a slot except on Web, a dead end. |
-| #170 | Android: offer to import the Rigs saved on the phone on first sign-in | **should.** A tester who tries the app signed out, saves a Rig, then signs up sees that Rig vanish. Web already does this (#91). |
-| #171 | External: cover Android's Supabase Garage client in the `supabase-tables` surface | **should, or cover it in the Phase 3 smoke test.** It is the only live proof that the Android Garage client agrees with the server. Free, no paid calls. |
-| #172 | Web Release Back Log (running list; first item: show dates in the viewer's local time zone, not UTC) | **should.** Today an evening check can read as tomorrow on Web but as today on Android, so the same History entry differs between platforms. The list stays open until release. |
-| #173 | Android History: add the filters Web has | **later** (labelled `future`). Not needed for a beta. |
+- [ ] Create the feedback form if #176's decision picks one.
+- [ ] Add each Alpha tester's Gmail as a Google test user (consent screen in Testing mode), up to 5.
+- [ ] Build the APK on your machine with the signing values in `~/.gradle/gradle.properties` (#174) and confirm its SHA-1 matches `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`.
+- [ ] Run the grant tool for each tester. Leave one tester on Free (no Pro grant) so someone tests buying Pro, because Pro cannot be bought twice on one account.
+- [ ] Send the APK and the guide to the testers. Tell them to expect Web to change under them whenever you push (see "Not in Alpha").
+- [ ] During Alpha, glance at the Anthropic Console usage page and the Supabase dashboard once a week. If sign-in or scans suddenly fail, a Supabase pause (click Resume) is the first thing to check.
 
-### New tickets for Phase 1 (filed 2026-10-23)
+### What testers should try
 
-1. **Android beta build (#174).** The release guard (#166) refuses a release build with the Test Store key, so a test-payments APK cannot be a normal release build. Add a signed beta build type that is allowed the test key, is not debuggable, and is clearly labelled. #166 stays for the real release.
-2. **Release branch for Web (#175).** Cloudflare Pages publishes on every push to `MPSkills`. During the beta testers would see half-finished work. Decide on a release branch (for example `beta`) that you promote deliberately, and point the Pages production branch at it.
-3. **Tester kit (#176).**
-   - A script or wizard that grants a tester Pro and a number of scans in RevenueCat (see the #105 wizard for the pattern).
-   - A one-page install and report-a-problem guide, built on [CreditCardTest.md](CreditCardTest.md).
-   - A feedback link in both apps.
-   - A "Beta: test payments" label in both apps.
-4. **Privacy notice and beta terms (lightweight) (#177).** Split out of #34. Say what is stored (email, Rigs, History), that scale-ticket photos go to Anthropic, and that manual deletion is on request. The full legal review (#34) stays a pre-live item.
-5. **Minimum visibility (#178).** Worker logs you can read and a decision on how to capture Android crashes from testers. The Anthropic usage alert below the cap is part of #97, not #178.
+Sign up with email (and one with Google), confirm the email, reset a password, a manual check without an account, a manual check signed in, save and reuse a Rig, a scan of each document type (Pro testers), a Pro purchase and a cancelled checkout with a test card ([CreditCardTest.md](CreditCardTest.md)), a scan-pack purchase (Pro testers), the same Garage and History on Web and Android, the over-limit and within-limit verdicts, sign-out, and anything that looks wrong.
 
-### Owner-only steps in Phase 1
+### Alpha ends
 
-- [x] **#97:** set the Anthropic spend limit and an alert, and record the figure and date on the ticket. Done 2026-10-23: $30 a month with an alarm at $15, recorded on #97. Still to confirm: the limit is on the organization that owns the Worker's key. Raise the figure when the beta widens.
-- [x] Generate the Android **upload keystore**, keep it and its password outside the repo, and register its SHA-1 in the Google OAuth Android client (`bash scripts/wizard_android_upload_key.sh`; run 2026-10-23, files in `G:\Secrets\rigcheck`). Checks confirmed by you on 2026-10-23: the password is in your password manager, a second copy of the file exists, and the Google client `RigCheck-Android-beta` shows the SHA-1 from the notes file.
-- [x] If the Google OAuth consent screen is in "Testing" mode, add each tester's Google account as a test user. Done for the first testers (2026-10-23); repeat for each tester added later.
-- [x] Choose how to protect Supabase. **Decided 2026-10-23: stay on the Free plan for the limited beta (2 testers at first), and upgrade to Pro ($25 a month: no inactivity pause, daily backups kept 7 days) when the beta opens to more people.** The Free plan pauses a project after a week of low activity and keeps no automatic backups. If sign-in suddenly stops working, open the Supabase dashboard and click Resume (data is kept; restorable for up to a year after a pause). Upgrade before widening the beta, and before going live.
-- [x] Commit the sandbox Web key and offering id to `web/.env.production` (public values; see [BUILD_AND_DEPLOY.md](BUILD_AND_DEPLOY.md) section 3). Committed 2026-10-23 (`19058de`; offering id `default`), with the free `pages-site` check passed. It goes live on the next push of `MPSkills`, until #175 moves publishing to a release branch. **Before going live:** replace the sandbox key with the production one using `scripts/wizard_web_revenuecat.sh`.
-- [x] Check the Supabase Redirect URLs allow-list (the unspecified "Pages preview hosts" entry from audit lead 3). Checked 2026-10-23: only `http://localhost:5173/**` and `https://rigcheck-web.pages.dev/**` are listed, no preview hosts. Nothing to add: Web sign-in and password reset redirect to the site's own address, and Android's password reset redirects to `https://rigcheck-web.pages.dev`. If #175 keeps preview deployments and you want to sign in on a preview, add that one preview address then, never a wildcard over all hosts. Consider removing the localhost entry after the beta.
-- [x] Apply the Supabase migration SQL that #29 and #30 produced (`20261022000000_history_entries.sql`, `20261023000000_plan_caps.sql`). Done; the live `supabase-tables` suite passed.
+When the owner calls it. Each distinct problem from the feedback becomes a GitHub ticket that I triage with you; fixes go into stage 2.
 
-## Phase 2: refactor analysis and security audit
+## Not in Alpha
 
-Start the read-only analysis now. Do the refactor work and the audit after the Phase 1 tickets have merged, so they look at the code testers get and do not collide with tickets in flight.
+Alpha testers should be told all of this up front (the tester guide lists it).
 
-1. **Refactor analysis (read-only).** One pass per surface (Android, Web, Worker, Python and tooling), then one combined report. Look for oversized files and screens (for example the Android ViewModel and nav host), duplicated logic, dead code, and root clutter (`junit-*.xml`, `coverage.json`, the legacy `ARCHIVE_*.md`, `NEXT_STEPS.md` and `ClaudePlans/`). Every finding becomes a ticket with a severity. Only refactors that reduce security risk or block the beta are done before it.
-2. **Security audit.** A full `standard` run with the security-audit skill across every surface, reading the run-1 and run-2 ledgers as prior coverage (notes in the Claude memory for run-2; output folder `C:\Users\Angela\security-audit-skill\HDTTools\`). This host cannot enforce the skill's sandbox, so it is source review, not live attack testing. Include the dashboard checklist: Supabase redirects and providers, Google consent screen, Cloudflare Worker and Pages settings, RevenueCat key permissions, and Anthropic key scope. Run-2 leads already fixed: lead 2 (Anthropic retries, #112), lead 5 (the Test Store key in a release build, #166) and lead 7 (ticket scripts trusting any STATUS author, #167). Leads still open as far as I can see: the Android `rigcheck://login` deep link, the Pages-site External test using the full environment, and the Supabase redirect check. The audit should also cover the code added since run-2: the History and plan-caps migrations, Google sign-in on Web, and the Android Garage and History clients. A hands-on test of the deployed Worker would be an owner-run script against a throwaway Worker.
-3. **Fix pass.** All high and medium findings are fixed before the beta. Low findings go to the backlog.
+**Payments and prices**
+- **No real money, anywhere.** Web buys with the sandbox checkout (test cards only). Android uses RevenueCat's Test Store, so no Google Play billing exists yet (#40 needs a Play Console account).
+- **Prices, pack sizes and the Garage and History caps are placeholders** (Free 5 Rigs and 10 checks, Pro 25 and 50) until launch pricing is set (#33).
+- **No refund or legal terms** (#34).
 
-## Phase 3: beta readiness
+**Distribution**
+- **Android comes as an APK file**, not from the Play Store. No automatic updates: you send a new APK, and a tester who has a debug build must uninstall it first.
+- **Web updates on every push of `MPSkills`**, so the site can change under a tester (#175 is Beta prep).
+- **No iOS app and no Sign in with Apple** (#77).
+
+**Product features held back**
+- **Import of Rigs saved on the phone before sign-in (#170, `enhancement`):** a Rig saved on Android while signed out is hidden once you sign in, and is not copied to the account. Web already does this.
+- **History filters on Android (#173, `enhancement`, `future`).** Web has them.
+- **Bumper-pull (tongue weight) trailers (#2, `enhancement`):** the app is for fifth-wheel and gooseneck trailers only.
+- **Garage capacity upsell (#13) and fleet management (#14).**
+- **The Streamlit demo** is unchanged and not part of Alpha.
+
+**Safeguards and policies (the Beta prep covers these)**
+- **No privacy notice or terms pages** (#177). The Alpha guide carries one paragraph: the photos you scan are sent to Anthropic to be read, and deleting an account is by request.
+- **No in-app account deletion.**
+- **No per-account scan rate limit** (#114) and no replay protection (#96, accepted). The $30 monthly spend limit is the only brake on scan cost.
+- **Supabase Free:** no backups, and it pauses after a week of low activity.
+- **No refactor or security audit yet.** Alpha runs on the code as it stands.
+
+## Stage 2: Fix and audit
+
+1. **Alpha fixes.** Every bug from the feedback, in the order the owner picks.
+2. **#171** External test covering the Android Garage client (test tooling, free, no paid calls).
+3. **Refactor analysis (read-only).** One pass per surface (Android, Web, Worker, Python and tooling), then one report. Look for oversized files and screens (the Android ViewModel and nav host), duplicated logic, dead code, and root clutter (`junit-*.xml`, `coverage.json`, the legacy `ARCHIVE_*.md`, `NEXT_STEPS.md` and `ClaudePlans/`). Every finding becomes a ticket with a severity. Only refactors that reduce security risk or block the Beta are done before it. Because it only reads, it could start during Alpha without disturbing testers; the owner decides.
+4. **Security audit.** A full `standard` run with the security-audit skill across every surface, reading the run-1 and run-2 ledgers as prior coverage (run-2 output is in `C:\Users\Angela\security-audit-skill\HDTTools\`). This host cannot enforce the skill's sandbox, so it is source review, not live attack testing. Include the dashboard checklist: Supabase redirects and providers, Google consent screen, Cloudflare Worker and Pages settings, RevenueCat key permissions, Anthropic key scope. Run-2 leads already fixed: lead 2 (retries, #112), lead 5 (Test Store key in a release build, #166), lead 7 (ticket scripts trusting any STATUS author, #167). Still open as far as I can see: the Android `rigcheck://login` deep link and the Pages-site External test using the full environment. The audit also covers the code added since run-2: the History and plan-caps migrations, Google sign-in on Web, the Android Garage and History clients, and the new tester grant tool. Fix every high and medium finding before Beta; lows go to the backlog.
+5. **Beta prep tickets:**
+   - **#175** Web release branch, so a push no longer publishes (a promote command and a moved release gate).
+   - **#177** Privacy notice and beta terms, linked from sign-up on both apps (wording approved by the owner).
+   - **#114** per-account rate limit on scans (should).
+6. **Owner steps:** upgrade Supabase to Pro, add each Beta tester as a Google test user, raise the Anthropic limit if needed, create the Beta tester list.
+
+## Stage 3: Beta
 
 - [ ] Clean-device smoke test: a fresh Android install and a fresh Web account. Cover sign-up and email confirmation, password reset, manual check, a scan, a sandbox Pro purchase and a cancel, Garage and History sync between the two platforms, and sign-out.
-- [ ] Run `uv run scripts/external_freshness.py`, then the stale External suites (paid calls only up to your ceiling).
-- [ ] Push to the release branch, send the APK and the guide, and invite the testers.
-- [ ] Record on #99 that #96 and #100 do not block the beta, then close #99 when its other children are closed.
+- [ ] `uv run scripts/external_freshness.py`, then run the stale External suites (paid calls only up to your ceiling; `anthropic-python` is stale as of 2026-10-23).
+- [ ] Promote Web to the release branch, build the APK, send the APK and the guide, and invite the testers.
+- [ ] Record on #99 that #96 and #100 do not block the Beta.
 
-## Before going live (after the beta)
+## Stage 4: Release (production)
 
-| Area | Tickets and work |
+| Area | Work |
 |---|---|
-| Money | #33 launch pricing (use the per-scan cost measured in the beta), #34 full legal and refund review |
-| Android store release | Play Console account, production RevenueCat key, Play products and listing, Play app-signing SHA-1 in the Google OAuth client, **#40** Play Billing External tests |
+| Money | #33 launch pricing (use the per-scan cost measured in Alpha and Beta), #34 full legal, terms and refund review |
+| Android store release | Play Console account, production RevenueCat key, Play products and listing, the Play app-signing SHA-1 in the Google OAuth client, **#40** Play Billing External tests |
 | Play requirements (check the current policy) | a privacy-policy URL, the data-safety form, an in-app account-deletion path |
-| Scan service safety | #114 rate limit (if not done for the beta), revisit #96 with the #100 findings |
-| Web | swap the sandbox Web key for the live one; Google consent screen published |
+| Scan service safety | #114 if not done earlier, revisit #96 with the #100 findings, then close #99 |
+| Web | replace the sandbox Web key with the production one (`scripts/wizard_web_revenuecat.sh`); publish the Google consent screen |
 | Accounts and data | Supabase on a paid plan |
 | Audit | repeat the security audit on the release build |
 | Operations | #72 scheduled drift canary, #138 Worker preview deploy, #145 fresh-clone setup check |
 
-## Feature releases later
+## After production
 
-- #2 bumper-pull (tongue weight) support
-- #13 paid Garage capacity upsell
-- #14 fleet management (needs its own wayfinder effort)
-- #77 Sign in with Apple, with the iOS app
-- #173 Android History filters
-- Tooling backlog, any time: #68, #69, #70 (epic close gate), #139, #144, #155 to #159 (static-check gaps), #165, #132
-
-Containers stay as they are: #3, #15, #35, #49, #51, #99.
+- **Product, per the owner's rule (`enhancement` or `future`):** #2 bumper-pull support, #13 Garage capacity upsell, #14 fleet management (needs its own wayfinder effort), #170 import phone Rigs on first sign-in, #173 Android History filters.
+- **Later platforms:** #77 Sign in with Apple, with the iOS app.
+- **Tooling backlog, any time:** #68, #69, #70 (epic close gate), #139, #144, #155 to #159 (static-check gaps), #165, #132. Spec #35 is labelled `enhancement` but is the External-tests spec, whose tickets are done: it stays a container.
+- **Containers stay as they are:** #3, #15, #35, #49, #51, #99.
 
 ## Rough sizing
 
-Estimates, in build sessions, not promises. The Android chain I called the long pole finished in about a day, so that guess was too high. What is left before Phase 2 is small: the five new Phase 1 tickets and the "should" tickets above (#169, #170, #171, #172), about 9 small sessions in total, some in parallel. The audit and fix pass are still estimated at about 1 to 2 weeks. Phase 3 is about 3 days. Re-estimate after the refactor analysis report, which is the first real unknown.
+Estimates, in build sessions, not promises. Stage 1: about 5 sessions (the Android tickets are serial, #172 runs beside them), then the APK build and invitations. Stage 2: about 1 to 2 weeks for the audit and fix pass, plus however many tickets Alpha produces, and 3 small Beta-prep sessions. Stage 3: about 3 days to set up. The Android chain finished faster than I guessed, so these may be high. Re-estimate after the Alpha feedback and the refactor analysis report, which are the first real unknowns.

@@ -4,13 +4,12 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged and pushed (cf305df); #20 (Web lane) and #101, #31, #32 (Android lane, one at a time) are left; #27 and #30 are merged and pushed (6ea870c). The live `revenuecat-rest` check passed (the `pro` entitlement has the Web paywall's product attached), so all push gates are clear. Claude asks before each push (Web goes live on a push).
+The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged and pushed (cf305df); #20 (Web lane) and #31, #32 (Android lane, one at a time) are left; #101 is merged, not yet pushed; #27 and #30 are merged and pushed (6ea870c). The live `revenuecat-rest` check passed (the `pro` entitlement has the Web paywall's product attached), so all push gates are clear. Claude asks before each push (Web goes live on a push).
 
 Order of the table: a row starts when the ticket it names has merged. #20 was narrowed to Google only (Apple stays with #77). Web goes live on every push of `MPSkills`, so Claude asks first, and runs the stale External suites before the push.
 
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
-| 1 | #101 Android scan packs for Pro users only | Android | stop the emulator | [#101](#101-android-scan-packs-for-pro-users-only) |
 | 1 | #20 Continue with Google on Web (Google only) | Web | maybe a console setting | [#20](#20-continue-with-google-on-web) |
 | 4 | #31 Android uses the synced Garage (after #101) | Android | stop the emulator | [#31](#31-android-uses-the-synced-garage) |
 | 5 | #32 Android History (after #29 and #31) | Android | stop the emulator | [#32](#32-android-history) |
@@ -92,34 +91,9 @@ Test-round additions:
 
 Done: Android shows the account's plan (Pro or Free, from the `pro` entitlement, so a Pro bought on Web counts) on the Paywall, and a cross-surface test pins the SCAN currency and the entitlement across the Worker, Android and Web. Checked read-only: the Android Test Store `lifetime` product and the Web product are both attached to `pro`. **Still yours:** confirm the Pro price is the same on both products (ADR-0006); a real two-client purchase and balance check; look at the new plan line on the Paywall on a device.
 
-### #101 Android scan packs for Pro users only
+### #101 (merged 2026-10-22)
 
-- **Step 1:** `/ticket-start 101` (#27 is merged). Android; the single emulator.
-- **Step 2 block:**
-
-```
-Test-round additions:
-- If you add or move a class in `domain`, `data` or `ui`, classify it in
-  `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android
-  end-of-session command is `uv run scripts/android_session_end.py` (JVM tests,
-  coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running.
-  Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save
-  -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are
-  done.
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in its context's testing document, and a new
-  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
-- Live runs: do not run the live External suite or any paid call. The owner runs
-  the surface from the main checkout after the merge. Do not commit changes to
-  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
-  markers.
-- RevenueCat is faked in the Android tests; no live or paid run.
-```
-
-- **Your part:** none beyond the usual steps. Stop the emulator afterwards (step 6).
+Done: the Android Paywall offers Pro (and no packs) to a Free account and the scan packs (and not Pro) to a Pro account, told apart by the package type RevenueCat reports. Checked read-only: the default Offering has the `$rc_lifetime` package (Web and Android Test Store products, both on `pro`) and one Android pack (`consumable`). **Still yours:** on a device, buy Pro and confirm the starter scans are in the balance (the real purchase chain is not automated); look at the "Unlock Pro" and packs screens. The Android External suite runs at the next bundle (two of its tests now render the Paywall as Pro).
 
 ### #31 Android uses the synced Garage
 

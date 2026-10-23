@@ -1,6 +1,4 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -8,10 +6,9 @@ import { AuthProvider } from './auth';
 import type { AuthClient } from './auth';
 import { BillingProvider } from './billing';
 import type { BillingClient } from './billing';
-import { FEEDBACK_EMAIL, WEB_ADDRESS } from './betaKit';
 
 // The Web side of the tester kit (#181): the feedback link, the "Beta: test payments" label and the
-// tester guide, through the real screens with a fake auth client and a fake billing client.
+// tester guide (betaGuide.test.ts), through the real screens with a fake auth client and a fake billing client.
 
 const SESSION = { access_token: 'token-pat', user: { id: 'acct-pat', email: 'pat@example.com' } };
 
@@ -71,9 +68,11 @@ describe('Send feedback link', () => {
   it('is also on the Account screen of a signed-in user, with the same address', async () => {
     const user = renderApp();
     await user.click(await screen.findByRole('button', { name: 'Account' }));
-    const card = (await screen.findByText(/Signed in as pat@example.com/)).closest('div')!.parentElement!;
-    const link = within(card).getByRole('link', { name: 'Send feedback' });
-    expect(link.getAttribute('href')).toMatch(/^mailto:WTIAppDev@gmail\.com(\?|$)/);
+    // The footer has one link; the Account card adds a second.
+    await screen.findByText(/Signed in as pat@example.com/);
+    const links = screen.getAllByRole('link', { name: 'Send feedback' });
+    expect(links).toHaveLength(2);
+    for (const link of links) expect(link.getAttribute('href')).toMatch(/^mailto:WTIAppDev@gmail\.com(\?|$)/);
   });
 });
 
@@ -108,34 +107,5 @@ describe('Beta: test payments label', () => {
     await user.click(await screen.findByRole('button', { name: 'Account' }));
     await screen.findByRole('button', { name: 'Buy 10 scans' });
     expect(screen.queryByText(BETA_LABEL)).not.toBeInTheDocument();
-  });
-});
-
-// Tests run from web/ (`npm test`), so the guide is one folder up; jsdom's import.meta.url is not a file URL.
-describe('docs/BETA_TESTER_GUIDE.md', () => {
-  const guide = readFileSync(resolve(process.cwd(), '../docs/BETA_TESTER_GUIDE.md'), 'utf8');
-
-  // The two addresses a tester copies from the guide must be the ones the app uses; the Android
-  // feedback link (#182) is checked against the same constant.
-  it('names the Web address and the feedback address the Web app uses', () => {
-    expect(guide).toContain(WEB_ADDRESS);
-    expect(guide).toContain(FEEDBACK_EMAIL);
-  });
-
-  it('keeps a section for each thing a tester needs', () => {
-    const headings = [...guide.matchAll(/^## (.+)$/gm)].map((m) => m[1]);
-    expect(headings).toEqual(
-      expect.arrayContaining([
-      'Where to find it',
-      'Installing the Android app',
-      'Making an account',
-      'What is fake',
-      'What RigCheck is not',
-      'What is not in this test yet',
-      'Privacy',
-      'What to try',
-      'How to report a problem',
-      ]),
-    );
   });
 });

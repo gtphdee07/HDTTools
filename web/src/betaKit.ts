@@ -1,6 +1,6 @@
 // The tester kit's two public values, in one place: the address testers send feedback to, and the
-// address of the Web app itself. docs/BETA_TESTER_GUIDE.md names both, and betaKit.test.ts fails if
-// the guide and these constants drift apart (the Android feedback link checks the same address).
+// address of the Web app itself. docs/BETA_TESTER_GUIDE.md names both, and betaGuide.test.ts fails if
+// the guide and these constants drift apart (Android's feedback link is checked against the guide).
 export const FEEDBACK_EMAIL = 'WTIAppDev@gmail.com';
 export const FEEDBACK_MAILTO = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('RigCheck feedback')}`;
 export const WEB_ADDRESS = 'https://rigcheck-web.pages.dev';

@@ -24,17 +24,17 @@ internal val RECENT_RIGS_KEY =stringPreferencesKey("recent_rigs")
 // Kotlin port of web/src/recentRigs.ts's exact algorithm (case-insensitive
 // dedupe by nickname, prepend, slice to 5), backed by Preferences DataStore
 // instead of localStorage - one serialized JSON blob, same mental model.
-class RecentRigsRepository(private val dataStore: DataStore<Preferences>) {
+class RecentRigsRepository(private val dataStore: DataStore<Preferences>) : LocalRigs {
     constructor(context: Context) : this(context.rigCheckDataStore)
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    val recentRigs: Flow<List<RecentRig>> = dataStore.data.map { prefs ->
+    override val recentRigs: Flow<List<RecentRig>> = dataStore.data.map { prefs ->
         val raw = prefs[RECENT_RIGS_KEY] ?: return@map emptyList()
         runCatching { json.decodeFromString<List<RecentRig>>(raw) }.getOrDefault(emptyList())
     }
 
-    suspend fun saveRecentRig(nickname: String, truck: TruckTag, trailer: TrailerTag): List<RecentRig> {
+    override suspend fun saveRecentRig(nickname: String, truck: TruckTag, trailer: TrailerTag): List<RecentRig> {
         val existing = recentRigs.first().filter { it.nickname.lowercase() != nickname.lowercase() }
         val updated = RecentRig(
             nickname = nickname,

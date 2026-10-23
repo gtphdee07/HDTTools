@@ -733,6 +733,29 @@ root `TESTING.md`'s "Dashboard" section.
   before the truck GCWR, #47, which loads with none; a saved GCWR loads back) and the other Rigs still
   load; an unknown extra field is ignored; corrupt stored JSON loads as an
   empty list, and a save over it starts a fresh list.
+- `GarageTest.kt` (#31) — the Garage (the account's saved Rigs) behind `GarageBackend`/`LocalRigs`, with
+  the server's `add_rig` faked at its documented behaviour (cap by plan, one Rig per nickname, one Rig
+  per idempotency key): a Rig saved on another device is here on sign-in and after a refresh, newest
+  first; signed out the Garage is this phone's Rigs and the account's are never mixed in; the next
+  account never sees the previous one's Rigs and a late answer for a left account or an older read is
+  dropped (including a refresh that lands after sign-out); a failed read keeps what is shown; a save goes to the account (never the phone's list when
+  signed in); a retried add carries one key and creates one Rig, even when the first reply was lost at
+  the cap; a full Garage names its cap and is not retried; a Rig already in a full Garage is updated,
+  not added, in any letter case and with spaces around the name; a Rig deleted elsewhere is added back; the Pro, Free and unknown plan
+  reach `add_rig` as true, false and null; saving a Rig that Web saved keeps what only Web keeps.
+- `GarageWireTest.kt` (#31) — how a Rig is stored in the Garage, shared with Web: Web's field names
+  open on Android with the same figures, Android's are written in Web's names, fields only Web keeps
+  survive a save here, a cleared figure is cleared in the account, a figure of the wrong kind or an
+  empty truck reads as not entered (no crash), PostgREST's timestamp reads as an instant the picker can
+  show, and the database's `garage_full` becomes a full Garage with its cap while any other error does not.
+- `SupabaseGarageBackendTest.kt` (#31) — `SupabaseGarageBackend` against a faked HTTP server (Ktor's
+  mock engine): the list request and its reading of a Web-saved row, the `add_rig` call (key, trimmed
+  nickname, Web field names, `p_pro` true, false or null), PostgREST's `garage_full` error read as a
+  full Garage with its cap, another error not, and an update that matches no Rig failing so the
+  caller adds it. It cannot show the live project agrees; the owner's live run does.
+- `GarageNoticeTest.kt` (#31) — what a check tells the user when its Rig did not reach the Garage: the
+  full-Garage wording for Free, Pro, unknown plan and unknown cap, singular Rig, the failed-save
+  wording, and that only a Free account with a full Garage is offered Pro.
 - `GoogleSignInTest.kt` (#22) — the Google nonce (Supabase gets the raw
   nonce, Google its SHA-256 hex) and cancel/missing-account messages.
 - `ScanApiClientTest.kt` (#22) — scan requests carry
@@ -849,6 +872,9 @@ root `TESTING.md`'s "Dashboard" section.
 parameters passed directly to each composable, no ViewModel/NavHost/
 network involved:
 
+- `RigPickerScreenTest` (see below) shows whichever Rigs it is given, so it is unchanged by the Garage
+  (#31): where the Rigs come from (the account or this phone) is `GarageTest` and
+  `GarageNavigationTest`.
 - `ResultsScreenTest` — all-passing renders "Safe to Tow", any failure
   renders "Not Safe to Tow"; row labels/percentages display correctly;
   all-insufficient renders "Not Enough Information", a mix renders
@@ -860,7 +886,8 @@ network involved:
   without a GCWR and not with a checked one, and the over-limit subline shows.
   The `EstimatedFiguresNotice` (Android port of
   Web's `PredictiveEstimateNotice.tsx`) shows when any row is `estimated`,
-  hidden otherwise.
+  hidden otherwise. (#31) A Garage notice shows beside the verdict when the check's Rig was not saved,
+  offers Pro only when told to, and is absent when the Rig was saved.
 - `BreakdownRowTest` — a row's note is hidden until tapped, then appears
   (the dynamic pin-weight-explanation feature); a note-less row's tap
   is a no-op, doesn't crash; an insufficient row renders without crashing
@@ -1081,6 +1108,13 @@ another rig is not written and is reported. The tests
 fail without the change: breaking the rig-start signal, the screen-change signal
 or the in-flight guard each turns several of them red. `enterNickname` here is the
 #125 recipe (keyboard really closed before a Back).
+
+**Garage navigation tests** (`ui/navigation/GarageNavigationTest.kt`, #31) — the Rig picker over the
+account's Garage, through the real nav host and view model with a signed-in fake account and a pretend
+Garage server (a cap, and Rigs another device adds behind the app's back): a Rig added on another
+device is in the picker; a finished check saves its Rig to the account; a Rig added elsewhere during a
+check is in the picker on returning; a full Garage still shows the check, with the "wasn't saved"
+notice, and saves nothing.
 
 **Scan error next-step tests** (`ui/navigation/ScanErrorNextStepNavigationTest.kt`,
 #124) — what the dialog's "Sign in" and "Buy more Scans" buttons do once tapped

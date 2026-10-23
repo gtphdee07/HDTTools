@@ -19,13 +19,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.domain.BreakdownItem
 import com.rigcheck.app.domain.Tone
 import com.rigcheck.app.domain.VerdictInfo
+import com.rigcheck.app.ui.GarageNotice
 import com.rigcheck.app.ui.components.BreakdownRow
 import com.rigcheck.app.ui.components.EstimatedFiguresNotice
 import com.rigcheck.app.ui.theme.DangerRed
@@ -42,6 +45,8 @@ fun ResultsScreen(
     breakdown: List<BreakdownItem>,
     verdict: VerdictInfo,
     onStartAnother: () -> Unit,
+    garageNotice: GarageNotice? = null,
+    onGetPro: () -> Unit = {},
 ) {
     val toneColor = when (verdict.tone) {
         Tone.SUCCESS -> Pine
@@ -87,6 +92,10 @@ fun ResultsScreen(
                 }
             }
 
+            if (garageNotice != null) {
+                GarageNoticeCard(garageNotice, onGetPro)
+            }
+
             if (breakdown.any { it.estimated }) {
                 Column(modifier = Modifier.padding(top = 16.dp)) {
                     EstimatedFiguresNotice()
@@ -117,5 +126,24 @@ fun ResultsScreen(
             onClick = onStartAnother,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
         ) { Text("Start another check") }
+    }
+}
+
+// The check went ahead; only its Rig did not reach the Garage. A Free account with a full Garage is offered Pro.
+@Composable
+private fun GarageNoticeCard(notice: GarageNotice, onGetPro: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).testTag("garage_notice"),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(notice.message, style = MaterialTheme.typography.bodyMedium)
+            if (notice.offerPro) {
+                TextButton(onClick = onGetPro, modifier = Modifier.testTag("garage_notice_get_pro")) {
+                    Text("Get Pro for a bigger Garage")
+                }
+            }
+        }
     }
 }

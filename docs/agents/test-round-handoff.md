@@ -4,15 +4,14 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged and pushed (cf305df); #30, #20 (Web lane, one Web session at a time) and #101, #31, #32 (Android lane, one at a time; #27 is merged) are left. The live `revenuecat-rest` check passed (the `pro` entitlement has the Web paywall's product attached), so all push gates are clear. Claude asks before each push (Web goes live on a push).
+The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged and pushed (cf305df); #20 (Web lane) and #101, #31, #32 (Android lane, one at a time); #27 and #30 are merged are left. The live `revenuecat-rest` check passed (the `pro` entitlement has the Web paywall's product attached), so all push gates are clear. Claude asks before each push (Web goes live on a push).
 
 Order of the table: a row starts when the ticket it names has merged. #20 was narrowed to Google only (Apple stays with #77). Web goes live on every push of `MPSkills`, so Claude asks first, and runs the stale External suites before the push.
 
 | # | What | Kind | Your part | Card |
 |---|---|---|---|---|
-| 1 | #30 Pro raises the Garage and History caps | Web + Supabase | apply any new migration SQL | [#30](#30-pro-raises-the-garage-and-history-caps) |
 | 1 | #101 Android scan packs for Pro users only | Android | stop the emulator | [#101](#101-android-scan-packs-for-pro-users-only) |
-| 3 | #20 Continue with Google on Web (after #30; Google only) | Web | maybe a console setting | [#20](#20-continue-with-google-on-web) |
+| 1 | #20 Continue with Google on Web (Google only) | Web | maybe a console setting | [#20](#20-continue-with-google-on-web) |
 | 4 | #31 Android uses the synced Garage (after #101) | Android | stop the emulator | [#31](#31-android-uses-the-synced-garage) |
 | 5 | #32 Android History (after #29 and #31) | Android | stop the emulator | [#32](#32-android-history) |
 | optional | #132 is mutation testing worth running? (research) | research, no code change | none | [#132](#132-optional-mutation-testing-research) |
@@ -60,33 +59,9 @@ Done: the Worker External test that checks the `pro` entitlement has the Web pay
 
 Done: History sync on Web (migration `20261022000000_history_entries.sql` applied by you; the live `supabase-tables` suite passed 18 of 18, and `pages-site` 9 of 9). Two tests for the late-reply guards were added after the merge.
 
-### #30 Pro raises the Garage and History caps
+### #30 (merged 2026-10-22)
 
-- **Step 1:** `/ticket-start 30` (after #29 is merged).
-- **Step 2 block:**
-
-```
-Test-round additions:
-- The Web end-of-session commands are `npm --prefix web test` and
-  `uv run scripts/static_checks.py web`.
-- Only `web/`, `supabase/migrations/` and the testing documents change unless the card says otherwise.
-- A Supabase migration is written as a file under `supabase/migrations/` and is NOT
-  applied by you. Put the exact steps (Dashboard > SQL Editor > paste the file > Run)
-  under "Owner actions needed" in the report; the owner applies it once, then runs the
-  live External suite.
-- Judge each test by whether it would find or prevent a real bug and whether it
-  adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in its context's testing document, and a new
-  `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
-- Live runs: do not run the live External suite or any paid call. The owner runs
-  the surface from the main checkout after the merge. Do not commit changes to
-  `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->`
-  markers.
-- Cap numbers are placeholders, configurable, pending launch pricing (#33); do not hard-code them in several places.
-```
-
-- **Your part:** apply any new migration SQL the same way as #29.
+Done: Pro raises the Garage and History caps (Free 5 Rigs / 10 checks, Pro 25 / 50 as placeholders in the `plan_caps` table), with an upgrade prompt. The app reports the plan to the database (your decision). **Before the next push you apply `supabase/migrations/20261023000000_plan_caps.sql`** in the Supabase SQL editor; Claude then runs the live `supabase-tables` suite (free).
 
 ### #20 Continue with Google on Web
 

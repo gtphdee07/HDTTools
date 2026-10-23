@@ -44,10 +44,10 @@
       }
     },
     "revenuecat-android-sdk": {
-      "commit": "49a480f518f1d69d20017a799f1a8197bc91a7d2",
+      "commit": "0e602ad41d825522f7a5f27ec7012ebcab0050b2",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-22T04:31:16Z",
+      "timestamp": "2026-10-23T00:58:47Z",
       "versions": {
         "com.revenuecat.purchases:purchases": "10.29.0"
       }

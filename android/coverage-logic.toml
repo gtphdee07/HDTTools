@@ -47,6 +47,10 @@ allow = [
   "com.rigcheck.app.data.Garage",
   "com.rigcheck.app.data.GarageKt",
   "com.rigcheck.app.data.GarageWireKt",
+  "com.rigcheck.app.data.History",
+  "com.rigcheck.app.data.HistoryCaps",
+  "com.rigcheck.app.data.HistoryEntry",
+  "com.rigcheck.app.data.HistoryWireKt",
   "com.rigcheck.app.data.PaywallOffers",
   "com.rigcheck.app.data.PaywallOffersKt",
   "com.rigcheck.app.data.RecentRigsRepository",
@@ -59,8 +63,10 @@ allow = [
   "com.rigcheck.app.data.ScanHttp",
   "com.rigcheck.app.data.ScanResult",
   # ui: scan outcome rules (no Compose, no view-model wiring), and what a Garage that did not save says
+  # (and what the History screen and a check that did not reach it say)
   "com.rigcheck.app.ui.GarageNotice",
   "com.rigcheck.app.ui.GarageNoticeKt",
+  "com.rigcheck.app.ui.HistoryDisplayKt",
   "com.rigcheck.app.ui.ScanApplied",
   "com.rigcheck.app.ui.ScanFailureKt",
   "com.rigcheck.app.ui.ScanMessages",
@@ -73,6 +79,7 @@ allow = [
   "com.rigcheck.app.ui.ScanSession",
   "com.rigcheck.app.ui.ScanSessionKt",
   "com.rigcheck.app.ui.ScanUiState.Error",
+  "com.rigcheck.app.ui.VerdictBadge",
 ]
 
 # Whole packages with no decisions.
@@ -106,3 +113,7 @@ allow = [
 "com.rigcheck.app.data.IdRow" = "Row type the Supabase wrapper decodes into: no logic"
 "com.rigcheck.app.data.UnavailableGarageBackend" = "Stand-in backend with no logic"
 "com.rigcheck.app.data.GarageFullException" = "Exception type with no logic"
+"com.rigcheck.app.data.SupabaseHistoryBackend" = "Provider wrapper around the Supabase SDK: SupabaseHistoryBackendTest checks the requests and replies against a faked server; the History rules are in History and HistoryWireKt"
+"com.rigcheck.app.data.HistoryRow" = "Row type the Supabase wrapper decodes into: no logic"
+"com.rigcheck.app.data.PlanCapsRow" = "Row type the Supabase wrapper decodes into: no logic"
+"com.rigcheck.app.data.UnavailableHistoryBackend" = "Stand-in backend with no logic"

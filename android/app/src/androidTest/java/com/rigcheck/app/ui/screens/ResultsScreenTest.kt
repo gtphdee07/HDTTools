@@ -1,5 +1,8 @@
 package com.rigcheck.app.ui.screens
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
@@ -288,5 +291,28 @@ class ResultsScreenTest {
 
         composeRule.onNodeWithTag("garage_notice").assertIsDisplayed()
         composeRule.onAllNodesWithTag("garage_notice_get_pro").assertCountEquals(0)
+    }
+
+    // #32: the check went ahead; only its History entry did not reach the account.
+    @Test
+    fun aHistoryNoticeShowsBesideTheVerdictOnlyWhenTheCheckWasNotSaved() {
+        val breakdown = listOf(item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85))
+        var notice by mutableStateOf<String?>(null)
+        composeRule.setContent {
+            ResultsScreen(
+                rigNickname = "Goose + Addie",
+                breakdown = breakdown,
+                verdict = verdictFor(breakdown),
+                onStartAnother = {},
+                historyNotice = notice,
+            )
+        }
+
+        composeRule.onAllNodesWithTag("history_notice").assertCountEquals(0)
+
+        notice = "We couldn't save this check to your History. Your check is not affected."
+
+        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
+        composeRule.onNodeWithTag("history_notice").assertIsDisplayed()
     }
 }

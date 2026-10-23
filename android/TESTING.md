@@ -756,6 +756,28 @@ root `TESTING.md`'s "Dashboard" section.
 - `GarageNoticeTest.kt` (#31) — what a check tells the user when its Rig did not reach the Garage: the
   full-Garage wording for Free, Pro, unknown plan and unknown cap, singular Rig, the failed-save
   wording, and that only a Free account with a full Garage is offered Pro.
+- `HistoryTest.kt` (#32) — History (the account's past checks) behind `HistoryBackend`, with the server's
+  `add_history_entry` faked at its documented behaviour (newest first, the cap by plan with an unknown
+  plan getting the Pro count, one entry per idempotency key): checks made on another device are here on
+  sign-in and after a refresh, newest first; the next account never sees the previous one's, and a read
+  that lands after sign-out (including a refresh) is dropped; a failed read keeps what is shown; signed
+  out a check lasts the session and nothing is sent, signing in swaps to the account's list and signing
+  out brings the session's back; a check made here is saved and listed; only the newest checks are kept
+  (Free and Pro counts, as on Web), and the Pro, Free and unknown plan reach `add_history_entry` as true,
+  false and null; a retried add carries one key and records one check even when the first reply was
+  lost, two failures say the check was not saved, and two checks get two keys; the caps are read on
+  sign-in, cleared on sign-out, and a failed read leaves the checks listed.
+- `HistoryWireTest.kt` (#32) — how a check is stored, shared with Web: each verdict is written as the
+  Core status word Web writes and reads back as itself, a word this app does not know is left out rather
+  than shown as another verdict, and a row's nickname is trimmed and its timestamp read as an instant.
+- `SupabaseHistoryBackendTest.kt` (#32) — `SupabaseHistoryBackend` against a faked HTTP server (Ktor's
+  mock engine): the list request (insertion order, newest first) and its reading of Web-saved rows, the
+  `add_history_entry` call (key, trimmed nickname, verdict word, `p_pro` true, false or null), a database
+  error raised so the caller can retry, and the caps read from the free and pro rows (a missing row is an
+  error, not a guess). It cannot show the live project agrees; the owner's live run does.
+- `HistoryDisplayTest.kt` (#32) — what the History screen says: Web's badge for each verdict (a partial
+  or insufficient check is not called over the limit), a check dated by the day on the phone's clock, what a
+  Free account whose History is full is told (and that nobody else is), and the not-saved wording.
 - `GoogleSignInTest.kt` (#22) — the Google nonce (Supabase gets the raw
   nonce, Google its SHA-256 hex) and cancel/missing-account messages.
 - `ScanApiClientTest.kt` (#22) — scan requests carry
@@ -875,6 +897,9 @@ network involved:
 - `RigPickerScreenTest` (see below) shows whichever Rigs it is given, so it is unchanged by the Garage
   (#31): where the Rigs come from (the account or this phone) is `GarageTest` and
   `GarageNavigationTest`.
+- `HistoryScreenTest` (#32) — the History screen given fake entries: each check shows its rig and its
+  verdict badge (three verdicts, three labels), the empty list says so, and the limit notice shows with a
+  tappable "Upgrade to Pro". Where the entries come from is `HistoryTest` and `HistoryNavigationTest`.
 - `ResultsScreenTest` — all-passing renders "Safe to Tow", any failure
   renders "Not Safe to Tow"; row labels/percentages display correctly;
   all-insufficient renders "Not Enough Information", a mix renders
@@ -887,7 +912,8 @@ network involved:
   The `EstimatedFiguresNotice` (Android port of
   Web's `PredictiveEstimateNotice.tsx`) shows when any row is `estimated`,
   hidden otherwise. (#31) A Garage notice shows beside the verdict when the check's Rig was not saved,
-  offers Pro only when told to, and is absent when the Rig was saved.
+  offers Pro only when told to, and is absent when the Rig was saved. (#32) A History notice shows beside the
+  verdict only when the check was not saved to the History.
 - `BreakdownRowTest` — a row's note is hidden until tapped, then appears
   (the dynamic pin-weight-explanation feature); a note-less row's tap
   is a no-op, doesn't crash; an insufficient row renders without crashing
@@ -1115,6 +1141,14 @@ Garage server (a cap, and Rigs another device adds behind the app's back): a Rig
 device is in the picker; a finished check saves its Rig to the account; a Rig added elsewhere during a
 check is in the picker on returning; a full Garage still shows the check, with the "wasn't saved"
 notice, and saves nothing.
+
+**History navigation tests** (`ui/navigation/HistoryNavigationTest.kt`, #32) — the History screen over the
+account's History, through the real nav host and view model with a signed-in fake account and a pretend
+History server: a check made on another device is listed; a finished check is saved to the account and
+listed (a check with nothing entered is "Not Enough Info", not over limit); one made on another device
+after the app was open is listed when the History is opened; a second check with another new Rig is saved
+too; the Results screen composed again does not record the check twice; a check that could not be saved still shows its result, with the
+"couldn't save this check" notice.
 
 **Scan error next-step tests** (`ui/navigation/ScanErrorNextStepNavigationTest.kt`,
 #124) — what the dialog's "Sign in" and "Buy more Scans" buttons do once tapped

@@ -26,9 +26,11 @@ import com.rigcheck.app.ui.RigCheckViewModel
 import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanScreen
 import com.rigcheck.app.ui.components.LateScanDialog
+import com.rigcheck.app.ui.historyLimitNotice
 import com.rigcheck.app.ui.screens.AccountScreen
 import com.rigcheck.app.ui.screens.ChooserScreen
 import com.rigcheck.app.ui.screens.DisclaimerScreen
+import com.rigcheck.app.ui.screens.HistoryScreen
 import com.rigcheck.app.ui.screens.PaywallScreen
 import com.rigcheck.app.ui.screens.ResultsScreen
 import com.rigcheck.app.ui.screens.RigPickerScreen
@@ -45,6 +47,8 @@ fun RigCheckNavHost(
     val recentRigs by viewModel.recentRigs.collectAsStateWithLifecycle()
     val accountState by viewModel.accountState.collectAsStateWithLifecycle()
     val isPro by viewModel.isPro.collectAsStateWithLifecycle()
+    val historyEntries by viewModel.historyEntries.collectAsStateWithLifecycle()
+    val historyCaps by viewModel.historyCaps.collectAsStateWithLifecycle()
 
     // Routes to the screen after the scale ticket - the disclaimer only
     // once per process lifetime (per the brief: "shown once per app
@@ -112,6 +116,20 @@ fun RigCheckNavHost(
                     navController.navigate(RigCheckRoute.Chooser(EntryModule.TRUCK))
                 },
                 onOpenPaywall = { navController.navigate(RigCheckRoute.Paywall) },
+                onOpenHistory = { navController.navigate(RigCheckRoute.History) },
+            )
+        }
+
+        composable<RigCheckRoute.History> {
+            // Checks made on another device (Web) show up whenever the History is on show again.
+            LifecycleResumeEffect(Unit) {
+                viewModel.refreshHistory()
+                onPauseOrDispose {}
+            }
+            HistoryScreen(
+                entries = historyEntries,
+                limitNotice = historyLimitNotice(historyEntries.size, historyCaps, isPro),
+                onUpgrade = { navController.navigate(RigCheckRoute.Paywall) },
             )
         }
 
@@ -239,6 +257,7 @@ fun RigCheckNavHost(
                 breakdown = viewModel.breakdown,
                 verdict = viewModel.verdict,
                 garageNotice = viewModel.garageNotice,
+                historyNotice = viewModel.historyNotice,
                 onGetPro = { navController.navigate(RigCheckRoute.Paywall) },
                 onStartAnother = {
                     navController.navigate(RigCheckRoute.RigPicker) {

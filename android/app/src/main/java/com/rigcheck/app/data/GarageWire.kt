@@ -36,9 +36,9 @@ private fun JsonObject.count(key: String): Int? =
 
 private fun JsonObject.minus(keys: Set<String>) = JsonObject(filterKeys { it !in keys })
 
-// PostgREST answers a timestamp as "2026-10-22T12:00:00.123456+00:00"; the Rig picker reads ISO instants
-// ("...Z"). Anything unreadable is kept as it came.
-private fun asInstant(timestamp: String): String =
+// PostgREST answers a timestamp as "2026-10-22T12:00:00.123456+00:00"; the Rig picker and the History screen
+// read ISO instants ("...Z"). Anything unreadable is kept as it came.
+internal fun asInstant(timestamp: String): String =
     runCatching { OffsetDateTime.parse(timestamp).toInstant().toString() }.getOrDefault(timestamp)
 
 internal fun rigFromGarageRow(

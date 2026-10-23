@@ -46,6 +46,7 @@ fun ResultsScreen(
     verdict: VerdictInfo,
     onStartAnother: () -> Unit,
     garageNotice: GarageNotice? = null,
+    historyNotice: String? = null,
     onGetPro: () -> Unit = {},
 ) {
     val toneColor = when (verdict.tone) {
@@ -96,6 +97,10 @@ fun ResultsScreen(
                 GarageNoticeCard(garageNotice, onGetPro)
             }
 
+            if (historyNotice != null) {
+                HistoryNoticeCard(historyNotice)
+            }
+
             if (breakdown.any { it.estimated }) {
                 Column(modifier = Modifier.padding(top = 16.dp)) {
                     EstimatedFiguresNotice()
@@ -126,6 +131,18 @@ fun ResultsScreen(
             onClick = onStartAnother,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
         ) { Text("Start another check") }
+    }
+}
+
+// The check went ahead; only its History entry did not reach the account.
+@Composable
+private fun HistoryNoticeCard(message: String) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).testTag("history_notice"),
+    ) {
+        Text(message, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(16.dp))
     }
 }
 

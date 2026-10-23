@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { computeBreakdown, createBreakdown, verdictFor } from './breakdown';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { computeBreakdown, createBreakdown, formatDate, verdictFor } from './breakdown';
 import GOLDEN from '../../test-vectors/breakdown_cases.json';
 import PIN_CONTRACT from '../../test-vectors/pin_weight_pct_contract.json';
 
@@ -115,6 +115,40 @@ describe('createBreakdown', () => {
 
   it('stamps the result with a "Mon DD, YYYY" date', () => {
     expect(createBreakdown({}, {}, {}, 20).date).toMatch(/^[A-Z][a-z]{2} \d{2}, \d{4}$/);
+  });
+
+  describe('date in the viewer\'s zone', () => {
+    const savedZone = process.env.TZ;
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+      if (savedZone === undefined) delete process.env.TZ;
+      else process.env.TZ = savedZone;
+    });
+
+    // 02:30 UTC on 6 Oct is still the evening of 5 Oct in Chicago (UTC-5 in October).
+    it('dates a check finished on a US evening as that evening, not the next UTC day', () => {
+      process.env.TZ = 'America/Chicago';
+      vi.setSystemTime(new Date('2026-10-06T02:30:00Z'));
+
+      expect(createBreakdown({}, {}, {}, 20).date).toBe('Oct 05, 2026');
+    });
+
+    // 23:30 UTC on 5 Oct is already the afternoon of 6 Oct in Auckland (UTC+13 in October).
+    it('dates a check as the next day for a viewer ahead of UTC', () => {
+      process.env.TZ = 'Pacific/Auckland';
+      vi.setSystemTime(new Date('2026-10-05T23:30:00Z'));
+
+      expect(createBreakdown({}, {}, {}, 20).date).toBe('Oct 06, 2026');
+    });
+
+    it('keeps the "Mon DD, YYYY" format across a year change in the local zone', () => {
+      process.env.TZ = 'Pacific/Auckland';
+
+      expect(formatDate(new Date('2026-12-31T23:30:00Z'))).toBe('Jan 01, 2027');
+    });
   });
 
   // Paired with test-vectors/pin_weight_pct_contract.json: the UI works in whole

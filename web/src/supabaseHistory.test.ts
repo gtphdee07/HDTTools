@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createSupabaseHistoryBackend } from './supabaseHistory';
 
@@ -19,6 +19,16 @@ function fakeListClient(result: { data: unknown; error: { message: string } | nu
 }
 
 describe('createSupabaseHistoryBackend', () => {
+  // Entry dates are the viewer's local day, so every test pins the zone instead of using the machine's.
+  const savedZone = process.env.TZ;
+  beforeEach(() => {
+    process.env.TZ = 'UTC';
+  });
+  afterEach(() => {
+    if (savedZone === undefined) delete process.env.TZ;
+    else process.env.TZ = savedZone;
+  });
+
   it('sends the idempotency key, the Rig and the verdict to add_history_entry', async () => {
     const { client, rpc } = fakeRpcClient();
 
@@ -104,6 +114,24 @@ describe('createSupabaseHistoryBackend', () => {
       { id: 'h2', date: 'Oct 22, 2026', rigNickname: 'Truck A', verdict: 'fail' },
       { id: 'h1', date: 'Oct 05, 2026', rigNickname: 'Truck B', verdict: 'pass' },
     ]);
+  });
+
+  it("shows each entry's date as the viewer's local day, not the UTC day the server stored", async () => {
+    const rows = {
+      data: [
+        { id: 'h2', rig_nickname: 'Truck A', verdict: 'fail', checked_at: '2026-10-22T03:15:00Z' },
+        { id: 'h1', rig_nickname: 'Truck B', verdict: 'pass', checked_at: '2026-10-05T23:30:00Z' },
+      ],
+      error: null,
+    };
+    const dates = async (zone: string) => {
+      process.env.TZ = zone;
+      return (await createSupabaseHistoryBackend(fakeListClient(rows).client).list()).map((e) => e.date);
+    };
+
+    // Chicago is UTC-5 in October: 03:15Z is still the evening before. Auckland is UTC+13: 23:30Z is already the next day.
+    expect(await dates('America/Chicago')).toEqual(['Oct 21, 2026', 'Oct 05, 2026']);
+    expect(await dates('Pacific/Auckland')).toEqual(['Oct 22, 2026', 'Oct 06, 2026']);
   });
 
   it('rejects a list the server refused, so the caller keeps what it shows', async () => {

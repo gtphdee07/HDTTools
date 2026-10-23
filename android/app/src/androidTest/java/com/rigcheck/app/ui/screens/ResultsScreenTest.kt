@@ -3,7 +3,10 @@ package com.rigcheck.app.ui.screens
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -16,6 +19,7 @@ import com.rigcheck.app.domain.model.ScaleTicket
 import com.rigcheck.app.domain.model.TrailerTag
 import com.rigcheck.app.domain.model.TruckTag
 import com.rigcheck.app.domain.verdictFor
+import com.rigcheck.app.ui.GarageNotice
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -239,5 +243,50 @@ class ResultsScreenTest {
         composeRule.onNodeWithText("Start another check").performClick()
 
         assert(started) { "onStartAnother should have fired when the button was tapped" }
+    }
+
+    // #31: the check went ahead; only its Rig did not reach the Garage.
+    private fun showResultsWith(notice: GarageNotice?, onGetPro: () -> Unit = {}) {
+        val breakdown = listOf(item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85))
+        composeRule.setContent {
+            ResultsScreen(
+                rigNickname = "Goose + Addie",
+                breakdown = breakdown,
+                verdict = verdictFor(breakdown),
+                onStartAnother = {},
+                garageNotice = notice,
+                onGetPro = onGetPro,
+            )
+        }
+    }
+
+    @Test
+    fun noGarageNoticeIsShownWhenTheRigWasSaved() {
+        showResultsWith(notice = null)
+
+        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
+        composeRule.onAllNodesWithTag("garage_notice").assertCountEquals(0)
+    }
+
+    @Test
+    fun aFullGarageNoticeShowsBesideTheVerdictAndOffersProToAFreeAccount() {
+        var proOffered = false
+        showResultsWith(
+            notice = GarageNotice("Your Garage is full (the Free plan holds 5 Rigs), so \"Goose\" wasn't saved to it.", offerPro = true),
+            onGetPro = { proOffered = true },
+        )
+
+        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
+        composeRule.onNodeWithTag("garage_notice").assertIsDisplayed()
+        composeRule.onNodeWithText("Get Pro for a bigger Garage").performClick()
+        assert(proOffered) { "Get Pro should have fired onGetPro" }
+    }
+
+    @Test
+    fun aGarageNoticeOffersNothingWhenProWouldNotHelp() {
+        showResultsWith(notice = GarageNotice("We couldn't save \"Goose\" to your Garage.", offerPro = false))
+
+        composeRule.onNodeWithTag("garage_notice").assertIsDisplayed()
+        composeRule.onAllNodesWithTag("garage_notice_get_pro").assertCountEquals(0)
     }
 }

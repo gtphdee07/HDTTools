@@ -14,6 +14,8 @@ import com.rigcheck.app.data.AccountManager
 import com.rigcheck.app.data.AccountPlan
 import com.rigcheck.app.data.AccountResult
 import com.rigcheck.app.data.AccountState
+import com.rigcheck.app.data.Garage
+import com.rigcheck.app.data.GarageBackend
 import com.rigcheck.app.data.PurchaseCancelledException
 import com.rigcheck.app.data.RecentRigsRepository
 import com.rigcheck.app.data.RevenueCatManager
@@ -22,6 +24,7 @@ import com.rigcheck.app.data.ScanAttempts
 import com.rigcheck.app.data.ScanResult
 import com.rigcheck.app.data.SupabaseAccountBackend
 import com.rigcheck.app.data.UnavailableAccountBackend
+import com.rigcheck.app.data.UnavailableGarageBackend
 import com.rigcheck.app.data.encodePhotoForScan
 import com.rigcheck.app.data.googleFailureMessage
 import com.rigcheck.app.data.requestGoogleIdentity
@@ -39,11 +42,9 @@ import com.rigcheck.app.domain.verdictFor
 import com.rigcheck.app.ui.navigation.EntryModule
 import com.revenuecat.purchases.Package
 import kotlin.coroutines.cancellation.CancellationException
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private const val BILLING_NOT_LINKED = "Couldn't connect your account to purchases. Check your connection and try again."
@@ -61,16 +62,13 @@ sealed interface ScanUiState {
 //
 // The account backend is a parameter so an instrumented test can be signed in
 // or out without Supabase; the app always uses the one-argument constructor.
+// The Garage backend defaults to the one over the same Supabase client.
 class RigCheckViewModel internal constructor(
     application: Application,
     accountBackend: AccountBackend,
+    garageBackend: GarageBackend = (accountBackend as? SupabaseAccountBackend)?.garage ?: UnavailableGarageBackend,
 ) : AndroidViewModel(application) {
     constructor(application: Application) : this(application, SupabaseAccountBackend.get() ?: UnavailableAccountBackend)
-
-    private val recentRigsRepository = RecentRigsRepository(application)
-
-    val recentRigs: StateFlow<List<RecentRig>> = recentRigsRepository.recentRigs
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     var rigNickname by mutableStateOf("")
         private set
@@ -142,6 +140,22 @@ class RigCheckViewModel internal constructor(
     // Pro bought on Web shows here (#27). null = not known, which is not Free.
     private val accountPlan = AccountPlan(accountManager.state, RevenueCatManager, viewModelScope)
     val isPro: StateFlow<Boolean?> = accountPlan.isPro
+
+    // The saved Rigs (#31): the signed-in account's Garage, the same on every device with the plan's cap
+    // enforced by the server; this phone's own list while signed out.
+    private val garage = Garage(
+        accountState = accountManager.state,
+        backend = garageBackend,
+        local = RecentRigsRepository(application),
+        isPro = { isPro.value },
+        scope = viewModelScope,
+    )
+    val recentRigs: StateFlow<List<RecentRig>> = garage.rigs
+
+    // What the last check could not save to the Garage, shown on its Results screen; cleared when the user
+    // starts or picks another Rig.
+    var garageNotice by mutableStateOf<GarageNotice?>(null)
+        private set
 
     init {
         // The SCAN balance belongs to whichever account RevenueCat is logged
@@ -218,7 +232,11 @@ class RigCheckViewModel internal constructor(
         refreshCreditBalance()
     }
 
+    // Reads the Garage again, to pick up Rigs saved on another device.
+    fun refreshGarage() = garage.refresh()
+
     fun selectRecentRig(rig: RecentRig) {
+        garageNotice = null
         rigNickname = rig.nickname
         truck = rig.truck
         trailer = rig.trailer
@@ -229,6 +247,7 @@ class RigCheckViewModel internal constructor(
     }
 
     fun startNewRig(nickname: String) {
+        garageNotice = null
         rigNickname = nickname
         truck = TruckTag()
         trailer = TrailerTag()
@@ -247,7 +266,13 @@ class RigCheckViewModel internal constructor(
     }
 
     fun saveCurrentRig() {
-        viewModelScope.launch { recentRigsRepository.saveRecentRig(rigNickname, truck, trailer) }
+        val nickname = rigNickname
+        val savedTruck = truck
+        val savedTrailer = trailer
+        viewModelScope.launch {
+            val outcome = garage.saveRig(nickname, savedTruck, savedTrailer)
+            garageNotice = garageNoticeFor(nickname, outcome, isPro.value)
+        }
     }
 
     // On success, merges the extracted fields onto the current module's

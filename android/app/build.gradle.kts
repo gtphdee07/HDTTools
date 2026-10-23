@@ -270,8 +270,10 @@ dependencies {
     implementation(libs.revenuecat.purchases)
     implementation(libs.okhttp)
     // Shared account (#22): Supabase Auth over Ktor's OkHttp engine, with
-    // Google sign-in through Credential Manager.
+    // Google sign-in through Credential Manager. Postgrest reads and writes the
+    // account's Garage (#31).
     implementation(libs.supabase.auth)
+    implementation(libs.supabase.postgrest)
     implementation(libs.ktor.client.okhttp)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
@@ -286,6 +288,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.ktor.client.mock)
     testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

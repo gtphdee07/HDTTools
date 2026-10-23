@@ -14,6 +14,7 @@ import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -101,6 +102,9 @@ class SupabaseAccountBackend private constructor(private val client: SupabaseCli
 
     override suspend fun accessToken(): String? = client.auth.currentAccessTokenOrNull()
 
+    // The account's Garage, over the same client so every call carries the signed-in session.
+    val garage: GarageBackend by lazy { SupabaseGarageBackend(client) }
+
     fun handleDeepLink(intent: Intent) {
         client.handleDeeplinks(intent)
     }
@@ -123,6 +127,7 @@ class SupabaseAccountBackend private constructor(private val client: SupabaseCli
                             scheme = AUTH_REDIRECT_SCHEME
                             host = AUTH_REDIRECT_HOST
                         }
+                        install(Postgrest)
                     },
                 )
             }.getOrNull().also { shared = it }

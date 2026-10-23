@@ -44,6 +44,9 @@ allow = [
   "com.rigcheck.app.data.AccountResult.Failure",
   "com.rigcheck.app.data.AccountState.SignedIn",
   "com.rigcheck.app.data.BackendStatus.Authenticated",
+  "com.rigcheck.app.data.Garage",
+  "com.rigcheck.app.data.GarageKt",
+  "com.rigcheck.app.data.GarageWireKt",
   "com.rigcheck.app.data.PaywallOffers",
   "com.rigcheck.app.data.PaywallOffersKt",
   "com.rigcheck.app.data.RecentRigsRepository",
@@ -53,8 +56,11 @@ allow = [
   "com.rigcheck.app.data.ScanField",
   "com.rigcheck.app.data.ScanFieldMappingKt",
   "com.rigcheck.app.data.ScanHttp",
+  "com.rigcheck.app.data.SaveRigOutcome.Full",
   "com.rigcheck.app.data.ScanResult",
-  # ui: scan outcome rules (no Compose, no view-model wiring)
+  # ui: scan outcome rules (no Compose, no view-model wiring), and what a Garage that did not save says
+  "com.rigcheck.app.ui.GarageNotice",
+  "com.rigcheck.app.ui.GarageNoticeKt",
   "com.rigcheck.app.ui.ScanApplied",
   "com.rigcheck.app.ui.ScanFailureKt",
   "com.rigcheck.app.ui.ScanMessages",
@@ -95,3 +101,8 @@ allow = [
 "com.rigcheck.app.data.ScanPhotoStorageKt" = "Android file storage: needs a device"
 "com.rigcheck.app.data.ScanApiClient" = "HTTP client wrapper: External tests; the request rules are in ScanApiClientKt"
 "com.rigcheck.app.data.RecentRigsRepositoryKt" = "The Context-bound DataStore delegate behind RecentRigsRepository's Context constructor: needs a device; the repository's rules are allow-listed"
+"com.rigcheck.app.data.SupabaseGarageBackend" = "Provider wrapper around the Supabase SDK: SupabaseGarageBackendTest checks the requests and replies against a faked server; the Garage rules are in Garage and GarageWireKt"
+"com.rigcheck.app.data.GarageRow" = "Row type the Supabase wrapper decodes into: no logic"
+"com.rigcheck.app.data.IdRow" = "Row type the Supabase wrapper decodes into: no logic"
+"com.rigcheck.app.data.UnavailableGarageBackend" = "Stand-in backend with no logic"
+"com.rigcheck.app.data.GarageFullException" = "Exception type with no logic"

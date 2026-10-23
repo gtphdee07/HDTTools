@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
@@ -94,6 +95,11 @@ fun RigCheckNavHost(
 
     NavHost(navController = navController, startDestination = RigCheckRoute.RigPicker) {
         composable<RigCheckRoute.RigPicker> {
+            // Rigs saved on another device (Web) show up whenever the picker is on show again.
+            LifecycleResumeEffect(Unit) {
+                viewModel.refreshGarage()
+                onPauseOrDispose {}
+            }
             RigPickerScreen(
                 recentRigs = recentRigs,
                 creditBalance = viewModel.creditBalance,
@@ -232,6 +238,8 @@ fun RigCheckNavHost(
                 rigNickname = viewModel.rigNickname,
                 breakdown = viewModel.breakdown,
                 verdict = viewModel.verdict,
+                garageNotice = viewModel.garageNotice,
+                onGetPro = { navController.navigate(RigCheckRoute.Paywall) },
                 onStartAnother = {
                     navController.navigate(RigCheckRoute.RigPicker) {
                         popUpTo(RigCheckRoute.RigPicker) { inclusive = true }

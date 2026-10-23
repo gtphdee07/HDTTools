@@ -4,7 +4,7 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged and pushed (cf305df); #32 (Android lane) is left, and #31 is merged, not yet pushed; #101 and #20 are merged and pushed (bd69ac0); #27 and #30 are merged and pushed (6ea870c). The live `revenuecat-rest` check passed (the `pro` entitlement has the Web paywall's product attached), so all push gates are clear. Claude asks before each push (Web goes live on a push).
+The test round and the truck GCWR chain are done and pushed. The work now is the **shared accounts chain** (epic #15): #146 and #29 are merged and pushed (cf305df); #32 (Android lane) is left, and #31 is merged and pushed (6ab852d); #101 and #20 are merged and pushed (bd69ac0); #27 and #30 are merged and pushed (6ea870c). The live `revenuecat-rest` check passed (the `pro` entitlement has the Web paywall's product attached), so all push gates are clear. Claude asks before each push (Web goes live on a push).
 
 Order of the table: a row starts when the ticket it names has merged. #20 was narrowed to Google only (Apple stays with #77). Web goes live on every push of `MPSkills`, so Claude asks first, and runs the stale External suites before the push.
 

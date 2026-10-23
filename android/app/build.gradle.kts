@@ -56,9 +56,9 @@ android {
         version = release(37)
     }
 
-    // The beta signing config (#174). The values come from outside the repo and are read lazily, so a
-    // build that never packages a beta APK needs none of them; verifyBetaSigning refuses a beta build
-    // that lacks one. storeFile is left unset when the path is blank, never given a default.
+    // The beta signing config (#174). The values come from outside the repo. A blank value is accepted here
+    // (so a build that never packages a beta APK needs none of them) and verifyBetaSigning refuses a beta
+    // build that lacks one. storeFile is left unset when the path is blank, never given a default.
     signingConfigs {
         create("beta") {
             if (betaKeystoreFile.isNotBlank()) storeFile = file(betaKeystoreFile)

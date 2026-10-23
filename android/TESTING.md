@@ -1145,8 +1145,9 @@ notice, and saves nothing.
 **History navigation tests** (`ui/navigation/HistoryNavigationTest.kt`, #32) — the History screen over the
 account's History, through the real nav host and view model with a signed-in fake account and a pretend
 History server: a check made on another device is listed; a finished check is saved to the account and
-listed (a check with nothing entered is "Not Enough Info", not over limit); the Results screen composed
-again does not record the check twice; a check that could not be saved still shows its result, with the
+listed (a check with nothing entered is "Not Enough Info", not over limit); one made on another device
+after the app was open is listed when the History is opened; a second check with another new Rig is saved
+too; the Results screen composed again does not record the check twice; a check that could not be saved still shows its result, with the
 "couldn't save this check" notice.
 
 **Scan error next-step tests** (`ui/navigation/ScanErrorNextStepNavigationTest.kt`,

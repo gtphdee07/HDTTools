@@ -127,7 +127,8 @@ class HistoryNavigationTest {
         return visible
     }
 
-    private fun checkNewRigThroughToResults(nickname: String) {
+    // The disclaimer is shown once per app session, so a second check in the same session goes straight to Results.
+    private fun checkNewRigThroughToResults(nickname: String, disclaimerShown: Boolean = true) {
         enterNickname(nickname)
         composeRule.onNodeWithText("Create").performClick()
         composeRule.onNodeWithText("Enter Manually").performClick()
@@ -136,7 +137,7 @@ class HistoryNavigationTest {
         composeRule.onNodeWithText("Next: Scale Ticket").performClick()
         composeRule.onNodeWithText("Enter Manually").performClick()
         composeRule.onNodeWithText("Check Weights").performClick()
-        composeRule.onNodeWithText("I Understand, Continue").performClick()
+        if (disclaimerShown) composeRule.onNodeWithText("I Understand, Continue").performClick()
         composeRule.onNodeWithText("Start another check").assertIsDisplayed()
     }
 
@@ -154,6 +155,19 @@ class HistoryNavigationTest {
 
         waitForText("Made on Web")
         composeRule.onNodeWithText("Over Limit").assertIsDisplayed()
+    }
+
+    // The app has been open a while: the check from the other device was made after sign-in read the History.
+    @Test
+    fun aCheckMadeOnAnotherDeviceWhileTheAppIsOpenIsListedWhenHistoryIsOpened() {
+        val history = PretendHistory()
+        showApp(history)
+        history.madeElsewhere("Made on Web", VerdictStatus.PASS)
+
+        openHistory()
+
+        waitForText("Made on Web")
+        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
     }
 
     @Test
@@ -185,6 +199,20 @@ class HistoryNavigationTest {
 
         assertEquals(1, history.addCalls)
         assertEquals(1, history.saved().size)
+    }
+
+    @Test
+    fun aSecondCheckWithAnotherNewRigIsSavedToo() {
+        val history = PretendHistory()
+        showApp(history)
+        checkNewRigThroughToResults("Big Blue")
+        composeRule.waitUntil(timeoutMillis = 10_000) { history.saved().size == 1 }
+        composeRule.onNodeWithText("Start another check").performClick()
+
+        checkNewRigThroughToResults("Red Rig", disclaimerShown = false)
+
+        composeRule.waitUntil(timeoutMillis = 10_000) { history.saved().size == 2 }
+        assertEquals(setOf("Big Blue", "Red Rig"), history.saved().map { it.first }.toSet())
     }
 
     @Test

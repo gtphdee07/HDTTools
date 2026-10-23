@@ -13,7 +13,7 @@
         "web/package.json", "workers/scan-proxy/package.json", "workers/scan-proxy/knip.json", "workers/scan-proxy/src/liveTokenCli.ts",
         "android/build.gradle.kts", "android/settings.gradle.kts", "android/app/build.gradle.kts"
       ],
-      "tests": ["tests/test_test_planner.py", "tests/test_context_test_commands.py", "tests/test_android_file_command_slow.py", "tests/test_android_release_key_guard.py", "tests/test_scan_proxy_knip_config.py", "tests/test_scan_proxy_coverage_guard.py", "tests/test_static_checks_real.py"]
+      "tests": ["tests/test_test_planner.py", "tests/test_context_test_commands.py", "tests/test_android_file_command_slow.py", "tests/test_android_release_key_guard.py", "tests/test_android_beta_build.py", "tests/test_scan_proxy_knip_config.py", "tests/test_scan_proxy_coverage_guard.py", "tests/test_static_checks_real.py"]
     },
     {
       "name": "ocr-photos",

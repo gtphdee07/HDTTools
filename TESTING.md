@@ -376,7 +376,7 @@ and application runs and lists them separately, at issue and session level:
 
 | Slow tests | Owed when the diff touches |
 |---|---|
-| Tooling checks that start pytest, npm, Node or Gradle (`test_test_planner.py`, `test_context_test_commands.py`, `test_android_file_command_slow.py`, `test_android_release_key_guard.py`) | `scripts/`, `pyproject.toml`, the Web, Scan Proxy and Android build files that define their test commands, `tests/conftest.py`, `tests/_test_command_helpers.py` |
+| Tooling checks that start pytest, npm, Node or Gradle (`test_test_planner.py`, `test_context_test_commands.py`, `test_android_file_command_slow.py`, `test_android_release_key_guard.py`, `test_android_beta_build.py`) | `scripts/`, `pyproject.toml`, the Web, Scan Proxy and Android build files that define their test commands, `tests/conftest.py`, `tests/_test_command_helpers.py` |
 | Real-photo OCR and pool regressions | the OCR modules (`src/hdttools/*_ocr.py`, `ocr_common.py`), `src/hdttools/breakdown.py`, the pool and discovery scripts, `ExampleDocs/` |
 | Streamlit walkthrough with real photos | `streamlit_app/`, the OCR modules, `ExampleDocs/` |
 | Breakdown combinatorial sweep | `src/hdttools/breakdown.py` |

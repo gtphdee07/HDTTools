@@ -51,7 +51,7 @@ Android tickets run one at a time because there is one emulator; lane B has no G
 
 - [x] Feedback goes to WTIAppDev@gmail.com (an email address, not a form), so there is no form to create.
 - [ ] Add each Alpha tester's Gmail as a Google test user (consent screen in Testing mode), up to 5.
-- [ ] Build the APK on your machine with the signing values in `~/.gradle/gradle.properties` (#174) and confirm its SHA-1 matches `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`.
+- [ ] Build the APK on your machine with the signing values in `gradle.properties` in your Gradle user home (the `GRADLE_USER_HOME` folder; on this machine `G:\GradleUserHome\gradle.properties`, not `C:\Users\Angela\.gradle`) (#174) and confirm its SHA-1 matches `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`.
 - [ ] Run the grant tool for each tester. Leave one tester on Free (no Pro grant) so someone tests buying Pro, because Pro cannot be bought twice on one account.
 - [ ] Send the APK and the guide to the testers. Tell them to expect Web to change under them whenever you push (see "Not in Alpha").
 - [ ] During Alpha, glance at the Anthropic Console usage page and the Supabase dashboard once a week. If sign-in or scans suddenly fail, a Supabase pause (click Resume) is the first thing to check.

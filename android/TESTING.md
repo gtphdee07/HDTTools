@@ -146,7 +146,7 @@ its guard (#166) are untouched.
 
 The keystore never enters the repo. The build reads three values from Gradle properties, or the
 environment variables beside them, with no defaults; the owner keeps them in the user-level
-`~/.gradle/gradle.properties`:
+`gradle.properties` in your Gradle user home (the `GRADLE_USER_HOME` folder; on this machine `G:\GradleUserHome\gradle.properties`, not `C:\Users\Angela\.gradle`):
 
 | Gradle property | Environment variable | Value |
 |---|---|---|

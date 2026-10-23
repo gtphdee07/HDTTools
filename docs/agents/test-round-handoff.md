@@ -37,7 +37,7 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - Do not invite testers before the push and the owner steps below are done.
 
 **Owner steps, in the order they come up**
-- [ ] After #174 merges: put the three signing values in `~/.gradle/gradle.properties`, build the APK (`android\gradlew.bat -p android assembleBeta`), confirm `keytool -printcert -jarfile <apk>` shows the SHA-1 in `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`, install it on a phone (uninstall any debug build first) and sign in with Google.
+- [ ] After #174 merges: put the three signing values in `gradle.properties` in your Gradle user home (the `GRADLE_USER_HOME` folder; on this machine `G:\GradleUserHome\gradle.properties`, not `C:\Users\Angela\.gradle`), build the APK (`android\gradlew.bat -p android assembleBeta`), confirm `keytool -printcert -jarfile <apk>` shows the SHA-1 in `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`, install it on a phone (uninstall any debug build first) and sign in with Google.
 - [ ] After #180 merges: run the grant tool once as a dry run, then with `--apply` for each tester. Leave one tester on Free so someone tests buying Pro.
 - [ ] After #183 merges: redeploy the Worker and open the Cloudflare logs once to see a line.
 - [ ] After #181, #182 and #184: read `docs/BETA_TESTER_GUIDE.md` once, send yourself a feedback email from each app, and raise `versionCode` for each APK you send.
@@ -194,7 +194,7 @@ Test-round additions:
 
 ### #174 (merged 2026-10-23, not pushed)
 
-Done: a `beta` build type (not debuggable, package `com.rigcheck.app`, signed from three values outside the repo, may use the Test Store key, `BuildConfig.IS_BETA` true only there); 7 mutations killed. **Still yours:** put `betaKeystoreFile`, `betaKeyAlias` and `betaKeystorePassword` in `~/.gradle/gradle.properties`; build with `android\gradlew.bat -p android assembleBeta -PappVersionCode=<n>` (raise `n` for each APK you send); confirm `keytool -printcert -jarfile android\app\build\outputs\apk\beta\app-beta.apk` shows the SHA-1 in `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`; uninstall any debug build, install the APK, sign in with Google. Nobody has run the real beta APK on a device yet, so this is its first real test. Do this when no worker is using the emulator or Gradle.
+Done: a `beta` build type (not debuggable, package `com.rigcheck.app`, signed from three values outside the repo, may use the Test Store key, `BuildConfig.IS_BETA` true only there); 7 mutations killed. **Still yours:** put `betaKeystoreFile`, `betaKeyAlias` and `betaKeystorePassword` in `gradle.properties` in your Gradle user home (the `GRADLE_USER_HOME` folder; on this machine `G:\GradleUserHome\gradle.properties`, not `C:\Users\Angela\.gradle`); build with `android\gradlew.bat -p android assembleBeta -PappVersionCode=<n>` (raise `n` for each APK you send); confirm `keytool -printcert -jarfile android\app\build\outputs\apk\beta\app-beta.apk` shows the SHA-1 in `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`; uninstall any debug build, install the APK, sign in with Google. Nobody has run the real beta APK on a device yet, so this is its first real test. Do this when no worker is using the emulator or Gradle.
 
 ### #179 (merged 2026-10-23, not pushed)
 

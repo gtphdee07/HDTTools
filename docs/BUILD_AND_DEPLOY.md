@@ -97,7 +97,7 @@ place listed.
 | Cloudflare login | Account access | Interactive: `npx wrangler login`. For non-interactive use: the standard `CLOUDFLARE_API_TOKEN` (and `CLOUDFLARE_ACCOUNT_ID`) environment variables. The repo doesn't use these itself. | Worker deploy |
 | GitHub login | Issues, push | `gh auth login` and your normal git credentials | everything |
 | Android upload/release keystore and its password | Signs a beta APK, and later a Play Store build | Create it with `bash scripts/wizard_android_upload_key.sh` (from the repo root). The file lives in a folder **outside the repo**, the password in your password manager, a second copy of the file somewhere separate. Never commit either. See section 8. | Beta APK; Play release |
-| `betaKeystoreFile`, `betaKeyAlias`, `betaKeystorePassword` (or `BETA_KEYSTORE_FILE`, `BETA_KEY_ALIAS`, `BETA_KEYSTORE_PASSWORD`) | The three values the `beta` build type signs with: the keystore's full path, its key alias, and its one password | Your **user-level Gradle properties file** (`~/.gradle/gradle.properties`, outside the repo) or the environment variables. No defaults: a beta build without all three fails and names the missing one. | Beta APK (`assembleBeta`) |
+| `betaKeystoreFile`, `betaKeyAlias`, `betaKeystorePassword` (or `BETA_KEYSTORE_FILE`, `BETA_KEY_ALIAS`, `BETA_KEYSTORE_PASSWORD`) | The three values the `beta` build type signs with: the keystore's full path, its key alias, and its one password | Your **user-level Gradle properties file** (`gradle.properties` in your Gradle user home (the `GRADLE_USER_HOME` folder; on this machine `G:\GradleUserHome\gradle.properties`, not `C:\Users\Angela\.gradle`), outside the repo) or the environment variables. No defaults: a beta build without all three fails and names the missing one. | Beta APK (`assembleBeta`) |
 | `appVersionCode` | The beta APK's `versionCode` (default 1) | Raise it by hand, in the same properties file or with `-PappVersionCode=<n>`, before each APK you send | Beta APK |
 | Apple client secret, Services ID, key | Sign in with Apple | **Not set up.** Deferred to #77 with the iOS app. | future |
 
@@ -339,7 +339,7 @@ Be explicit about these so nobody assumes they work:
   `beta` build type signs with your upload keystore, is not debuggable, keeps
   the package `com.rigcheck.app`, and may use the RevenueCat Test Store key
   (test payments only). Put the three signing values from section 3 in
-  `~/.gradle/gradle.properties`, raise `appVersionCode`, then from `android/`
+  `gradle.properties` in your Gradle user home (the `GRADLE_USER_HOME` folder; on this machine `G:\GradleUserHome\gradle.properties`, not `C:\Users\Angela\.gradle`), raise `appVersionCode`, then from `android/`
   run `.\gradlew.bat assembleBeta`; the APK is
   `app/build/outputs/apk/beta/app-beta.apk`. Check
   `keytool -printcert -jarfile <apk>` shows the SHA-1 recorded when you made

@@ -1,6 +1,6 @@
 # Beta plan
 
-Drafted 2026-10-22 for the owner to edit. It plans the first beta (a small invited group), what must be done before going live, and what can ship later as feature releases. Ticket numbers are GitHub issues in `gtphdee07/HDTTools`. "New" means no ticket exists yet. Check ticket state with `gh issue list` before relying on this page, because tickets change faster than this file.
+Drafted 2026-10-22 for the owner to edit; ticket status updated 2026-10-23. It plans the first beta (a small invited group), what must be done before going live, and what can ship later as feature releases. Ticket numbers are GitHub issues in `gtphdee07/HDTTools`. "New" means no ticket exists yet. Check ticket state with `gh issue list` before relying on this page, because tickets change faster than this file.
 
 ## Decisions behind the plan (owner, 2026-10-22)
 
@@ -8,6 +8,14 @@ Drafted 2026-10-22 for the owner to edit. It plans the first beta (a small invit
 - **Android install:** a signed APK file sent to testers. No Play Store listing in the beta.
 - **Testers:** fewer than 20 invited people. The Anthropic spend cap (#97) is a must-do; the per-account rate limit (#114) is a should-do.
 - **Audits:** the refactor analysis and the security audit both run first as read-only reports. Findings become tickets. Only high and medium security findings, and refactors that block the beta, are fixed before it.
+
+## Status on 2026-10-23
+
+- **The Phase 1 build chain is finished.** All eight tickets are closed and pushed: #146, #29, #30, #20, #27, #101, #31 and #32 (closed 2026-10-22 and 2026-10-23, much faster than the sizing guess). The Supabase migrations for #29 (History) and #30 (plan caps) are applied and their live External suites passed. `supabase-auth`, `revenuecat-web-billing` and `anthropic` were re-run live after the last merges. `MPSkills` carries one unpushed run-sheet commit.
+- **Not started:** none of the five "new tickets" below is filed, no audit has run, and #97 (the Anthropic spend cap) is open.
+- **Done by you:** the upload keystore exists (wizard run 2026-10-23; file and notes in `G:\Secrets\rigcheck`) and an Android client for it was created in Google Cloud. Still to confirm: the password is in your password manager, a second copy of the file exists, the Google client's SHA-1 matches the notes file, and testers are listed as Google test users.
+- **New open tickets since the plan:** #169, #170, #171, #172, #173 (see "Tickets the chain left behind"). #166, #167 and #168 also closed since the plan was drafted.
+- **Next step:** freeze feature work, start the read-only refactor analysis (Phase 2), and file the five Phase 1 tickets.
 
 ## What the beta must let a tester do
 
@@ -17,11 +25,23 @@ Sign up (email, and Google if #20 is in), use manual entry without an account, s
 
 Two lanes. They can build side by side; Android runs one ticket at a time because there is one emulator. Run each ticket with the steps on the run sheet ([agents/test-round-handoff.md](agents/test-round-handoff.md)).
 
-| Lane | Tickets, in order | Beta need |
+| Lane | Tickets, in order | Beta need | Status |
+|---|---|---|---|
+| Web and server | #29 History sync on Web, #30 Pro raises the Garage and History caps | must | **done**, closed and pushed |
+| Web and server | #20 Continue with Google on Web (Google only) | should | **done**, closed and pushed |
+| Android | #146 prove the `pro` entitlement is attached, #27 Pro and credits carry across, #101 scan packs for Pro only, #31 synced Garage, #32 History | must (#101 is marked "do not release Android before it is done") | **done**, closed and pushed |
+
+### Tickets the chain left behind
+
+These were filed by the build sessions (all open, all `needs-triage`). My recommendation for the beta; you decide.
+
+| Ticket | What | Recommendation |
 |---|---|---|
-| Web and server | #29 History sync on Web, #30 Pro raises the Garage and History caps | must |
-| Web and server | #20 Continue with Google on Web (Google only) | should; drop it if time is short, email sign-in works without it |
-| Android | #146 prove the `pro` entitlement is attached, #27 Pro and credits carry across, #101 scan packs for Pro only, #31 synced Garage, #32 History | must (#101 is marked "do not release Android before it is done") |
+| #169 | Android: delete a Rig from the synced Garage | **should.** A Free tester at the 5-Rig cap on Android cannot free a slot except on Web, a dead end. |
+| #170 | Android: offer to import the Rigs saved on the phone on first sign-in | **should.** A tester who tries the app signed out, saves a Rig, then signs up sees that Rig vanish. Web already does this (#91). |
+| #171 | External: cover Android's Supabase Garage client in the `supabase-tables` surface | **should, or cover it in the Phase 3 smoke test.** It is the only live proof that the Android Garage client agrees with the server. Free, no paid calls. |
+| #172 | Web Release Back Log (running list; first item: show dates in the viewer's local time zone, not UTC) | **should.** Today an evening check can read as tomorrow on Web but as today on Android, so the same History entry differs between platforms. The list stays open until release. |
+| #173 | Android History: add the filters Web has | **later** (labelled `future`). Not needed for a beta. |
 
 ### New tickets to file for Phase 1
 
@@ -38,19 +58,19 @@ Two lanes. They can build side by side; Android runs one ticket at a time becaus
 ### Owner-only steps in Phase 1
 
 - [ ] **#97:** set the Anthropic spend limit and an alert, and record the figure and date on the ticket.
-- [ ] Generate the Android **upload keystore**, keep it and its password outside the repo, and register its SHA-1 in the Google OAuth Android client. Without that, Google sign-in fails on testers' phones. Run `bash scripts/wizard_android_upload_key.sh` from the repo root; it does all of this step by step.
+- [x] Generate the Android **upload keystore**, keep it and its password outside the repo, and register its SHA-1 in the Google OAuth Android client (`bash scripts/wizard_android_upload_key.sh`; run 2026-10-23, files in `G:\Secrets\rigcheck`). Confirm: the password is in your password manager, a second copy of the file exists, and the Google client `RigCheck-Android-beta` shows the SHA-1 from the notes file.
 - [ ] If the Google OAuth consent screen is in "Testing" mode, add each tester's Google account as a test user.
 - [ ] Choose how to protect Supabase: the paid tier, or a weekly keep-alive plus a manual export. The free tier pauses after 7 idle days and has no backups.
 - [ ] Commit the sandbox Web key and offering id to `web/.env.production` (public values; see [BUILD_AND_DEPLOY.md](BUILD_AND_DEPLOY.md) section 3).
 - [ ] Check the Supabase Redirect URLs allow-list (the unspecified "Pages preview hosts" entry from audit lead 3).
-- [ ] Apply any Supabase migration SQL that #29 and #30 produce.
+- [x] Apply the Supabase migration SQL that #29 and #30 produced (`20261022000000_history_entries.sql`, `20261023000000_plan_caps.sql`). Done; the live `supabase-tables` suite passed.
 
 ## Phase 2: refactor analysis and security audit
 
 Start the read-only analysis now. Do the refactor work and the audit after the Phase 1 tickets have merged, so they look at the code testers get and do not collide with tickets in flight.
 
 1. **Refactor analysis (read-only).** One pass per surface (Android, Web, Worker, Python and tooling), then one combined report. Look for oversized files and screens (for example the Android ViewModel and nav host), duplicated logic, dead code, and root clutter (`junit-*.xml`, `coverage.json`, the legacy `ARCHIVE_*.md`, `NEXT_STEPS.md` and `ClaudePlans/`). Every finding becomes a ticket with a severity. Only refactors that reduce security risk or block the beta are done before it.
-2. **Security audit.** A full `standard` run with the security-audit skill across every surface, reading the run-1 and run-2 ledgers as prior coverage (notes in the Claude memory for run-2; output folder `C:\Users\Angela\security-audit-skill\HDTTools\`). This host cannot enforce the skill's sandbox, so it is source review, not live attack testing. Include the dashboard checklist: Supabase redirects and providers, Google consent screen, Cloudflare Worker and Pages settings, RevenueCat key permissions, and Anthropic key scope. Open leads from run-2 that I could not see closed: the Android `rigcheck://login` deep link, the Pages-site External test using the full environment, and the Supabase redirect check. A hands-on test of the deployed Worker would be an owner-run script against a throwaway Worker.
+2. **Security audit.** A full `standard` run with the security-audit skill across every surface, reading the run-1 and run-2 ledgers as prior coverage (notes in the Claude memory for run-2; output folder `C:\Users\Angela\security-audit-skill\HDTTools\`). This host cannot enforce the skill's sandbox, so it is source review, not live attack testing. Include the dashboard checklist: Supabase redirects and providers, Google consent screen, Cloudflare Worker and Pages settings, RevenueCat key permissions, and Anthropic key scope. Run-2 leads already fixed: lead 2 (Anthropic retries, #112), lead 5 (the Test Store key in a release build, #166) and lead 7 (ticket scripts trusting any STATUS author, #167). Leads still open as far as I can see: the Android `rigcheck://login` deep link, the Pages-site External test using the full environment, and the Supabase redirect check. The audit should also cover the code added since run-2: the History and plan-caps migrations, Google sign-in on Web, and the Android Garage and History clients. A hands-on test of the deployed Worker would be an owner-run script against a throwaway Worker.
 3. **Fix pass.** All high and medium findings are fixed before the beta. Low findings go to the backlog.
 
 ## Phase 3: beta readiness
@@ -79,10 +99,11 @@ Start the read-only analysis now. Do the refactor work and the audit after the P
 - #13 paid Garage capacity upsell
 - #14 fleet management (needs its own wayfinder effort)
 - #77 Sign in with Apple, with the iOS app
+- #173 Android History filters
 - Tooling backlog, any time: #68, #69, #70 (epic close gate), #139, #144, #155 to #159 (static-check gaps), #165, #132
 
 Containers stay as they are: #3, #15, #35, #49, #51, #99.
 
 ## Rough sizing
 
-Estimates, in build sessions, not promises. The Android lane is the long pole at 5 serial sessions. The audit and fix pass take about 1 to 2 weeks after the Phase 1 tickets merge. Phase 3 is about 3 days. Re-estimate once #27 and #31 are merged; they are the riskiest tickets.
+Estimates, in build sessions, not promises. The Android chain I called the long pole finished in about a day, so that guess was too high. What is left before Phase 2 is small: the five new Phase 1 tickets and the "should" tickets above (#169, #170, #171, #172), about 9 small sessions in total, some in parallel. The audit and fix pass are still estimated at about 1 to 2 weeks. Phase 3 is about 3 days. Re-estimate after the refactor analysis report, which is the first real unknown.

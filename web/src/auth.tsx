@@ -27,6 +27,7 @@ export interface AuthClient {
   };
   signUp(creds: { email: string; password: string }): Promise<AuthResult<{ session: AuthSession | null }>>;
   signInWithPassword(creds: { email: string; password: string }): Promise<AuthResult<unknown>>;
+  signInWithOAuth(creds: { provider: 'google'; options?: { redirectTo?: string } }): Promise<AuthResult<unknown>>;
   signOut(): Promise<{ error: { message: string } | null }>;
   resetPasswordForEmail(email: string, options?: { redirectTo?: string }): Promise<AuthResult<unknown>>;
   updateUser(attrs: { password: string }): Promise<AuthResult<unknown>>;
@@ -50,6 +51,8 @@ export interface AuthState {
   linkProblem: string | null;
   signUp(email: string, password: string): Promise<ActionResult>;
   signIn(email: string, password: string): Promise<ActionResult>;
+  // Sends the browser to Google; the visitor comes back to this site signed in (or with linkProblem set).
+  signInWithGoogle(): Promise<ActionResult>;
   signOut(): Promise<ActionResult>;
   requestPasswordReset(email: string): Promise<ActionResult>;
   updatePassword(password: string): Promise<ActionResult>;
@@ -66,6 +69,7 @@ const SIGNED_OUT: AuthState = {
   linkProblem: null,
   signUp: unavailable,
   signIn: unavailable,
+  signInWithGoogle: unavailable,
   signOut: unavailable,
   requestPasswordReset: unavailable,
   updatePassword: unavailable,
@@ -89,14 +93,39 @@ const UNUSED_CODE_LINK =
   'If it was a confirmation link, your email may already be confirmed: try signing in with your password. ' +
   'If it was a password reset link, request a new one from this browser.';
 const DEAD_LINK = 'That email link is invalid, expired or already used, so it did not sign you in. Request a new one.';
+const GOOGLE_PROBLEM =
+  'Google sign-in did not finish, so you are not signed in. You may have cancelled it, or it may have expired. Try again, or sign in with your email and password.';
 const CALLBACK_PARAMS = ['access_token', 'error', 'error_description'];
 
-// Email links come back as ?code=... (PKCE). Supabase's client exchanges the code for a session and
-// removes it from the URL, but only in the browser that holds the code verifier (and while the code
-// is still good); otherwise the code is left in place and nothing happens. Called once the client has
-// finished starting up: any callback still in the URL was not used. Returns what to tell the visitor,
-// and tidies the URL.
+// Set just before the browser leaves for Google, so the page that Google sends the visitor back to
+// can tell a failed Google sign-in from a dead email link (both come back as ?code= or ?error=).
+const GOOGLE_PENDING_KEY = 'hdttools.googleSignInPending';
+
+function markGooglePending() {
+  try {
+    sessionStorage.setItem(GOOGLE_PENDING_KEY, '1');
+  } catch {
+    // Storage blocked: a failure then reads as the email-link problem, which is still not a blank page.
+  }
+}
+
+function takeGooglePending(): boolean {
+  try {
+    const pending = sessionStorage.getItem(GOOGLE_PENDING_KEY) !== null;
+    sessionStorage.removeItem(GOOGLE_PENDING_KEY);
+    return pending;
+  } catch {
+    return false;
+  }
+}
+
+// Email links and Google both come back as ?code=... (PKCE). Supabase's client exchanges the code for a
+// session and removes it from the URL, but only in the browser that holds the code verifier (and while
+// the code is still good); otherwise the code is left in place and nothing happens. Called once the
+// client has finished starting up: any callback still in the URL was not used. Returns what to tell the
+// visitor, and tidies the URL.
 function takeUnusedLinkProblem(): string | null {
+  const viaGoogle = takeGooglePending();
   const url = new URL(window.location.href);
   const fragment = new URLSearchParams(url.hash.slice(1));
   const unusedCode = url.searchParams.has('code');
@@ -106,6 +135,7 @@ function takeUnusedLinkProblem(): string | null {
   for (const p of ['code', 'error_code', ...CALLBACK_PARAMS]) url.searchParams.delete(p);
   if (deadInFragment) url.hash = '';
   window.history.replaceState(window.history.state, '', url.toString());
+  if (viaGoogle) return GOOGLE_PROBLEM;
   return deadInFragment || deadInQuery ? DEAD_LINK : UNUSED_CODE_LINK;
 }
 
@@ -149,6 +179,13 @@ export function AuthProvider({ client, children }: { client: AuthClient | null; 
     async (email: string, password: string) => fail((await client!.signInWithPassword({ email, password })).error),
     [client],
   );
+  const signInWithGoogle = useCallback(async () => {
+    markGooglePending();
+    const { error } = await client!.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
+    // Success navigates away from this page; only a failure to start is reported here.
+    if (error) takeGooglePending();
+    return fail(error);
+  }, [client]);
   const signOut = useCallback(async () => fail((await client!.signOut()).error), [client]);
   const requestPasswordReset = useCallback(
     async (email: string) => fail((await client!.resetPasswordForEmail(email, { redirectTo: window.location.origin })).error),
@@ -175,12 +212,13 @@ export function AuthProvider({ client, children }: { client: AuthClient | null; 
             linkProblem,
             signUp,
             signIn,
+            signInWithGoogle,
             signOut,
             requestPasswordReset,
             updatePassword,
           }
         : SIGNED_OUT,
-    [client, loading, session, recovering, linkProblem, signUp, signIn, signOut, requestPasswordReset, updatePassword],
+    [client, loading, session, recovering, linkProblem, signUp, signIn, signInWithGoogle, signOut, requestPasswordReset, updatePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

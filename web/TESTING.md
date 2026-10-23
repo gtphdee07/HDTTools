@@ -116,6 +116,41 @@ pieces (`SupabaseAccountBackend.kt` and the `supabase-kt` pin in
 there makes it stale and Android's release gate waits on it; only this Web suite
 exercises it live.
 
+"Continue with Google" on Web (#20) is covered live only as far as it can be without a
+Google login: the project reports the Google provider enabled, and the first hop
+(`/auth/v1/authorize?provider=google`, with a PKCE challenge) is a 302 to
+`accounts.google.com` whose `redirect_uri` is this project's `/auth/v1/callback`; an
+unknown provider gets the `validation_failed` error. The offline `App.auth.test.tsx`
+covers the button, the call it makes (`signInWithOAuth`, provider `google`, back to the
+site root, on the PKCE client), the error style when it cannot start, the return signed
+in, and the message when the visitor comes back from Google without being signed in
+(cancelled, expired, or the code unusable in this browser).
+
+**Checked by hand for Google on Web (#20)** — nothing below is visible to a test:
+
+- *Google Cloud*: the Web OAuth client's authorized redirect URI is the Supabase
+  callback. Checked 2026-10-22 without a login: Google's authorize page accepts the
+  client ID and that `redirect_uri` and shows its sign-in page (a mismatch would show
+  `redirect_uri_mismatch`). If the consent screen is in "Testing" mode, each tester's
+  Google account must be listed as a test user.
+- *Supabase Redirect URLs*: Supabase checks `redirect_to` against the allow-list when
+  Google sends the visitor back, not at the first hop, so only a real sign-in proves it.
+  Web sends the visitor back to the site root (`window.location.origin`), which is the
+  Site URL (`https://rigcheck-web.pages.dev`) and already in the list (#78); local dev
+  needs `http://localhost:5173/**` and a preview host needs its own entry. A host that
+  is missing falls back to the Site URL, so the visitor lands on the live site, not on
+  the preview.
+- *One account for Google and email*: Supabase links a Google sign-in to an existing
+  email account when the Google email is verified and matches (automatic linking is its
+  default). The settings endpoint does not expose this and no test can see it without a
+  real Google login. To check: create an email account with a Gmail address, confirm it,
+  sign out, then "Continue with Google" with the same Gmail; the Garage, History and
+  plan must be the same account's. **Result, 2026-10-22 (owner, local dev server at
+  `http://localhost:5173`):** signing in with email and with "Continue with Google" reached
+  the same Garage, so Supabase linked the two sign-ins to one account. This also showed
+  the Google round trip working end to end on Web (the cancel path was not tried by
+  hand; the offline tests cover it).
+
 ### `supabase-tables` (#28, #29)
 
 Real calls to the live Supabase project's Garage table (`garage_rigs`) and its
@@ -268,7 +303,7 @@ Pages preview hosts. Web signs in with the PKCE flow (#95), so a confirmation or
 reset link only signs in the browser that asked for it: opened elsewhere it lands
 with `?code=` and the Account screen explains that instead. If a confirmation link ever lands on `localhost` again,
 this setting was reset. Google sign-in is enabled under Authentication →
-Providers (Android's Google flow, #22); Apple is not, until #77.
+Providers (Android's Google flow, #22; Web's, #20); Apple is not, until #77.
 
 ## Coverage
 
@@ -409,7 +444,7 @@ the ticket for each: [`docs/agents/static-checks.md`](../docs/agents/static-chec
 | `src/breakdown.test.ts` | **Cross-platform interface** | The Web port of `compute_breakdown`/`verdict_for` (`breakdown.ts`) against the shared `test-vectors/breakdown_cases.json`, the same cases the Python and Kotlin runners check (34 tests, including the `truck_gcwr` cases: no Combined Rig Weight row without a GCWR, and the Safe to Tow caveat when it was not checked): every Breakdown row, Combined Rig Weight included, has an over-limit case; a case that needs a capability the runner does not know **fails** rather than skips (#55); each row's note and badge and the verdict's headline and subline are asserted, with `note_android` only on the rows Android words differently. `createBreakdown` computes locally with no network call, stamps a "Mon DD, YYYY" date, converts the UI's whole-number pin weight percentage to the fraction the math uses (`test-vectors/pin_weight_pct_contract.json`) and treats a `NaN` reading, a `NaN` GCWR included, like a missing one. |
 | `src/nickname.test.ts` | Function | The Rig nickname rule: names differing only by case or surrounding spaces are the same Rig, spaces inside a name are significant, `rigLookup` finds a Rig by that rule, and `rigSubtitle` joins the truck and trailer manufacturers (only one, or empty, when the other is missing). |
 | `src/scanError.test.ts` | Function | `ScanError.canTryAgain`: which of the Scan service's error codes offer Try again and which do not, one test per code. |
-| `src/App.auth.test.tsx` | **Interaction** | Web accounts through the real screens with an injected fake Supabase auth client: a visitor reaches the free manual-entry flow with no account; sign up, confirm by email, sign in, expose the token and sign out; the email and password fields are empty after sign out, after sign in and after a password reset (a shared browser), and show what was typed while signed out; a session is restored on load; wrong credentials show the error; a password reset email is sent, and its link lands on a new-password form that updates the password; a confirmation or recovery link opened in a browser that did not ask for it, an error redirect in the query string and an expired link in the fragment are each explained and sign nobody in (PKCE, #95); a normal page open says nothing about links; accounts are unavailable when Supabase is not configured. |
+| `src/App.auth.test.tsx` | **Interaction** | Web accounts through the real screens with an injected fake Supabase auth client: a visitor reaches the free manual-entry flow with no account; sign up, confirm by email, sign in, expose the token and sign out; the email and password fields are empty after sign out, after sign in and after a password reset (a shared browser), and show what was typed while signed out; a session is restored on load; wrong credentials show the error; a password reset email is sent, and its link lands on a new-password form that updates the password; a confirmation or recovery link opened in a browser that did not ask for it, an error redirect in the query string and an expired link in the fragment are each explained and sign nobody in (PKCE, #95); a normal page open says nothing about links; accounts are unavailable when Supabase is not configured; "Continue with Google" (#20) is offered on sign in and create account but not on the reset form, starts Google for this site, shows a start error in the usual style, lands the visitor signed in on return, and a failed return is named as Google's (not as a dead email link), without that wording leaking onto a later email link. |
 | `src/App.billing.test.tsx` | **Interaction** | Buying Pro and scan packs through the real screens with a fake billing client (58 tests): a Free user sees the plan, the scan balance and the Pro paywall with the not-certified statement; checkout opens and closes (the Close control, the browser Back button, before the SDK has opened the modal), and a second checkout cannot start while one is open; after a purchase the user is Pro at once, the starter scans arrive late and are rechecked on an interval (an updating state, the balance once the grant lands, a plain message after the window, a reload request when every check failed, no recheck after sign-out, another account or unmount, a hanging check never wedging the state); a plan load racing the purchase cannot turn the buyer back to Free; a checkout that settles late never hands its Pro, error or cancel notice to the next account; a failed plan load offers Try again and a failed purchase does not; packs are sold to Pro users only, each adds its own scans and never changes the plan, and a Free user is offered Pro only. |
 | `src/App.scanInFlight.test.tsx` | **Interaction** | While a Truck Tag photo scan, or a stand-alone ticket scan, is in flight (#103): the check cannot be left or restarted and says why, is free again once the scan answers or fails, and a leave-and-restart attempt keeps the check. |
 | `src/App.scanStale.test.tsx` | **Interaction** | A scan that answers after its check is no longer the current one changes nothing in the new check (its fields, its failure, a stand-alone weight) and the balance on screen is still read again. |

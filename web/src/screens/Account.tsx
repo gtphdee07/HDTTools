@@ -148,6 +148,14 @@ export function Account({ onDone, doneLabel = 'Back to Dashboard' }: AccountProp
           {mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
         </Button>
       </form>
+      {mode !== 'reset' && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 13, textAlign: 'center' }}>or</div>
+          <Button variant="secondary" disabled={busy} onClick={() => void run(() => auth.signInWithGoogle())} style={{ marginTop: 8, width: '100%' }}>
+            Continue with Google
+          </Button>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 16, marginTop: 14 }}>
         {mode !== 'signin' && (
           <button style={linkStyle} onClick={() => switchMode('signin')}>

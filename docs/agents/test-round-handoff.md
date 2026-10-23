@@ -8,7 +8,7 @@ The shared-accounts chain and #20 are merged and pushed (last push 04490db). The
 
 | Round | Lane A: Android (the one emulator, one ticket at a time) | Lane B: Web, Worker, tooling (no emulator, no Gradle) |
 |---|---|---|
-| 1 | **#174** signed beta APK build | ~~#179~~ Web dates in the viewer's local time (merged) |
+| 1 | ~~#174~~ signed beta APK build (merged) | ~~#179~~ Web dates in the viewer's local time (merged) |
 | 2 | **#169** delete a Rig on Android | **#181** Web beta kit: feedback link, "Beta: test payments" label, tester guide |
 | 3 | **#182** Android beta kit (waits for #174 and #181 merged) | **#180** grant tool (gives a tester Pro and scans) |
 | 4 | **#184** Android crash capture (waits for #182 merged) | **#183** Worker log lines |
@@ -17,7 +17,6 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 
 | Ticket | What | Lane | Waits for | Your part | Card |
 |---|---|---|---|---|---|
-| #174 | Signed `beta` build type for the APK | A | | build the APK yourself after the merge | [#174](#174-signed-beta-build) |
 | #169 | Delete a Rig from the synced Garage | A | #174 merged | none | [#169](#169-android-delete-a-rig) |
 | #181 | Web feedback link, beta label, tester guide | B | | read the guide | [#181](#181-web-beta-kit) |
 | #182 | Android feedback link and beta label | A | #174, #181 merged | none | [#182](#182-android-beta-kit) |
@@ -193,19 +192,9 @@ Test-round additions:
 - The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
 ```
 
-### #174 Signed beta build
+### #174 (merged 2026-10-23, not pushed)
 
-- **Lane A, round 1.** **Step 1:** `/ticket-start 174`. Android; the single emulator.
-- **Step 2:** paste Block A, then these lines:
-
-```
-- Build type is `beta` (task `assembleBeta`); `versionCode` is a Gradle property raised by hand (default 1) with `versionName` `1.0-beta` (recorded decisions).
-- Never put the real keystore path, alias or password in the repo, a test or a comment. Prove signing with a throwaway keystore made in a temp folder. Do not build the real APK: the owner does.
-- #166's guard stays exactly as strict for `release`; its tests must pass unchanged.
-- `docs/BUILD_AND_DEPLOY.md` (secrets table and section 8) and `android/TESTING.md` explain the beta build, why a debug build cannot be updated by it (uninstall first), and where the signing values live.
-```
-
-- **Your part:** after the merge, the first owner step above (signing values, build, SHA-1, install, Google sign-in).
+Done: a `beta` build type (not debuggable, package `com.rigcheck.app`, signed from three values outside the repo, may use the Test Store key, `BuildConfig.IS_BETA` true only there); 7 mutations killed. **Still yours:** put `betaKeystoreFile`, `betaKeyAlias` and `betaKeystorePassword` in `~/.gradle/gradle.properties`; build with `android\gradlew.bat -p android assembleBeta -PappVersionCode=<n>` (raise `n` for each APK you send); confirm `keytool -printcert -jarfile android\app\build\outputs\apk\beta\app-beta.apk` shows the SHA-1 in `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`; uninstall any debug build, install the APK, sign in with Google. Nobody has run the real beta APK on a device yet, so this is its first real test. Do this when no worker is using the emulator or Gradle.
 
 ### #179 (merged 2026-10-23, not pushed)
 
@@ -213,7 +202,7 @@ Done: Web dates (Results and each History entry) show the viewer's local day, no
 
 ### #169 Android delete a Rig
 
-- **Lane A, round 2** (start after #174 has merged). **Step 1:** `/ticket-start 169`. Android; the single emulator.
+- **Lane A, round 2** (#174 has merged: start any time). **Step 1:** `/ticket-start 169`. Android; the single emulator.
 - **Step 2:** paste Block A, then these lines:
 
 ```

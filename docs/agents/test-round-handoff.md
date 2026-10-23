@@ -4,22 +4,24 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-The shared-accounts chain and #20 are merged and pushed (last push 04490db). The work now is the **Alpha round** from [BETA_PLAN.md](../BETA_PLAN.md): eight tickets run as **two lanes, one worker session each**. As before, every ticket gets a **new** session; "two workers" means two lanes running at the same time. Claude merges them one at a time (`/ticket-merge N`) and asks before the push (one push, at the end of the round).
+The shared-accounts chain and #20 are merged and pushed (last push 04490db). The work now is the **Alpha round** from [BETA_PLAN.md](../BETA_PLAN.md): nine tickets run as **two lanes, one worker session each**. As before, every ticket gets a **new** session; "two workers" means two lanes running at the same time. Claude merges them one at a time (`/ticket-merge N`) and asks before the push (one push, at the end of the round).
 
 | Round | Lane A: Android (the one emulator, one ticket at a time) | Lane B: Web, Worker, tooling (no emulator, no Gradle) |
 |---|---|---|
 | 1 | ~~#174~~ signed beta APK build (merged) | ~~#179~~ Web dates in the viewer's local time (merged) |
-| 2 | **#169** delete a Rig on Android | **#181** Web beta kit: feedback link, "Beta: test payments" label, tester guide |
-| 3 | **#182** Android beta kit (waits for #174 and #181 merged) | **#180** grant tool (gives a tester Pro and scans) |
-| 4 | **#184** Android crash capture (waits for #182 merged) | **#183** Worker log lines |
+| 2 | **#186** (new, found on your phone) keep every screen clear of the system bars, Paywall scrolls and gets a Back button | **#181** Web beta kit: feedback link, "Beta: test payments" label, tester guide |
+| 3 | **#169** delete a Rig on Android | **#180** grant tool (gives a tester Pro and scans) |
+| 4 | **#182** Android beta kit (waits for #181 merged) | **#183** Worker log lines |
+| 5 | **#184** Android crash capture (waits for #182 merged) | |
 
 A ticket starts when the tickets it waits for have merged, not when the round ends: lane B can run ahead, and lane A's round 3 waits only for #181 (lane B's round 2). #176 and #178 are now containers (split into #180 to #182 and #183, #184); #172 stays open for later Web items, with its first item moved to #179. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.
 
 | Ticket | What | Lane | Waits for | Your part | Card |
 |---|---|---|---|---|---|
-| #169 | Delete a Rig from the synced Garage | A | #174 merged | none | [#169](#169-android-delete-a-rig) |
+| #186 | System bars, Paywall scroll and Back button | A | | look at it on your phone (3-button navigation) | [#186](#186-android-system-bars-and-the-paywall) |
+| #169 | Delete a Rig from the synced Garage | A | #186 merged | none | [#169](#169-android-delete-a-rig) |
 | #181 | Web feedback link, beta label, tester guide | B | | read the guide | [#181](#181-web-beta-kit) |
-| #182 | Android feedback link and beta label | A | #174, #181 merged | none | [#182](#182-android-beta-kit) |
+| #182 | Android feedback link and beta label | A | #181 merged | none | [#182](#182-android-beta-kit) |
 | #180 | Tester grant tool | B | | run it for each tester | [#180](#180-grant-tool) |
 | #184 | Android crash capture | A | #182 merged | none | [#184](#184-android-crash-capture) |
 | #183 | Worker log lines | B | | redeploy the Worker, open the logs | [#183](#183-worker-log-lines) |
@@ -31,7 +33,7 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - **Merge order inside a round:** whichever worker finishes first. Type `/ticket-finish` in the worker, then `/ticket-merge N` here.
 
 **Pushes and External runs** (owner decision, 2026-10-23: **one push, at the end**; Claude still asks before it)
-- Merged tickets stay local on `MPSkills` until all eight are merged. Nothing goes live in between, so the Web site does not change under you while the workers run.
+- Merged tickets stay local on `MPSkills` until all nine are merged. Nothing goes live in between, so the Web site does not change under you while the workers run.
 - At the end Claude runs every stale External suite in one bundle, then asks for the push: `revenuecat-android-sdk` (stale after #174; free; needs the emulator, so lane A must be finished), the Web suites (free), and `scan-proxy-worker` (one paid scan; Claude asks for your ceiling). The `anthropic` surface declares three paid calls if a new SDK release has made it stale again.
 - Before that run, you redeploy the Worker (`npm run deploy` in `workers/scan-proxy`) after #183 has merged, because the live Worker suite tests whatever is deployed.
 - Do not invite testers before the push and the owner steps below are done.
@@ -200,9 +202,21 @@ Done: a `beta` build type (debuggable, because RevenueCat's SDK closes a non-deb
 
 Done: Web dates (Results and each History entry) show the viewer's local day, not UTC; 5 mutations killed. Nothing for you to do except, at some point, compare a History date on a phone with the same entry on Web.
 
+### #186 Android system bars and the Paywall
+
+- **Lane A, next** (found on your phone on 2026-10-23). **Step 1:** `/ticket-start 186`. Android; the single emulator.
+- **Step 2:** paste Block A, then these lines:
+
+```
+- The owner's phone is a Samsung SM-G996U with 3-button navigation: the Paywall's "Restore purchase" sits under the navigation bar. Test with 3-button navigation switched on in the emulator (for example `adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton`; switch it back afterwards) as well as gesture navigation, and use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
+- Prefer one rule at the top of the app over padding on each screen. The camera preview may draw behind the bars; its controls must not.
+```
+
+- **Your part:** after the merge, rebuild the beta APK with a higher `-PappVersionCode`, update the phone, and look at the Paywall (tap the balance chip), the Rig picker's "Create" button and the History screen with your 3-button navigation: nothing covered, the Paywall scrolls and has a Back control.
+
 ### #169 Android delete a Rig
 
-- **Lane A, round 2** (#174 has merged: start any time). **Step 1:** `/ticket-start 169`. Android; the single emulator.
+- **Lane A, round 3** (start after #186 has merged). **Step 1:** `/ticket-start 169`. Android; the single emulator.
 - **Step 2:** paste Block A, then these lines:
 
 ```

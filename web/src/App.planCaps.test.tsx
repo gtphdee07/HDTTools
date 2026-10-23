@@ -235,6 +235,26 @@ describe('Garage cap by plan', () => {
     expect(garage.backend.addRig.mock.calls[0][2]).toBe('pro');
   });
 
+  it('keeps a Pro account on its Pro cap when a read on showing the tab lags and says Free', async () => {
+    const billing = makeBilling({ pro: true });
+    const garage = makeGarage(Array.from({ length: CAPS.free.rigs }, (_, i) => `Rig ${i + 1}`));
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    const user = renderApp(billing, garage);
+    await planLoaded(user, 'Pro');
+
+    // RevenueCat's read behind a purchase can lag; showing the tab again must not take Pro away.
+    const reads = billing.client.getStatus.mock.calls.length;
+    billing.client.getStatus.mockResolvedValue({ isPro: false, scanBalance: 0 });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await waitFor(() => expect(billing.client.getStatus.mock.calls.length).toBeGreaterThan(reads));
+    await finishCheckForNewRig(user, 'One More');
+    await acknowledgeDisclaimer(user);
+
+    await waitFor(() => expect(garage.stored.has('One More')).toBe(true));
+    expect(garage.backend.addRig.mock.calls[0][2]).toBe('pro');
+    expect(CAPS.free.rigs).toBeLessThan(CAPS.pro.rigs);
+  });
+
   it('reports an unreadable plan as unknown, and offers no upgrade it cannot stand behind', async () => {
     const garage = makeGarage(['Rig One', 'Rig Two']);
     const billing = makeBilling({ readFails: true });

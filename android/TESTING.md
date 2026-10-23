@@ -952,8 +952,9 @@ network involved:
   Offering's packages (arbitrary ids and prices, so only the reported package type can tell
   Pro from a pack): a Free account sees the Pro offer and no pack, a Pro account the packs
   and not Pro, nothing is offered while the plan is not known (Try again reads it again),
-  buying Pro swaps the packs in with the new balance and does not close the screen, buying a
-  pack does close it, and an Offering without a lifetime package (Free) or without packs
+  buying Pro swaps the packs in with the new balance and does not close the screen (and Pro
+  cannot be bought a second time while the plan is still catching up), buying a pack does
+  close it, and an Offering without a lifetime package (Free) or without packs
   (Pro) shows a plain message.
 - `PaywallOffersTest.kt` (#101, JVM, 5 tests) — the split of an Offering into Pro and scan
   packs: the lifetime package is Pro and the other one-time packages are packs whatever their

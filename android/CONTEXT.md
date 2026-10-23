@@ -21,7 +21,7 @@ The shared RigCheck sign-in (Supabase Auth; email + password and Google; Apple i
 **Plan** (Free or Pro):
 Whether the signed-in Account has the RevenueCat `pro` entitlement, however and wherever Pro was bought — a Pro bought on Web shows as Pro here, and the other way round (#27, ADR-0003, ADR-0006). Shown on the Paywall; read again when the Paywall opens and after a purchase or restore, since it can change on another device. Not known (signed out, RevenueCat not yet linked to the Account, or the read failed) is shown as nothing, never as Free. The Scan Credit balance follows the Account the same way and is read from the same place.
 
-**Paywall** ("Get More Scans"):
+**Paywall** ("Get More Scans"; titled "Unlock Pro" while the Account is Free):
 What the Plan decides the Account may buy (#101, ADR-0006's 2026-10-12 amendment): a Free Account is offered Pro (the Offering's lifetime package) and no scan packs; a Pro Account is offered the scan packs and not Pro; while the Plan is not known nothing is offered, with Try again. Buying Pro keeps the Paywall open: the Plan and Scan Credit balance are read again and the packs replace the Pro offer. Buying a pack closes it. Pro is told from a pack by what RevenueCat reports about the package (lifetime package type; any other one-time package is a pack, a subscription is neither), never by product id; prices come from the store. The Android SDK does not report consumable versus non-consumable, which is why the lifetime package type is the marker. The scan service still checks only the balance, so this is enforced here, not there.
 
 **Scan notice**:
@@ -29,4 +29,4 @@ The note above the fields of the entry screen reached after a delivered Scan (Tr
 
 ## Open question, not yet a term
 
-`ANDROID_DESIGN_BRIEF.md` describes a two-tier purchase model (a "lifetime unlock" with preset credits, plus separate consumable "credit packs"). The Paywall now makes that distinction (see **Paywall** above, as Pro and scan packs), but don't treat "lifetime unlock"/"credit pack" as established vocabulary — the terms are Pro and scan pack, and pricing and pack sizes are still undecided (#33).
+`ANDROID_DESIGN_BRIEF.md` describes a two-tier purchase model (a "lifetime unlock" with preset credits, plus separate consumable "credit packs"). The Paywall now makes that distinction (see **Paywall** above: Pro and scan packs), but don't treat "lifetime unlock"/"credit pack" as established vocabulary — the terms are Pro and scan pack, and pricing and pack sizes are still undecided (#33).

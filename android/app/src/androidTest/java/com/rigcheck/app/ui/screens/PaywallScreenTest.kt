@@ -21,8 +21,9 @@ import org.junit.runner.RunWith
 
 // The daily-tier custom test Application (CustomTestRunner) never calls
 // Purchases.configure(), so RevenueCatManager.getOfferings() always throws
-// here - these tests cover the resulting error-state rendering, which is
-// genuinely what an unconfigured/offline device would see. Real Test Store
+// here - unless a test passes its own `loadPackages`, as the #101 cases at the
+// end of this file do. The rest cover the resulting error-state rendering,
+// which is genuinely what an unconfigured/offline device would see. Real Test Store
 // offerings/pricing is the weekly-equivalent tier, deferred until the
 // dedicated RevenueCat test customer exists (see NEXT_STEPS.md).
 @RunWith(AndroidJUnit4::class)
@@ -355,6 +356,42 @@ class PaywallScreenTest {
         assertFalse("buying Pro must not leave the Paywall", done)
         composeRule.onNodeWithText("Pro (lifetime)").assertDoesNotExist()
         composeRule.onNodeWithText("You have 25 scans left.", substring = true).assertIsDisplayed()
+    }
+
+    // The plan is read again after the purchase, so for a moment the account has Pro but
+    // still reads as Free. Pro must not be buyable a second time in that gap.
+    @Test
+    fun proCannotBeBoughtAgainWhileThePlanCatchesUp() {
+        val isPro = mutableStateOf<Boolean?>(false)
+        var purchases = 0
+        var planReads = 0
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 0,
+                onPurchase = { _, report ->
+                    purchases++
+                    report(true, null)
+                },
+                onRestore = { },
+                onDone = { },
+                isPro = isPro.value,
+                onRetryPlan = { planReads++ },
+                loadPackages = { listOf(proPackage, smallPack) },
+            )
+        }
+        waitForText("Pro (lifetime)")
+
+        composeRule.onNodeWithText("\$14.99").performClick()
+
+        composeRule.onNodeWithText("\$14.99").assertIsNotEnabled()
+        composeRule.onNodeWithText("Pro is yours.", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Try again").performClick()
+        assertEquals(1, planReads)
+        assertEquals(1, purchases)
+
+        composeRule.runOnUiThread { isPro.value = true }
+        waitForText("10 scans")
+        composeRule.onNodeWithText("Pro is yours.", substring = true).assertDoesNotExist()
     }
 
     @Test

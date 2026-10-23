@@ -62,6 +62,9 @@ fun PaywallScreen(
     var offers by remember { mutableStateOf<PaywallOffers?>(null) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var isBusy by remember { mutableStateOf(false) }
+    // Pro was bought here but the plan has not been read as Pro yet: the Pro offer must
+    // not be buyable again in that gap (the store refuses a second lifetime purchase).
+    var proBought by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         runCatching { loadPackages() }
@@ -102,11 +105,12 @@ fun PaywallScreen(
 
         // Buying a pack ends the visit; buying Pro stays, because what the account
         // can buy has just changed.
-        fun buy(pkg: Package, closesScreen: Boolean, done: String) {
+        fun buy(pkg: Package, closesScreen: Boolean, done: String, onBought: () -> Unit = {}) {
             isBusy = true
             onPurchase(pkg) { success, error ->
                 isBusy = false
                 if (success) {
+                    onBought()
                     Toast.makeText(context, done, Toast.LENGTH_SHORT).show()
                     if (closesScreen) onDone()
                 } else if (error != null) {
@@ -132,7 +136,15 @@ fun PaywallScreen(
                 OfferList(shown.scanPacks, isBusy) { pkg -> buy(pkg, closesScreen = true, done = "Purchase complete!") }
             }
             else -> shown.proUnlock?.let { pro ->
-                OfferList(listOf(pro), isBusy) { buy(it, closesScreen = false, done = "Pro unlocked!") }
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OfferList(listOf(pro), isBusy || proBought) {
+                        buy(it, closesScreen = false, done = "Pro unlocked!") { proBought = true }
+                    }
+                    if (proBought) {
+                        Text("Pro is yours. Updating your plan to show scan packs.")
+                        TextButton(enabled = !isBusy, onClick = onRetryPlan) { Text("Try again") }
+                    }
+                }
             } ?: Text("Pro isn't available to buy right now.")
         }
 

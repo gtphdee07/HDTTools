@@ -2,6 +2,7 @@ import { useBilling } from '../billing';
 import { Button } from '../design-system/Button';
 import { Card } from '../design-system/Card';
 import { NOT_CERTIFIED_STATEMENT } from '../notCertified';
+import { BetaPaymentsLabel } from './BetaPaymentsLabel';
 
 // Where a Pro user tops up their Scan Credit balance (a Free user buys Pro first, so this renders nothing
 // for them). A pack adds scans only: it never changes the plan, so the Garage and History limits stay as they were.
@@ -13,6 +14,7 @@ export function ScanPacks() {
   const busy = loading || checkoutOpen || scansUpdating;
   return (
     <Card title="Buy more scans" subtitle="Scan packs add scans only. They do not change your plan or your Garage and History limits.">
+      <BetaPaymentsLabel />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
         {scanPacks.map((pack) => (
           <div key={pack.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>

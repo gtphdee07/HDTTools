@@ -2,6 +2,7 @@ import { useBilling } from '../billing';
 import { Button } from '../design-system/Button';
 import { Card } from '../design-system/Card';
 import { NOT_CERTIFIED_STATEMENT } from '../notCertified';
+import { BetaPaymentsLabel } from './BetaPaymentsLabel';
 
 // What a signed-in Free user sees on their account: what Pro is, its price, the
 // not-certified statement (the Disclaimer gate before results is separate and unchanged), and Buy.
@@ -14,6 +15,7 @@ export function ProPaywall() {
       title="RigCheck Pro"
       subtitle="A one-time purchase, yours for good: larger Garage and History, plus a starter bundle of scans."
     >
+      <BetaPaymentsLabel />
       {proOffer ? (
         <div style={{ fontSize: 14, marginTop: 10 }}>
           <strong>{proOffer.price}</strong> &middot; one time, no subscription

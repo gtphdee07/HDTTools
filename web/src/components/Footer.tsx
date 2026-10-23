@@ -1,3 +1,5 @@
+import { FeedbackLink } from './FeedbackLink';
+
 interface FooterProps {
   onGoHome: () => void;
   onGoHistory: () => void;
@@ -44,6 +46,7 @@ export function Footer({ onGoHome, onGoHistory, locked = false }: FooterProps) {
             <button onClick={onGoHistory} disabled={locked} style={linkStyle}>
               History
             </button>
+            <FeedbackLink />
           </nav>
         </div>
         <div

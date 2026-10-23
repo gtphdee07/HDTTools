@@ -14,6 +14,8 @@ The shared-accounts chain and #20 are merged and pushed (last push 04490db). The
 | 4 | **#182** Android beta kit (waits for #181 merged) | **#183** Worker log lines |
 | 5 | **#184** Android crash capture (waits for #182 merged) | |
 
+**Where things stood when the computer was shut down (2026-10-23, evening):** merged and local (nothing pushed since 04490db): #179, #174 and the #185 fix (beta build now debuggable). **#181 is READY TO MERGE** in its worktree (`ticket-181`, branch tip 1573bb7): type `/ticket-merge 181` in the main checkout when you are back. **#186** (system bars, Paywall scroll, Back button; found on your phone) is filed and is next in lane A: `/ticket-start 186`. Your phone (SM-G996U) still has the first beta APK (versionCode 1, not debuggable, so it closes with the Wrong API Key dialog): after #186 merges, rebuild with a higher `-PappVersionCode` (the #185 fix is already in the code) and update it, signed with the same key. Your signing values live in `G:\GradleUserHome\gradle.properties`. When working with adb, the phone is `R3CR50G10ML` and the emulator is `emulator-5554`: always name the one you mean.
+
 A ticket starts when the tickets it waits for have merged, not when the round ends: lane B can run ahead, and lane A's round 3 waits only for #181 (lane B's round 2). #176 and #178 are now containers (split into #180 to #182 and #183, #184); #172 stays open for later Web items, with its first item moved to #179. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.
 
 | Ticket | What | Lane | Waits for | Your part | Card |

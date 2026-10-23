@@ -135,6 +135,50 @@ reads the generated `BuildConfig` of each build type. The Gradle checks are `slo
 (about 40 s); the planner owes them when `app/build.gradle.kts` changes. Putting the production
 key on the release-build machine is a launch step (#99, #40).
 
+### Beta build (#174)
+
+`beta` is a third build type for the APK sent to testers: it is `release` (not debuggable, package
+`com.rigcheck.app` with no suffix, `versionName` `1.0-beta`), signed with the owner's upload keystore,
+and the only type besides `debug` that may carry the RevenueCat Test Store key (the beta uses test
+payments). `BuildConfig.IS_BETA` is true only in it (#176 reads it for the "Beta: test payments"
+label). It has no unit-test or device-test variant, so `./gradlew test` is unchanged, and `release` and
+its guard (#166) are untouched.
+
+The keystore never enters the repo. The build reads three values from Gradle properties, or the
+environment variables beside them, with no defaults; the owner keeps them in the user-level
+`~/.gradle/gradle.properties`:
+
+| Gradle property | Environment variable | Value |
+|---|---|---|
+| `betaKeystoreFile` | `BETA_KEYSTORE_FILE` | full path of the keystore file |
+| `betaKeyAlias` | `BETA_KEY_ALIAS` | the key alias |
+| `betaKeystorePassword` | `BETA_KEYSTORE_PASSWORD` | the one password (the file is PKCS12, so the store and key passwords are the same) |
+
+A property beats its variable. `verifyBetaSigning` fails `assembleBeta`, `bundleBeta`, `packageBeta` and
+`packageBetaBundle` when any of the three is missing or blank; the message names the property and never
+prints a value. Raise the Gradle property `appVersionCode` (default 1) by hand before each APK you send:
+testers update in place only if `versionCode` rises.
+
+```
+.\gradlew.bat assembleBeta -PappVersionCode=2     # the APK is app/build/outputs/apk/beta/app-beta.apk
+.\gradlew.bat :app:verifyBetaSigning              # the guard alone, seconds, no build
+keytool -printcert -jarfile app\build\outputs\apk\beta\app-beta.apk    # the SHA-1 of the signing key
+```
+
+A beta APK cannot be installed over a debug build: they are signed with different keys, so Android
+refuses the update. Uninstall the debug build first. Google sign-in works only on a build with this
+package signed by the upload key (the `RigCheck-Android-beta` OAuth client), which is why the package
+name has no suffix.
+
+`tests/test_android_beta_build.py` proves the rules: the guard alone (each setting missing, blank or
+padded; values never printed; all three accepted from properties and from variables), the beta tasks
+run it first while debug, release and `test` do not, the generated `BuildConfig` has the Test Store key
+only in debug and beta and `IS_BETA` only in beta, no keystore path, alias or password literal is in
+`android/`, and one check packages a real beta APK with a throwaway keystore made in a temp folder
+(never the owner's) and reads its signature with `keytool -printcert -jarfile`. The Gradle checks are
+`slow` and offline; the APK check skips when the beta dependencies are not in the offline Gradle cache
+(build `assembleBeta` once online to fill it).
+
 ### Instrumented suite, measured (2026-10-21, #64)
 
 `./gradlew connectedDebugAndroidTest` from `android/`, on the `medium_phone` emulator (API 36

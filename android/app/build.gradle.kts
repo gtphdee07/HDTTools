@@ -39,18 +39,47 @@ val revenueCatReleaseKey: String =
         .getOrElse("")
         .trim()
 
+// Beta signing (#174): three values from Gradle properties (the owner's user-level gradle.properties) or
+// environment variables, with no defaults. The file is PKCS12, so the store and key passwords are one value.
+fun betaSetting(property: String, environment: String): String =
+    providers.gradleProperty(property).orElse(providers.environmentVariable(environment)).getOrElse("").trim()
+
+val betaKeystoreFile = betaSetting("betaKeystoreFile", "BETA_KEYSTORE_FILE")
+val betaKeyAlias = betaSetting("betaKeyAlias", "BETA_KEY_ALIAS")
+val betaKeystorePassword = betaSetting("betaKeystorePassword", "BETA_KEYSTORE_PASSWORD")
+// Raised by hand for each beta APK that is sent out; a build that does not set it gets 1.
+val appVersionCode: Int = providers.gradleProperty("appVersionCode").map { it.trim().toInt() }.getOrElse(1)
+
 android {
     namespace = "com.rigcheck.app"
     compileSdk {
         version = release(37)
     }
 
+    // The beta signing config (#174). The values come from outside the repo. A blank value is accepted here
+    // (so a build that never packages a beta APK needs none of them) and verifyBetaSigning refuses a beta
+    // build that lacks one. storeFile is left unset when the path is blank, never given a default.
+    signingConfigs {
+        create("beta") {
+            if (betaKeystoreFile.isNotBlank()) storeFile = file(betaKeystoreFile)
+            keyAlias = betaKeyAlias
+            storePassword = betaKeystorePassword
+            keyPassword = betaKeystorePassword
+            // minSdk 26 would sign with v2 only; `keytool -printcert -jarfile <apk>`, which the owner uses to
+            // check the key, reads only the v1 (JAR) signature.
+            enableV1Signing = true
+        }
+    }
+
     defaultConfig {
         applicationId = "com.rigcheck.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
+        // Testers update in place only if versionCode rises with each APK (#174): raise the Gradle
+        // property appVersionCode by hand before building the next beta APK.
+        versionCode = appVersionCode
         versionName = "1.0"
+        buildConfigField("boolean", "IS_BETA", "false")
 
         testInstrumentationRunner = "com.rigcheck.app.CustomTestRunner"
 
@@ -85,6 +114,25 @@ android {
             }
             // No default: an unset key is "" here and verifyRevenueCatReleaseKey fails the build (#166).
             buildConfigField("String", "REVENUECAT_PUBLIC_API_KEY", "\"$revenueCatReleaseKey\"")
+        }
+        // The APK sent to beta testers (#174): signed with the owner's upload key, not debuggable, and the
+        // only non-debug build allowed the Test Store key (beta uses test payments). It keeps the release
+        // package name, so Google sign-in works on it, and so a debug build cannot be updated by it.
+        create("beta") {
+            initWith(getByName("release"))
+            isDebuggable = false
+            signingConfig = signingConfigs.getByName("beta")
+            versionNameSuffix = "-beta"
+            buildConfigField("String", "REVENUECAT_PUBLIC_API_KEY", "\"$revenueCatTestStoreKey\"")
+            buildConfigField("boolean", "IS_BETA", "true")
+        }
+    }
+
+    // Beta is only ever packaged: no unit-test or device-test variant of it.
+    androidComponents {
+        beforeVariants(selector().withBuildType("beta")) { variant ->
+            variant.hostTests[com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE]?.enable = false
+            variant.androidTest.enable = false
         }
     }
     compileOptions {
@@ -133,6 +181,35 @@ tasks.matching {
 // testReleaseUnitTest (which also depends on preReleaseBuild).
 tasks.matching { it.name == "preReleaseBuild" }.configureEach {
     mustRunAfter(verifyRevenueCatReleaseKey)
+}
+
+// The beta signing guard (#174): same shape and same reasons as the release guard above (inline in doLast,
+// no declared outputs). It names each missing setting's property and variable, and never prints a value.
+val verifyBetaSigning = tasks.register("verifyBetaSigning") {
+    group = "verification"
+    description = "Fails unless the beta keystore path, key alias and password are all set."
+    val settings = mapOf(
+        "betaKeystoreFile (or BETA_KEYSTORE_FILE)" to betaKeystoreFile,
+        "betaKeyAlias (or BETA_KEY_ALIAS)" to betaKeyAlias,
+        "betaKeystorePassword (or BETA_KEYSTORE_PASSWORD)" to betaKeystorePassword,
+    )
+    doLast {
+        val missing = settings.filterValues { it.isBlank() }.keys
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "The beta signing settings are missing: set the Gradle property (in your user-level " +
+                    "gradle.properties) or environment variable for ${missing.joinToString(", ")}.",
+            )
+        }
+    }
+}
+tasks.matching {
+    it.name in setOf("assembleBeta", "bundleBeta", "packageBeta", "packageBetaBundle")
+}.configureEach {
+    dependsOn(verifyBetaSigning)
+}
+tasks.matching { it.name == "preBetaBuild" }.configureEach {
+    mustRunAfter(verifyBetaSigning)
 }
 
 // Dead-code sweep (roadmap item #10) - scoped narrow to the

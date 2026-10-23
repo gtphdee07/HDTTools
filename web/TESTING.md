@@ -145,7 +145,11 @@ in, and the message when the visitor comes back from Google without being signed
   default). The settings endpoint does not expose this and no test can see it without a
   real Google login. To check: create an email account with a Gmail address, confirm it,
   sign out, then "Continue with Google" with the same Gmail; the Garage, History and
-  plan must be the same account's. Record the result here with the date.
+  plan must be the same account's. **Result, 2026-10-22 (owner, local dev server at
+  `http://localhost:5173`):** signing in with email and with "Continue with Google" reached
+  the same Garage, so Supabase linked the two sign-ins to one account. This also showed
+  the Google round trip working end to end on Web (the cancel path was not tried by
+  hand; the offline tests cover it).
 
 ### `supabase-tables` (#28, #29)
 

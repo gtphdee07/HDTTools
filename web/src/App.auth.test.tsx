@@ -353,6 +353,21 @@ describe('Web accounts', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/different browser or device/i);
   });
 
+  it('does not blame Google for a later email link when Google could not even be started', async () => {
+    const fake = makeFakeSupabase();
+    fake.client.signInWithOAuth.mockResolvedValueOnce({ data: null, error: { message: 'Unsupported provider: provider is not enabled' } });
+    const user = renderApp(fake);
+    await user.click(headerSignIn());
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    await screen.findByRole('alert');
+    cleanup();
+
+    // Nobody went to Google, so this unused code is from an email link.
+    window.history.replaceState(null, '', '/?code=abc123');
+    renderApp(makeFakeSupabase());
+    expect(await screen.findByRole('alert')).toHaveTextContent(/different browser or device/i);
+  });
+
   it('explains that accounts are unavailable when Supabase is not configured', async () => {
     const user = userEvent.setup();
     render(<App />);

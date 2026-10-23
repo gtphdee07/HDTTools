@@ -123,13 +123,20 @@ def _build_config(variant: str) -> str:
     return read(ANDROID / f"app/build/generated/source/buildConfig/{variant}/com/rigcheck/app/BuildConfig.java")
 
 
+def _revenuecat_key(variant: str) -> str:
+    return re.search(r'REVENUECAT_PUBLIC_API_KEY = "([^"]*)"', _build_config(variant)).group(1)
+
+
+def _beta_flag(variant: str) -> str:
+    return re.search(r"boolean IS_BETA = (\w+);", _build_config(variant)).group(1)
+
+
 @gradle_check
 def test_test_store_key_is_allowed_only_in_debug_and_beta_and_the_beta_flag_is_beta_only():
     gradle("generateDebugBuildConfig", "generateBetaBuildConfig", "generateReleaseBuildConfig", "-PrevenueCatReleaseKey=goog_abc123")
-    key = lambda variant: re.search(r'REVENUECAT_PUBLIC_API_KEY = "([^"]*)"', _build_config(variant)).group(1)
-    beta_flag = lambda variant: re.search(r"boolean IS_BETA = (\w+);", _build_config(variant)).group(1)
-    assert (key("debug"), key("beta"), key("release")) == (TEST_STORE_KEY, TEST_STORE_KEY, "goog_abc123")
-    assert (beta_flag("debug"), beta_flag("beta"), beta_flag("release")) == ("false", "true", "false")
+    keys = [_revenuecat_key(variant) for variant in ("debug", "beta", "release")]
+    assert keys == [TEST_STORE_KEY, TEST_STORE_KEY, "goog_abc123"]
+    assert [_beta_flag(variant) for variant in ("debug", "beta", "release")] == ["false", "true", "false"]
     # No release key given: release still never falls back to the Test Store key.
     proc = gradle_proc("generateReleaseBuildConfig", env={k: v for k, v in os.environ.items() if k != "REVENUECAT_RELEASE_API_KEY"})
     assert proc.returncode == 0, proc.stderr[-800:]

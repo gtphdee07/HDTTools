@@ -1,13 +1,24 @@
 package com.rigcheck.app.ui.screens
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.revenuecat.purchases.Package
 import com.revenuecat.purchases.PackageType
@@ -451,5 +462,124 @@ class PaywallScreenTest {
 
         waitForText("No scan packs are available right now.")
         composeRule.onNodeWithText("Pro (lifetime)").assertDoesNotExist()
+    }
+
+    // --- Scrolling and Back (#186) ---
+
+    // A large font in a window too short for the content, as on a small phone or in split
+    // screen: "Restore purchase" starts out of view and has to be reachable by scrolling,
+    // while Back stays where it is.
+    @Test
+    fun aPaywallTallerThanTheWindowScrollsToRestorePurchaseAndKeepsBackInView() {
+        composeRule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)) {
+                Box(modifier = Modifier.height(360.dp)) {
+                    PaywallScreen(
+                        creditBalance = 3,
+                        onPurchase = { _, _ -> },
+                        onRestore = { },
+                        onDone = { },
+                        accountLabel = "alice@example.com",
+                        isPro = true,
+                        loadPackages = { listOf(smallPack, largePack) },
+                    )
+                }
+            }
+        }
+        waitForText("10 scans")
+        composeRule.onNodeWithText("Restore purchase").assertIsNotDisplayed()
+
+        composeRule.onNodeWithText("Restore purchase").performScrollTo().assertIsDisplayed()
+
+        composeRule.onNodeWithTag("paywall_back").assertIsDisplayed()
+    }
+
+    // Restore purchase follows the offers instead of waiting at the bottom of the screen.
+    @Test
+    fun restorePurchaseComesRightAfterTheOffersNotAtTheBottomOfTheScreen() {
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 3,
+                onPurchase = { _, _ -> },
+                onRestore = { },
+                onDone = { },
+                isPro = true,
+                loadPackages = { listOf(smallPack) },
+            )
+        }
+        waitForText("10 scans")
+
+        val offerBottom = composeRule.onNodeWithText("\$2.99").fetchSemanticsNode().boundsInRoot.bottom
+        val restoreTop = composeRule.onNodeWithText("Restore purchase").fetchSemanticsNode().boundsInRoot.top
+        val windowHeight = composeRule.onRoot().fetchSemanticsNode().boundsInRoot.height
+        assertTrue(
+            "Restore purchase should sit near the offers, not at the bottom: " +
+                "offer ends at $offerBottom, Restore starts at $restoreTop of $windowHeight",
+            restoreTop - offerBottom < windowHeight / 4,
+        )
+    }
+
+    // Back leaves the Paywall for every account state the screen can be in.
+    private fun backLeaves(isPro: Boolean?, accountLabel: String?) {
+        var left = 0
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 0,
+                onPurchase = { _, _ -> },
+                onRestore = { },
+                onDone = { left++ },
+                accountLabel = accountLabel,
+                isPro = isPro,
+            )
+        }
+
+        composeRule.onNodeWithText("Back").assertIsDisplayed().performClick()
+
+        assertEquals(1, left)
+    }
+
+    @Test
+    fun backLeavesThePaywallForAFreeAccount() = backLeaves(isPro = false, accountLabel = "alice@example.com")
+
+    @Test
+    fun backLeavesThePaywallForAProAccount() = backLeaves(isPro = true, accountLabel = "alice@example.com")
+
+    @Test
+    fun backLeavesThePaywallWhileThePlanIsNotKnown() = backLeaves(isPro = null, accountLabel = "alice@example.com")
+
+    // Back, Sign out and Restore purchase all stay: adding Back took none of them away.
+    @Test
+    fun backSitsBesideSignOutAndRestorePurchase() {
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 0,
+                onPurchase = { _, _ -> },
+                onRestore = { },
+                onDone = { },
+                accountLabel = "alice@example.com",
+                isPro = false,
+            )
+        }
+
+        composeRule.onNodeWithText("Back").assertIsDisplayed()
+        composeRule.onNodeWithText("Sign out").assertIsDisplayed()
+        composeRule.onNodeWithText("Restore purchase").assertIsDisplayed()
+    }
+
+    // Leaving while a restore is out would let its result act on another screen.
+    @Test
+    fun backIsDisabledWhileARestoreIsOut() {
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 0,
+                onPurchase = { _, _ -> },
+                onRestore = { },
+                onDone = { },
+            )
+        }
+
+        composeRule.onNodeWithText("Restore purchase").performClick()
+
+        composeRule.onNodeWithText("Back").assertIsNotEnabled()
     }
 }

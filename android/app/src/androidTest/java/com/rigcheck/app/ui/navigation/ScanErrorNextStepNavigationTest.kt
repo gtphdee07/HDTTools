@@ -244,7 +244,7 @@ class ScanErrorNextStepNavigationTest {
     fun truckTagTicketPaywallBackReturnsToTheTruckTag() = backFromThePaywall(ScanButton.TRUCK_TAG_TICKET)
 
     @Test
-    fun chooserSignInAfterARejectedTokenEndsTheSessionAndShowsTheSignInScreen()= signInAfterRejectedToken(ScanButton.CHOOSER)
+    fun chooserSignInAfterARejectedTokenEndsTheSessionAndShowsTheSignInScreen() = signInAfterRejectedToken(ScanButton.CHOOSER)
 
     @Test
     fun chooserSignInWithNoTokenShowsTheSignInScreenWithoutEndingASession() = signInWithNoToken(ScanButton.CHOOSER)

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useAuth } from '../auth';
 import type { ActionResult } from '../auth';
 import { useBilling } from '../billing';
+import { FeedbackLink } from '../components/FeedbackLink';
 import { ProPaywall } from '../components/ProPaywall';
 import { ScanPacks } from '../components/ScanPacks';
 import { Button } from '../design-system/Button';
@@ -114,6 +115,9 @@ export function Account({ onDone, doneLabel = 'Back to Dashboard' }: AccountProp
             <Button variant="ghost" onClick={onDone}>
               {doneLabel}
             </Button>
+          </div>
+          <div style={{ fontSize: 13, marginTop: 12 }}>
+            Found a problem? <FeedbackLink />
           </div>
         </Card>
         <PlanSection />

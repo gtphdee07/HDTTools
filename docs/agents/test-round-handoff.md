@@ -9,18 +9,18 @@ The shared-accounts chain and #20 are merged and pushed (last push 04490db). The
 | Round | Lane A: Android (the one emulator, one ticket at a time) | Lane B: Web, Worker, tooling (no emulator, no Gradle) |
 |---|---|---|
 | 1 | ~~#174~~ signed beta APK build (merged) | ~~#179~~ Web dates in the viewer's local time (merged) |
-| 2 | **#186** (new, found on your phone) keep every screen clear of the system bars, Paywall scrolls and gets a Back button | ~~#181~~ Web beta kit: feedback link, "Beta: test payments" label, tester guide (merged) |
+| 2 | ~~#186~~ (found on your phone) keep every screen clear of the system bars, Paywall scrolls and gets a Back button (merged) | ~~#181~~ Web beta kit: feedback link, "Beta: test payments" label, tester guide (merged) |
 | 3 | **#169** delete a Rig on Android | **#180** grant tool (gives a tester Pro and scans) |
 | 4 | **#182** Android beta kit (waits for #181 merged) | **#183** Worker log lines |
 | 5 | **#184** Android crash capture (waits for #182 merged) | |
 
-**Where things stood when the computer was shut down (2026-10-23, evening):** merged and local (nothing pushed since 04490db): #179, #174 and the #185 fix (beta build now debuggable). **#181 has since merged** (2026-10-25, a4a6883, not pushed). **#186** (system bars, Paywall scroll, Back button; found on your phone) is filed and is next in lane A: `/ticket-start 186`. Your phone (SM-G996U) still has the first beta APK (versionCode 1, not debuggable, so it closes with the Wrong API Key dialog): after #186 merges, rebuild with a higher `-PappVersionCode` (the #185 fix is already in the code) and update it, signed with the same key. Your signing values live in `G:\GradleUserHome\gradle.properties`. When working with adb, the phone is `R3CR50G10ML` and the emulator is `emulator-5554`: always name the one you mean.
+**Where things stood when the computer was shut down (2026-10-23, evening):** merged and local (nothing pushed since 04490db): #179, #174 and the #185 fix (beta build now debuggable). **#181 and #186 have since merged** (a4a6883 and 8783b11, not pushed). **#186** (system bars, Paywall scroll, Back button; found on your phone) is filed and is next in lane A: `/ticket-start 186`. Your phone (SM-G996U) still has the first beta APK (versionCode 1, not debuggable, so it closes with the Wrong API Key dialog): after #186 merges, rebuild with a higher `-PappVersionCode` (the #185 fix is already in the code) and update it, signed with the same key. Your signing values live in `G:\GradleUserHome\gradle.properties`. When working with adb, the phone is `R3CR50G10ML` and the emulator is `emulator-5554`: always name the one you mean.
 
 A ticket starts when the tickets it waits for have merged, not when the round ends: lane B can run ahead, and lane A's round 3 waits only for #181 (lane B's round 2). #176 and #178 are now containers (split into #180 to #182 and #183, #184); #172 stays open for later Web items, with its first item moved to #179. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.
 
 | Ticket | What | Lane | Waits for | Your part | Card |
 |---|---|---|---|---|---|
-| #186 | System bars, Paywall scroll and Back button | A | | look at it on your phone (3-button navigation) | [#186](#186-android-system-bars-and-the-paywall) |
+| ~~#186~~ | System bars, Paywall scroll and Back button (merged) | A | | look at it on your phone (3-button navigation) | [#186](#186-android-system-bars-and-the-paywall) |
 | #169 | Delete a Rig from the synced Garage | A | #186 merged | none | [#169](#169-android-delete-a-rig) |
 | #181 | Web feedback link, beta label, tester guide | B | | read the guide | [#181](#181-web-beta-kit) |
 | #182 | Android feedback link and beta label | A | #181 merged | none | [#182](#182-android-beta-kit) |
@@ -200,6 +200,10 @@ Test-round additions:
 
 Done: a `beta` build type (debuggable, because RevenueCat's SDK closes a non-debuggable app that uses a Test Store key (#185); package `com.rigcheck.app`, signed from three values outside the repo, may use the Test Store key, `BuildConfig.IS_BETA` true only there); 7 mutations killed. **Still yours:** put `betaKeystoreFile`, `betaKeyAlias` and `betaKeystorePassword` in `gradle.properties` in your Gradle user home (the `GRADLE_USER_HOME` folder; on this machine `G:\GradleUserHome\gradle.properties`, not `C:\Users\Angela\.gradle`); build with `android\gradlew.bat -p android assembleBeta -PappVersionCode=<n>` (raise `n` for each APK you send); confirm `keytool -printcert -jarfile android\app\build\outputs\apk\beta\app-beta.apk` shows the SHA-1 in `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`; uninstall any debug build, install the APK, sign in with Google. Nobody has run the real beta APK on a device yet, so this is its first real test. Do this when no worker is using the emulator or Gradle.
 
+### #186 (merged 2026-10-26, not pushed)
+
+Done: one rule in `RigCheckApp` keeps every screen inside the status bar, the navigation bar (3-button keys or gesture handle), a display cutout and the keyboard; the Paywall scrolls, "Restore purchase" follows the offers, and a Back control sits above the scrolling part (disabled while a purchase or restore is out); 5 mutations killed; the full emulator suite passed (195). **Still yours:** rebuild the beta APK with a higher `-PappVersionCode`, update your phone (SM-G996U, 3-button navigation) and look at the Paywall (tap the balance chip), the Rig picker's Create button and the History screen: nothing under the navigation keys, the Paywall scrolls and has Back. Also tap into a field on the Truck Tag screen with the keyboard open: the keyboard now also shrinks every screen, so check that the field and Next stay usable.
+
 ### #181 (merged 2026-10-25, not pushed)
 
 Done: Web has a "Send feedback" link (page footer and the Account card, mailto WTIAppDev@gmail.com from one constant in `web/src/betaKit.ts`), a "Beta: test payments" label on the Pro paywall and the scan-pack offers (shown only when `VITE_BETA=true`, which `web/.env.production` now sets), and `docs/BETA_TESTER_GUIDE.md`; a test fails if the guide and the Web constants name different addresses; 8 mutations killed. **Still yours:** read the guide once; check its Android steps against the real APK after #182 (they were written from the plan, not the app); consider changing "No limit on how many scans one account can make" to "no daily limit" (a tester's scan balance still runs out). `web/.env.production` changed, so the Pages-site External suite is stale and goes in the end-of-round bundle.
@@ -222,7 +226,7 @@ Done: Web dates (Results and each History entry) show the viewer's local day, no
 
 ### #169 Android delete a Rig
 
-- **Lane A, round 3** (start after #186 has merged). **Step 1:** `/ticket-start 169`. Android; the single emulator.
+- **Lane A, round 3** (#186 has merged: start any time). **Step 1:** `/ticket-start 169`. Android; the single emulator.
 - **Step 2:** paste Block A, then these lines:
 
 ```

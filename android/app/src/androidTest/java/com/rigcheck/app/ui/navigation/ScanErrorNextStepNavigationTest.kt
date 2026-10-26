@@ -223,8 +223,28 @@ class ScanErrorNextStepNavigationTest {
         assert(accountState() is AccountState.SignedIn) { "OK must not end the session" }
     }
 
+    // #186: the signed-in Paywall's Back control returns to the screen the user came from,
+    // with the account still signed in.
+    private fun backFromThePaywall(button: ScanButton) {
+        startRig(signedIn = true, failure = ScanResult.Failure("insufficient_credits", "worker text"), button = button)
+        failScan(button, ScanMessages.OUT_OF_SCANS)
+        composeRule.onNodeWithText("Buy more Scans").performClick()
+        assertOnPaywallSignedIn()
+
+        composeRule.onNodeWithText("Back").performClick()
+
+        assertStayedPut(button)
+        assert(accountState() is AccountState.SignedIn) { "Back must not end the session" }
+    }
+
     @Test
-    fun chooserSignInAfterARejectedTokenEndsTheSessionAndShowsTheSignInScreen() = signInAfterRejectedToken(ScanButton.CHOOSER)
+    fun chooserPaywallBackReturnsToTheChooser() = backFromThePaywall(ScanButton.CHOOSER)
+
+    @Test
+    fun truckTagTicketPaywallBackReturnsToTheTruckTag() = backFromThePaywall(ScanButton.TRUCK_TAG_TICKET)
+
+    @Test
+    fun chooserSignInAfterARejectedTokenEndsTheSessionAndShowsTheSignInScreen()= signInAfterRejectedToken(ScanButton.CHOOSER)
 
     @Test
     fun chooserSignInWithNoTokenShowsTheSignInScreenWithoutEndingASession() = signInWithNoToken(ScanButton.CHOOSER)

@@ -8,8 +8,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.revenuecat.purchases.Package
 import com.rigcheck.app.data.PaywallOffers
@@ -38,11 +45,15 @@ import com.rigcheck.app.data.paywallOffers
 // Free account is offered Pro and no packs, a Pro account the packs and not Pro.
 // Buying Pro here does not close the screen; the plan is read again, and the packs
 // replace the Pro offer.
+//
+// Back sits above the scrolling content so it is always reachable, whatever the
+// screen's height or the font size (#186); everything under it scrolls.
 @Composable
 fun PaywallScreen(
     creditBalance: Int?,
     onPurchase: (Package, (success: Boolean, error: String?) -> Unit) -> Unit,
     onRestore: ((success: Boolean, error: String?) -> Unit) -> Unit,
+    // Leaves the screen: after a pack is bought, and from the Back control.
     onDone: () -> Unit,
     // The signed-in account the purchase will be made for (its email, else
     // its id) - purchases land on this account across every device.
@@ -72,99 +83,118 @@ fun PaywallScreen(
             .onFailure { loadError = it.message ?: "Could not load offers." }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
-        Text(if (isPro == false) "Unlock Pro" else "Get More Scans", style = MaterialTheme.typography.headlineMedium)
-        accountLabel?.let { label ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Buying for $label", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                TextButton(enabled = !isBusy, onClick = onSignOut) { Text("Sign out") }
-            }
-        }
-        isPro?.let { pro ->
-            Text(
-                if (pro) "Pro plan" else "Free plan",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
-        val scansLeft = "You have ${creditBalance ?: 0} scan${if (creditBalance == 1) "" else "s"} left. "
-        val whatItIsFor = "Claude reads your truck tag, trailer tag, or scale ticket for you."
-        Text(
-            scansLeft + when (isPro) {
-                false -> "Pro is a one-time purchase, yours to keep, and comes with a starter bundle of scans. "
-                true -> "Buy more scans any time. "
-                null -> ""
-            } + whatItIsFor,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(top = 12.dp, bottom = 24.dp),
-        )
-
-        // Buying a pack ends the visit; buying Pro stays, because what the account
-        // can buy has just changed.
-        fun buy(pkg: Package, closesScreen: Boolean, done: String, onBought: () -> Unit = {}) {
-            isBusy = true
-            onPurchase(pkg) { success, error ->
-                isBusy = false
-                if (success) {
-                    onBought()
-                    Toast.makeText(context, done, Toast.LENGTH_SHORT).show()
-                    if (closesScreen) onDone()
-                } else if (error != null) {
-                    Toast.makeText(context, error, Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-
-        val shown = offers
-        when {
-            loadError != null -> Text(
-                "Couldn't load offers: $loadError",
-                color = MaterialTheme.colorScheme.error,
-            )
-            shown == null -> CircularProgressIndicator()
-            isPro == null -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Checking your plan before showing what you can buy.")
-                TextButton(enabled = !isBusy, onClick = onRetryPlan) { Text("Try again") }
-            }
-            isPro -> if (shown.scanPacks.isEmpty()) {
-                Text("No scan packs are available right now.")
-            } else {
-                OfferList(shown.scanPacks, isBusy) { pkg -> buy(pkg, closesScreen = true, done = "Purchase complete!") }
-            }
-            else -> shown.proUnlock?.let { pro ->
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OfferList(listOf(pro), isBusy || proBought) {
-                        buy(it, closesScreen = false, done = "Pro unlocked!") { proBought = true }
-                    }
-                    if (proBought) {
-                        Text("Pro is yours. Updating your plan to show scan packs.")
-                        TextButton(enabled = !isBusy, onClick = onRetryPlan) { Text("Try again") }
-                    }
-                }
-            } ?: Text("Pro isn't available to buy right now.")
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Not while a purchase or restore is out: leaving then would let its result close
+        // another screen, since a bought pack pops the back stack when it finishes.
         TextButton(
             enabled = !isBusy,
-            onClick = {
+            onClick = onDone,
+            modifier = Modifier.padding(horizontal = 8.dp).testTag("paywall_back"),
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Back")
+        }
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
+        ) {
+            Text(if (isPro == false) "Unlock Pro" else "Get More Scans", style = MaterialTheme.typography.headlineMedium)
+            accountLabel?.let { label ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Buying for $label", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    TextButton(enabled = !isBusy, onClick = onSignOut) { Text("Sign out") }
+                }
+            }
+            isPro?.let { pro ->
+                Text(
+                    if (pro) "Pro plan" else "Free plan",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            val scansLeft = "You have ${creditBalance ?: 0} scan${if (creditBalance == 1) "" else "s"} left. "
+            val whatItIsFor = "Claude reads your truck tag, trailer tag, or scale ticket for you."
+            Text(
+                scansLeft + when (isPro) {
+                    false -> "Pro is a one-time purchase, yours to keep, and comes with a starter bundle of scans. "
+                    true -> "Buy more scans any time. "
+                    null -> ""
+                } + whatItIsFor,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(top = 12.dp, bottom = 24.dp),
+            )
+
+            // Buying a pack ends the visit; buying Pro stays, because what the account
+            // can buy has just changed.
+            fun buy(pkg: Package, closesScreen: Boolean, done: String, onBought: () -> Unit = {}) {
                 isBusy = true
-                onRestore { success, error ->
+                onPurchase(pkg) { success, error ->
                     isBusy = false
                     if (success) {
-                        Toast.makeText(context, "Purchases restored.", Toast.LENGTH_SHORT).show()
+                        onBought()
+                        Toast.makeText(context, done, Toast.LENGTH_SHORT).show()
+                        if (closesScreen) onDone()
                     } else if (error != null) {
                         Toast.makeText(context, error, Toast.LENGTH_LONG).show()
                     }
                 }
-            },
-        ) {
-            Text("Restore purchase")
+            }
+
+            val shown = offers
+            when {
+                loadError != null -> Text(
+                    "Couldn't load offers: $loadError",
+                    color = MaterialTheme.colorScheme.error,
+                )
+                shown == null -> CircularProgressIndicator()
+                isPro == null -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Checking your plan before showing what you can buy.")
+                    TextButton(enabled = !isBusy, onClick = onRetryPlan) { Text("Try again") }
+                }
+                isPro -> if (shown.scanPacks.isEmpty()) {
+                    Text("No scan packs are available right now.")
+                } else {
+                    OfferList(shown.scanPacks, isBusy) { pkg -> buy(pkg, closesScreen = true, done = "Purchase complete!") }
+                }
+                else -> shown.proUnlock?.let { pro ->
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OfferList(listOf(pro), isBusy || proBought) {
+                            buy(it, closesScreen = false, done = "Pro unlocked!") { proBought = true }
+                        }
+                        if (proBought) {
+                            Text("Pro is yours. Updating your plan to show scan packs.")
+                            TextButton(enabled = !isBusy, onClick = onRetryPlan) { Text("Try again") }
+                        }
+                    }
+                } ?: Text("Pro isn't available to buy right now.")
+            }
+
+            TextButton(
+                enabled = !isBusy,
+                modifier = Modifier.padding(top = 16.dp),
+                onClick = {
+                    isBusy = true
+                    onRestore { success, error ->
+                        isBusy = false
+                        if (success) {
+                            Toast.makeText(context, "Purchases restored.", Toast.LENGTH_SHORT).show()
+                        } else if (error != null) {
+                            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                },
+            ) {
+                Text("Restore purchase")
+            }
         }
     }
 }

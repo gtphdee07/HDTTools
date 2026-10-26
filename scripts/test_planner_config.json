@@ -121,6 +121,7 @@
       "live_globs": ["android/app/src/androidTest/*ExternalTest.kt"],
       "device_full": [
         "android/app/src/main/java/com/rigcheck/app/ui/navigation/RigCheckNavHost.kt",
+        "android/app/src/main/java/com/rigcheck/app/ui/navigation/RigCheckApp.kt",
         "android/app/src/main/java/com/rigcheck/app/ui/RigCheckViewModel.kt",
         "android/app/src/main/java/com/rigcheck/app/MainActivity.kt",
         "android/app/src/main/AndroidManifest.xml"

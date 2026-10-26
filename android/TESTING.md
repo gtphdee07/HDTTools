@@ -1058,6 +1058,13 @@ network involved:
   cannot be bought a second time while the plan is still catching up), buying a pack does
   close it, and an Offering without a lifetime package (Free) or without packs
   (Pro) shows a plain message.
+- `PaywallScreenTest` also covers (#186) scrolling and Back. A large font (`fontScale` 2) in a window
+  too short for the content puts "Restore purchase" out of view; it scrolls into view with Back still
+  shown. Restore purchase sits right after the offers, not at the bottom of the screen. Back leaves the
+  screen (`onDone`) for a Free account, a Pro account and a plan not known, shows beside Sign out and
+  Restore purchase, and is disabled while a restore is out (leaving then would let the result act on
+  another screen). That Back returns to the right screen is `ScanErrorNextStepNavigationTest`'s; that
+  the Paywall clears the system bars is `SystemBarsTest`'s.
 - `PaywallOffersTest.kt` (#101, JVM, 5 tests) — the split of an Offering into Pro and scan
   packs: the lifetime package is Pro and the other one-time packages are packs whatever their
   ids, Pro is never also a pack, no lifetime package means no Pro offer, a subscription is
@@ -1221,7 +1228,42 @@ dialog's screen leaves the composition on its own when another screen opens, so 
 dialog that is merely off screen proves nothing (the error would come back when the
 user did). Not covered: OK on the
 `not_signed_in` dialog (the same OK handler as the other two), and the buttons are
-not tapped through the photo picker; the tests start the Scan on the view model.
+not tapped through the photo picker; the tests start the Scan on the view model. (#186) The
+same flow after "Buy more Scans": the signed-in Paywall's Back control returns to the screen
+the Scan started on (the Chooser, or the Truck Tag screen) and leaves the user signed in.
+
+**System bar tests** (`ui/navigation/SystemBarsTest.kt`, #186) — how the system-bar rule is tested.
+The rule is one place: `RigCheckApp` (`ui/navigation/RigCheckApp.kt`, what `MainActivity` shows) wraps
+the nav host in `safeDrawingPadding()`, so the status bar, the navigation bar (3-button keys or the
+gesture handle), a display cutout and the keyboard all push every screen's content inside them while
+the background still paints behind. No screen pads for the bars itself. The tests mount a real screen
+under `RigCheckApp` in an edge-to-edge Activity (`enableEdgeToEdge()`, as `MainActivity` does), read the
+window's real system-bar insets (`ViewCompat.getRootWindowInsets`), and check each control's bounds in
+the window against them: it must start below the status bar and end above the navigation bar. They fail
+if either inset is zero, so a device that shows no bar cannot pass them by accident. Two screens: the
+Rig picker (its "RigCheck" title is the top-most thing, the "Create" button the bottom-most; a nickname is
+typed first, with the #125 keyboard recipe, because Create is disabled without one, and Create is then
+tapped) and the Paywall (twelve scan packs make it taller than the screen, so "Restore purchase" is
+scrolled to the end, where it rests on the bottom edge of the usable area; the pinned Back button is
+checked at the top; Restore is then tapped).
+
+The insets are whatever the device is set to, so the same tests cover both navigation styles; run them
+once with each (from `android/`, the emulator up, `adb -s emulator-5554` so an owner's phone on the
+cable is never touched):
+
+```
+adb -s emulator-5554 shell cmd overlay enable com.android.internal.systemui.navbar.threebutton
+ANDROID_SERIAL=emulator-5554 ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.rigcheck.app.ui.navigation.SystemBarsTest
+adb -s emulator-5554 shell cmd overlay enable com.android.internal.systemui.navbar.gestural
+```
+
+(the last `enable` puts the emulator back on gesture navigation, its default.) Seen to go red on the
+emulator in 3-button mode with the padding taken out of `RigCheckApp`: "Restore purchase ends at 2400px,
+under the navigation bar that starts at 2274px; the Back button starts at 11px, under the status bar that
+ends at 63px", and the same for the title and Create (the 3-button bar is 126 px tall on the emulator's
+1080x2400 screen; the status bar 63 px). The ticket's phone, an SM-G996U, uses 3-button navigation, and the
+emulator's own default, gesture navigation, is what had hidden the problem. A new screen that is a full-bleed camera preview would have to opt out of the padding
+on purpose; production capture uses the system camera, so none does today.
 
 **Test-support tests** (`testsupport/`, Major suite) — real-network-free
 coverage for test infrastructure: the fixture pool the External suite below

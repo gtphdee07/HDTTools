@@ -65,6 +65,8 @@ class GarageTest {
         var addRepliesLost = 0 // the next N adds reach the server, but the reply is lost
         var updateFailure: Exception? = null
         var listGate: CompletableDeferred<Unit>? = null
+        var deleteFailure: Exception? = null
+        val deletes = mutableListOf<String>()
         val addKeys = mutableListOf<String>()
         val addPlans = mutableListOf<Boolean?>()
         var lists = 0
@@ -98,6 +100,13 @@ class GarageTest {
             val at = garage.indexOfFirst { it.id == rig.id }
             if (at < 0) throw IllegalStateException("rig_not_found")
             garage[at] = rig
+        }
+
+        // Like the database, deleting a Rig that is not there is not an error.
+        override suspend fun deleteRig(id: String) {
+            deletes += id
+            deleteFailure?.let { throw it }
+            server.garages[account() ?: error("not signed in")]?.removeAll { it.id == id }
         }
     }
 
@@ -490,6 +499,136 @@ class GarageTest {
 
         assertEquals(SaveRigOutcome.Full(cap = 1), outcome)
         assertEquals(listOf<Boolean?>(null), f.backend.addPlans)
+    }
+
+    // --- Deleting (#169) ------------------------------------------------------------------------------------
+
+    private fun Fixture.shown(nickname: String) = garage.rigs.value.first { it.nickname == nickname }
+
+    @Test
+    fun `a deleted Rig is gone from the account and the Garage, and the others stay`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val f = Fixture(this)
+            f.server.seed(alice, rig("Old"), rig("Keeper"))
+            f.signIn(alice)
+
+            val deleted = f.garage.deleteRig(f.shown("Old"))
+
+            assertEquals(true, deleted)
+            assertEquals(listOf("Keeper"), f.server.nicknames(alice))
+            assertEquals(listOf("Keeper"), f.garage.rigs.value.map { it.nickname })
+        }
+
+    @Test
+    fun `deleting a Rig from a full Garage frees its slot at once, so a Rig can be added`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val f = Fixture(this, freeCap = 2)
+            f.server.seed(alice, rig("One"), rig("Two"))
+            f.signIn(alice)
+            assertEquals(SaveRigOutcome.Full(cap = 2), f.garage.saveRig("Three", truck, trailer))
+
+            f.garage.deleteRig(f.shown("One"))
+            val outcome = f.garage.saveRig("Three", truck, trailer)
+
+            assertEquals(SaveRigOutcome.Saved, outcome)
+            assertEquals(setOf("Two", "Three"), f.server.nicknames(alice).toSet())
+        }
+
+    @Test
+    fun `the freed slot shows even when the list cannot be read again`() = runTest(UnconfinedTestDispatcher()) {
+        val f = Fixture(this)
+        f.server.seed(alice, rig("Old"), rig("Keeper"))
+        f.signIn(alice)
+        f.backend.listFailure = java.io.IOException("offline")
+
+        val deleted = f.garage.deleteRig(f.shown("Old"))
+
+        assertEquals(true, deleted)
+        assertEquals(listOf("Keeper"), f.garage.rigs.value.map { it.nickname })
+    }
+
+    @Test
+    fun `a failed delete says so and keeps the Rig`() = runTest(UnconfinedTestDispatcher()) {
+        val f = Fixture(this)
+        f.server.seed(alice, rig("Goose"))
+        f.signIn(alice)
+        f.backend.deleteFailure = java.io.IOException("offline")
+
+        val deleted = f.garage.deleteRig(f.shown("Goose"))
+
+        assertEquals(false, deleted)
+        assertEquals(listOf("Goose"), f.garage.rigs.value.map { it.nickname })
+        assertEquals(listOf("Goose"), f.server.nicknames(alice))
+    }
+
+    @Test
+    fun `a failed delete leaves a full Garage full`() = runTest(UnconfinedTestDispatcher()) {
+        val f = Fixture(this, freeCap = 1)
+        f.server.seed(alice, rig("One"))
+        f.signIn(alice)
+        f.backend.deleteFailure = java.io.IOException("offline")
+
+        f.garage.deleteRig(f.shown("One"))
+
+        assertEquals(SaveRigOutcome.Full(cap = 1), f.garage.saveRig("Two", truck, trailer))
+    }
+
+    @Test
+    fun `a Rig already deleted on another device is not an error, and leaves the list`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val f = Fixture(this)
+            f.server.seed(alice, rig("Goose"), rig("Keeper"))
+            f.signIn(alice)
+            val goose = f.shown("Goose")
+            f.server.garages.getValue(alice.id).removeAll { it.id == goose.id } // gone elsewhere; still listed here
+
+            val deleted = f.garage.deleteRig(goose)
+
+            assertEquals(true, deleted)
+            assertEquals(listOf("Keeper"), f.garage.rigs.value.map { it.nickname })
+        }
+
+    // A read that began before the delete would otherwise bring the deleted Rig back when it answers.
+    @Test
+    fun `a read that was out during the delete does not bring the Rig back`() = runTest(UnconfinedTestDispatcher()) {
+        val f = Fixture(this)
+        f.server.seed(alice, rig("Old"), rig("Keeper"))
+        f.signIn(alice)
+        val slow = CompletableDeferred<Unit>()
+        f.backend.listGate = slow
+        f.garage.refresh() // reads both Rigs and waits
+        f.backend.listGate = null
+        f.garage.deleteRig(f.shown("Old"))
+
+        slow.complete(Unit) // the waiting read now answers with the list it took before the delete
+
+        assertEquals(listOf("Keeper"), f.garage.rigs.value.map { it.nickname })
+    }
+
+    @Test
+    fun `Rigs can be deleted only while signed in`() = runTest(UnconfinedTestDispatcher()) {
+        val f = Fixture(this)
+        assertEquals(false, f.garage.canDeleteRigs.value)
+
+        f.signIn(alice)
+        assertEquals(true, f.garage.canDeleteRigs.value)
+
+        f.signOut()
+        assertEquals(false, f.garage.canDeleteRigs.value)
+    }
+
+    @Test
+    fun `signed out, nothing is deleted from this phone or the account`() = runTest(UnconfinedTestDispatcher()) {
+        val f = Fixture(this)
+        f.local.seed(rig("On this phone"))
+        f.server.seed(alice, rig("In the account"))
+
+        val deleted = f.garage.deleteRig(f.garage.rigs.value.single())
+
+        assertEquals(false, deleted)
+        assertEquals(emptyList<String>(), f.backend.deletes)
+        assertEquals(listOf("On this phone"), f.garage.rigs.value.map { it.nickname })
+        assertEquals(listOf("In the account"), f.server.nicknames(alice))
     }
 
     // --- Keeping what Web saved -------------------------------------------------------------------------

@@ -1,8 +1,15 @@
 package com.rigcheck.app.ui.screens
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -96,6 +103,105 @@ class RigPickerScreenTest {
         composeRule.onNodeWithText("3 scans").performClick()
 
         assert(opened) { "onOpenPaywall should have fired when the credit chip was tapped" }
+    }
+
+    // --- Delete (#169) --------------------------------------------------------------------------------
+
+    private fun showPicker(
+        selected: MutableList<RecentRig> = mutableListOf(),
+        onDeleteRig: (suspend (RecentRig) -> Boolean)?,
+    ) = composeRule.setContent {
+        RigPickerScreen(
+            recentRigs = listOf(recentRig),
+            creditBalance = 3,
+            onSelectRecentRig = { selected += it },
+            onStartNewRig = {},
+            onOpenPaywall = {},
+            onDeleteRig = onDeleteRig,
+        )
+    }
+
+    @Test
+    fun withoutADeleteHandlerNoRigHasADeleteControl() {
+        showPicker(onDeleteRig = null)
+
+        composeRule.onNodeWithText("Goose + Addie").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Delete Goose + Addie").assertDoesNotExist()
+    }
+
+    @Test
+    fun deleteAsksFirstAndCancelKeepsTheRigWithoutStartingACheck() {
+        val deleted = mutableListOf<RecentRig>()
+        val selected = mutableListOf<RecentRig>()
+        showPicker(selected, onDeleteRig = { deleted += it; true })
+
+        composeRule.onNodeWithContentDescription("Delete Goose + Addie").performClick()
+        composeRule.onNodeWithText("Delete \"Goose + Addie\"?").assertIsDisplayed()
+        composeRule.onNodeWithTag("delete_rig_cancel").performClick()
+
+        composeRule.onNodeWithTag("delete_rig_dialog").assertDoesNotExist()
+        composeRule.onNodeWithText("Goose + Addie").assertIsDisplayed()
+        assert(deleted.isEmpty()) { "cancelling must not delete: $deleted" }
+        assert(selected.isEmpty()) { "the delete control must not start a check: $selected" }
+    }
+
+    @Test
+    fun confirmingDeletesThatRigAndClosesTheQuestion() {
+        val deleted = mutableListOf<RecentRig>()
+        showPicker(onDeleteRig = { deleted += it; true })
+
+        composeRule.onNodeWithContentDescription("Delete Goose + Addie").performClick()
+        composeRule.onNodeWithTag("delete_rig_confirm").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { deleted.isNotEmpty() }
+        assert(deleted == listOf(recentRig)) { "expected $recentRig to be deleted, got $deleted" }
+        composeRule.onNodeWithTag("delete_rig_dialog").assertDoesNotExist()
+    }
+
+    @Test
+    fun aFailedDeleteSaysSoKeepsTheRigAndCanBeTriedAgain() {
+        var attempts = 0
+        showPicker(onDeleteRig = { ++attempts > 1 })
+
+        composeRule.onNodeWithContentDescription("Delete Goose + Addie").performClick()
+        composeRule.onNodeWithTag("delete_rig_confirm").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("delete_rig_error").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("delete_rig_error").assertIsDisplayed()
+        composeRule.onNodeWithTag("delete_rig_dialog").assertIsDisplayed()
+        composeRule.onNodeWithTag("delete_rig_confirm").assertIsEnabled()
+
+        composeRule.onNodeWithTag("delete_rig_confirm").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("delete_rig_dialog").fetchSemanticsNodes().isEmpty()
+        }
+        assert(attempts == 2) { "expected one retry, got $attempts attempts" }
+    }
+
+    @Test
+    fun signingOutWhileAskedClosesTheQuestionAndItDoesNotComeBackAtTheNextSignIn() {
+        var handler by mutableStateOf<(suspend (RecentRig) -> Boolean)?>({ true })
+        composeRule.setContent {
+            RigPickerScreen(
+                recentRigs = listOf(recentRig),
+                creditBalance = 3,
+                onSelectRecentRig = {},
+                onStartNewRig = {},
+                onOpenPaywall = {},
+                onDeleteRig = handler,
+            )
+        }
+        composeRule.onNodeWithContentDescription("Delete Goose + Addie").performClick()
+        composeRule.onNodeWithTag("delete_rig_dialog").assertIsDisplayed()
+
+        composeRule.runOnIdle { handler = null } // signed out
+        composeRule.onNodeWithTag("delete_rig_dialog").assertDoesNotExist()
+        composeRule.runOnIdle { handler = { true } } // signed in again
+
+        composeRule.onNodeWithTag("delete_rig_dialog").assertDoesNotExist()
     }
 
     private fun assertEqualsRig(expected: RecentRig, actual: RecentRig?) {

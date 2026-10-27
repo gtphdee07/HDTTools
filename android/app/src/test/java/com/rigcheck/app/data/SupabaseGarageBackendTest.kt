@@ -170,4 +170,29 @@ class SupabaseGarageBackendTest {
             assertEquals("rig_not_found", e.message)
         }
     }
+
+    // PostgREST answers a delete that matched no row (the Rig is already gone) the same way, with success, so a
+    // Rig deleted on another device is not an error here either.
+    @Test
+    fun `a delete removes only that Rig, by its id`() = runTest {
+        val backend = backend { respond("", HttpStatusCode.NoContent) }
+
+        backend.deleteRig("rig-1")
+
+        val request = requests.single()
+        assertEquals(HttpMethod.Delete, request.method)
+        assertEquals("/rest/v1/garage_rigs", request.url.encodedPath)
+        assertEquals("eq.rig-1", request.url.parameters["id"])
+    }
+
+    @Test
+    fun `a delete the database refuses fails, so the Rig stays`() = runTest {
+        val backend = backend { json("""{"message":"permission denied"}""", HttpStatusCode.Forbidden) }
+
+        try {
+            backend.deleteRig("rig-1")
+            fail("a refused delete should not look done")
+        } catch (_: Exception) {
+        }
+    }
 }

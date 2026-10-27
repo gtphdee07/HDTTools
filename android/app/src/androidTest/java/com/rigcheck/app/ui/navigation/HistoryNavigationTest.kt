@@ -51,6 +51,7 @@ private object AcceptingGarage : GarageBackend {
     override suspend fun list(): List<RecentRig> = emptyList()
     override suspend fun addRig(idempotencyKey: String, rig: RecentRig, isPro: Boolean?) = Unit
     override suspend fun updateRig(rig: RecentRig) = Unit
+    override suspend fun deleteRig(id: String) = Unit
 }
 
 // The account's History on a pretend server: checks that "another device" can add behind the app's back, and a

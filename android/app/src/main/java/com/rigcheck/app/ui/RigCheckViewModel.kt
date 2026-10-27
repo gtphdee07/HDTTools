@@ -158,6 +158,9 @@ class RigCheckViewModel internal constructor(
     )
     val recentRigs: StateFlow<List<RecentRig>> = garage.rigs
 
+    // Whether the Rig picker offers to delete a Rig: only the signed-in account's Garage can.
+    val canDeleteRigs: StateFlow<Boolean> = garage.canDeleteRigs
+
     // What the last check could not save to the Garage, shown on its Results screen; cleared when the user
     // starts or picks another Rig.
     var garageNotice by mutableStateOf<GarageNotice?>(null)
@@ -260,6 +263,9 @@ class RigCheckViewModel internal constructor(
 
     // Reads the Garage again, to pick up Rigs saved on another device.
     fun refreshGarage() = garage.refresh()
+
+    // True once the Rig is gone from the Garage; false if it could not be deleted and is still there.
+    suspend fun deleteRig(rig: RecentRig): Boolean = garage.deleteRig(rig)
 
     // Reads the History again, to pick up checks made on another device.
     fun refreshHistory() = history.refresh()

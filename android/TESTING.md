@@ -792,6 +792,11 @@ root `TESTING.md`'s "Dashboard" section.
   the cap; a full Garage names its cap and is not retried; a Rig already in a full Garage is updated,
   not added, in any letter case and with spaces around the name; a Rig deleted elsewhere is added back; the Pro, Free and unknown plan
   reach `add_rig` as true, false and null; saving a Rig that Web saved keeps what only Web keeps.
+  (#169) Deleting: a deleted Rig leaves the account and the list and the others stay; deleting from a full
+  Garage frees the slot so the next Rig is added; the freed slot shows even when the list cannot be read
+  again; a failed delete returns false, keeps the Rig and leaves a full Garage full; a Rig already deleted
+  on another device is not an error; a read that was out during the delete does not bring the Rig back;
+  Rigs can be deleted only while signed in, and signed out nothing is deleted and the backend is not called.
 - `GarageWireTest.kt` (#31) — how a Rig is stored in the Garage, shared with Web: Web's field names
   open on Android with the same figures, Android's are written in Web's names, fields only Web keeps
   survive a save here, a cleared figure is cleared in the account, a figure of the wrong kind or an
@@ -801,7 +806,9 @@ root `TESTING.md`'s "Dashboard" section.
   mock engine): the list request and its reading of a Web-saved row, the `add_rig` call (key, trimmed
   nickname, Web field names, `p_pro` true, false or null), PostgREST's `garage_full` error read as a
   full Garage with its cap, another error not, and an update that matches no Rig failing so the
-  caller adds it. It cannot show the live project agrees; the owner's live run does.
+  caller adds it. (#169) A delete is one DELETE of that Rig's id and a refused delete fails (a Rig that was already
+  gone matches no row, which PostgREST answers as success, so it is not an error; only the live run shows that). It cannot show the live project agrees; the owner's live
+  run does.
 - `GarageNoticeTest.kt` (#31) — what a check tells the user when its Rig did not reach the Garage: the
   full-Garage wording for Free, Pro, unknown plan and unknown cap, singular Rig, the failed-save
   wording, and that only a Free account with a full Garage is offered Pro.
@@ -945,7 +952,7 @@ network involved:
 
 - `RigPickerScreenTest` (see below) shows whichever Rigs it is given, so it is unchanged by the Garage
   (#31): where the Rigs come from (the account or this phone) is `GarageTest` and
-  `GarageNavigationTest`.
+  `GarageNavigationTest`. (#169) It does cover the delete control, which it is given a handler for.
 - `HistoryScreenTest` (#32) — the History screen given fake entries: each check shows its rig and its
   verdict badge (three verdicts, three labels), the empty list says so, and the limit notice shows with a
   tappable "Upgrade to Pro". Where the entries come from is `HistoryTest` and `HistoryNavigationTest`.
@@ -975,7 +982,10 @@ network involved:
   tapping "I Understand, Continue" fires `onAcknowledge`.
 - `RigPickerScreenTest` — a recent-rig card tap fires
   `onSelectRecentRig` with that rig; the "Create" button is disabled
-  until a nickname is typed, then fires `onStartNewRig` with it.
+  until a nickname is typed, then fires `onStartNewRig` with it. (#169) Delete: with no delete handler no Rig
+  has a delete control; the bin asks first, and Cancel deletes nothing and does not start a check; "Yes,
+  delete" deletes that Rig and closes the question; a delete that fails shows the error, keeps the question
+  open and can be tried again; signing out while the question is open closes it for good.
 - `TruckTagEntryScreenTest`, `TrailerTagEntryScreenTest`,
   `ScaleTicketEntryScreenTest` — typing into the description/location
   field updates the model and blank input becomes `null` (matching each
@@ -1196,7 +1206,7 @@ account's Garage, through the real nav host and view model with a signed-in fake
 Garage server (a cap, and Rigs another device adds behind the app's back): a Rig added on another
 device is in the picker; a finished check saves its Rig to the account; a Rig added elsewhere during a
 check is in the picker on returning; a full Garage still shows the check, with the "wasn't saved"
-notice, and saves nothing.
+notice, and saves nothing; (#169) a Rig deleted from the picker is gone from the account and the picker.
 
 **History navigation tests** (`ui/navigation/HistoryNavigationTest.kt`, #32) — the History screen over the
 account's History, through the real nav host and view model with a signed-in fake account and a pretend

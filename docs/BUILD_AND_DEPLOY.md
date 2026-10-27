@@ -280,9 +280,12 @@ their customer.
 
 Running it twice for the same tester does not deposit twice: the deposit carries
 an idempotency key built from the account id and `--grant-id` (default `beta-1`).
-Pass a new `--grant-id` only when you mean to deposit more scans later. Pro is a
-RevenueCat promotional entitlement; run again the same day and RevenueCat may
-answer 409 ("Pro not changed"), which the tool reports and carries on to the scans.
+Pass a new `--grant-id` only when you mean to deposit more scans later. How long
+RevenueCat remembers an idempotency key is not in its documentation, so a repeat
+long after the first run may deposit again; check the tester's balance first.
+Pro is a RevenueCat promotional entitlement; run again within two hours and
+RevenueCat refuses it as a duplicate (the tool assumes HTTP 409 and prints "Pro
+not changed"), then carries on to the scans.
 It uses RevenueCat's v2 `grant_entitlement` and virtual-currency transaction calls.
 Test it on one test account before the first real tester.
 

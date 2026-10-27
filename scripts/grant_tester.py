@@ -17,9 +17,10 @@ it would do and sends nothing. With --apply it makes two calls:
 Running it twice for the same tester and the same --grant-id sends the same
 Idempotency-Key, so RevenueCat applies the deposit once. How long RevenueCat
 remembers a key is not in its documentation; for a deliberate second deposit
-(more scans later) pass a new --grant-id. Re-granting Pro the same day sends the
-same expiry; RevenueCat refuses a grant that is within two hours of the existing
-one, which this tool reports and then carries on to the scans.
+(more scans later) pass a new --grant-id. The Pro expiry is counted from the moment
+of each run, so a second run within two hours of the first asks for an expiry
+RevenueCat treats as a duplicate and refuses; the tool reports that (HTTP 409 is
+assumed, as RevenueCat's page does not name the code) and carries on to the scans.
 
 The secret key is read from REVENUECAT_SECRET_KEY, never from an argument, and
 is never printed: every message is scrubbed of it before it is shown.

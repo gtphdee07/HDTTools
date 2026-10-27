@@ -91,11 +91,11 @@ def fake(monkeypatch):
     server.close()
 
 
-def run(fake, *argv, key=FAKE_KEY, api_base=None):
+def run(fake, *argv, key=FAKE_KEY, api_base=None, wrangler_path=gt.WRANGLER):
     env = {} if key is None else {gt.KEY_VAR: key}
     out, err = io.StringIO(), io.StringIO()
     code = gt.main(
-        list(argv), env, api_base=api_base or fake.url, now=lambda: NOW, out=out, err=err
+        list(argv), env, api_base=api_base or fake.url, wrangler_path=wrangler_path, now=lambda: NOW, out=out, err=err
     )
     return code, out.getvalue(), err.getvalue()
 
@@ -240,11 +240,10 @@ def test_key_is_not_a_command_line_option():
 def test_project_and_currency_come_from_the_workers_wrangler_toml(fake, tmp_path):
     wrangler = tmp_path / "wrangler.toml"
     wrangler.write_text('[vars]\nREVENUECAT_PROJECT_ID = "projXYZ"\nREVENUECAT_CURRENCY_CODE = "COIN"\n')
-    out, err = io.StringIO(), io.StringIO()
 
-    code = gt.main([ACCOUNT, "--apply"], {gt.KEY_VAR: FAKE_KEY}, api_base=fake.url, wrangler_path=wrangler, now=lambda: NOW, out=out, err=err)
+    code, out, err = run(fake, ACCOUNT, "--apply", wrangler_path=wrangler)
 
-    assert code == 0, err.getvalue()
+    assert code == 0, err
     assert all("/projects/projXYZ/" in r["path"] for r in fake.requests)
     assert fake.requests[1]["body"]["adjustments"] == {"COIN": 20}
 

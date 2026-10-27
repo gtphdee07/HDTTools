@@ -44,8 +44,11 @@ Rule (owner, 2026-10-23): tickets labelled `enhancement` or `future` wait until 
 | 4 | **#184** Android crash capture (from #178; waits for #182) | **#183** Worker log lines (from #178) |
 | 5 | **#188** a test tag on every Android UI element (redesign epic #187, test tooling; after #169, #182 and #184 so their controls are tagged) | |
 | 6 | **#189** baseline screenshots and measured bounds (redesign epic #187; needs the emulator alone) | |
+| 7 | **#190** the design round (yours, after #189), then **#191** theme and shared components | |
+| 8 to 12 | **#192** to **#196** re-skin, one ticket per screen group | |
+| 13 | **#197** final pass and your sign-off on the phone | |
 
-Owner decision, 2026-10-27: #188 and #189 are in the Alpha round and the first tester APK is built after #189 has merged. The re-skin children of #187 (#191 to #197) stay `future` and wait until after production; #190 (the design round) is the owner's to start whenever they choose.
+Owner decisions, 2026-10-27: the whole Android re-skin (epic #187) is done before the Alpha starts, so the first tester APK is built after #197 and your sign-off on the phone. The design round (#190) starts when #189 has merged. Pushes are checkpoints (after #189, and at the end), each asked first.
 
 #176 and #178 are now containers; #172 stays open for later Web items. The decisions (build type `beta`, `versionCode` by hand, feedback by email to WTIAppDev@gmail.com, Pro plus 20 scans, crash report saved and sent on the next launch only if the tester agrees, no account id in Worker logs) are recorded on the tickets.
 

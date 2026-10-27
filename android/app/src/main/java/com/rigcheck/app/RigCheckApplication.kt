@@ -4,10 +4,13 @@ import android.app.Application
 import com.revenuecat.purchases.LogLevel
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchasesConfiguration
+import com.rigcheck.app.ui.util.installCrashCapture
 
 class RigCheckApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // First, so a crash while the rest starts up is recorded too (#184).
+        installCrashCapture(this)
         Purchases.logLevel = LogLevel.DEBUG
         // No app user id here: RevenueCat starts anonymous, and AccountManager
         // logs the signed-in account's id in (and back out) so purchases land

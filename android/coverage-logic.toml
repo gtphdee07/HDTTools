@@ -42,6 +42,8 @@ allow = [
   "com.rigcheck.app.data.AccountManager",
   "com.rigcheck.app.data.AccountPlan",
   "com.rigcheck.app.data.AccountResult.Failure",
+  "com.rigcheck.app.data.CrashReportKt",
+  "com.rigcheck.app.data.CrashReportStore",
   "com.rigcheck.app.data.AccountState.SignedIn",
   "com.rigcheck.app.data.BackendStatus.Authenticated",
   "com.rigcheck.app.data.Garage",
@@ -102,6 +104,7 @@ allow = [
 "com.rigcheck.app.data.GoogleSignInKt" = "Provider wrapper around Google Credential Manager: needs a device"
 "com.rigcheck.app.data.GoogleIdentity" = "Provider wrapper value: no logic"
 "com.rigcheck.app.data.GoogleNonce" = "Google sign-in plumbing: needs a device"
+"com.rigcheck.app.data.CrashEnvironment" = "Value holder for the build and phone details in a crash report: no logic"
 "com.rigcheck.app.data.GoogleAccountMissing" = "Google sign-in exception type: no logic"
 "com.rigcheck.app.data.GoogleSignInCancelled" = "Google sign-in exception type: no logic"
 "com.rigcheck.app.data.PhotoEncodingKt" = "Android Bitmap encoding: needs a device"

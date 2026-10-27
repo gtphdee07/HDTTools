@@ -90,3 +90,5 @@ You do not need to do all of these. Do what you would do with the app anyway, an
 Email **WTIAppDev@gmail.com**. In the web app, the **Send feedback** link (in the page footer and on your Account screen) opens an email to that address for you.
 
 A good report says: what you were doing, what you expected, what happened instead, and whether it was on the web or Android (and which phone). A screenshot helps a lot. Do not send your password.
+
+If the Android app closes by itself, the next time you open it asks "RigCheck closed unexpectedly last time. Send details?". This is optional: **Send** opens an email to us with the details (the error, the app version, your Android version and your phone model; nothing about your account or your rigs) for you to look over and send, and **Not now** deletes them (so does closing the question another way, such as the Back button). Nothing is sent unless you send that email.

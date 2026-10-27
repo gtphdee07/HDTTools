@@ -9,6 +9,9 @@ it would do and sends nothing. With --apply it makes two calls:
 1. Pro: POST /v2/projects/{project}/customers/{id}/actions/grant_entitlement,
    a promotional entitlement that expires --pro-days from now (default 365, so
    it outlasts the beta). Needs the key permission customer_information:customers:read_write.
+   The entitlement is named by its internal id, REVENUECAT_PRO_ENTITLEMENT_ID in the Worker's
+   wrangler.toml (RevenueCat's call takes the id, not the lookup key `pro`), so the id is
+   written in one place; --entitlement overrides it for a single run.
 2. Scans: POST /v2/projects/{project}/customers/{id}/virtual_currencies/transactions,
    the same call the Worker makes (workers/scan-proxy/src/revenuecat.ts), with an
    Idempotency-Key built from the account id and --grant-id. Needs
@@ -59,16 +62,16 @@ class GrantError(Exception):
     """A problem the owner can act on; its message is safe to print."""
 
 
-def read_wrangler_vars(path: Path) -> tuple[str, str]:
-    """(REVENUECAT_PROJECT_ID, REVENUECAT_CURRENCY_CODE) from the Worker's wrangler.toml."""
+def read_wrangler_vars(path: Path) -> tuple[str, str, str]:
+    """(REVENUECAT_PROJECT_ID, REVENUECAT_CURRENCY_CODE, REVENUECAT_PRO_ENTITLEMENT_ID) from the Worker's wrangler.toml."""
     text = path.read_text(encoding="utf-8")
     found = []
-    for name in ("REVENUECAT_PROJECT_ID", "REVENUECAT_CURRENCY_CODE"):
+    for name in ("REVENUECAT_PROJECT_ID", "REVENUECAT_CURRENCY_CODE", "REVENUECAT_PRO_ENTITLEMENT_ID"):
         match = re.search(rf'^{name}\s*=\s*"([^"]+)"', text, re.M)
         if not match:
             raise GrantError(f"{name} not found in {path}")
         found.append(match.group(1))
-    return found[0], found[1]
+    return found[0], found[1], found[2]
 
 
 def normalise_account_id(raw: str) -> str:
@@ -148,8 +151,8 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"days until the Pro grant expires (default {DEFAULT_PRO_DAYS}, longer than the beta)",
     )
     parser.add_argument(
-        "--entitlement", default="pro",
-        help="the RevenueCat entitlement to grant (default pro; RevenueCat may want its entl... id instead)",
+        "--entitlement", default=None,
+        help="the RevenueCat entitlement id (entl...) to grant; default is REVENUECAT_PRO_ENTITLEMENT_ID in workers/scan-proxy/wrangler.toml",
     )
     parser.add_argument(
         "--grant-id", default=DEFAULT_GRANT_ID,
@@ -196,10 +199,11 @@ def main(
 
     try:
         account_id, key = _validate(args, env)
-        project_id, currency = read_wrangler_vars(wrangler_path)
+        project_id, currency, wrangler_entitlement = read_wrangler_vars(wrangler_path)
     except GrantError as problem:
         return fail(str(problem))
 
+    entitlement = args.entitlement or wrangler_entitlement
     expires_at = now() + timedelta(days=args.pro_days)
     expires_ms = int(expires_at.timestamp() * 1000)
     idempotency_key = f"tester-grant-{args.grant_id}-{account_id}"
@@ -207,7 +211,7 @@ def main(
 
     print(f"{'APPLY' if args.apply else 'DRY RUN (nothing is sent; add --apply to do it)'}", file=out)
     print(f"  account id : {account_id}", file=out)
-    print(f"  Pro        : entitlement '{args.entitlement}' until {expires_at:%Y-%m-%d} UTC ({args.pro_days} days)", file=out)
+    print(f"  Pro        : entitlement '{entitlement}' until {expires_at:%Y-%m-%d} UTC ({args.pro_days} days)", file=out)
     print(f"  scans      : +{args.scans} {currency}", file=out)
     print(f"  project    : {project_id}", file=out)
     print(f"  idempotency: {idempotency_key}", file=out)
@@ -217,7 +221,7 @@ def main(
     try:
         status, body = client.post(
             f"{customer}/actions/grant_entitlement",
-            {"entitlement_id": args.entitlement, "expires_at": expires_ms},
+            {"entitlement_id": entitlement, "expires_at": expires_ms},
         )
         if 200 <= status < 300:
             print(f"  ok   Pro granted until {expires_at:%Y-%m-%d} UTC", file=out)
@@ -252,7 +256,7 @@ def _step_failure(step: str, status: int, body: object, permission: str) -> str:
     if status in (401, 403):
         text += f". The key in {KEY_VAR} needs the permission {permission}."
     elif status == 404:
-        text += ". Check the account id (RevenueCat creates the customer when the app first logs in) and, for Pro, --entitlement."
+        text += ". Check the account id (RevenueCat creates the customer when the app first logs in) and, for Pro, REVENUECAT_PRO_ENTITLEMENT_ID in workers/scan-proxy/wrangler.toml."
     return text
 
 

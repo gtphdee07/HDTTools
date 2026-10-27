@@ -101,12 +101,13 @@ def run(fake, *argv, key=FAKE_KEY, api_base=None, wrangler_path=gt.WRANGLER):
 
 
 def test_apply_grants_pro_and_deposits_the_default_20_scans(fake):
+    entitlement = gt.read_wrangler_vars(gt.WRANGLER)[2]
     code, out, err = run(fake, ACCOUNT, "--apply")
 
     assert code == 0, err
     grant, deposit = fake.requests
     assert grant["path"] == f"/v2/projects/proj07f52826/customers/{ACCOUNT}/actions/grant_entitlement"
-    assert grant["body"]["entitlement_id"] == "pro"
+    assert grant["body"]["entitlement_id"] == entitlement
     assert grant["body"]["expires_at"] == int(datetime(2027, 11, 1, 12, 0, tzinfo=timezone.utc).timestamp() * 1000)
     assert deposit["path"] == f"/v2/projects/proj07f52826/customers/{ACCOUNT}/virtual_currencies/transactions"
     assert deposit["body"]["adjustments"] == {"SCAN": 20}
@@ -125,7 +126,7 @@ def test_dry_run_prints_the_plan_and_sends_nothing(fake):
 
     assert code == 0, err
     assert fake.requests == []
-    assert ACCOUNT in out and "pro" in out and "+20 SCAN" in out
+    assert ACCOUNT in out and gt.read_wrangler_vars(gt.WRANGLER)[2] in out and "+20 SCAN" in out
     assert "DRY RUN" in out
 
 
@@ -239,18 +240,40 @@ def test_key_is_not_a_command_line_option():
 
 def test_project_and_currency_come_from_the_workers_wrangler_toml(fake, tmp_path):
     wrangler = tmp_path / "wrangler.toml"
-    wrangler.write_text('[vars]\nREVENUECAT_PROJECT_ID = "projXYZ"\nREVENUECAT_CURRENCY_CODE = "COIN"\n')
+    wrangler.write_text(
+        '[vars]\nREVENUECAT_PROJECT_ID = "projXYZ"\nREVENUECAT_CURRENCY_CODE = "COIN"\n'
+        'REVENUECAT_PRO_ENTITLEMENT_ID = "entlTEST123"\n'
+    )
 
     code, out, err = run(fake, ACCOUNT, "--apply", wrangler_path=wrangler)
 
     assert code == 0, err
     assert all("/projects/projXYZ/" in r["path"] for r in fake.requests)
+    assert fake.requests[0]["body"]["entitlement_id"] == "entlTEST123"
     assert fake.requests[1]["body"]["adjustments"] == {"COIN": 20}
 
 
-def test_the_real_wrangler_toml_still_has_both_values():
-    project, currency = gt.read_wrangler_vars(gt.WRANGLER)
-    assert project.startswith("proj") and currency == "SCAN"
+def test_entitlement_option_overrides_the_one_in_wrangler_toml(fake):
+    code, out, err = run(fake, ACCOUNT, "--entitlement", "entlOTHER99", "--apply")
+
+    assert code == 0, err
+    assert fake.requests[0]["body"]["entitlement_id"] == "entlOTHER99"
+
+
+def test_a_wrangler_toml_without_the_entitlement_id_stops_before_any_request(fake, tmp_path):
+    wrangler = tmp_path / "wrangler.toml"
+    wrangler.write_text('[vars]\nREVENUECAT_PROJECT_ID = "projXYZ"\nREVENUECAT_CURRENCY_CODE = "COIN"\n')
+
+    code, out, err = run(fake, ACCOUNT, "--apply", wrangler_path=wrangler)
+
+    assert code == 1
+    assert "REVENUECAT_PRO_ENTITLEMENT_ID" in err
+    assert fake.requests == []
+
+
+def test_the_real_wrangler_toml_still_has_all_three_values():
+    project, currency, entitlement = gt.read_wrangler_vars(gt.WRANGLER)
+    assert project.startswith("proj") and currency == "SCAN" and entitlement.startswith("entl")
 
 
 def test_build_and_deploy_documents_the_dry_run_apply_and_where_the_account_id_is():

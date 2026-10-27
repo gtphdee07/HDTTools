@@ -271,7 +271,7 @@ their customer.
    as section 3; it needs Read & Write on both "Customer Configuration" and
    "Customer Purchases Configuration"). The tool reads it only from there and
    never prints it.
-2. Dry run first. It prints the account id, `pro`, the expiry and the scan count,
+2. Dry run first. It prints the account id, the Pro entitlement id, the expiry and the scan count,
    and sends nothing:
    `uv run scripts/grant_tester.py <account-id>`
 3. Then apply it:
@@ -288,6 +288,14 @@ RevenueCat refuses it as a duplicate (the tool assumes HTTP 409 and prints "Pro
 not changed"), then carries on to the scans.
 It uses RevenueCat's v2 `grant_entitlement` and virtual-currency transaction calls.
 Test it on one test account before the first real tester.
+
+RevenueCat's grant call takes the entitlement's internal id (`entl...`), not
+its lookup key `pro`. The id is written once, as `REVENUECAT_PRO_ENTITLEMENT_ID`
+next to the project id in `workers/scan-proxy/wrangler.toml` (the Worker does not
+read it; RevenueCat dashboard, Entitlements, the one whose lookup key is `pro`).
+Going to production in the same RevenueCat project changes nothing; a new
+RevenueCat project means changing the project id and this id together in that
+file. `--entitlement entl...` overrides it for one run.
 
 ### Cloudflare
 

@@ -2,6 +2,13 @@ name = "rigcheck-scan-proxy"
 main = "src/index.ts"
 compatibility_date = "2026-08-01"
 
+# Workers Logs: keeps what the Worker writes to the console, including the one
+# structured line per scan (src/scanLog.ts), and shows it in the Cloudflare
+# dashboard (Workers & Pages > rigcheck-scan-proxy > Logs). Every request is kept.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 # Secrets — never put real values here. Set with:
 #   npx wrangler secret put ANTHROPIC_API_KEY
 #   npx wrangler secret put REVENUECAT_SECRET_KEY

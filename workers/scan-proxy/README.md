@@ -171,6 +171,39 @@ adding once this is closer to shipping, not before.
 - **Model:** Haiku 4.5 (`src/claude.ts`) — structured extraction from a
   printed label is squarely its use case, and it's the cheapest tier.
 
+## How to read the logs
+
+Cloudflare Workers Logs is on (`[observability]` in `wrangler.toml`, every
+request kept; it takes effect at the next `npm run deploy`). Open it in the
+Cloudflare dashboard: **Workers & Pages → rigcheck-scan-proxy → Logs**, and
+set the time range around the report you are tracing.
+
+Every `POST /v1/scan` writes exactly one line, whatever happens to it. A
+CORS preflight or a request to any other route writes none. Filter on
+`event` = `scan` to see only these lines. A line looks like this:
+
+```json
+{"event":"scan","outcome":"extraction_failed","doc_type":"truck_tag","duration_ms":4120,"refunded":true}
+```
+
+| Field | Meaning |
+|---|---|
+| `event` | Always `scan`. |
+| `outcome` | `delivered`, or the error `code` the app received: `insufficient_credits`, `billing_error`, `extraction_failed`, `extraction_failed_no_refund`, `unauthorized`, `auth_unavailable`, `bad_request`. `internal_error` means the Worker itself failed before it could answer (the app got a 500). |
+| `doc_type` | `truck_tag`, `trailer_tag` or `scale_ticket`; `null` when the request failed before its body was read (`unauthorized`, `auth_unavailable`, `internal_error`, a body that is not JSON or names no valid type). |
+| `duration_ms` | Milliseconds from the request arriving to the answer being ready, in whole milliseconds. A `delivered` scan is mostly the Claude call, so several seconds is normal. |
+| `refunded` | `true` only when a charged scan failed and the credit went back (`extraction_failed`). `false` for a delivered scan, for a failure before any charge, and for `extraction_failed_no_refund`, the one outcome where a credit was charged and **not** returned: those are the lines to look for. |
+
+Delivered scans are logged at level `log`, everything else at `error`, so the
+level filter finds the failures.
+
+The lines never carry an account id, the `Authorization` header or any token,
+an image, the Anthropic or RevenueCat keys, or an email address. A report is
+traced by its time (and the document type), not by the account. Beside the scan
+line, a failure may also write a short diagnostic line (for example
+`spendCredit failed 500`); those carry a status or a reason, never the same
+private values.
+
 ## Setup
 
 You'll need accounts on these services — creating them, agreeing to their

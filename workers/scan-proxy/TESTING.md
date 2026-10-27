@@ -20,16 +20,16 @@ session end, release); the advisory planner
 [`TESTING.md`](../../TESTING.md) has the ladder for all five contexts and the category
 definitions this file uses.
 
-Offline suite, real run 2026-10-22 (#146): **158 tests in 15 files, 158 passed**, in about 0.5 s
-(`npm test`); the Minor selection (`npm run test:sanity`, the `[sanity]` tests) is **30** of them.
+Offline suite, real run 2026-10-27 (#183): **189 tests in 17 files, 189 passed**, in about 1 s
+(`npm test`); the Minor selection (`npm run test:sanity`, the `[sanity]` tests) is **58** of them.
 
 ## Running tests
 
 | Level | Command |
 |---|---|
 | One file (per issue, the targeted test first) | `node --test src/docTypes.test.ts` (run from `workers/scan-proxy/`) |
-| Minor (per issue) | `npm run test:sanity` (30 tests, the `[sanity]` ones) |
-| Major (per issue, when an interface or dependency changed) | `npm test` (158 tests) |
+| Minor (per issue) | `npm run test:sanity` (58 tests, the `[sanity]` ones) |
+| Major (per issue, when an interface or dependency changed) | `npm test` (189 tests) |
 | Whole context (offline), session end | `npm test` |
 | Type check | `npm run typecheck` |
 | Coverage | `npm run test:coverage` |
@@ -177,8 +177,8 @@ npm run test:coverage
 
 (`node --test --experimental-test-coverage src/*.test.ts` — the same
 files `npm test` already runs, with coverage instrumentation added.)
-Real numbers, 2026-10-22 (`npm run test:coverage`, 158 tests, after #146): **100.00% of lines,
-95.60% of branches, 98.91% of functions** over every `src/*.ts` file. Every file is at 100% of
+Real numbers, 2026-10-27 (`npm run test:coverage`, 189 tests, after #183): **100.00% of lines,
+96.29% of branches, 98.99% of functions** over every `src/*.ts` file. Every file is at 100% of
 lines. Branch gaps are in `accountTokenContract.ts` (93.75%), `installGuard.ts` (80%),
 `liveTokenCli.ts` (85.71%), `revenuecatProAttachment.ts` (91.11%) and `visionCases.ts` (75%). **The enforced baseline
 `scripts/coverage_gate.py` checks scan-proxy against is 100.00% of lines**, and the gate passes.
@@ -440,6 +440,15 @@ validates a real token against.
 - **an over-long or unusable client_request_id returns a clear 400 and never reaches RevenueCat** (#94) — 129 characters and a space, each a 400 `bad_request` naming the 128 cap, with zero RevenueCat calls.
 - **a CORS preflight for POST /v1/scan is answered without auth or any outbound call** (#26) — `OPTIONS` returns 204 with `Access-Control-Allow-Origin: *`, POST in the allowed methods, `Authorization` and `Content-Type` in the allowed headers, and makes no RevenueCat call.
 - **successful and failed responses all carry the CORS header so the browser can read them** (#26) — the 200, the 401, the 400 and the 404 each carry `Access-Control-Allow-Origin`.
+
+### `scanLog.test.ts` — the one structured log line per scan, `scanLog.ts` (#183; `worker.fetch` with `fetch` faked for RevenueCat, Anthropic and the Supabase JWKS endpoint, the console captured)
+
+- `[sanity]` **every scan writes exactly one structured line: outcome, document type, duration, refunded** — eleven requests, one per path: delivered, `insufficient_credits`, `billing_error` (RevenueCat answers with an error, and cannot be reached), `extraction_failed` (refunded: true), `extraction_failed_no_refund`, `unauthorized`, `auth_unavailable`, `bad_request` (not JSON; an unknown document type) and `internal_error` (the handler throws). Each writes exactly one `event: "scan"` line with exactly the five fields, the outcome the client received, `doc_type` null while the type is not yet known, and `refunded` true only for `extraction_failed`.
+- `[sanity]` **no token, image, key, email or account id reaches the log on any path** — the same eleven requests carry a signed token (with an email claim), an image and fake Anthropic and RevenueCat keys, RevenueCat's error bodies echo the customer id and an email, and a network error's message names the RevenueCat URL (which holds the account id). Nothing the Worker writes to any console level contains the token, its claims, the image, either key, the email or the account id. The test fails if `scan.ts` logs the account id, or a RevenueCat error body, again.
+- **duration_ms is the time the request took, in milliseconds** — a clock that moves one second per read gives a whole-second, non-zero duration.
+- **a response the log cannot read is logged as unknown, never thrown** — a non-JSON body, and `{ ok: false }` with no code, each give an `unknown` outcome rather than breaking the scan.
+- **requests that are not scans write no scan line** — the CORS preflight, an unknown route and a `GET /v1/scan` produce no scan line and nothing else on the console, and make no outbound call.
+- **wrangler.toml keeps Workers Logs on, with every request kept** — the `[observability]` table has `enabled = true` and `head_sampling_rate = 1`, so deleting the block cannot switch the logs off unnoticed.
 
 ### `installGuard.test.ts` — `installGuard.ts`, the missing-install check every top-level test file imports first (#82)
 

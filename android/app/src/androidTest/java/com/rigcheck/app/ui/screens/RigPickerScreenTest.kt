@@ -1,6 +1,9 @@
 package com.rigcheck.app.ui.screens
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -176,6 +179,29 @@ class RigPickerScreenTest {
             composeRule.onAllNodesWithTag("delete_rig_dialog").fetchSemanticsNodes().isEmpty()
         }
         assert(attempts == 2) { "expected one retry, got $attempts attempts" }
+    }
+
+    @Test
+    fun signingOutWhileAskedClosesTheQuestionAndItDoesNotComeBackAtTheNextSignIn() {
+        var handler by mutableStateOf<(suspend (RecentRig) -> Boolean)?>({ true })
+        composeRule.setContent {
+            RigPickerScreen(
+                recentRigs = listOf(recentRig),
+                creditBalance = 3,
+                onSelectRecentRig = {},
+                onStartNewRig = {},
+                onOpenPaywall = {},
+                onDeleteRig = handler,
+            )
+        }
+        composeRule.onNodeWithContentDescription("Delete Goose + Addie").performClick()
+        composeRule.onNodeWithTag("delete_rig_dialog").assertIsDisplayed()
+
+        composeRule.runOnIdle { handler = null } // signed out
+        composeRule.onNodeWithTag("delete_rig_dialog").assertDoesNotExist()
+        composeRule.runOnIdle { handler = { true } } // signed in again
+
+        composeRule.onNodeWithTag("delete_rig_dialog").assertDoesNotExist()
     }
 
     private fun assertEqualsRig(expected: RecentRig, actual: RecentRig?) {

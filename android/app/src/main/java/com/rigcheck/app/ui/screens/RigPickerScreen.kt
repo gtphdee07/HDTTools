@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,7 +61,10 @@ fun RigPickerScreen(
 ) {
     var newRigNickname by remember { mutableStateOf("") }
     // The Rig the user has asked to delete and has not yet confirmed or cancelled.
-    var askedRig by remember { mutableStateOf<RecentRig?>(null) }
+    var rigToDelete by remember { mutableStateOf<RecentRig?>(null) }
+    // Signing out takes the delete handler away; the open question goes with it and does not come back at the
+    // next sign-in.
+    LaunchedEffect(onDeleteRig == null) { if (onDeleteRig == null) rigToDelete = null }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -100,14 +104,14 @@ fun RigPickerScreen(
                     rig = rig,
                     index = index,
                     onClick = { onSelectRecentRig(rig) },
-                    onAskDelete = if (onDeleteRig != null) ({ askedRig = rig }) else null,
+                    onAskDelete = if (onDeleteRig != null) ({ rigToDelete = rig }) else null,
                 )
             }
         }
 
-        val asked = askedRig
+        val asked = rigToDelete
         if (asked != null && onDeleteRig != null) {
-            DeleteRigDialog(rig = asked, onDelete = onDeleteRig, onClose = { askedRig = null })
+            DeleteRigDialog(rig = asked, onDelete = onDeleteRig, onClose = { rigToDelete = null })
         }
 
         Column(
@@ -222,7 +226,7 @@ private fun RecentRigCard(rig: RecentRig, index: Int, onClick: () -> Unit, onAsk
             }
             if (onAskDelete != null) {
                 // A separate control on the card, so tapping it asks about deleting and does not start a check.
-                IconButton(onClick = onAskDelete, modifier = Modifier.testTag("delete_rig_${rig.nickname}")) {
+                IconButton(onClick = onAskDelete) {
                     Icon(Icons.Filled.Delete, contentDescription = "Delete ${rig.nickname}")
                 }
             }

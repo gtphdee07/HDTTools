@@ -806,8 +806,8 @@ root `TESTING.md`'s "Dashboard" section.
   mock engine): the list request and its reading of a Web-saved row, the `add_rig` call (key, trimmed
   nickname, Web field names, `p_pro` true, false or null), PostgREST's `garage_full` error read as a
   full Garage with its cap, another error not, and an update that matches no Rig failing so the
-  caller adds it. (#169) A delete is one DELETE of that Rig's id, an answer of success for a Rig that matched
-  nothing is not an error, and a refused delete fails. It cannot show the live project agrees; the owner's live
+  caller adds it. (#169) A delete is one DELETE of that Rig's id and a refused delete fails (a Rig that was already
+  gone matches no row, which PostgREST answers as success, so it is not an error; only the live run shows that). It cannot show the live project agrees; the owner's live
   run does.
 - `GarageNoticeTest.kt` (#31) — what a check tells the user when its Rig did not reach the Garage: the
   full-Garage wording for Free, Pro, unknown plan and unknown cap, singular Rig, the failed-save
@@ -985,7 +985,7 @@ network involved:
   until a nickname is typed, then fires `onStartNewRig` with it. (#169) Delete: with no delete handler no Rig
   has a delete control; the bin asks first, and Cancel deletes nothing and does not start a check; "Yes,
   delete" deletes that Rig and closes the question; a delete that fails shows the error, keeps the question
-  open and can be tried again.
+  open and can be tried again; signing out while the question is open closes it for good.
 - `TruckTagEntryScreenTest`, `TrailerTagEntryScreenTest`,
   `ScaleTicketEntryScreenTest` — typing into the description/location
   field updates the model and blank input becomes `null` (matching each

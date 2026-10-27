@@ -7,7 +7,12 @@ import { logScanResponse, logScanThrew } from "./scanLog.ts";
 import type { Env } from "./types.ts";
 
 // The document type is null until the body has been read and validated.
-async function scanResponse(request: Request, env: Env): Promise<{ response: Response; docType: DocType | null }> {
+interface ScanAnswer {
+  response: Response;
+  docType: DocType | null;
+}
+
+async function scanResponse(request: Request, env: Env): Promise<ScanAnswer> {
   // Authenticate before reading the body or spending anything: the account
   // charged is the token's, never one the caller names.
   const auth = await verifyAccountToken(env, request.headers.get("Authorization"));
@@ -44,7 +49,7 @@ async function scanResponse(request: Request, env: Env): Promise<{ response: Res
 // (scanLog.ts); nothing else the Worker serves does.
 async function handleScan(request: Request, env: Env): Promise<Response> {
   const startedAt = Date.now();
-  let scanned: Awaited<ReturnType<typeof scanResponse>>;
+  let scanned: ScanAnswer;
   try {
     scanned = await scanResponse(request, env);
   } catch (err) {

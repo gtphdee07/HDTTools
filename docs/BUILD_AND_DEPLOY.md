@@ -259,6 +259,44 @@ the apps at a new project, all of it must be recreated or re-verified.
 - Real money needs a Google Play app, store products, and the Play credentials
   connected in RevenueCat. That's not configured (section 8).
 
+### Granting a tester
+
+`scripts/grant_tester.py` gives one beta tester Pro and a number of scans (20 by
+default) in RevenueCat, so nobody does it by hand in the dashboard. It needs the
+tester's **Supabase account id**: Supabase dashboard, Authentication, Users, copy
+the `id` column (a UUID). The tester must have signed in once, so RevenueCat has
+their customer.
+
+1. Put the RevenueCat secret key in your shell (the same `REVENUECAT_SECRET_KEY`
+   as section 3; it needs Read & Write on both "Customer Configuration" and
+   "Customer Purchases Configuration"). The tool reads it only from there and
+   never prints it.
+2. Dry run first. It prints the account id, the Pro entitlement id, the expiry and the scan count,
+   and sends nothing:
+   `uv run scripts/grant_tester.py <account-id>`
+3. Then apply it:
+   `uv run scripts/grant_tester.py <account-id> --apply`
+   (`--scans N` changes the 20; `--pro-days N` changes the Pro length, default 365 days.)
+
+Running it twice for the same tester does not deposit twice: the deposit carries
+an idempotency key built from the account id and `--grant-id` (default `beta-1`).
+Pass a new `--grant-id` only when you mean to deposit more scans later. How long
+RevenueCat remembers an idempotency key is not in its documentation, so a repeat
+long after the first run may deposit again; check the tester's balance first.
+Pro is a RevenueCat promotional entitlement; run again within two hours and
+RevenueCat refuses it as a duplicate (the tool assumes HTTP 409 and prints "Pro
+not changed"), then carries on to the scans.
+It uses RevenueCat's v2 `grant_entitlement` and virtual-currency transaction calls.
+Test it on one test account before the first real tester.
+
+RevenueCat's grant call takes the entitlement's internal id (`entl...`), not
+its lookup key `pro`. The id is written once, as `REVENUECAT_PRO_ENTITLEMENT_ID`
+next to the project id in `workers/scan-proxy/wrangler.toml` (the Worker does not
+read it; RevenueCat dashboard, Entitlements, the one whose lookup key is `pro`).
+Going to production in the same RevenueCat project changes nothing; a new
+RevenueCat project means changing the project id and this id together in that
+file. `--entitlement entl...` overrides it for one run.
+
 ### Cloudflare
 
 - **Worker** `rigcheck-scan-proxy` (see `wrangler.toml`): deployed to a

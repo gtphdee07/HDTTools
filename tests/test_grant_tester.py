@@ -252,3 +252,12 @@ def test_project_and_currency_come_from_the_workers_wrangler_toml(fake, tmp_path
 def test_the_real_wrangler_toml_still_has_both_values():
     project, currency = gt.read_wrangler_vars(gt.WRANGLER)
     assert project.startswith("proj") and currency == "SCAN"
+
+
+def test_build_and_deploy_documents_the_dry_run_apply_and_where_the_account_id_is():
+    doc = (Path(__file__).resolve().parent.parent / "docs" / "BUILD_AND_DEPLOY.md").read_text(encoding="utf-8")
+    section = doc.split("### Granting a tester", 1)[1].split("\n### ", 1)[0]
+
+    assert "scripts/grant_tester.py <account-id>" in section
+    assert "--apply" in section
+    assert "Authentication, Users" in section

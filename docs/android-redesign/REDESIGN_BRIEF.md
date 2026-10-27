@@ -10,7 +10,7 @@ Live Web app to look at: https://rigcheck-web.pages.dev (works on a phone-width 
 
 ## 2. What must not change
 
-- **Behaviour and flow.** Same 9 routes, same order, same gates (see section 5). Add or move controls freely; do not add new features or remove functions. If a function really should go, say so in the map with a reason.
+- **Behaviour and flow.** Same 9 routes, same order, same gates (see section 5). Add or move controls freely; do not add new features or remove functions (the only additions are the ones the owner asked for after the first phone test, listed in section 10). If a function really should go, say so in the map with a reason.
 - **Words.** The app's tests find most controls by their exact on-screen text (about 410 lookups by text, about 70 by tag). Keep every string in `ui-inventory.json` exactly as written. If a string must change, list it in `copy-changes.md` (old text, new text, element id) instead of silently rewording. Disclaimer wording is legally reviewed: never change it.
 - **The six result rows and the three verdict outcomes.** Their labels come from the maths: Front Axle (Steer), Rear Axle (Drive), Tow Vehicle Total (GVWR), Trailer Axle(s), Trailer Total (GVWR), Combined Rig Weight (only when GCWR was entered).
 - **Fail must never rely on colour alone.** Today a failing row has a different icon shape (Cancel vs CheckCircle vs Info) plus red. Keep a non-colour cue.
@@ -108,3 +108,14 @@ Put these in one folder, named as below, so they can be coded and tested without
 - Current Android UI source: `android/app/src/main/java/com/rigcheck/app/ui/screens/*.kt`, `.../ui/components/*.kt`, `.../ui/theme/*.kt`.
 - Web reference UI source: `web/src/screens/*.tsx`, `web/src/wizard/*.tsx`, `web/src/components/*.tsx`, `web/src/design-system/*`.
 - Glossary of the app's own words (Rig, Garage, History, Plan, Scan, Scan Credit, Paywall, Check): `android/CONTEXT.md`.
+
+## 10. Owner feedback after the first run on a phone (2026-10-27)
+
+The owner ran the app on a real phone (Samsung SM-G996U, 3-button navigation) and asked for the following. They add to this brief. They need no new logic: sign-out and the scan balance already exist, and the splash and icon are branding.
+
+1. **Splash screen at load.** A branded screen while the app starts (logo on the brand colour, an optional short animation). It will be built with Android's platform splash mechanism, so give the logo as a vector sized for that, the background colour and, if any, the animation.
+2. **App icon.** The launcher icon is a placeholder today. Design an adaptive icon: foreground, background, and a single-colour version for themed icons. Hand back vectors, plus a 512 px version for a future store listing.
+3. **Show who is signed in.** The user must be able to see whether they are signed in, and as which account (the email), without opening the Paywall. At least on the Rig picker; ideally in the shared header on every screen that has one. When signed out it should say so and offer Sign in (the same route as today).
+4. **A way to sign out.** Today "Sign out" exists only on the Paywall. Make it reachable from the account status in item 3 in one or two taps (a menu or a sheet). It must not be possible during a paid Scan (the same rule as the rest of the app).
+5. **The scan balance stays top right, and bigger.** Keep the scan balance chip in the top right on the screens that show it. The camera icon in it is small (16 dp today) and so is the chip; make both larger, with a touch target of at least 48 dp. (The owner wrote "Scan icons top right": keep the chip where it is, and say in the map if you read it differently.)
+6. **Signed out shows "0 scans".** Before sign-in the chip shows "...", which the owner read as blank. It should say "0 scans". This is a wording change: list it in `copy-changes.md` (old: the "..." shown when signed out; new: "0 scans"). The "..." stays only for a signed-in account whose balance is still loading.

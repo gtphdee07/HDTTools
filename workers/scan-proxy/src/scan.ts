@@ -64,14 +64,17 @@ export async function runScan(
   try {
     spend = await deps.spendCredit(env, userId, idempotencyKey);
   } catch (err) {
-    console.error("spendCredit threw", err);
+    // Only the error's name: its message or cause could carry the request URL,
+    // which holds the account id (the scan log never names an account).
+    console.error("spendCredit threw", err instanceof Error ? err.name : typeof err);
     return json(
       { ok: false, code: "billing_error", message: "Could not verify scan credits." },
       502,
     );
   }
   if (!spend.ok) {
-    console.error("spendCredit failed", spend.status, JSON.stringify(spend.body));
+    // The status only: RevenueCat's error body can echo the customer id.
+    console.error("spendCredit failed", spend.status);
     if (spend.status === 422) {
       return json(
         { ok: false, code: "insufficient_credits", message: "Not enough scan credits." },
@@ -110,7 +113,7 @@ export async function runScan(
       );
     }
 
-    console.error("refundCredit failed after a charged scan", userId, idempotencyKey);
+    console.error("refundCredit failed after a charged scan");
     return json(
       {
         ok: false,

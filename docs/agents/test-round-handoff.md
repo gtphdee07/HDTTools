@@ -4,7 +4,7 @@ Working notes for the Alpha round ([BETA_PLAN.md](../BETA_PLAN.md)). They are te
 
 ## Where things stand (2026-10-27)
 
-- Merged and not yet pushed (51 commits ahead of `origin/MPSkills`, last push 8d91a96): #179, #174 with its #185 fix, #181, #186, #169, #180, #182, #183, and the redesign brief and plan edits. Pushes are checkpoints: Claude asks after #189 and again at the end (see "Pushes").
+- Merged and not yet pushed (52 commits ahead of `origin/MPSkills`, last push 8d91a96): #179, #174 with its #185 fix, #181, #186, #169, #180, #182, #183, and the redesign brief and plan edits. Pushes are checkpoints: Claude asks after #189 and again at the end (see "Pushes").
 - **Lane A:** nothing is running; #184 is next. **Lane B:** has nothing left but the optional #132.
 - Your phone (SM-G996U, adb name `R3CR50G10ML`) has the beta build, versionCode 3. The emulator is `emulator-5554`. Name the one you mean in every adb command.
 - The Android re-skin (epic #187) happens before the Alpha: the tester APK is built only after #197 and your sign-off.
@@ -34,7 +34,7 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 ## Pushes and External runs
 
 - **Pushes:** a checkpoint push after #189 has merged (before the design round) and a final push at the end. Claude asks before each. Web goes live on each push; with no testers yet that is harmless, and the remote then holds a copy of the work.
-- The pre-push gate refuses a push that touches `web/`, `workers/scan-proxy/` or `android/` while an External surface is stale (`uv run scripts/external_freshness.py` says which). Claude runs the stale suites from the main checkout first, asking for a paid-call ceiling before any paid run: `revenuecat-android-sdk` (free; stale since #174; needs the emulator, so no Android ticket may be running, #189 included), `pages-site` (free; `web/.env.production` changed), `scan-proxy-worker` (one paid scan; stale because `wrangler.toml` changed; run it once you have redeployed the Worker after #183), and, as of 2026-10-27, `anthropic` (three paid calls) and `anthropic-python` (new SDK releases). Claude asks for your paid-call ceiling before any of them.
+- The pre-push gate refuses a push that touches `web/`, `workers/scan-proxy/` or `android/` while an External surface is stale (`uv run scripts/external_freshness.py` says which). Claude runs the stale suites from the main checkout first, asking for a paid-call ceiling before any paid run: `revenuecat-android-sdk` (free; stale since #174; needs the emulator, so no Android ticket may be running, #189 included), `pages-site` (free; `web/.env.production` changed) and `anthropic-python` (free; new SDK releases). `scan-proxy-worker` and `anthropic` were run live on 2026-10-27 after the forced Worker deploy and passed (4 paid calls), so the Worker gate is clear.
 - Do not invite testers before the final push and the owner steps below are done.
 
 ## Owner steps, in the order they come up
@@ -43,7 +43,8 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - [x] #186 checked on the phone: the Paywall, the Create button, History and the Truck Tag keyboard (done 2026-10-27).
 - [x] The grant tool ran live on one test account (2026-10-27): RevenueCat shows the Pro entitlement (display name "Rig Check Pro", lookup key `pro`, expires in a year) and 20 scans.
 - [ ] Run the grant tool for each real tester (dry run, then `--apply`; the account id is in the Supabase dashboard, Authentication, Users; steps in `docs/BUILD_AND_DEPLOY.md`, "Granting a tester"). Leave one tester on Free so someone tests buying Pro.
-- [ ] #183 has merged: redeploy the Worker (`npm run deploy` in `workers/scan-proxy`) and open the Cloudflare logs once (Workers & Pages, rigcheck-scan-proxy, Logs) to see a `"event":"scan"` line after one test scan. Tell Claude when it is done: the live `scan-proxy-worker` suite (one paid scan) waits for it.
+- [x] #183: the Worker was redeployed (forced, with a recorded reason) and the live suites passed on 2026-10-27.
+- [ ] Open the Cloudflare logs once (Workers & Pages, rigcheck-scan-proxy, Logs) and look for a `"event":"scan"` line (the live suite's scans wrote some).
 - [ ] #182 has merged (Send feedback on the Rig picker and the sign-in screen; "Beta: test payments" on the Paywall; the phone shows them after the rebuilt APK). After #184: read `docs/BETA_TESTER_GUIDE.md` once, check its Android steps against the real app, and send yourself a feedback email from each app. Decide the guide's wording "No limit on how many scans one account can make" (a tester's scan balance still runs out; "no daily limit" is closer).
 - [ ] After #189 merges: run the design round (#190) as its card says, and commit the hand-back.
 - [ ] On each re-skin ticket (#192 to #196): compare the screenshot in the STATUS comment with the designer's picture on your phone before Claude merges it. On #197, check every screen and sign off.

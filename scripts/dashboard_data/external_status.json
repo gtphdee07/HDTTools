@@ -17,12 +17,12 @@
   },
   "surfaces": {
     "anthropic": {
-      "commit": "3cc6647f33963683b20d498e4a2028265613100a",
+      "commit": "0b383d77240d1e200899dd7a363964c0b5112348",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-23T16:59:10Z",
+      "timestamp": "2026-10-27T22:37:14Z",
       "versions": {
-        "@anthropic-ai/sdk": "1.2.0"
+        "@anthropic-ai/sdk": "1.3.0"
       }
     },
     "anthropic-python": {
@@ -69,14 +69,14 @@
       }
     },
     "scan-proxy-worker": {
-      "commit": "b4de5e62c103bd0fc7bc3b3197c3d634b6cd1fcc",
+      "commit": "0b383d77240d1e200899dd7a363964c0b5112348",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-23T02:32:13Z",
+      "timestamp": "2026-10-27T22:37:14Z",
       "versions": {
-        "@cloudflare/workers-types": "5.20261023.1",
-        "workerd": "1.20261023.1",
-        "wrangler": "4.152.0"
+        "@cloudflare/workers-types": "5.20261027.1",
+        "workerd": "1.20261027.1",
+        "wrangler": "4.154.0"
       }
     },
     "supabase-auth": {

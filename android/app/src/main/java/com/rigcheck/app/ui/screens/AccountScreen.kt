@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.data.AccountResult
+import com.rigcheck.app.ui.components.FeedbackLink
 
 private const val MIN_PASSWORD_LENGTH = 6
 
@@ -152,5 +153,7 @@ fun AccountScreen(
         }
 
         TextButton(onClick = onNotNow) { Text("Not now") }
+        // Trouble signing in is a thing a tester needs to report from here (#182).
+        FeedbackLink()
     }
 }

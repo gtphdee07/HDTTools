@@ -582,4 +582,18 @@ class PaywallScreenTest {
 
         composeRule.onNodeWithText("Back").assertIsNotEnabled()
     }
+
+    // The beta build buys with test cards (#182): the label shows with the flag set and is gone without it.
+    @Test
+    fun betaLabelShowsOnlyWhenTheBetaFlagIsSet() {
+        val isBeta = mutableStateOf(true)
+        composeRule.setContent {
+            PaywallScreen(creditBalance = 0, onPurchase = { _, _ -> }, onRestore = { }, onDone = { }, isBeta = isBeta.value)
+        }
+
+        composeRule.onNodeWithText("Beta: test payments", substring = true).assertIsDisplayed()
+
+        isBeta.value = false
+        composeRule.onNodeWithText("Beta: test payments", substring = true).assertDoesNotExist()
+    }
 }

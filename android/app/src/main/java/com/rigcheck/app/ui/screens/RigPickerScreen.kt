@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.domain.model.RecentRig
 import com.rigcheck.app.ui.components.CreditBalanceChip
+import com.rigcheck.app.ui.components.FeedbackLink
 import com.rigcheck.app.ui.theme.AvatarPalette
 import java.time.Instant
 import kotlinx.coroutines.launch
@@ -131,6 +132,7 @@ fun RigPickerScreen(
                     enabled = newRigNickname.isNotBlank(),
                 ) { Text("Create") }
             }
+            FeedbackLink()
         }
     }
 }

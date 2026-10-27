@@ -160,7 +160,7 @@ fun PaywallScreen(
                     "Beta: test payments. Every purchase uses a test card; no real money moves.",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp).testTag("paywall_beta_label"),
+                    modifier = Modifier.padding(bottom = 16.dp),
                 )
             }
 

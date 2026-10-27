@@ -50,7 +50,8 @@ def test_android_mailto_uses_the_constant_and_the_subject_web_uses():
 
 def test_no_other_android_source_spells_the_address():
     # One Kotlin constant: any other file that names it would be a second copy to drift.
+    address = android_address()
     sources = (ANDROID / "app/src").rglob("*.kt")
-    copies = [p.name for p in sources if p != ANDROID_CONSTANT and android_address() in read(p)]
+    copies = [p.name for p in sources if p != ANDROID_CONSTANT and address in read(p)]
     # The tests may spell it out to check what the app sends.
     assert [name for name in copies if not name.endswith("Test.kt")] == []

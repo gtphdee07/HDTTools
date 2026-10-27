@@ -36,7 +36,6 @@ fun FeedbackLink(
                     true
                 }
             },
-            modifier = Modifier.testTag("send_feedback"),
         ) {
             Text("Send feedback")
         }

@@ -43,7 +43,8 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 
 - [x] Signing values in `G:\GradleUserHome\gradle.properties`, APK built, fingerprint matches the notes file, installed on the phone, Google sign-in works (done 2026-10-27; the phone has versionCode 3).
 - [x] #186 checked on the phone: the Paywall, the Create button, History and the Truck Tag keyboard (done 2026-10-27).
-- [ ] #180 has merged: run the grant tool (`uv run scripts/grant_tester.py <account-id>`, from the main checkout, with `REVENUECAT_SECRET_KEY` in your shell; steps in `docs/BUILD_AND_DEPLOY.md`, "Granting a tester") once as a dry run, then with `--apply`, on **one test account first**, then for each tester (the account id is in the Supabase dashboard, Authentication, Users). Leave one tester on Free so someone tests buying Pro. It has never run live: if RevenueCat answers 400 or 404 for the Pro step, tell Claude.
+- [x] The grant tool ran live on one test account (2026-10-27): RevenueCat shows the Pro entitlement (display name "Rig Check Pro", lookup key `pro`, expires in a year) and 20 scans.
+- [ ] Run the grant tool for each real tester (dry run, then `--apply`; the account id is in the Supabase dashboard, Authentication, Users; steps in `docs/BUILD_AND_DEPLOY.md`, "Granting a tester"). Leave one tester on Free so someone tests buying Pro.
 - [ ] After #183 merges: redeploy the Worker and open the Cloudflare logs once to see a line.
 - [ ] After #182 and #184: read `docs/BETA_TESTER_GUIDE.md` once, check its Android steps against the real app, and send yourself a feedback email from each app. Decide the guide's wording "No limit on how many scans one account can make" (a tester's scan balance still runs out; "no daily limit" is closer).
 - [ ] After #189 merges: run the design round (#190) as its card says, and commit the hand-back.

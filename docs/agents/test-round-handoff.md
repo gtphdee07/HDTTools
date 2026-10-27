@@ -4,8 +4,8 @@ Working notes for the Alpha round ([BETA_PLAN.md](../BETA_PLAN.md)). They are te
 
 ## Where things stand (2026-10-27)
 
-- Merged and not yet pushed (47 commits ahead of `origin/MPSkills`, last push 8d91a96): #179, #174 with its #185 fix, #181, #186, #169, #180, #182, and the redesign brief and plan edits. Pushes are checkpoints: Claude asks after #189 and again at the end (see "Pushes").
-- **Lane A:** nothing is running; #184 is next. **Lane B:** #183 has been started (its folder exists); `/ticket-merge 183` when its session finishes.
+- Merged and not yet pushed (51 commits ahead of `origin/MPSkills`, last push 8d91a96): #179, #174 with its #185 fix, #181, #186, #169, #180, #182, #183, and the redesign brief and plan edits. Pushes are checkpoints: Claude asks after #189 and again at the end (see "Pushes").
+- **Lane A:** nothing is running; #184 is next. **Lane B:** has nothing left but the optional #132.
 - Your phone (SM-G996U, adb name `R3CR50G10ML`) has the beta build, versionCode 3. The emulator is `emulator-5554`. Name the one you mean in every adb command.
 - The Android re-skin (epic #187) happens before the Alpha: the tester APK is built only after #197 and your sign-off.
 
@@ -15,14 +15,13 @@ Two lanes, one build session each, a **new** session for every ticket. Lane A is
 
 | # | Ticket | Lane | Starts when | Your part |
 |---|---|---|---|---|
-| 1 | [#183](#183-worker-log-lines) Worker log lines | B | nothing blocks it | redeploy the Worker, open the logs |
-| 2 | [#184](#184-android-crash-capture) Android crash capture | A | nothing blocks it | none |
-| 3 | [#188](#188-a-test-tag-on-every-android-ui-element-redesign-step-1) A test tag on every UI element | A | #184 merged | none |
-| 4 | [#189](#189-baseline-screenshots-and-measured-bounds-redesign-step-2) Baseline screenshots (emulator alone) | A | #188 merged | copy the PNGs for the designer |
-| 5 | [#190](#190-the-design-round-yours-no-build-session) The Claude Design round | you | #189 merged | the whole ticket |
-| 6 | [#191](#191-theme-tokens-and-shared-components-from-the-design) Theme, tokens, shared components | A | #190 committed | none |
-| 7 to 11 | #192 to #196 re-skin: [Rig picker and Chooser](#192-re-skin-the-rig-picker-chooser-and-photo-source-dialog), [entry screens](#193-re-skin-the-truck-tag-trailer-tag-and-scale-ticket-entry-screens), [Disclaimer and Results](#194-re-skin-the-disclaimer-and-results-screens), [History](#195-re-skin-the-history-screen), [Paywall, Account, dialogs](#196-re-skin-the-paywall-account-and-the-two-scan-dialogs) | A | #191 merged | compare with the designer's picture on your phone |
-| 12 | [#197](#197-final-pass-and-sign-off) Final pass and sign-off | A | #192 to #196 merged | check every screen, sign off |
+| 1 | [#184](#184-android-crash-capture) Android crash capture | A | nothing blocks it | none |
+| 2 | [#188](#188-a-test-tag-on-every-android-ui-element-redesign-step-1) A test tag on every UI element | A | #184 merged | none |
+| 3 | [#189](#189-baseline-screenshots-and-measured-bounds-redesign-step-2) Baseline screenshots (emulator alone) | A | #188 merged | copy the PNGs for the designer |
+| 4 | [#190](#190-the-design-round-yours-no-build-session) The Claude Design round | you | #189 merged | the whole ticket |
+| 5 | [#191](#191-theme-tokens-and-shared-components-from-the-design) Theme, tokens, shared components | A | #190 committed | none |
+| 6 to 10 | #192 to #196 re-skin: [Rig picker and Chooser](#192-re-skin-the-rig-picker-chooser-and-photo-source-dialog), [entry screens](#193-re-skin-the-truck-tag-trailer-tag-and-scale-ticket-entry-screens), [Disclaimer and Results](#194-re-skin-the-disclaimer-and-results-screens), [History](#195-re-skin-the-history-screen), [Paywall, Account, dialogs](#196-re-skin-the-paywall-account-and-the-two-scan-dialogs) | A | #191 merged | compare with the designer's picture on your phone |
+| 11 | [#197](#197-final-pass-and-sign-off) Final pass and sign-off | A | #192 to #196 merged | check every screen, sign off |
 | optional | [#132](#132-optional-is-mutation-testing-worth-running-research) Is mutation testing worth running? | any | any time | none |
 
 A ticket starts when the tickets it waits for have merged, not when the round ends. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.
@@ -35,7 +34,7 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 ## Pushes and External runs
 
 - **Pushes:** a checkpoint push after #189 has merged (before the design round) and a final push at the end. Claude asks before each. Web goes live on each push; with no testers yet that is harmless, and the remote then holds a copy of the work.
-- The pre-push gate refuses a push that touches `web/`, `workers/scan-proxy/` or `android/` while an External surface is stale (`uv run scripts/external_freshness.py` says which). Claude runs the stale suites from the main checkout first, asking for a paid-call ceiling before any paid run: `revenuecat-android-sdk` (free; stale since #174; needs the emulator, so no Android ticket may be running, #189 included), `pages-site` (free; `web/.env.production` changed), `scan-proxy-worker` (one paid scan; stale because `wrangler.toml` changed; run it once #183 has merged and you have redeployed the Worker), and, as of 2026-10-27, `anthropic` (three paid calls) and `anthropic-python` (new SDK releases). Claude asks for your paid-call ceiling before any of them.
+- The pre-push gate refuses a push that touches `web/`, `workers/scan-proxy/` or `android/` while an External surface is stale (`uv run scripts/external_freshness.py` says which). Claude runs the stale suites from the main checkout first, asking for a paid-call ceiling before any paid run: `revenuecat-android-sdk` (free; stale since #174; needs the emulator, so no Android ticket may be running, #189 included), `pages-site` (free; `web/.env.production` changed), `scan-proxy-worker` (one paid scan; stale because `wrangler.toml` changed; run it once you have redeployed the Worker after #183), and, as of 2026-10-27, `anthropic` (three paid calls) and `anthropic-python` (new SDK releases). Claude asks for your paid-call ceiling before any of them.
 - Do not invite testers before the final push and the owner steps below are done.
 
 ## Owner steps, in the order they come up
@@ -44,7 +43,7 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - [x] #186 checked on the phone: the Paywall, the Create button, History and the Truck Tag keyboard (done 2026-10-27).
 - [x] The grant tool ran live on one test account (2026-10-27): RevenueCat shows the Pro entitlement (display name "Rig Check Pro", lookup key `pro`, expires in a year) and 20 scans.
 - [ ] Run the grant tool for each real tester (dry run, then `--apply`; the account id is in the Supabase dashboard, Authentication, Users; steps in `docs/BUILD_AND_DEPLOY.md`, "Granting a tester"). Leave one tester on Free so someone tests buying Pro.
-- [ ] After #183 merges: redeploy the Worker and open the Cloudflare logs once to see a line.
+- [ ] #183 has merged: redeploy the Worker (`npm run deploy` in `workers/scan-proxy`) and open the Cloudflare logs once (Workers & Pages, rigcheck-scan-proxy, Logs) to see a `"event":"scan"` line after one test scan. Tell Claude when it is done: the live `scan-proxy-worker` suite (one paid scan) waits for it.
 - [ ] #182 has merged (Send feedback on the Rig picker and the sign-in screen; "Beta: test payments" on the Paywall; the phone shows them after the rebuilt APK). After #184: read `docs/BETA_TESTER_GUIDE.md` once, check its Android steps against the real app, and send yourself a feedback email from each app. Decide the guide's wording "No limit on how many scans one account can make" (a tester's scan balance still runs out; "no daily limit" is closer).
 - [ ] After #189 merges: run the design round (#190) as its card says, and commit the hand-back.
 - [ ] On each re-skin ticket (#192 to #196): compare the screenshot in the STATUS comment with the designer's picture on your phone before Claude merges it. On #197, check every screen and sign off.
@@ -58,35 +57,6 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 Not in this round: #40 (Google Play Billing; blocked until a Play Console account exists, see the ticket's DECISIONS and `STATUS: BLOCKED`; ask Claude to rebuild its card when you restart it), #68, #69, #70, #72, #100, #170, #172, #175, #177. After the round: #144, #145, #146, #165, #155 to #159, #138 and #139.
 
 ## Run cards
-
-### #183 Worker log lines
-
-**Lane B, now.** Nothing blocks it. It can run at the same time as lane A.
-
-1. **Already started:** the folder `.claude/worktrees/ticket-183` exists and the ticket is assigned to you. Skip this step.
-2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-183` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-183"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
-
-```
-/mattpocock-skills:implement #183
-
-Follow docs/agents/session-handoff.md: don't push, don't close the issue, and finish with a STATUS comment on the ticket. While you work, run single test files and typechecks only; leave the full run to /ticket-finish, which runs it once and remembers the pass. Run a live External suite only if an acceptance criterion names one, and only after the owner approves that run; the merge step covers the rest. If the ticket has a `## Decisions` section, or needs a decision only the owner can make, ask the owner directly with AskUserQuestion (up to 4 questions per call) before building on it, then post the questions and answers as a ticket comment starting `DECISIONS`; if you cannot ask, use the recommended defaults, post them as `DECISIONS (assumed)` and list them under Owner actions.
-
-Test-round additions:
-- The Worker end-of-session commands are `npm --prefix workers/scan-proxy test` and `uv run scripts/static_checks.py scan-proxy`. Do not start Gradle or the emulator.
-- Only `workers/scan-proxy/` and the testing documents change unless the ticket says otherwise.
-- Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
-- Live runs: do not run the live External suite, any paid call, or `npm run deploy`. The owner redeploys and the merge review runs the surface. Do not commit changes to `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
-- Never print, log or commit a key, token, image or email.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->` markers.
-- One structured log line per scan (outcome code, document type, duration in milliseconds, refunded yes or no); the account id is not logged (decided). Tests must show no token, image, key, email or account id reaches the log.
-- The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
-```
-
-3. When that session says it is done, type `/ticket-finish` in it. At the end it asks whether to move the shell out of the worktree into the main checkout; answer **Yes**.
-4. Back in this main-checkout session type `/ticket-merge 183`. Claude reviews the work, adds any missing test or testing-document row (asking you first), merges, and asks before any push.
-
-**Your part:** after the merge, redeploy the Worker (`npm run deploy` in `workers/scan-proxy`) and open the Cloudflare logs once to see a line. Claude then runs the live `scan-proxy-worker` suite (one paid scan, with your ceiling) before the push.
 
 ### #184 Android crash capture
 

@@ -4,7 +4,7 @@ Working notes for the Alpha round ([BETA_PLAN.md](../BETA_PLAN.md)). They are te
 
 ## Where things stand (2026-10-27)
 
-- Merged and not yet pushed (52 commits ahead of `origin/MPSkills`, last push 8d91a96): #179, #174 with its #185 fix, #181, #186, #169, #180, #182, #183, and the redesign brief and plan edits. Pushes are checkpoints: Claude asks after #189 and again at the end (see "Pushes").
+- Merged and not yet pushed (53 commits ahead of `origin/MPSkills`, last push 8d91a96): #179, #174 with its #185 fix, #181, #186, #169, #180, #182, #183, and the redesign brief and plan edits. Pushes are checkpoints: Claude asks after #189 and again at the end (see "Pushes").
 - **Lane A:** nothing is running; #184 is next. **Lane B:** has nothing left but the optional #132.
 - Your phone (SM-G996U, adb name `R3CR50G10ML`) has the beta build, versionCode 3. The emulator is `emulator-5554`. Name the one you mean in every adb command.
 - The Android re-skin (epic #187) happens before the Alpha: the tester APK is built only after #197 and your sign-off.
@@ -44,7 +44,7 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - [x] The grant tool ran live on one test account (2026-10-27): RevenueCat shows the Pro entitlement (display name "Rig Check Pro", lookup key `pro`, expires in a year) and 20 scans.
 - [ ] Run the grant tool for each real tester (dry run, then `--apply`; the account id is in the Supabase dashboard, Authentication, Users; steps in `docs/BUILD_AND_DEPLOY.md`, "Granting a tester"). Leave one tester on Free so someone tests buying Pro.
 - [x] #183: the Worker was redeployed (forced, with a recorded reason) and the live suites passed on 2026-10-27.
-- [ ] Open the Cloudflare logs once (Workers & Pages, rigcheck-scan-proxy, Logs) and look for a `"event":"scan"` line (the live suite's scans wrote some).
+- [x] The Cloudflare logs show our scan line (2026-10-27): `event: scan, outcome: delivered, doc_type: truck_tag, duration_ms: 4225, refunded: false`. A delivered line has no level label in the dashboard; failures show as `error`. Cloudflare also writes its own `POST /v1/scan` row per request, with the requester's IP and rough location (only you can read it); `invocation_logs = false` in `wrangler.toml` would turn that off, and is yours to decide (see "Things to remember").
 - [ ] #182 has merged (Send feedback on the Rig picker and the sign-in screen; "Beta: test payments" on the Paywall; the phone shows them after the rebuilt APK). After #184: read `docs/BETA_TESTER_GUIDE.md` once, check its Android steps against the real app, and send yourself a feedback email from each app. Decide the guide's wording "No limit on how many scans one account can make" (a tester's scan balance still runs out; "no daily limit" is closer).
 - [ ] After #189 merges: run the design round (#190) as its card says, and commit the hand-back.
 - [ ] On each re-skin ticket (#192 to #196): compare the screenshot in the STATUS comment with the designer's picture on your phone before Claude merges it. On #197, check every screen and sign off.
@@ -394,4 +394,5 @@ Test-round additions:
 - Paid prompts from a non-interactive shell: `cmd /c "echo y| powershell -NoProfile -File workers\scan-proxy\test-external.ps1 -MaxPaidCalls N"` (piping several `'y'` lines from PowerShell declines the first prompt and records `skipped`, which spends nothing and leaves the surface stale). Claude does this, with your ceiling.
 - Every new test file must be named in its context's testing document, and every new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise. Build sessions have missed this twice, so the merge review adds the row or entry and asks first.
 - The planner treats `*.md`, `docs/*` and `ClaudePlans/*` as docs-only (plans nothing), follows `shares_with` and `depends_on` links to downstream contexts, and does not list a deleted test file.
+- `workers/scan-proxy/wrangler.toml`: the next time the Worker needs a deploy anyway, consider (a) the nested `[observability.logs]` form Cloudflare's banner suggests (same behaviour, stops the banner) and (b) `invocation_logs = false`, which stops Cloudflare's own per-request row (it holds each requester's IP and rough location). Any `wrangler.toml` edit makes the `scan-proxy-worker` suite stale: forced deploy, then one paid scan. Decided 2026-10-27: leave both for now.
 - Keep the `external-suite-pro` RevenueCat grant non-expiring or far-dated (the Web External suite depends on it).

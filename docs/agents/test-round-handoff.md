@@ -4,8 +4,8 @@ Working notes for the Alpha round ([BETA_PLAN.md](../BETA_PLAN.md)). They are te
 
 ## Where things stand (2026-10-27)
 
-- Merged and not yet pushed (35 commits ahead of `origin/MPSkills`, last push 8d91a96): #179, #174 with its #185 fix, #181, #186, #169, and the redesign brief and plan edits. Pushes are checkpoints: Claude asks after #189 and again at the end (see "Pushes").
-- **In progress: #180 (lane B)**; its build session has commits. Lane A has nothing running: #182 is next.
+- Merged and not yet pushed (41 commits ahead of `origin/MPSkills`, last push 8d91a96): #179, #174 with its #185 fix, #181, #186, #169, #180, and the redesign brief and plan edits. Pushes are checkpoints: Claude asks after #189 and again at the end (see "Pushes").
+- **Nothing is running.** Lane A: #182 is next. Lane B: #183 is next.
 - Your phone (SM-G996U, adb name `R3CR50G10ML`) has the beta build, versionCode 3. The emulator is `emulator-5554`. Name the one you mean in every adb command.
 - The Android re-skin (epic #187) happens before the Alpha: the tester APK is built only after #197 and your sign-off.
 
@@ -15,36 +15,35 @@ Two lanes, one build session each, a **new** session for every ticket. Lane A is
 
 | # | Ticket | Lane | Starts when | Your part |
 |---|---|---|---|---|
-| 1 | [#180](#180-grant-tool-gives-a-tester-pro-and-scans) Tester grant tool | B | started | run it for each tester |
-| 2 | [#182](#182-android-beta-kit-feedback-link-and-beta-test-payments-label) Android feedback link and beta label | A | nothing blocks it | read the guide |
-| 3 | [#183](#183-worker-log-lines) Worker log lines | B | #180 merged | redeploy the Worker, open the logs |
-| 4 | [#184](#184-android-crash-capture) Android crash capture | A | #182 merged | none |
-| 5 | [#188](#188-a-test-tag-on-every-android-ui-element-redesign-step-1) A test tag on every UI element | A | #182, #184 merged | none |
-| 6 | [#189](#189-baseline-screenshots-and-measured-bounds-redesign-step-2) Baseline screenshots (emulator alone) | A | #188 merged | copy the PNGs for the designer |
-| 7 | [#190](#190-the-design-round-yours-no-build-session) The Claude Design round | you | #189 merged | the whole ticket |
-| 8 | [#191](#191-theme-tokens-and-shared-components-from-the-design) Theme, tokens, shared components | A | #190 committed | none |
-| 9 to 13 | #192 to #196 re-skin: [Rig picker and Chooser](#192-re-skin-the-rig-picker-chooser-and-photo-source-dialog), [entry screens](#193-re-skin-the-truck-tag-trailer-tag-and-scale-ticket-entry-screens), [Disclaimer and Results](#194-re-skin-the-disclaimer-and-results-screens), [History](#195-re-skin-the-history-screen), [Paywall, Account, dialogs](#196-re-skin-the-paywall-account-and-the-two-scan-dialogs) | A | #191 merged | compare with the designer's picture on your phone |
-| 14 | [#197](#197-final-pass-and-sign-off) Final pass and sign-off | A | #192 to #196 merged | check every screen, sign off |
+| 1 | [#182](#182-android-beta-kit-feedback-link-and-beta-test-payments-label) Android feedback link and beta label | A | nothing blocks it | read the guide |
+| 2 | [#183](#183-worker-log-lines) Worker log lines | B | nothing blocks it | redeploy the Worker, open the logs |
+| 3 | [#184](#184-android-crash-capture) Android crash capture | A | #182 merged | none |
+| 4 | [#188](#188-a-test-tag-on-every-android-ui-element-redesign-step-1) A test tag on every UI element | A | #182, #184 merged | none |
+| 5 | [#189](#189-baseline-screenshots-and-measured-bounds-redesign-step-2) Baseline screenshots (emulator alone) | A | #188 merged | copy the PNGs for the designer |
+| 6 | [#190](#190-the-design-round-yours-no-build-session) The Claude Design round | you | #189 merged | the whole ticket |
+| 7 | [#191](#191-theme-tokens-and-shared-components-from-the-design) Theme, tokens, shared components | A | #190 committed | none |
+| 8 to 12 | #192 to #196 re-skin: [Rig picker and Chooser](#192-re-skin-the-rig-picker-chooser-and-photo-source-dialog), [entry screens](#193-re-skin-the-truck-tag-trailer-tag-and-scale-ticket-entry-screens), [Disclaimer and Results](#194-re-skin-the-disclaimer-and-results-screens), [History](#195-re-skin-the-history-screen), [Paywall, Account, dialogs](#196-re-skin-the-paywall-account-and-the-two-scan-dialogs) | A | #191 merged | compare with the designer's picture on your phone |
+| 13 | [#197](#197-final-pass-and-sign-off) Final pass and sign-off | A | #192 to #196 merged | check every screen, sign off |
 | optional | [#132](#132-optional-is-mutation-testing-worth-running-research) Is mutation testing worth running? | any | any time | none |
 
 A ticket starts when the tickets it waits for have merged, not when the round ends. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.
 
 **How the two lanes stay out of each other's way**
 - **Memory:** only lane A may use the emulator or Gradle. Lane B runs vitest, node and pytest only. If the machine runs short of memory, pause lane B.
-- **Same files:** `docs/BUILD_AND_DEPLOY.md` (#180), `docs/BETA_TESTER_GUIDE.md` (#184 adds a line), `tests/TESTING.md` (#180 and #182), `scripts/test_planner_config.json` (any new slow test). Claude merges one ticket at a time and settles any text clash at the merge; the second ticket of a pair may need a refresh onto the new baseline, and Claude says so.
+- **Same files:** `docs/BETA_TESTER_GUIDE.md` (#184 adds a line), `tests/TESTING.md` (#182), `scripts/test_planner_config.json` (any new slow test). Claude merges one ticket at a time and settles any text clash at the merge; the second ticket of a pair may need a refresh onto the new baseline, and Claude says so.
 - **Merge order between lanes:** whichever worker finishes first.
 
 ## Pushes and External runs
 
 - **Pushes:** a checkpoint push after #189 has merged (before the design round) and a final push at the end. Claude asks before each. Web goes live on each push; with no testers yet that is harmless, and the remote then holds a copy of the work.
-- The pre-push gate refuses a push that touches `web/`, `workers/scan-proxy/` or `android/` while an External surface is stale (`uv run scripts/external_freshness.py` says which). Claude runs the stale suites from the main checkout first, asking for a paid-call ceiling before any paid run: `revenuecat-android-sdk` (free; stale since #174; needs the emulator, so no Android ticket may be running, #189 included), the Web suites (free; `web/.env.production` changed), and `scan-proxy-worker` (one paid scan, once #183 has merged and you have redeployed the Worker). The `anthropic` surface declares three paid calls if a new SDK release has made it stale again.
+- The pre-push gate refuses a push that touches `web/`, `workers/scan-proxy/` or `android/` while an External surface is stale (`uv run scripts/external_freshness.py` says which). Claude runs the stale suites from the main checkout first, asking for a paid-call ceiling before any paid run: `revenuecat-android-sdk` (free; stale since #174; needs the emulator, so no Android ticket may be running, #189 included), `pages-site` (free; `web/.env.production` changed), `scan-proxy-worker` (one paid scan; stale because `wrangler.toml` changed; run it once #183 has merged and you have redeployed the Worker), and, as of 2026-10-27, `anthropic` (three paid calls) and `anthropic-python` (new SDK releases). Claude asks for your paid-call ceiling before any of them.
 - Do not invite testers before the final push and the owner steps below are done.
 
 ## Owner steps, in the order they come up
 
 - [x] Signing values in `G:\GradleUserHome\gradle.properties`, APK built, fingerprint matches the notes file, installed on the phone, Google sign-in works (done 2026-10-27; the phone has versionCode 3).
 - [x] #186 checked on the phone: the Paywall, the Create button, History and the Truck Tag keyboard (done 2026-10-27).
-- [ ] After #180 merges: run the grant tool once as a dry run, then with `--apply` for each tester. Leave one tester on Free so someone tests buying Pro.
+- [ ] #180 has merged: run the grant tool (`uv run scripts/grant_tester.py <account-id>`, from the main checkout, with `REVENUECAT_SECRET_KEY` in your shell; steps in `docs/BUILD_AND_DEPLOY.md`, "Granting a tester") once as a dry run, then with `--apply`, on **one test account first**, then for each tester (the account id is in the Supabase dashboard, Authentication, Users). Leave one tester on Free so someone tests buying Pro. It has never run live: if RevenueCat answers 400 or 404 for the Pro step, tell Claude.
 - [ ] After #183 merges: redeploy the Worker and open the Cloudflare logs once to see a line.
 - [ ] After #182 and #184: read `docs/BETA_TESTER_GUIDE.md` once, check its Android steps against the real app, and send yourself a feedback email from each app. Decide the guide's wording "No limit on how many scans one account can make" (a tester's scan balance still runs out; "no daily limit" is closer).
 - [ ] After #189 merges: run the design round (#190) as its card says, and commit the hand-back.
@@ -59,34 +58,6 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 Not in this round: #40 (Google Play Billing; blocked until a Play Console account exists, see the ticket's DECISIONS and `STATUS: BLOCKED`; ask Claude to rebuild its card when you restart it), #68, #69, #70, #72, #100, #170, #172, #175, #177. After the round: #144, #145, #146, #165, #155 to #159, #138 and #139.
 
 ## Run cards
-
-### #180 Grant tool (gives a tester Pro and scans)
-
-**Lane B, now.** Nothing blocks it. It can run at the same time as lane A.
-
-1. **Already started:** the folder `.claude/worktrees/ticket-180` exists and the ticket is assigned to you. Skip this step.
-2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-180` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-180"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
-
-```
-/mattpocock-skills:implement #180
-
-Follow docs/agents/session-handoff.md: don't push, don't close the issue, and finish with a STATUS comment on the ticket. While you work, run single test files and typechecks only; leave the full run to /ticket-finish, which runs it once and remembers the pass. Run a live External suite only if an acceptance criterion names one, and only after the owner approves that run; the merge step covers the rest. If the ticket has a `## Decisions` section, or needs a decision only the owner can make, ask the owner directly with AskUserQuestion (up to 4 questions per call) before building on it, then post the questions and answers as a ticket comment starting `DECISIONS`; if you cannot ask, use the recommended defaults, post them as `DECISIONS (assumed)` and list them under Owner actions.
-
-Test-round additions:
-- The end-of-session commands are `uv run scripts/static_checks.py core` and the offline tests that `uv run scripts/test_planner.py` lists. Do not start Gradle or the emulator.
-- Only `scripts/`, `tests/`, `docs/` and the testing documents change.
-- Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in `tests/TESTING.md`, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
-- Live runs: do not run the tool against the real RevenueCat project or make any paid call. Never print or log `REVENUECAT_SECRET_KEY`.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->` markers.
-- The tool is a dry run unless `--apply` is given; scans default to 20; it reads `REVENUECAT_SECRET_KEY` from the environment. If the key in use cannot do a call you need, report it under "Owner actions needed" instead of guessing.
-- The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
-```
-
-3. When that session says it is done, type `/ticket-finish` in it. At the end it asks whether to move the shell out of the worktree into the main checkout; answer **Yes**.
-4. Back in this main-checkout session type `/ticket-merge 180`. Claude reviews the work, adds any missing test or testing-document row (asking you first), merges, and asks before any push.
-
-**Your part:** after the merge, run the tool as a dry run, then with `--apply`, for each tester (the account id is in the Supabase dashboard, Authentication, Users). Leave one tester on Free so someone tests buying Pro.
 
 ### #182 Android beta kit (feedback link and "Beta: test payments" label)
 
@@ -121,7 +92,7 @@ Test-round additions:
 
 ### #183 Worker log lines
 
-**Lane B, next.** Start after **#180** has merged (or at the same time in a second session, if you prefer).
+**Lane B, now.** Nothing blocks it. It can run at the same time as lane A.
 
 1. In this main-checkout session type `/ticket-start 183`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-183`; if it stops, it says why.
 2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-183` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-183"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.

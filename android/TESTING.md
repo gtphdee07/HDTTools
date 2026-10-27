@@ -938,6 +938,19 @@ root `TESTING.md`'s "Dashboard" section.
   `test-vectors/pin_weight_pct_contract.json` value, the slider's default and both ends, and the
   default percent equals the default fraction. The view model's own division by 100 is
   `RigCheckViewModelPinWeightTest` (device, below).
+- `CrashReportTest.kt` (#184, 11 tests) — a crash saved on the phone for the next-launch question. The
+  report holds the exception class names, the stack frames, the cause chain, the app version name and
+  code, the Android version, the device model and the time. The privacy rule chosen is **exception
+  messages are not recorded at all** (not scrubbed): a test crash whose message and cause message carry
+  a fake email, token, password and a typed number leaves none of them in the report, and the class
+  names are still there. A 5,000-frame stack and a 21-deep cause chain are capped (40 frames each, 5
+  exceptions, "... N more"). The store keeps one report: a new crash replaces an unanswered one, a read
+  does not remove it, `clear` does, and a missing directory is made. The handler records first and then
+  runs the handler that was installed before, with the same thread and error; if recording throws
+  (disk full) the previous handler still runs. A real `Thread.setDefaultUncaughtExceptionHandler` is not
+  installed in a test, so what is tested is `crashRecordingHandler`; `installCrashCapture` in
+  `ui/util/CrashCapture.kt` only reads `BuildConfig` and `Build` and is waived with its package. JVM
+  only, a `TemporaryFolder`, no device.
 - `GuideRectMathTest.kt` (5 tests) — the camera-overlay spike's guide rectangle (centred, within
   its fraction of the canvas in both directions, aspect ratio kept, width- or height-bound by the
   canvas). The spike package is excluded from the coverage number
@@ -1036,6 +1049,17 @@ network involved:
   `PaywallScreenTest` checks the "Beta: test payments" label shows with `isBeta = true` and is gone
   with `false` (the screen takes the flag as a parameter; its default is `BuildConfig.IS_BETA`). That the
   address is the same on Web and in the tester guide is `tests/test_beta_feedback_address.py`.
+- `CrashReportPromptTest` (#184, 5 tests) — the question after a crash, with the real
+  `CrashReportStore` on a folder of its own and `startActivity` faked (no mail app opens). No saved
+  crash: nothing is asked. A saved crash: "RigCheck closed unexpectedly last time. Send details?" shows
+  and sends nothing and keeps the report until the tester answers; **Send** fires one `ACTION_SENDTO`
+  intent to `mailto:WTIAppDev@gmail.com` with the report as `EXTRA_TEXT`, removes the report, and the
+  question does not return when the composition is recreated (`StateRestorationTester`, standing for
+  the next launch or a turn of the screen). **Not now** sends nothing, removes the report and the
+  question does not return. Unanswered, it comes back with the same report after recreation. A phone
+  with no mail app (`startActivity` throws `ActivityNotFoundException`) is told so, and **OK** ends it.
+  `MainActivity` mounting the prompt is not tested on its own: it is one line, and a crash is not
+  provoked in a test.
 - `CreditBalanceChipTest` — null shows the "…" not-yet-loaded
   placeholder; 0/1/5 use correct singular/plural wording; `onClick`
   fires when provided.

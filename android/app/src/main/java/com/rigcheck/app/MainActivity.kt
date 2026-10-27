@@ -7,7 +7,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.rigcheck.app.data.AUTH_REDIRECT_SCHEME
 import com.rigcheck.app.data.SupabaseAccountBackend
+import com.rigcheck.app.ui.components.CrashReportPrompt
 import com.rigcheck.app.ui.navigation.RigCheckApp
+import com.rigcheck.app.ui.navigation.RigCheckNavHost
+import com.rigcheck.app.ui.util.crashReportStore
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,7 +19,13 @@ class MainActivity : ComponentActivity() {
         // original intent is still attached and must not be handled again.
         if (savedInstanceState == null) handleSignInRedirect(intent)
         enableEdgeToEdge()
-        setContent { RigCheckApp() }
+        setContent {
+            RigCheckApp {
+                RigCheckNavHost()
+                // Asks about last time's crash, if one was saved (#184).
+                CrashReportPrompt(crashReportStore(this@MainActivity))
+            }
+        }
     }
 
     // Apple sign-in opens a browser tab and comes back as a rigcheck://login

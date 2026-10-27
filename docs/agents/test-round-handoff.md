@@ -202,7 +202,7 @@ Done: a `beta` build type (debuggable, because RevenueCat's SDK closes a non-deb
 
 ### #186 (merged 2026-10-26, not pushed)
 
-Done: one rule in `RigCheckApp` keeps every screen inside the status bar, the navigation bar (3-button keys or gesture handle), a display cutout and the keyboard; the Paywall scrolls, "Restore purchase" follows the offers, and a Back control sits above the scrolling part (disabled while a purchase or restore is out); 5 mutations killed; the full emulator suite passed (195). **Still yours:** rebuild the beta APK with a higher `-PappVersionCode`, update your phone (SM-G996U, 3-button navigation) and look at the Paywall (tap the balance chip), the Rig picker's Create button and the History screen: nothing under the navigation keys, the Paywall scrolls and has Back. Also tap into a field on the Truck Tag screen with the keyboard open: the keyboard now also shrinks every screen, so check that the field and Next stay usable.
+Done: one rule in `RigCheckApp` keeps every screen inside the status bar, the navigation bar (3-button keys or gesture handle), a display cutout and the keyboard; the Paywall scrolls, "Restore purchase" follows the offers, and a Back control sits above the scrolling part (disabled while a purchase or restore is out); 5 mutations killed; the full emulator suite passed (195). **Checked on your phone (2026-10-27, beta APK versionCode 3, SM-G996U with 3-button navigation): the Paywall, the Rig picker's Create button, History and the Truck Tag keyboard all passed.** Nothing left for you here.
 
 ### #181 (merged 2026-10-25, not pushed)
 

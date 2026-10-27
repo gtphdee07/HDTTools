@@ -204,6 +204,22 @@ class RigPickerScreenTest {
         composeRule.onNodeWithTag("delete_rig_dialog").assertDoesNotExist()
     }
 
+    // Where a beta tester finds it (#182); what the link sends is FeedbackLinkTest's job.
+    @Test
+    fun showsTheSendFeedbackControl() {
+        composeRule.setContent {
+            RigPickerScreen(
+                recentRigs = listOf(recentRig),
+                creditBalance = 3,
+                onSelectRecentRig = {},
+                onStartNewRig = {},
+                onOpenPaywall = {},
+            )
+        }
+
+        composeRule.onNodeWithText("Send feedback").assertIsDisplayed()
+    }
+
     private fun assertEqualsRig(expected: RecentRig, actual: RecentRig?) {
         assert(actual == expected) { "expected $expected but got $actual" }
     }

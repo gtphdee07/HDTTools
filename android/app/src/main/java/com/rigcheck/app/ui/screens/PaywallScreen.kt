@@ -30,8 +30,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.revenuecat.purchases.Package
+import com.rigcheck.app.BuildConfig
 import com.rigcheck.app.data.PaywallOffers
 import com.rigcheck.app.data.RevenueCatManager
 import com.rigcheck.app.data.paywallOffers
@@ -68,6 +70,9 @@ fun PaywallScreen(
     loadPackages: suspend () -> List<Package> = {
         RevenueCatManager.getOfferings().current?.availablePackages.orEmpty()
     },
+    // True in the beta build (#174): the offers are bought with test cards, and the screen says so (#182).
+    // A parameter so a test can show it both ways.
+    isBeta: Boolean = BuildConfig.IS_BETA,
 ) {
     val context = LocalContext.current
     var offers by remember { mutableStateOf<PaywallOffers?>(null) }
@@ -147,6 +152,16 @@ fun PaywallScreen(
                         Toast.makeText(context, error, Toast.LENGTH_LONG).show()
                     }
                 }
+            }
+
+            if (isBeta) {
+                // The same words as Web's BetaPaymentsLabel.
+                Text(
+                    "Beta: test payments. Every purchase uses a test card; no real money moves.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
             }
 
             val shown = offers

@@ -1028,6 +1028,14 @@ network involved:
 - `LateScanDialogTest` (#118) — the dialog for a Scan that answered after its
   check ended shows its message with OK only (no Try again, Sign in or photo
   step), and OK dismisses.
+- `FeedbackLinkTest` (#182) — "Send feedback" fires one `ACTION_SENDTO` intent whose data is
+  `mailto:WTIAppDev@gmail.com?subject=RigCheck%20feedback`, and a phone with no mail app
+  (`startActivity` throws `ActivityNotFoundException`) gets "This phone has no email app. Write to
+  WTIAppDev@gmail.com instead." instead of a crash. `startActivity` is faked, so no mail app opens.
+  `RigPickerScreenTest` and `AccountScreenTest` check the control is on those two screens;
+  `PaywallScreenTest` checks the "Beta: test payments" label shows with `isBeta = true` and is gone
+  with `false` (the screen takes the flag as a parameter; its default is `BuildConfig.IS_BETA`). That the
+  address is the same on Web and in the tester guide is `tests/test_beta_feedback_address.py`.
 - `CreditBalanceChipTest` — null shows the "…" not-yet-loaded
   placeholder; 0/1/5 use correct singular/plural wording; `onClick`
   fires when provided.

@@ -61,6 +61,8 @@ class AccountScreenTest {
         composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
         composeRule.onNodeWithText("Continue with Apple").assertIsDisplayed()
         composeRule.onNodeWithText("Email").assertIsDisplayed()
+        // At the foot of a scrolling screen, so it exists without necessarily being on show (#182).
+        composeRule.onNodeWithText("Send feedback").assertExists()
     }
 
     @Test

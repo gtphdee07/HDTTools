@@ -32,16 +32,16 @@ fun CrashReportPrompt(
 ) {
     var report by remember { mutableStateOf(store.pending()) }
     var noMailApp by remember { mutableStateOf(false) }
-    val waiting = report ?: return
+    val pendingReport = report ?: return
 
-    fun finish() {
+    fun answered() {
         store.clear()
         report = null
         noMailApp = false
     }
 
     AlertDialog(
-        onDismissRequest = ::finish,
+        onDismissRequest = ::answered,
         text = {
             Column {
                 if (noMailApp) {
@@ -62,8 +62,8 @@ fun CrashReportPrompt(
                 TextButton(
                     onClick = {
                         try {
-                            startActivity(crashReportIntent(waiting))
-                            finish()
+                            startActivity(crashReportIntent(pendingReport))
+                            answered()
                         } catch (_: ActivityNotFoundException) {
                             noMailApp = true
                         }
@@ -74,7 +74,7 @@ fun CrashReportPrompt(
             }
         },
         dismissButton = {
-            TextButton(onClick = ::finish) {
+            TextButton(onClick = ::answered) {
                 Text(if (noMailApp) "OK" else "Not now")
             }
         },

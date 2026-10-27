@@ -45,6 +45,7 @@ fun RigCheckNavHost(
     viewModel: RigCheckViewModel = viewModel(),
 ) {
     val recentRigs by viewModel.recentRigs.collectAsStateWithLifecycle()
+    val canDeleteRigs by viewModel.canDeleteRigs.collectAsStateWithLifecycle()
     val accountState by viewModel.accountState.collectAsStateWithLifecycle()
     val isPro by viewModel.isPro.collectAsStateWithLifecycle()
     val historyEntries by viewModel.historyEntries.collectAsStateWithLifecycle()
@@ -117,6 +118,7 @@ fun RigCheckNavHost(
                 },
                 onOpenPaywall = { navController.navigate(RigCheckRoute.Paywall) },
                 onOpenHistory = { navController.navigate(RigCheckRoute.History) },
+                onDeleteRig = if (canDeleteRigs) viewModel::deleteRig else null,
             )
         }
 

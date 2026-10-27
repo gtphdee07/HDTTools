@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -70,6 +71,11 @@ private class PretendGarage(private val cap: Int) : GarageBackend {
         val at = rigs.indexOfFirst { it.id == rig.id }
         check(at >= 0) { "rig_not_found" }
         rigs[at] = rig
+    }
+
+    override suspend fun deleteRig(id: String) = synchronized(lock) {
+        rigs.removeAll { it.id == id }
+        Unit
     }
 }
 
@@ -162,6 +168,22 @@ class GarageNavigationTest {
 
         waitForText("Added on Web")
         waitForText("Big Blue")
+    }
+
+    // #169: the picker's delete control reaches the account's Garage through the nav host and view model.
+    @Test
+    fun aRigDeletedFromThePickerIsGoneFromTheAccountAndThePicker() {
+        val garage = PretendGarage(cap = 5).apply { addedElsewhere("Old rig"); addedElsewhere("Keeper") }
+        showApp(garage)
+        waitForText("Old rig")
+
+        composeRule.onNodeWithContentDescription("Delete Old rig").performClick()
+        composeRule.onNodeWithTag("delete_rig_confirm").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodesWithText("Old rig").fetchSemanticsNodes().isEmpty()
+        }
+        assertEquals(listOf("Keeper"), garage.nicknames())
     }
 
     @Test

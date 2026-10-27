@@ -74,4 +74,12 @@ class SupabaseGarageBackend(private val client: SupabaseClient) : GarageBackend 
             .decodeList<IdRow>()
         if (updated.isEmpty()) throw IllegalStateException("rig_not_found")
     }
+
+    // A Rig already gone (deleted on another device) matches no row, which PostgREST answers as success,
+    // so it is not an error here either.
+    override suspend fun deleteRig(id: String) {
+        client.postgrest.from("garage_rigs").delete {
+            filter { eq("id", id) }
+        }
+    }
 }

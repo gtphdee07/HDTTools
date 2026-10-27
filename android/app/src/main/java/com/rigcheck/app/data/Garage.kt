@@ -27,6 +27,7 @@ object UnavailableGarageBackend : GarageBackend {
     override suspend fun addRig(idempotencyKey: String, rig: RecentRig, isPro: Boolean?) =
         throw IllegalStateException("Accounts are not available right now.")
     override suspend fun updateRig(rig: RecentRig) = throw IllegalStateException("Accounts are not available right now.")
+    override suspend fun deleteRig(id: String) = throw IllegalStateException("Accounts are not available right now.")
 }
 
 sealed interface SaveRigOutcome {
@@ -48,6 +49,9 @@ interface GarageBackend {
 
     // Rewrites an existing Rig (its tags and last-used time). Uses no capacity.
     suspend fun updateRig(rig: RecentRig)
+
+    // Removes a Rig, which frees its slot. Removing one that is already gone succeeds.
+    suspend fun deleteRig(id: String)
 }
 
 // The Rigs kept on this phone (RecentRigsRepository), for when nobody is signed in.
@@ -74,6 +78,11 @@ class Garage(
     private val _rigs = MutableStateFlow<List<RecentRig>>(emptyList())
     val rigs: StateFlow<List<RecentRig>> = _rigs
 
+    // Whether Rigs can be deleted: only the signed-in account's Garage can (this phone's list has no delete,
+    // as on Web).
+    private val _canDeleteRigs = MutableStateFlow(false)
+    val canDeleteRigs: StateFlow<Boolean> = _canDeleteRigs
+
     // The signed-in account the Garage is showing, null when it is showing this phone's Rigs.
     private var accountId: String? = null
 
@@ -87,6 +96,7 @@ class Garage(
                 .distinctUntilChanged()
                 .collectLatest { id ->
                     accountId = id
+                    _canDeleteRigs.value = id != null
                     _rigs.value = emptyList()
                     if (id == null) local.recentRigs.collect { _rigs.value = it } else load()
                 }
@@ -132,6 +142,28 @@ class Garage(
         }
         load()
         return SaveRigOutcome.Saved
+    }
+
+    // True once the Rig is gone from the account's Garage, including when another device had already deleted
+    // it; false if the delete failed and the Rig is still there (or nobody is signed in, so there is nothing
+    // to delete). The slot is free at once: the Rig leaves the list before the list is read again.
+    suspend fun deleteRig(rig: RecentRig): Boolean {
+        val forAccount = accountId ?: return false
+        val id = rig.id ?: return false
+        try {
+            backend.deleteRig(id)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return false
+        }
+        if (accountId == forAccount) {
+            _rigs.value = _rigs.value.filter { it.id != id }
+            // Reading again also makes any read still out from before the delete stale, so it cannot bring the
+            // Rig back when it answers.
+            load()
+        }
+        return true
     }
 
     // False if the update failed. The Rig may have been removed on another device since the list was read;

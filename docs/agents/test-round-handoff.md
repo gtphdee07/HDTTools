@@ -4,8 +4,8 @@ Working notes for the Alpha round ([BETA_PLAN.md](../BETA_PLAN.md)). They are te
 
 ## Where things stand (2026-10-27)
 
-- Merged and not yet pushed (31 commits ahead of `origin/MPSkills`, last push 8d91a96): #179, #174 with its #185 fix, #181, #186, and the redesign brief and plan edits. Pushes are checkpoints: Claude asks after #189 and again at the end (see "Pushes").
-- **Started and waiting for a build session: #169 (lane A) and #180 (lane B).** Both folders exist and both tickets are assigned to you.
+- Merged and not yet pushed (35 commits ahead of `origin/MPSkills`, last push 8d91a96): #179, #174 with its #185 fix, #181, #186, #169, and the redesign brief and plan edits. Pushes are checkpoints: Claude asks after #189 and again at the end (see "Pushes").
+- **In progress: #180 (lane B)**; its build session has commits. Lane A has nothing running: #182 is next.
 - Your phone (SM-G996U, adb name `R3CR50G10ML`) has the beta build, versionCode 3. The emulator is `emulator-5554`. Name the one you mean in every adb command.
 - The Android re-skin (epic #187) happens before the Alpha: the tester APK is built only after #197 and your sign-off.
 
@@ -15,17 +15,16 @@ Two lanes, one build session each, a **new** session for every ticket. Lane A is
 
 | # | Ticket | Lane | Starts when | Your part |
 |---|---|---|---|---|
-| 1 | [#169](#169-delete-a-rig-on-android) Delete a Rig on Android | A | started | none |
-| 2 | [#180](#180-grant-tool-gives-a-tester-pro-and-scans) Tester grant tool | B | started | run it for each tester |
-| 3 | [#182](#182-android-beta-kit-feedback-link-and-beta-test-payments-label) Android feedback link and beta label | A | #169 merged | read the guide |
-| 4 | [#183](#183-worker-log-lines) Worker log lines | B | #180 merged | redeploy the Worker, open the logs |
-| 5 | [#184](#184-android-crash-capture) Android crash capture | A | #182 merged | none |
-| 6 | [#188](#188-a-test-tag-on-every-android-ui-element-redesign-step-1) A test tag on every UI element | A | #169, #182, #184 merged | none |
-| 7 | [#189](#189-baseline-screenshots-and-measured-bounds-redesign-step-2) Baseline screenshots (emulator alone) | A | #188 merged | copy the PNGs for the designer |
-| 8 | [#190](#190-the-design-round-yours-no-build-session) The Claude Design round | you | #189 merged | the whole ticket |
-| 9 | [#191](#191-theme-tokens-and-shared-components-from-the-design) Theme, tokens, shared components | A | #190 committed | none |
-| 10 to 14 | #192 to #196 re-skin: [Rig picker and Chooser](#192-re-skin-the-rig-picker-chooser-and-photo-source-dialog), [entry screens](#193-re-skin-the-truck-tag-trailer-tag-and-scale-ticket-entry-screens), [Disclaimer and Results](#194-re-skin-the-disclaimer-and-results-screens), [History](#195-re-skin-the-history-screen), [Paywall, Account, dialogs](#196-re-skin-the-paywall-account-and-the-two-scan-dialogs) | A | #191 merged | compare with the designer's picture on your phone |
-| 15 | [#197](#197-final-pass-and-sign-off) Final pass and sign-off | A | #192 to #196 merged | check every screen, sign off |
+| 1 | [#180](#180-grant-tool-gives-a-tester-pro-and-scans) Tester grant tool | B | started | run it for each tester |
+| 2 | [#182](#182-android-beta-kit-feedback-link-and-beta-test-payments-label) Android feedback link and beta label | A | nothing blocks it | read the guide |
+| 3 | [#183](#183-worker-log-lines) Worker log lines | B | #180 merged | redeploy the Worker, open the logs |
+| 4 | [#184](#184-android-crash-capture) Android crash capture | A | #182 merged | none |
+| 5 | [#188](#188-a-test-tag-on-every-android-ui-element-redesign-step-1) A test tag on every UI element | A | #182, #184 merged | none |
+| 6 | [#189](#189-baseline-screenshots-and-measured-bounds-redesign-step-2) Baseline screenshots (emulator alone) | A | #188 merged | copy the PNGs for the designer |
+| 7 | [#190](#190-the-design-round-yours-no-build-session) The Claude Design round | you | #189 merged | the whole ticket |
+| 8 | [#191](#191-theme-tokens-and-shared-components-from-the-design) Theme, tokens, shared components | A | #190 committed | none |
+| 9 to 13 | #192 to #196 re-skin: [Rig picker and Chooser](#192-re-skin-the-rig-picker-chooser-and-photo-source-dialog), [entry screens](#193-re-skin-the-truck-tag-trailer-tag-and-scale-ticket-entry-screens), [Disclaimer and Results](#194-re-skin-the-disclaimer-and-results-screens), [History](#195-re-skin-the-history-screen), [Paywall, Account, dialogs](#196-re-skin-the-paywall-account-and-the-two-scan-dialogs) | A | #191 merged | compare with the designer's picture on your phone |
+| 14 | [#197](#197-final-pass-and-sign-off) Final pass and sign-off | A | #192 to #196 merged | check every screen, sign off |
 | optional | [#132](#132-optional-is-mutation-testing-worth-running-research) Is mutation testing worth running? | any | any time | none |
 
 A ticket starts when the tickets it waits for have merged, not when the round ends. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.
@@ -52,7 +51,7 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - [ ] On each re-skin ticket (#192 to #196): compare the screenshot in the STATUS comment with the designer's picture on your phone before Claude merges it. On #197, check every screen and sign off.
 - [ ] After #197: build the tester APK with a higher `-PappVersionCode` (4 or more; raise it for every APK you send), from `android`: `.\gradlew.bat assembleBeta -PappVersionCode=<n>`. Confirm `keytool -printcert -jarfile app\build\outputs\apk\beta\app-beta.apk` shows the SHA-1 in `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`.
 - [ ] Before inviting: add each Alpha tester's Gmail as a Google test user (up to 5); send the APK and the guide.
-- [ ] Device checks still open from earlier tickets: add a Rig on Web and see it in the Android picker; finish a check with a full Garage and look at the notice; finish a check on Android and see it in Web's History, then the other way round; compare a History date on the phone with the same entry on Web; on the phone buy Pro with the Test Store and confirm the starter scans arrive.
+- [ ] Device checks still open from earlier tickets: add a Rig on Web and see it in the Android picker; finish a check with a full Garage and look at the notice; finish a check on Android and see it in Web's History, then the other way round; compare a History date on the phone with the same entry on Web; delete a Rig on the phone (the bin on its card) and check it is gone on Web, then delete one on Web and check the phone's picker drops it after a refresh (#169 never ran against the live project); on the phone buy Pro with the Test Store and confirm the starter scans arrive.
 - [ ] Confirm the Pro price is the same on both products (ADR-0006).
 - [ ] Triage #173 (Android History filters); decide #171 (live External coverage of the Android Garage client) before an Android release.
 - [ ] Clean up: `.claude/worktrees/ticket-20`, `-40`, `-137`, `-140`, `-148` and `-186` are leftover folders, not worktrees. Close any dev server or terminal still holding them, then ask Claude to check and remove them (the ticket-20 one was held by a node process).
@@ -60,36 +59,6 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 Not in this round: #40 (Google Play Billing; blocked until a Play Console account exists, see the ticket's DECISIONS and `STATUS: BLOCKED`; ask Claude to rebuild its card when you restart it), #68, #69, #70, #72, #100, #170, #172, #175, #177. After the round: #144, #145, #146, #165, #155 to #159, #138 and #139.
 
 ## Run cards
-
-### #169 Delete a Rig on Android
-
-**Lane A, now.** Nothing blocks it. Android: the single emulator, one Android ticket at a time.
-
-1. **Already started:** the folder `.claude/worktrees/ticket-169` exists and the ticket is assigned to you. Skip this step.
-2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-169` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-169"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
-
-```
-/mattpocock-skills:implement #169
-
-Follow docs/agents/session-handoff.md: don't push, don't close the issue, and finish with a STATUS comment on the ticket. While you work, run single test files and typechecks only; leave the full run to /ticket-finish, which runs it once and remembers the pass. Run a live External suite only if an acceptance criterion names one, and only after the owner approves that run; the merge step covers the rest. If the ticket has a `## Decisions` section, or needs a decision only the owner can make, ask the owner directly with AskUserQuestion (up to 4 questions per call) before building on it, then post the questions and answers as a ticket comment starting `DECISIONS`; if you cannot ask, use the recommended defaults, post them as `DECISIONS (assumed)` and list them under Owner actions.
-
-Test-round additions:
-- If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android end-of-session command is `uv run scripts/android_session_end.py` (JVM tests, coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are done.
-- Use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
-- Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
-- Live runs: do not run the live External suite or any paid call. The owner runs the surface from the main checkout after the merge. Do not commit changes to `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->` markers.
-- RevenueCat is faked in the Android tests; no live or paid run.
-- Delete asks for confirmation first, frees the slot at once, says so if it fails (and keeps the Rig), and treats a Rig already deleted on another device as success. Signed out, the phone-only list has no delete control. Test the Garage logic with a fake backend and the control in the Rig picker.
-- The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
-```
-
-3. When that session says it is done, type `/ticket-finish` in it. At the end it asks whether to move the shell out of the worktree into the main checkout; answer **Yes**.
-4. Back in this main-checkout session type `/ticket-merge 169`. Claude reviews the work, adds any missing test or testing-document row (asking you first), merges, and asks before any push. Afterwards stop the emulator (`G:\Android\Sdk\platform-tools\adb.exe -s emulator-5554 emu kill`).
-
-**Your part:** none.
 
 ### #180 Grant tool (gives a tester Pro and scans)
 
@@ -121,7 +90,7 @@ Test-round additions:
 
 ### #182 Android beta kit (feedback link and "Beta: test payments" label)
 
-**Lane A, next.** Start after **#169** has merged. Android: the single emulator, one Android ticket at a time.
+**Lane A, next.** Nothing blocks it. Android: the single emulator, one Android ticket at a time.
 
 1. In this main-checkout session type `/ticket-start 182`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-182`; if it stops, it says why.
 2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-182` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-182"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
@@ -133,7 +102,7 @@ Follow docs/agents/session-handoff.md: don't push, don't close the issue, and fi
 
 Test-round additions:
 - If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android end-of-session command is `uv run scripts/android_session_end.py` (JVM tests, coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are done.
+- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect -no-audio -no-window` (headless: the emulator's window crashed in the host's NVIDIA OpenGL driver on 2026-10-27), wait for `sys.boot_completed`, and kill it when you are done.
 - Use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
 - Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
 - A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
@@ -193,7 +162,7 @@ Follow docs/agents/session-handoff.md: don't push, don't close the issue, and fi
 
 Test-round additions:
 - If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android end-of-session command is `uv run scripts/android_session_end.py` (JVM tests, coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are done.
+- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect -no-audio -no-window` (headless: the emulator's window crashed in the host's NVIDIA OpenGL driver on 2026-10-27), wait for `sys.boot_completed`, and kill it when you are done.
 - Use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
 - Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
 - A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
@@ -212,7 +181,7 @@ Test-round additions:
 
 ### #188 A test tag on every Android UI element (redesign step 1)
 
-**Lane A.** Start after **#169, #182 and #184** have merged, so their new controls are tagged here. This touches every screen and test, so no other Android ticket may be open while it runs. Android: the single emulator, one Android ticket at a time.
+**Lane A.** Start after **#182 and #184** have merged, so their new controls are tagged here (#169 has merged). This touches every screen and test, so no other Android ticket may be open while it runs. Android: the single emulator, one Android ticket at a time.
 
 1. In this main-checkout session type `/ticket-start 188`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-188`; if it stops, it says why.
 2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-188` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-188"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
@@ -224,7 +193,7 @@ Follow docs/agents/session-handoff.md: don't push, don't close the issue, and fi
 
 Test-round additions:
 - If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android end-of-session command is `uv run scripts/android_session_end.py` (JVM tests, coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are done.
+- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect -no-audio -no-window` (headless: the emulator's window crashed in the host's NVIDIA OpenGL driver on 2026-10-27), wait for `sys.boot_completed`, and kill it when you are done.
 - Use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
 - Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
 - A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
@@ -254,7 +223,7 @@ Follow docs/agents/session-handoff.md: don't push, don't close the issue, and fi
 
 Test-round additions:
 - If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android end-of-session command is `uv run scripts/android_session_end.py` (JVM tests, coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are done.
+- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect -no-audio -no-window` (headless: the emulator's window crashed in the host's NVIDIA OpenGL driver on 2026-10-27), wait for `sys.boot_completed`, and kill it when you are done.
 - Use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
 - Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
 - A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
@@ -292,7 +261,7 @@ Follow docs/agents/session-handoff.md: don't push, don't close the issue, and fi
 
 Test-round additions:
 - If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android end-of-session command is `uv run scripts/android_session_end.py` (JVM tests, coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are done.
+- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect -no-audio -no-window` (headless: the emulator's window crashed in the host's NVIDIA OpenGL driver on 2026-10-27), wait for `sys.boot_completed`, and kill it when you are done.
 - Use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
 - Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
 - A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
@@ -322,7 +291,7 @@ Follow docs/agents/session-handoff.md: don't push, don't close the issue, and fi
 
 Test-round additions:
 - If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android end-of-session command is `uv run scripts/android_session_end.py` (JVM tests, coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are done.
+- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect -no-audio -no-window` (headless: the emulator's window crashed in the host's NVIDIA OpenGL driver on 2026-10-27), wait for `sys.boot_completed`, and kill it when you are done.
 - Use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
 - Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
 - A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
@@ -352,7 +321,7 @@ Follow docs/agents/session-handoff.md: don't push, don't close the issue, and fi
 
 Test-round additions:
 - If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android end-of-session command is `uv run scripts/android_session_end.py` (JVM tests, coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are done.
+- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect -no-audio -no-window` (headless: the emulator's window crashed in the host's NVIDIA OpenGL driver on 2026-10-27), wait for `sys.boot_completed`, and kill it when you are done.
 - Use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
 - Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
 - A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
@@ -381,7 +350,7 @@ Follow docs/agents/session-handoff.md: don't push, don't close the issue, and fi
 
 Test-round additions:
 - If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android end-of-session command is `uv run scripts/android_session_end.py` (JVM tests, coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are done.
+- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect -no-audio -no-window` (headless: the emulator's window crashed in the host's NVIDIA OpenGL driver on 2026-10-27), wait for `sys.boot_completed`, and kill it when you are done.
 - Use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
 - Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
 - A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
@@ -410,7 +379,7 @@ Follow docs/agents/session-handoff.md: don't push, don't close the issue, and fi
 
 Test-round additions:
 - If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android end-of-session command is `uv run scripts/android_session_end.py` (JVM tests, coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are done.
+- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect -no-audio -no-window` (headless: the emulator's window crashed in the host's NVIDIA OpenGL driver on 2026-10-27), wait for `sys.boot_completed`, and kill it when you are done.
 - Use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
 - Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
 - A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
@@ -439,7 +408,7 @@ Follow docs/agents/session-handoff.md: don't push, don't close the issue, and fi
 
 Test-round additions:
 - If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android end-of-session command is `uv run scripts/android_session_end.py` (JVM tests, coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are done.
+- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect -no-audio -no-window` (headless: the emulator's window crashed in the host's NVIDIA OpenGL driver on 2026-10-27), wait for `sys.boot_completed`, and kill it when you are done.
 - Use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
 - Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
 - A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
@@ -469,7 +438,7 @@ Follow docs/agents/session-handoff.md: don't push, don't close the issue, and fi
 
 Test-round additions:
 - If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android end-of-session command is `uv run scripts/android_session_end.py` (JVM tests, coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect`, wait for `sys.boot_completed`, and kill it when you are done.
+- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect -no-audio -no-window` (headless: the emulator's window crashed in the host's NVIDIA OpenGL driver on 2026-10-27), wait for `sys.boot_completed`, and kill it when you are done.
 - Use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
 - Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
 - A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.

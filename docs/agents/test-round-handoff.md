@@ -4,7 +4,7 @@ Working notes for the test-first round (map #49, decisions on #58 and #59). They
 
 ## What is left, in order
 
-The shared-accounts chain and #20 are merged and pushed (last push 04490db). The work now is the **Alpha round** from [BETA_PLAN.md](../BETA_PLAN.md): nine tickets run as **two lanes, one worker session each**. As before, every ticket gets a **new** session; "two workers" means two lanes running at the same time. Claude merges them one at a time (`/ticket-merge N`) and asks before the push (one push, at the end of the round).
+The shared-accounts chain and #20 are merged and pushed (last push 04490db). The work now is the **Alpha round** from [BETA_PLAN.md](../BETA_PLAN.md): eleven tickets (the original nine plus #188 and #189, added 2026-10-27) run as **two lanes, one worker session each**. As before, every ticket gets a **new** session; "two workers" means two lanes running at the same time. Claude merges them one at a time (`/ticket-merge N`) and asks before the push (one push, at the end of the round).
 
 | Round | Lane A: Android (the one emulator, one ticket at a time) | Lane B: Web, Worker, tooling (no emulator, no Gradle) |
 |---|---|---|
@@ -13,6 +13,8 @@ The shared-accounts chain and #20 are merged and pushed (last push 04490db). The
 | 3 | **#169** delete a Rig on Android | **#180** grant tool (gives a tester Pro and scans) |
 | 4 | **#182** Android beta kit (waits for #181 merged) | **#183** Worker log lines |
 | 5 | **#184** Android crash capture (waits for #182 merged) | |
+| 6 | **#188** a test tag on every Android UI element, tests moved off visible text (after #169, #182 and #184, so their new controls are tagged) | |
+| 7 | **#189** capture baseline screenshots and measured bounds of every screen (needs the emulator alone; waits for #188) | |
 
 **Where things stood when the computer was shut down (2026-10-23, evening):** merged and local (nothing pushed since 04490db): #179, #174 and the #185 fix (beta build now debuggable). **#181 and #186 have since merged** (a4a6883 and 8783b11, not pushed). **#186** (system bars, Paywall scroll, Back button; found on your phone) is filed and is next in lane A: `/ticket-start 186`. Your phone (SM-G996U) still has the first beta APK (versionCode 1, not debuggable, so it closes with the Wrong API Key dialog): after #186 merges, rebuild with a higher `-PappVersionCode` (the #185 fix is already in the code) and update it, signed with the same key. Your signing values live in `G:\GradleUserHome\gradle.properties`. When working with adb, the phone is `R3CR50G10ML` and the emulator is `emulator-5554`: always name the one you mean.
 
@@ -27,6 +29,8 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 | #180 | Tester grant tool | B | | run it for each tester | [#180](#180-grant-tool) |
 | #184 | Android crash capture | A | #182 merged | none | [#184](#184-android-crash-capture) |
 | #183 | Worker log lines | B | | redeploy the Worker, open the logs | [#183](#183-worker-log-lines) |
+| #188 | A test tag on every Android UI element (redesign step 1) | A | #169, #182, #184 merged | none | [#188](#188-android-test-tags) |
+| #189 | Baseline screenshots and measured bounds (redesign step 2) | A | #188 merged; no other Android ticket or emulator run | copy the 412 x 892 PNGs for the designer later | [#189](#189-android-baseline-capture) |
 | optional | #132 is mutation testing worth running? (research) | any | | none | [#132](#132-optional-mutation-testing-research) |
 
 **How the two lanes stay out of each other's way**
@@ -35,8 +39,8 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - **Merge order inside a round:** whichever worker finishes first. Type `/ticket-finish` in the worker, then `/ticket-merge N` here.
 
 **Pushes and External runs** (owner decision, 2026-10-23: **one push, at the end**; Claude still asks before it)
-- Merged tickets stay local on `MPSkills` until all nine are merged. Nothing goes live in between, so the Web site does not change under you while the workers run.
-- At the end Claude runs every stale External suite in one bundle, then asks for the push: `revenuecat-android-sdk` (stale after #174; free; needs the emulator, so lane A must be finished), the Web suites (free), and `scan-proxy-worker` (one paid scan; Claude asks for your ceiling). The `anthropic` surface declares three paid calls if a new SDK release has made it stale again.
+- Merged tickets stay local on `MPSkills` until all eleven are merged. Nothing goes live in between, so the Web site does not change under you while the workers run.
+- At the end Claude runs every stale External suite in one bundle, then asks for the push: `revenuecat-android-sdk` (stale after #174; free; needs the emulator, so lane A must be finished, including #189, which also needs the emulator to itself), the Web suites (free), and `scan-proxy-worker` (one paid scan; Claude asks for your ceiling). The `anthropic` surface declares three paid calls if a new SDK release has made it stale again.
 - Before that run, you redeploy the Worker (`npm run deploy` in `workers/scan-proxy`) after #183 has merged, because the live Worker suite tests whatever is deployed.
 - Do not invite testers before the push and the owner steps below are done.
 
@@ -45,6 +49,7 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - [ ] After #180 merges: run the grant tool once as a dry run, then with `--apply` for each tester. Leave one tester on Free so someone tests buying Pro.
 - [ ] After #183 merges: redeploy the Worker and open the Cloudflare logs once to see a line.
 - [ ] After #181, #182 and #184: read `docs/BETA_TESTER_GUIDE.md` once, send yourself a feedback email from each app, and raise `versionCode` for each APK you send.
+- [ ] **The tester APK is built after #189 has merged** (owner decision, 2026-10-27: the first tester build is the tagged one). Until then your phone keeps the versionCode 3 build.
 - [ ] Before inviting: add each Alpha tester's Gmail as a Google test user (up to 5); send the APK and the guide.
 
 Not in this round: #40 (blocked on Play Console, see its card), #68, #69, #70, #72, #100. After the round: #144 (record context-level passes automatically), #145 (check that a fresh clone builds on another computer), #146 (check that `pro` is attached to the Pro product), #165 (TESTING.md: name the scan-form-fields planner interface), #155 to #159 (static-check gaps: a Python type checker, a shell and PowerShell linter, the Python coverage floor, a Web coverage floor, Android Lint and config files), #138 and #139.
@@ -281,6 +286,28 @@ Done: Web dates (Results and each History entry) show the viewer's local day, no
 ```
 
 - **Your part:** none.
+
+### #188 Android test tags
+
+- **Lane A, round 6** (start after **#169, #182 and #184** have merged, so the new controls are tagged here). **Step 1:** `/ticket-start 188`. Android; the single emulator.
+- **Step 2:** paste Block A, then these lines:
+
+```
+- The only production change is `testTag` additions and one `UiTags` object. Bring `docs/android-redesign/ui-inventory.json` up to date first for what #186, #169, #182 and #184 added. Tests that assert wording itself keep their text checks and are named in the STATUS comment.
+```
+
+- **Your part:** none. This touches every screen and test, so no other Android ticket may be open while it runs.
+
+### #189 Android baseline capture
+
+- **Lane A, round 7** (start after **#188** has merged). **Step 1:** `/ticket-start 189`. Android; the emulator **alone**: no other Android ticket and no External run at the same time.
+- **Step 2:** paste Block A, then these lines:
+
+```
+- Use `adb -s emulator-5554` for every adb command; the owner's phone may be plugged in and must not be touched. The PNGs are build output and are not committed; the merged measurements are.
+```
+
+- **Your part:** later, copy the 412 x 892 PNGs to the Claude Design session (#190).
 
 ### #183 Worker log lines
 

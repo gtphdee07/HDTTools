@@ -60,7 +60,7 @@ So you do not waste time looking for it:
 - **Android has no History filters yet.** The web site does.
 - **Only fifth-wheel and gooseneck trailers.** Bumper-pull trailers (the kind that hitch to a ball and have tongue weight) are not supported.
 - **No way to delete your account inside the app.** See the privacy note below.
-- **No limit on how many scans one account can make.** Please scan sensibly; each scan costs us a little.
+- **Scans use up a scan balance we set for your account.** If it runs out, email us and we will add more. Please scan sensibly; each scan costs us a little.
 - **The free storage we use can pause** after a quiet week or lose data, since there are no backups. If sign-in suddenly fails for everyone, tell us.
 - **No security or code review has been done yet.** The app runs as it stands today.
 - **The older demo site** is not part of this test.
@@ -87,7 +87,7 @@ You do not need to do all of these. Do what you would do with the app anyway, an
 
 ## How to report a problem
 
-Email **WTIAppDev@gmail.com**. In the web app, the **Send feedback** link (in the page footer and on your Account screen) opens an email to that address for you.
+Email **WTIAppDev@gmail.com**. In the web app, the **Send feedback** link (in the page footer and on your Account screen) opens an email to that address for you. The Android app has the same **Send feedback** link, at the bottom of the screen where you pick a rig and at the bottom of the sign-in screen.
 
 A good report says: what you were doing, what you expected, what happened instead, and whether it was on the web or Android (and which phone). A screenshot helps a lot. Do not send your password.
 

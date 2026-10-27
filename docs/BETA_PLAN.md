@@ -47,6 +47,7 @@ Rule (owner, 2026-10-23): tickets labelled `enhancement` or `future` wait until 
 | 7 | **#190** the design round (yours, after #189), then **#191** theme and shared components | |
 | 8 to 12 | **#192** to **#196** re-skin, one ticket per screen group | |
 | 13 | **#197** final pass and your sign-off on the phone | |
+| 14 | **#198** (`pre-alpha`) four emulator phone shapes on G: and the screen checks on each. The profiles can be created any time the emulator is idle; run the checks after #197 so they test the re-skinned screens | |
 
 Owner decisions, 2026-10-27: the whole Android re-skin (epic #187) is done before the Alpha starts, so the first tester APK is built after #197 and your sign-off on the phone. The design round (#190) starts when #189 has merged. Pushes are checkpoints (after #189, and at the end), each asked first.
 

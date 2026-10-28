@@ -15,9 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.rigcheck.app.ui.theme.BorderStrong
 import com.rigcheck.app.ui.theme.DangerText
 import com.rigcheck.app.ui.theme.InkMuted
 import com.rigcheck.app.ui.theme.Pine
+import com.rigcheck.app.ui.theme.Purple
 import com.rigcheck.app.ui.theme.PurpleDeep
 import com.rigcheck.app.ui.theme.Radii
 import com.rigcheck.app.ui.theme.RigCheckStyles
@@ -27,8 +29,6 @@ import com.rigcheck.app.ui.theme.TintGreen
 import com.rigcheck.app.ui.theme.TintPurple
 import com.rigcheck.app.ui.theme.TintRed
 import com.rigcheck.app.ui.theme.TintTeal
-import com.rigcheck.app.ui.theme.BorderStrong
-import com.rigcheck.app.ui.theme.Purple
 import com.rigcheck.app.ui.theme.Surface as SurfaceWhite
 
 /** The seven badge kinds of components.md, "Badge". */

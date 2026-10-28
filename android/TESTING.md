@@ -1145,7 +1145,8 @@ network involved:
   (pass, fail, not checked, expand and collapse, no chevron without a note), `RigCheckNoticeCardTest` (four tones),
   `RigCheckBadgeTest` (seven kinds), `RigCheckProgressBarTest` (pass, fail, not checked, clamped over 100% and below 0)
   and `RigCheckEmptyStateTest`. Each state asserts, through `ComponentAssertions.kt`, that every tappable node has a
-  touch area of at least 48 x 48 dp (`touchBoundsInRoot`, so a Material minimum-size trick does not count) and that the
+  touch area of at least 48 x 48 dp (`touchBoundsInRoot`, the area a finger can hit, which includes the inflation a
+  Material control gets from its minimum interactive size; the new components size themselves to 48 dp anyway) and that the
   text colour the component draws, taken from the same colour function the component uses, meets WCAG AA against its
   fill (4.5:1, 3:1 for large text and for graphics). The disabled colours are held to 3:1 only: the design's own
   disabled pair is 4.35:1, and WCAG exempts inactive controls. None of the components is on a screen yet (the re-skin

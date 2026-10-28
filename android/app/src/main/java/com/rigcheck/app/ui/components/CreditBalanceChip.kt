@@ -27,6 +27,12 @@ import com.rigcheck.app.ui.theme.RigCheckStyles
 import com.rigcheck.app.ui.theme.Sizes
 import com.rigcheck.app.ui.theme.Surface as SurfaceWhite
 
+/** What the chip draws with, named so its test holds exactly these to AA: ink on a white pill. */
+object CreditChipColors {
+    val fill = SurfaceWhite
+    val content = Ink
+}
+
 // The scan balance chip, as the design draws it (components.md, "Credit chip"): 48 dp high, a white pill with a
 // small shadow, a 26 dp camera icon and the balance. null balance = not known: "…" while an account's balance
 // loads, "0 scans" when signed out (creditChipLabel). Shown near every Scan Photo entry point,
@@ -42,7 +48,7 @@ fun CreditBalanceChip(
     val description = creditChipDescription(balance, signedOut)
     Surface(
         shape = RoundedCornerShape(Sizes.CreditChip),
-        color = SurfaceWhite,
+        color = CreditChipColors.fill,
         shadowElevation = Elevations.Sm,
         modifier = modifier
             .heightIn(min = Sizes.CreditChip)
@@ -58,9 +64,9 @@ fun CreditBalanceChip(
                 Icons.Filled.CameraAlt,
                 contentDescription = null,
                 modifier = Modifier.size(Sizes.CreditChipIcon),
-                tint = Ink,
+                tint = CreditChipColors.content,
             )
-            Text(creditChipLabel(balance, signedOut), style = RigCheckStyles.chip, color = Ink)
+            Text(creditChipLabel(balance, signedOut), style = RigCheckStyles.chip, color = CreditChipColors.content)
         }
     }
 }

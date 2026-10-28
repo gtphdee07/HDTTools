@@ -53,7 +53,7 @@ class RigCheckStepIndicatorTest {
 
     @Test
     fun theIndicatorCountsOnlyTheThreeDocuments() {
-        assertEquals(listOf("Truck", "Trailer", "Scale"), StepLabels)
+        assertEquals(listOf("Truck", "Trailer", "Scale"), RigCheckStepLabels)
     }
 
     @Test

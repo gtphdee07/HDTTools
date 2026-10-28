@@ -15,10 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rigcheck.app.ui.theme.BorderStrong
@@ -52,17 +53,17 @@ enum class RigCheckFieldState { Default, Focused, Error, Disabled }
 data class RigCheckFieldColors(
     val container: Color,
     val border: Color,
-    val borderWidth: Float,
+    val borderWidth: Dp,
     val value: Color,
     val hint: Color,
     val focusRing: Boolean,
 )
 
 fun rigCheckFieldColors(state: RigCheckFieldState): RigCheckFieldColors = when (state) {
-    RigCheckFieldState.Default -> RigCheckFieldColors(SurfaceWhite, BorderStrong, 1.5f, Ink, InkMuted, false)
-    RigCheckFieldState.Focused -> RigCheckFieldColors(SurfaceWhite, TealDeep, 2f, Ink, InkMuted, true)
-    RigCheckFieldState.Error -> RigCheckFieldColors(SurfaceWhite, DangerRed, 2f, Ink, InkMuted, false)
-    RigCheckFieldState.Disabled -> RigCheckFieldColors(DisabledFill, BorderStrong, 1.5f, DisabledContent, DisabledContent, false)
+    RigCheckFieldState.Default -> RigCheckFieldColors(SurfaceWhite, BorderStrong, 1.5.dp, Ink, InkMuted, false)
+    RigCheckFieldState.Focused -> RigCheckFieldColors(SurfaceWhite, TealDeep, 2.dp, Ink, InkMuted, true)
+    RigCheckFieldState.Error -> RigCheckFieldColors(SurfaceWhite, DangerRed, 2.dp, Ink, InkMuted, false)
+    RigCheckFieldState.Disabled -> RigCheckFieldColors(DisabledFill, BorderStrong, 1.5.dp, DisabledContent, DisabledContent, false)
 }
 
 // components.md, "Text field (and number field with unit)": the label above, then a 56 dp box with a 1.5 dp
@@ -131,7 +132,7 @@ fun RigCheckTextField(
                     modifier = Modifier
                         .heightIn(min = Sizes.TextField)
                         .background(colors.container.copy(alpha = if (enabled) 1f else Opacity.DisabledField), shape)
-                        .border(BorderStroke(colors.borderWidth.dp, colors.border), shape)
+                        .border(BorderStroke(colors.borderWidth, colors.border), shape)
                         .padding(horizontal = 16.dp),
                 ) {
                     Box(modifier = Modifier.weight(1f)) {

@@ -32,7 +32,8 @@ fun ComposeContentTestRule.setRigCheckContent(content: @Composable () -> Unit) {
 }
 
 /**
- * Every node with a click action has a touch area of at least 48 x 48 dp. [expectAtLeast] is how many there must be, so a
+ * Every node with a click action has a touch area (what a finger can hit, including a Material control's minimum-size
+ * inflation) of at least 48 x 48 dp. [expectAtLeast] is how many there must be, so a
  * state that should have tappable controls cannot pass because none were found.
  */
 fun ComposeContentTestRule.assertEveryClickableIsAtLeast48dp(expectAtLeast: Int = 0) {

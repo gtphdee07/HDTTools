@@ -186,6 +186,15 @@ class RigCheckNavHostTest {
     // the chip itself, not the 0-credit Scan Photo gate above) - a distinct
     // call site/lambda in RigCheckNavHost.kt from onNeedCredits above, so
     // exercising only one of the two doesn't cover the other.
+    // The Rig picker's own chip: offline there is no account, so it says "0 scans", not the loading dots (the
+    // owner's phone feedback of 2026-10-27). The nav host is what tells the screen the account is signed out.
+    @Test
+    fun theRigPickersChipSaysZeroScansWhenSignedOut() {
+        composeRule.setContent { RigCheckNavHost() }
+
+        composeRule.onNodeWithTagText(UiTags.PICKER_CREDIT_CHIP, "0 scans").assertIsDisplayed()
+    }
+
     @Test
     fun creditChipTapOpensPaywallDirectlyAndBackReturnsToChooser() {
         composeRule.setContent { RigCheckNavHost() }

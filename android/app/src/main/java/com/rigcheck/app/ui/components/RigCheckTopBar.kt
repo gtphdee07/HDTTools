@@ -23,6 +23,12 @@ import com.rigcheck.app.ui.theme.Radii
 import com.rigcheck.app.ui.theme.RigCheckStyles
 import com.rigcheck.app.ui.theme.Teal
 
+/** What the bar draws with, named so its test holds exactly these to AA: ink on teal. */
+object RigCheckTopBarColors {
+    val fill = Teal
+    val content = Ink
+}
+
 // components.md, "Top app bar (header)": teal fill, 24 dp bottom corners, shadow sm, 16 dp side padding. Row 1 holds
 // the Back button (when there is somewhere to go back to), the title, then the end content (the balance chip);
 // an optional row 2 (the account status, or the step indicator) goes under it. While the keyboard is open the bar is
@@ -39,8 +45,8 @@ fun RigCheckTopBar(
     below: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     Surface(
-        color = Teal,
-        contentColor = Ink,
+        color = RigCheckTopBarColors.fill,
+        contentColor = RigCheckTopBarColors.content,
         shape = RoundedCornerShape(bottomStart = Radii.Band, bottomEnd = Radii.Band),
         shadowElevation = Elevations.Sm,
         modifier = modifier.fillMaxWidth(),
@@ -62,7 +68,7 @@ fun RigCheckTopBar(
                 Text(
                     title,
                     style = RigCheckStyles.topBarTitle,
-                    color = Ink,
+                    color = RigCheckTopBarColors.content,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),

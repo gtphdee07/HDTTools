@@ -66,9 +66,9 @@ allow = [
   "com.rigcheck.app.data.ScanResult",
   # ui: scan outcome rules (no Compose, no view-model wiring), and what a Garage that did not save says
   # (and what the History screen and a check that did not reach it say)
+  "com.rigcheck.app.ui.CreditChipLabelKt",
   "com.rigcheck.app.ui.GarageNotice",
   "com.rigcheck.app.ui.GarageNoticeKt",
-  "com.rigcheck.app.ui.CreditChipLabelKt",
   "com.rigcheck.app.ui.HistoryDisplayKt",
   "com.rigcheck.app.ui.ScanApplied",
   "com.rigcheck.app.ui.ScanFailureKt",

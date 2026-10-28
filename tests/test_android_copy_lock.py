@@ -132,6 +132,14 @@ def test_each_changed_string_is_in_the_app_and_its_old_text_is_gone(parts, sourc
         assert old_text not in sources, f"{element_id}: the old text {old_text!r} is still in the app"
 
 
+def test_the_changed_hints_are_on_the_truck_and_trailer_screens_themselves():
+    screens = ANDROID_MAIN / "java" / "com" / "rigcheck" / "app" / "ui" / "screens"
+    for name in ("TruckTagEntryScreen.kt", "TrailerTagEntryScreen.kt"):
+        text = (screens / name).read_text(encoding="utf-8")
+        assert '"Tap a field to see its spot on the tag"' in text, name
+        assert "Hover a field" not in text, name
+
+
 def test_the_chip_says_zero_scans_signed_out_in_the_shared_function():
     chip = (ANDROID_MAIN / "java" / "com" / "rigcheck" / "app" / "ui" / "CreditChipLabel.kt").read_text(encoding="utf-8")
     assert re.search(r"signedOut\s*->\s*scansText\(0\)", chip)

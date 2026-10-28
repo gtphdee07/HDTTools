@@ -15,8 +15,6 @@ import com.rigcheck.app.testsupport.assertEveryClickableIsAtLeast48dp
 import com.rigcheck.app.testsupport.onNodeWithTagText
 import com.rigcheck.app.testsupport.setRigCheckContent
 import com.rigcheck.app.ui.UiTags
-import com.rigcheck.app.ui.theme.Ink
-import com.rigcheck.app.ui.theme.Surface
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -77,7 +75,7 @@ class CreditBalanceChipTest {
         composeRule.setRigCheckContent { CreditBalanceChip(balance = 5, modifier = chip, onClick = {}) }
         composeRule.onNodeWithTag(UiTags.PICKER_CREDIT_CHIP).assertHeightIsAtLeast(48.dp)
         composeRule.assertEveryClickableIsAtLeast48dp(expectAtLeast = 1)
-        assertAa("balance text on the white chip", Ink, Surface)
+        assertAa("balance text on the chip", CreditChipColors.content, CreditChipColors.fill)
     }
 
     @Test

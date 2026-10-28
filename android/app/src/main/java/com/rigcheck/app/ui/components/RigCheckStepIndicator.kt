@@ -39,24 +39,24 @@ fun rigCheckStepColors(status: RigCheckStepStatus): RigCheckStepColors = when (s
     RigCheckStepStatus.Upcoming -> RigCheckStepColors(SurfaceWhite, Ink, Ink)
 }
 
-val StepLabels = listOf("Truck", "Trailer", "Scale")
+internal val RigCheckStepLabels = listOf("Truck", "Trailer", "Scale")
 
 // components.md, "Step indicator": three 32 dp circles (Truck, Trailer, Scale) joined by 2 dp lines at 35% ink. The
 // current one is ink with a white digit and a bold label; a done one is ink with a tick; an upcoming one is white
 // with a 2 dp ink border. The caption "Step n of 3" is above. It counts only the three documents.
 @Composable
 fun RigCheckStepIndicator(step: Int, modifier: Modifier = Modifier) {
-    val total = StepLabels.size
+    val total = RigCheckStepLabels.size
     require(step in 1..total) { "step must be 1..$total, was $step" }
     Column(
         verticalArrangement = Arrangement.spacedBy(6.dp),
         modifier = modifier.fillMaxWidth().semantics(mergeDescendants = true) {
-            contentDescription = "Step $step of $total: ${StepLabels[step - 1]}"
+            contentDescription = "Step $step of $total: ${RigCheckStepLabels[step - 1]}"
         },
     ) {
         Text("Step $step of $total", style = RigCheckStyles.label, color = Ink)
         Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
-            StepLabels.forEachIndexed { index, label ->
+            RigCheckStepLabels.forEachIndexed { index, label ->
                 val status = when {
                     index + 1 < step -> RigCheckStepStatus.Done
                     index + 1 == step -> RigCheckStepStatus.Current

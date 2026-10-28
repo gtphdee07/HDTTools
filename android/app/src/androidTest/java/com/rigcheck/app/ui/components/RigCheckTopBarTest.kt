@@ -13,8 +13,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.testsupport.assertAa
 import com.rigcheck.app.testsupport.assertEveryClickableIsAtLeast48dp
 import com.rigcheck.app.testsupport.setRigCheckContent
-import com.rigcheck.app.ui.theme.Ink
-import com.rigcheck.app.ui.theme.Teal
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -46,7 +44,7 @@ class RigCheckTopBarTest {
         assertEquals(1, backs)
         assertEquals(1, chips)
         composeRule.assertEveryClickableIsAtLeast48dp(expectAtLeast = 2)
-        assertAa("title on the teal bar", Ink, Teal)
+        assertAa("title on the teal bar", RigCheckTopBarColors.content, RigCheckTopBarColors.fill)
     }
 
     @Test

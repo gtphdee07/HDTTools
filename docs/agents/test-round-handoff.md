@@ -4,8 +4,8 @@ Working notes for the Alpha round ([BETA_PLAN.md](../BETA_PLAN.md)). They are te
 
 ## Where things stand (2026-10-28)
 
-- Checkpoint push done 2026-10-28 (c1f1786; Web is live with it; the Worker was deployed on 2026-10-27). Merged and pushed in it: #179, #174 with its #185 fix, #181, #186, #169, #180, #182, #183, #184, #188 (test tags, with a test-only fix on top), #189 (baseline screenshots and measured bounds), #190 (the Claude Design hand-back and its follow-up for 17 controls), and the redesign brief and plan edits. The next push is the final one, at the end (see "Pushes").
-- **Lane A:** nothing is running. #191 starts next. **Emulator runs are lighter until the end** (your decision 2026-10-28): #191 to #196 are built and merged with only their own test classes run on the emulator; the full suite, device mutation checks and the full layout capture run once at #197. **Lane B:** has nothing left but the optional #132. **#200** (a progress file and hang watchdog for emulator runs; two decisions in its body) is filed and not yet placed in the order: say when you want it, and ask Claude to build its card.
+- Checkpoint push done 2026-10-28 (c1f1786; Web is live with it; the Worker was deployed on 2026-10-27). Merged and pushed in it: #179, #174 with its #185 fix, #181, #186, #169, #180, #182, #183, #184, #188 (test tags, with a test-only fix on top), #189 (baseline screenshots and measured bounds), #190 (the Claude Design hand-back and its follow-up for 17 controls), #191 (theme, tokens, shared components and the hand-back validator; merged 2026-10-28, not yet pushed), and the redesign brief and plan edits. The next push is the final one, at the end (see "Pushes").
+- **Lane A:** nothing is running. The re-skin tickets #192 to #196 are next, one at a time. The whole app already uses #191's new theme and text styles. **Emulator runs are lighter until the end** (your decision 2026-10-28): #191 to #196 are built and merged with only their own test classes run on the emulator; the full suite, device mutation checks and the full layout capture run once at #197. **Lane B:** has nothing left but the optional #132. **#200** (a progress file and hang watchdog for emulator runs; two decisions in its body) is filed and not yet placed in the order: say when you want it, and ask Claude to build its card.
 - **The design round (#190) is done and merged**: light theme only, same flow and screens, a top app bar with Back. #189's baseline is merged: every inventory element now has a measured size in `ui-inventory.json` (`today_measured`; the estimates in `today` stay as the designer saw them). Only two estimates that were plain numbers differ from the measurement: the bin on the Rig card (48 dp estimated, 40 dp measured; the touch area may still be 48 dp, #197 checks) and the Results bar (6 dp estimated, 26 dp measured, because the tag sits on a larger box).
 - Your phone (SM-G996U, adb name `R3CR50G10ML`) has the beta build, versionCode 3. The emulator is `emulator-5554`. Name the one you mean in every adb command.
 - The Android re-skin (epic #187) happens before the Alpha: the tester APK is built only after #197 and your sign-off.
@@ -16,9 +16,8 @@ Two lanes, one build session each, a **new** session for every ticket. Lane A is
 
 | # | Ticket | Lane | Starts when | Your part |
 |---|---|---|---|---|
-| 1 | [#191](#191-theme-tokens-and-shared-components-from-the-design) Theme, tokens, shared components | A | nothing blocks it | look through the frames first |
-| 2 to 6 | #192 to #196 re-skin: [Rig picker and Chooser](#192-re-skin-the-rig-picker-chooser-and-photo-source-dialog), [entry screens](#193-re-skin-the-truck-tag-trailer-tag-and-scale-ticket-entry-screens), [Disclaimer and Results](#194-re-skin-the-disclaimer-and-results-screens), [History](#195-re-skin-the-history-screen), [Paywall, Account, dialogs](#196-re-skin-the-paywall-account-and-the-two-scan-dialogs) | A | #191 merged | compare with the designer's picture on your phone |
-| 7 | [#197](#197-final-pass-and-sign-off) Final pass and sign-off | A | #192 to #196 merged | check every screen, sign off |
+| 1 to 5 | #192 to #196 re-skin: [Rig picker and Chooser](#192-re-skin-the-rig-picker-chooser-and-photo-source-dialog), [entry screens](#193-re-skin-the-truck-tag-trailer-tag-and-scale-ticket-entry-screens), [Disclaimer and Results](#194-re-skin-the-disclaimer-and-results-screens), [History](#195-re-skin-the-history-screen), [Paywall, Account, dialogs](#196-re-skin-the-paywall-account-and-the-two-scan-dialogs) | A | nothing blocks it | look through the frames first; compare with the designer's picture on your phone |
+| 6 | [#197](#197-final-pass-and-sign-off) Final pass and sign-off | A | #192 to #196 merged | check every screen, sign off |
 | optional | [#132](#132-optional-is-mutation-testing-worth-running-research) Is mutation testing worth running? | any | any time | none |
 
 A ticket starts when the tickets it waits for have merged, not when the round ends. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.
@@ -44,13 +43,14 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - [x] The Cloudflare logs show our scan line (2026-10-27): `event: scan, outcome: delivered, doc_type: truck_tag, duration_ms: 4225, refunded: false`. A delivered line has no level label in the dashboard; failures show as `error`. Cloudflare also writes its own `POST /v1/scan` row per request, with the requester's IP and rough location (only you can read it); `invocation_logs = false` in `wrangler.toml` would turn that off, and is yours to decide (see "Things to remember").
 - [x] The guide's scan wording is decided (2026-10-27, "Scans use up a scan balance we set for your account. If it runs out, email us and we will add more.") and it now says Android has the same Send feedback link.
 - [ ] Read `docs/BETA_TESTER_GUIDE.md` once as a tester would, and on the web tap **Send feedback** (page footer or Account screen) to see the draft addressed to WTIAppDev@gmail.com.
-- [ ] With the rebuilt APK (after #197), on the phone: **Send feedback** at the foot of the Rig picker and of the sign-in screen opens a draft to WTIAppDev@gmail.com; the Paywall shows the bold "Beta: test payments" line. Optionally crash the app once and check that the next launch asks "RigCheck closed unexpectedly last time. Send details?" (Send opens a draft, Not now deletes the report).
+- [ ] **Decide the Truck and Trailer hint** (raised at the #191 merge): the screens now say "Tap a field to see its spot on the tag" (the copy you approved), but tapping a field does nothing yet; only press-and-hold on the reference image zooms. The designer's focused-field crop is in #193, and the stored crop rectangles for it in #199 (deferred). Tell Claude whether #193 must make the sentence true, or what the hint should say until then.
+- [ ] With the rebuilt APK (after #197), on the phone: the splash screen, the app icon (and the one-colour themed icon with themed icons on) and the Rig picker's scan chip look like `splash__default`, `app_icon__launcher` and `rig_picker__in` in `design-return/annotated/`; **Send feedback** at the foot of the Rig picker and of the sign-in screen opens a draft to WTIAppDev@gmail.com; the Paywall shows the bold "Beta: test payments" line. Optionally crash the app once and check that the next launch asks "RigCheck closed unexpectedly last time. Send details?" (Send opens a draft, Not now deletes the report).
 - [x] The design round (#190) ran and its hand-back is merged (2026-10-27).
 - [x] The hand-back's four decisions are answered and recorded on #191 (2026-10-27): approve the simplified logo mark (launcher icon and splash); bundle Outfit and DM Sans; keep the scan-balance chip on the Truck screen; defer the pinned label crop to #199.
 - [x] The copy in `copy-changes.md` is approved as written (2026-10-27, recorded on #191).
 - [x] The follow-up design round (17 controls) is committed and checked (2026-10-27, `design-return/ui-redesign-map-followup.json`): the bin sits at the right end of the Rig card behind a divider; the Paywall toast becomes a Snackbar (you approved; decided on #191 and #196). It added no new strings.
 - [ ] **#189's baseline frames** are in `docs/android-redesign/design-built-to-be-checked/` (untracked; Claude hid the folder locally through `.git/info/exclude` so the merge could run; delete it or move it when you are done). Decide whether the designer checks them: Claude's advice is to show the designer only the 412 x 892 frames of the bin on the Rig card and of the Results bar, and to say nothing else changes.
-- [ ] Before #191 starts, look through the frames in `docs/android-redesign/design-return/annotated/` (70 now; the 7 new and 20 re-issued ones are listed in `design-return/README.md`, "Follow-up round") and tell Claude any screen you want changed. Anything you do not mention is built as drawn.
+- [ ] Before #192 starts, look through the frames in `docs/android-redesign/design-return/annotated/` (70 now; the 7 new and 20 re-issued ones are listed in `design-return/README.md`, "Follow-up round") and tell Claude any screen you want changed. Anything you do not mention is built as drawn.
 - [ ] On each re-skin ticket (#192 to #196): compare the screenshot in the STATUS comment with the designer's picture on your phone before Claude merges it. On #197, check every screen and sign off.
 - [ ] After #197: build the tester APK with a higher `-PappVersionCode` (4 or more; raise it for every APK you send), from `android`: `.\gradlew.bat assembleBeta -PappVersionCode=<n>`. Confirm `keytool -printcert -jarfile app\build\outputs\apk\beta\app-beta.apk` shows the SHA-1 in `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`.
 - [ ] Before inviting: add each Alpha tester's Gmail as a Google test user (up to 5); send the APK and the guide.
@@ -63,40 +63,9 @@ Not in this round: #40 (Google Play Billing; blocked until a Play Console accoun
 
 ## Run cards
 
-### #191 Theme, tokens and shared components from the design
-
-**Lane A.** Nothing blocks it now (#189 has merged). The design hand-back (#190) is already committed in `docs/android-redesign/design-return/`, and its decisions are in a DECISIONS comment on this ticket: approved logo mark, bundled fonts, balance chip kept on Truck, pinned crop deferred to #199. Android: the single emulator, one Android ticket at a time.
-
-1. In this main-checkout session type `/ticket-start 191`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-191`; if it stops, it says why.
-2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-191` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-191"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
-
-```
-/mattpocock-skills:implement #191
-
-Follow docs/agents/session-handoff.md: don't push, don't close the issue, and finish with a STATUS comment on the ticket. While you work, run single test files and typechecks only; leave the full run to /ticket-finish, which runs it once and remembers the pass. Run a live External suite only if an acceptance criterion names one, and only after the owner approves that run; the merge step covers the rest. If the ticket has a `## Decisions` section, or needs a decision only the owner can make, ask the owner directly with AskUserQuestion (up to 4 questions per call) before building on it, then post the questions and answers as a ticket comment starting `DECISIONS`; if you cannot ask, use the recommended defaults, post them as `DECISIONS (assumed)` and list them under Owner actions.
-
-Test-round additions:
-- If you add or move a class in `domain`, `data` or `ui`, classify it in `android/coverage-logic.toml` (allow-list, or waiver with a reason). The Android end-of-session command is `uv run scripts/android_session_end.py` (JVM tests, coverage floor, detekt; no device).
-- A UI test needs the single emulator; no other Android ticket may be running. Start it with `G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect -no-audio -no-window` (headless: the emulator's window crashed in the host's NVIDIA OpenGL driver on 2026-10-27), wait for `sys.boot_completed`, and kill it when you are done.
-- Use `adb -s emulator-5554` for every adb command: the owner's phone may be plugged in and must not be touched.
-- Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in its context's testing document, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
-- Live runs: do not run the live External suite or any paid call. The owner runs the surface from the main checkout after the merge. Do not commit changes to `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->` markers.
-- RevenueCat is faked in the Android tests; no live or paid run.
-- The platform splash screen and the app icon come from the designer's assets; the credit chip is bigger (touch target 48 dp or more) and shows "0 scans" when signed out. See the DECISIONS comment on this ticket.
-- Emulator runs are deferred (owner decision 2026-10-28, see the DECISIONS comment on this ticket): on the emulator run only the test classes this ticket's acceptance criteria name, and the screenshots for the owner's comparison; do not run the full `connectedDebugAndroidTest` suite, device mutation checks or the full layout capture (they run once, at #197). Name the classes you ran in the STATUS comment and say "full suite deferred to #197".
-- The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
-```
-
-3. When that session says it is done, type `/ticket-finish` in it. At the end it asks whether to move the shell out of the worktree into the main checkout; answer **Yes**.
-4. Back in this main-checkout session type `/ticket-merge 191`. Claude reviews the work, adds any missing test or testing-document row (asking you first), merges, and asks before any push. Afterwards stop the emulator (`G:\Android\Sdk\platform-tools\adb.exe -s emulator-5554 emu kill`).
-
-**Your part:** none.
-
 ### #192 Re-skin the Rig picker, Chooser and photo-source dialog
 
-**Lane A.** Start after **#191** has merged. The five re-skin tickets (#192 to #196) run in any order, one at a time. Android: the single emulator, one Android ticket at a time.
+**Lane A.** Nothing blocks it now (#191 has merged). The five re-skin tickets (#192 to #196) run in any order, one at a time. Android: the single emulator, one Android ticket at a time.
 
 1. In this main-checkout session type `/ticket-start 192`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-192`; if it stops, it says why.
 2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-192` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-192"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
@@ -127,7 +96,7 @@ Test-round additions:
 
 ### #193 Re-skin the Truck Tag, Trailer Tag and Scale Ticket entry screens
 
-**Lane A.** Start after **#191** has merged. The five re-skin tickets (#192 to #196) run in any order, one at a time. Android: the single emulator, one Android ticket at a time.
+**Lane A.** Nothing blocks it now (#191 has merged). The five re-skin tickets (#192 to #196) run in any order, one at a time. Android: the single emulator, one Android ticket at a time.
 
 1. In this main-checkout session type `/ticket-start 193`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-193`; if it stops, it says why.
 2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-193` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-193"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
@@ -157,7 +126,7 @@ Test-round additions:
 
 ### #194 Re-skin the Disclaimer and Results screens
 
-**Lane A.** Start after **#191** has merged. The five re-skin tickets (#192 to #196) run in any order, one at a time. Android: the single emulator, one Android ticket at a time.
+**Lane A.** Nothing blocks it now (#191 has merged). The five re-skin tickets (#192 to #196) run in any order, one at a time. Android: the single emulator, one Android ticket at a time.
 
 1. In this main-checkout session type `/ticket-start 194`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-194`; if it stops, it says why.
 2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-194` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-194"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
@@ -187,7 +156,7 @@ Test-round additions:
 
 ### #195 Re-skin the History screen
 
-**Lane A.** Start after **#191** has merged. The five re-skin tickets (#192 to #196) run in any order, one at a time. Android: the single emulator, one Android ticket at a time.
+**Lane A.** Nothing blocks it now (#191 has merged). The five re-skin tickets (#192 to #196) run in any order, one at a time. Android: the single emulator, one Android ticket at a time.
 
 1. In this main-checkout session type `/ticket-start 195`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-195`; if it stops, it says why.
 2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-195` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-195"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
@@ -217,7 +186,7 @@ Test-round additions:
 
 ### #196 Re-skin the Paywall, Account and the two Scan dialogs
 
-**Lane A.** Start after **#191** has merged. The five re-skin tickets (#192 to #196) run in any order, one at a time. Android: the single emulator, one Android ticket at a time.
+**Lane A.** Nothing blocks it now (#191 has merged). The five re-skin tickets (#192 to #196) run in any order, one at a time. Android: the single emulator, one Android ticket at a time.
 
 1. In this main-checkout session type `/ticket-start 196`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-196`; if it stops, it says why.
 2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-196` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-196"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.

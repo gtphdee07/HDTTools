@@ -26,30 +26,30 @@
       }
     },
     "anthropic-python": {
-      "commit": "ff85217a49207659b0c5731f49ca1950f37f12f5",
+      "commit": "fbecd6d856d3bfc575feac8d86ddccd9f55a0d9a",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-21T23:04:02Z",
+      "timestamp": "2026-10-28T16:28:17Z",
       "versions": {
-        "anthropic": "2.1.0"
+        "anthropic": "2.3.0"
       }
     },
     "pages-site": {
-      "commit": "19058de1a914cb3dc9fc2da151a61e29e359c729",
+      "commit": "df405ea4d8d99e51e21d79e1e4cc2de452244d44",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-23T17:41:14Z",
+      "timestamp": "2026-10-28T16:22:31Z",
       "versions": {
-        "wrangler": "4.152.0"
+        "wrangler": "4.154.0"
       }
     },
     "revenuecat-android-sdk": {
-      "commit": "97dc46e57d87b8269497c537a6da1f2a7e2143ec",
+      "commit": "fbecd6d856d3bfc575feac8d86ddccd9f55a0d9a",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-23T04:10:45Z",
+      "timestamp": "2026-10-28T16:26:54Z",
       "versions": {
-        "com.revenuecat.purchases:purchases": "10.29.0"
+        "com.revenuecat.purchases:purchases": "11.0.0"
       }
     },
     "revenuecat-rest": {
@@ -69,13 +69,13 @@
       }
     },
     "scan-proxy-worker": {
-      "commit": "0b383d77240d1e200899dd7a363964c0b5112348",
+      "commit": "fbecd6d856d3bfc575feac8d86ddccd9f55a0d9a",
       "passed": true,
       "result": "pass",
-      "timestamp": "2026-10-27T22:37:14Z",
+      "timestamp": "2026-10-28T16:27:42Z",
       "versions": {
-        "@cloudflare/workers-types": "5.20261027.1",
-        "workerd": "1.20261027.1",
+        "@cloudflare/workers-types": "5.20261028.1",
+        "workerd": "1.20261028.1",
         "wrangler": "4.154.0"
       }
     },

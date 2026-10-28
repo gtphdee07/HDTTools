@@ -5,7 +5,7 @@ Working notes for the Alpha round ([BETA_PLAN.md](../BETA_PLAN.md)). They are te
 ## Where things stand (2026-10-28)
 
 - Checkpoint push done 2026-10-28 (c1f1786; Web is live with it; the Worker was deployed on 2026-10-27). Merged and pushed in it: #179, #174 with its #185 fix, #181, #186, #169, #180, #182, #183, #184, #188 (test tags, with a test-only fix on top), #189 (baseline screenshots and measured bounds), #190 (the Claude Design hand-back and its follow-up for 17 controls), and the redesign brief and plan edits. The next push is the final one, at the end (see "Pushes").
-- **Lane A:** nothing is running. #191 starts next. **Lane B:** has nothing left but the optional #132. **#200** (a progress file and hang watchdog for emulator runs; two decisions in its body) is filed and not yet placed in the order: say when you want it, and ask Claude to build its card.
+- **Lane A:** nothing is running. #191 starts next. **Emulator runs are lighter until the end** (your decision 2026-10-28): #191 to #196 are built and merged with only their own test classes run on the emulator; the full suite, device mutation checks and the full layout capture run once at #197. **Lane B:** has nothing left but the optional #132. **#200** (a progress file and hang watchdog for emulator runs; two decisions in its body) is filed and not yet placed in the order: say when you want it, and ask Claude to build its card.
 - **The design round (#190) is done and merged**: light theme only, same flow and screens, a top app bar with Back. #189's baseline is merged: every inventory element now has a measured size in `ui-inventory.json` (`today_measured`; the estimates in `today` stay as the designer saw them). Only two estimates that were plain numbers differ from the measurement: the bin on the Rig card (48 dp estimated, 40 dp measured; the touch area may still be 48 dp, #197 checks) and the Results bar (6 dp estimated, 26 dp measured, because the tag sits on a larger box).
 - Your phone (SM-G996U, adb name `R3CR50G10ML`) has the beta build, versionCode 3. The emulator is `emulator-5554`. Name the one you mean in every adb command.
 - The Android re-skin (epic #187) happens before the Alpha: the tester APK is built only after #197 and your sign-off.
@@ -85,6 +85,7 @@ Test-round additions:
 - Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->` markers.
 - RevenueCat is faked in the Android tests; no live or paid run.
 - The platform splash screen and the app icon come from the designer's assets; the credit chip is bigger (touch target 48 dp or more) and shows "0 scans" when signed out. See the DECISIONS comment on this ticket.
+- Emulator runs are deferred (owner decision 2026-10-28, see the DECISIONS comment on this ticket): on the emulator run only the test classes this ticket's acceptance criteria name, and the screenshots for the owner's comparison; do not run the full `connectedDebugAndroidTest` suite, device mutation checks or the full layout capture (they run once, at #197). Name the classes you ran in the STATUS comment and say "full suite deferred to #197".
 - The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
 ```
 
@@ -115,6 +116,7 @@ Test-round additions:
 - Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->` markers.
 - RevenueCat is faked in the Android tests; no live or paid run.
 - The Rig picker header shows whether you are signed in and as which account, and gives a way to sign out. See the DECISIONS comment on this ticket. The sign-out and the account label already exist; this is placement, not new logic.
+- Emulator runs are deferred (owner decision 2026-10-28, see the DECISIONS comment on this ticket): on the emulator run only the test classes this ticket's acceptance criteria name, and the screenshots for the owner's comparison; do not run the full `connectedDebugAndroidTest` suite, device mutation checks or the full layout capture (they run once, at #197). Name the classes you ran in the STATUS comment and say "full suite deferred to #197".
 - The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
 ```
 
@@ -144,6 +146,7 @@ Test-round additions:
 - Live runs: do not run the live External suite or any paid call. The owner runs the surface from the main checkout after the merge. Do not commit changes to `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
 - Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->` markers.
 - RevenueCat is faked in the Android tests; no live or paid run.
+- Emulator runs are deferred (owner decision 2026-10-28, see the DECISIONS comment on this ticket): on the emulator run only the test classes this ticket's acceptance criteria name, and the screenshots for the owner's comparison; do not run the full `connectedDebugAndroidTest` suite, device mutation checks or the full layout capture (they run once, at #197). Name the classes you ran in the STATUS comment and say "full suite deferred to #197".
 - The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
 ```
 
@@ -173,6 +176,7 @@ Test-round additions:
 - Live runs: do not run the live External suite or any paid call. The owner runs the surface from the main checkout after the merge. Do not commit changes to `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
 - Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->` markers.
 - RevenueCat is faked in the Android tests; no live or paid run.
+- Emulator runs are deferred (owner decision 2026-10-28, see the DECISIONS comment on this ticket): on the emulator run only the test classes this ticket's acceptance criteria name, and the screenshots for the owner's comparison; do not run the full `connectedDebugAndroidTest` suite, device mutation checks or the full layout capture (they run once, at #197). Name the classes you ran in the STATUS comment and say "full suite deferred to #197".
 - The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
 ```
 
@@ -202,6 +206,7 @@ Test-round additions:
 - Live runs: do not run the live External suite or any paid call. The owner runs the surface from the main checkout after the merge. Do not commit changes to `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
 - Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->` markers.
 - RevenueCat is faked in the Android tests; no live or paid run.
+- Emulator runs are deferred (owner decision 2026-10-28, see the DECISIONS comment on this ticket): on the emulator run only the test classes this ticket's acceptance criteria name, and the screenshots for the owner's comparison; do not run the full `connectedDebugAndroidTest` suite, device mutation checks or the full layout capture (they run once, at #197). Name the classes you ran in the STATUS comment and say "full suite deferred to #197".
 - The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
 ```
 
@@ -232,6 +237,7 @@ Test-round additions:
 - Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->` markers.
 - RevenueCat is faked in the Android tests; no live or paid run.
 - Keep what #186 fixed: nothing under the system bars, Restore purchase reachable with 3-button navigation, and the Paywall's Back control.
+- Emulator runs are deferred (owner decision 2026-10-28, see the DECISIONS comment on this ticket): on the emulator run only the test classes this ticket's acceptance criteria name, and the screenshots for the owner's comparison; do not run the full `connectedDebugAndroidTest` suite, device mutation checks or the full layout capture (they run once, at #197). Name the classes you ran in the STATUS comment and say "full suite deferred to #197".
 - The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
 ```
 
@@ -261,6 +267,7 @@ Test-round additions:
 - Live runs: do not run the live External suite or any paid call. The owner runs the surface from the main checkout after the merge. Do not commit changes to `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.
 - Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->` markers.
 - RevenueCat is faked in the Android tests; no live or paid run.
+- This ticket owns the emulator runs deferred from #191 to #196 (owner decision 2026-10-28, see the DECISIONS comment and the three added acceptance criteria): the full instrumented suite 3 times in a row on a cold boot (`uv run scripts/android_suite_loop.py --runs 3`), the layout capture rerun with `--field after_measured`, and device mutation checks. Bisect any failure to the merge of #191 to #196 that caused it; the last full-suite pass is f8b4645.
 - The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
 ```
 

@@ -2,8 +2,8 @@ package com.rigcheck.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Ported from web/src/design-system/tokens.css ("Wandering Trails, Wagging
-// Tails" brand palette) - keep in sync if the web app's tokens ever change.
+// The hand-back's tokens.json (docs/android-redesign/design-return/) is the source; DesignTokensTest compares
+// every constant here with it. Brand colours are the same as web/src/design-system/tokens.css.
 val Teal = Color(0xFF12B5AE)
 val TealDeep = Color(0xFF087379)
 val Purple = Color(0xFF7B3FE4)
@@ -29,6 +29,19 @@ val TintPurple = Color(0xFFF1ECFF)
 val TintOrange = Color(0xFFFFF0E1)
 
 val DangerRed = Color(0xFFB5473A)
+
+// Added by the redesign (tokens.json "proposed"): fail as text, the over-limit and within-limit fills, the disabled
+// button, and the white wash on the teal bar.
+val DangerText = Color(0xFF9A3A2E)
+val TintRed = Color(0xFFF8E6E3)
+val TintGreen = Color(0xFFE8F0E5)
+val DisabledFill = Color(0xFFE4E0EE)
+val DisabledContent = Color(0xFF6A647C)
+val OnTealWash = Color(0xB8FFFFFF) // rgba(255, 255, 255, 0.72)
+
+// The sky gradient of the app icon and the splash disc (top to bottom).
+val SkyGradientTop = Purple
+val SkyGradientBottom = Orange
 
 // Text/icons on top of a bright saturated fill - never white on teal or
 // orange (both fail contrast at that weight per the brand tokens).

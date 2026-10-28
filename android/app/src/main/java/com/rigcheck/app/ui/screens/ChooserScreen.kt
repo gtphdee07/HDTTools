@@ -50,6 +50,8 @@ private fun copyFor(module: EntryModule): ChooserCopy = when (module) {
 fun ChooserScreen(
     module: EntryModule,
     creditBalance: Int?,
+    // Whether the account is signed out: then the balance chip says "0 scans", not "…".
+    signedOut: Boolean = false,
     scanState: ScanUiState,
     onChooseManual: () -> Unit,
     onPhotoScanned: (Uri) -> Unit,
@@ -99,6 +101,7 @@ fun ChooserScreen(
                 )
                 CreditBalanceChip(
                     balance = creditBalance,
+                    signedOut = signedOut,
                     modifier = Modifier.testTag(UiTags.CHOOSER_CREDIT_CHIP),
                     onClick = onOpenPaywall,
                 )

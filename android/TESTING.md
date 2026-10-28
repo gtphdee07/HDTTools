@@ -956,6 +956,31 @@ root `TESTING.md`'s "Dashboard" section.
   canvas). The spike package is excluded from the coverage number
   (`ANDROID_EXCLUDED_PACKAGES` in `scripts/coverage_gate.py`) and is not reachable from the
   shipped app.
+- `DesignTokensTest.kt` (#191) — the theme against the designer's `docs/android-redesign/design-return/tokens.json`,
+  read by path (a changed token file re-runs it: `app/build.gradle.kts` lists it as a test input). Every colour (hex
+  and the wash's alpha), the sky gradient's two ends, each of the 17 text styles (size, line height, letter spacing,
+  weight, family), the spacing scale, radii, elevations, sizes, opacities, motion durations, the Material 3 colour
+  roles (`ColorScheme` against `material3_mapping`), the colours outside Material 3 and the five shape slots are
+  compared with the file, in both directions (a token the theme lacks and a constant the file lacks both fail). The
+  text styles are compared twice: with the bundled Outfit and DM Sans, and with the design's fallback ("system
+  sans-serif", `RigCheckFonts.Fallback`), which is what a build without the font files would use. The one colour left
+  out, `keyboard-placeholder`, is the one tokens.json marks "design frames only".
+- `TypographyTest.kt` (#191) — before the redesign `headlineSmall` and others were left on the platform font, so
+  "RigCheck" and most screen titles drew in Roboto. Each of the 15 public Material 3 slots has a font family that is not
+  `FontFamily.Default`, is one of the 17 named styles, and (with the fallback families) is the design's fallback; the
+  slot count is pinned, so a slot a Compose upgrade adds fails until it is set. The library's "emphasized" variants are
+  internal to Material 3 and cannot be set from the app.
+- `ContrastTest.kt` (#191) — the WCAG contrast helper the component tests use (black on white is 21:1, the ratio is
+  symmetrical, the 4.4:1 and 5.8:1 the design states for danger and danger-text, a translucent wash is laid over its
+  backdrop first, large text needs 3:1), and that every Material 3 `on*` colour meets AA on its own fill.
+- `ResourcesTest.kt` (#191) — the resource files themselves, without a device: both launcher icons have a background,
+  a foreground and a *distinct* one-colour monochrome layer (the themed icon), the monochrome layer uses one colour
+  only, the launcher background is the sky gradient, the splash colour is the design's teal and the Android 12 splash
+  theme names it and the icon (Android 8 to 11 get the same teal and icon from the window background), and both bundled
+  font files are TrueType with their licences beside them.
+- `CreditChipLabelTest.kt` (#191) — the scan balance chip's words: signed out and no balance says "0 scans" (the owner's
+  phone feedback of 2026-10-27), only an account whose balance is still loading shows "…", 1 is singular, and the
+  spoken description says "loading" for the dots and names where a tap leads.
 
 ### Major (instrumented) — `./gradlew connectedDebugAndroidTest`
 
@@ -1105,8 +1130,27 @@ network involved:
   `MainActivity` mounting the prompt is not tested on its own: it is one line, and a crash is not
   provoked in a test.
 - `CreditBalanceChipTest` — null shows the "…" not-yet-loaded
-  placeholder; 0/1/5 use correct singular/plural wording; `onClick`
-  fires when provided.
+  placeholder for an account and "0 scans" signed out (#191); 0/1/5 use correct singular/plural wording; `onClick`
+  fires when provided; the chip is at least 48 dp high and its touch area at least 48 x 48 dp (the owner's phone
+  feedback: it was too small to hit), its text meets AA on the white fill, its spoken description names the balance,
+  and a chip with no click handler is not tappable.
+- **Shared design components** (#191, one test class each, from `components.md`): `RigCheckButtonTest` (primary,
+  secondary, ghost and destructive in default, pressed and disabled; regular 56, compact 48 and dialog 52 dp),
+  `RigCheckIconButtonTest` (over the teal bar and on the page, disabled, content description, 48 dp circle),
+  `RigCheckTopBarTest` (title, Back, chip, second row, compact, Back disabled during a paid Scan, no Back),
+  `RigCheckTextFieldTest` (default, focused, error, disabled, unit and help line), `RigCheckOptionCardTest` (Scan,
+  Manual, badge, disabled), `RigCheckRigCardTest` (the body and the bin are separate targets, no bin signed out, bin
+  disabled during a delete, the avatar tints cycle), `RigCheckStepIndicatorTest` (steps 1 to 3),
+  `RigCheckVerdictBandTest` (the four verdict outcomes, different icons as well as colours), `RigCheckBreakdownRowTest`
+  (pass, fail, not checked, expand and collapse, no chevron without a note), `RigCheckNoticeCardTest` (four tones),
+  `RigCheckBadgeTest` (seven kinds), `RigCheckProgressBarTest` (pass, fail, not checked, clamped over 100% and below 0)
+  and `RigCheckEmptyStateTest`. Each state asserts, through `ComponentAssertions.kt`, that every tappable node has a
+  touch area of at least 48 x 48 dp (`touchBoundsInRoot`, the area a finger can hit, which includes the inflation a
+  Material control gets from its minimum interactive size; the new components size themselves to 48 dp anyway) and that the
+  text colour the component draws, taken from the same colour function the component uses, meets WCAG AA against its
+  fill (4.5:1, 3:1 for large text and for graphics). The disabled colours are held to 3:1 only: the design's own
+  disabled pair is 4.35:1, and WCAG exempts inactive controls. None of the components is on a screen yet (the re-skin
+  tickets #192 to #196 adopt them), so these tests are their only user for now.
 - `ReferenceImageCardTest` (added 2026-09-09, this component's first
   dedicated test file) — idle state shows only the base image (1 child);
   a long-press-and-hold followed by a move shows the zoom overlay (2

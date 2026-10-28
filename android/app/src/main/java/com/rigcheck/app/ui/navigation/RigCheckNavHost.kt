@@ -108,6 +108,7 @@ fun RigCheckNavHost(
             RigPickerScreen(
                 recentRigs = recentRigs,
                 creditBalance = viewModel.creditBalance,
+                signedOut = accountState is AccountState.SignedOut,
                 onSelectRecentRig = { rig ->
                     viewModel.selectRecentRig(rig)
                     navController.navigate(RigCheckRoute.Chooser(EntryModule.SCALE))
@@ -142,6 +143,7 @@ fun RigCheckNavHost(
             ChooserScreen(
                 module = route.module,
                 creditBalance = viewModel.creditBalance,
+                signedOut = accountState is AccountState.SignedOut,
                 scanState = viewModel.scanState,
                 onChooseManual = {
                     viewModel.scanNoticeState.enteredManually()

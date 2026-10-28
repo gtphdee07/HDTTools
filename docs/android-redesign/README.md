@@ -22,6 +22,7 @@ The JSON is the source of truth, and the CSV is generated from it: edit the JSON
 These need the emulator, so they belong in lane A and I have not started them:
 
 - **Done in #189 (T1):** baseline screenshots plus measured bounds of every screen and state. `uv run scripts/android_layout_capture.py` (the one emulator) runs `LayoutCaptureTest`, which opens 88 reachable states at 412 x 892 dp and 360 x 640 dp (Disclaimer and Results also at font scale 2.0) and writes a PNG and the position and size of every tagged element per state to `android/app/build/layout-capture/<frame>/` (build output, not committed; copy the `412x892` PNGs to the designer). `uv run scripts/ui_inventory.py --merge-bounds android/app/build/layout-capture` writes the measurements into the JSON as `today_measured` per element and frame (they supersede the estimates in `today`, which stay as the designer saw them; the CSV gets the 412 x 892 numbers as `today_measured_*`) and lists any element no state showed. After the re-skin, rerun both with `--field after_measured` for the "after" half. The test changes the emulator's display size, density and font scale for the run and puts them back.
+- **Done in #191 (T2):** `uv run scripts/design_return_check.py` checks the designer's hand-back (both maps, the frames, `tokens.json`) against the inventory and exits 1 with one line per problem; `implementation-status.json` holds an `implemented` flag per element (193 ids, all false), which each re-skin ticket sets for what it builds with `uv run scripts/design_return_check.py --set-implemented ID ...`. The app's theme is `tokens.json` in code (`ui/theme/`, compared with the file by `DesignTokensTest`), Outfit and DM Sans are bundled (`res/font/`, licences in `android/font-licenses/`), the shared components of `components.md` are `RigCheck*` in `ui/components/` (not on any screen until #192 to #196 adopt them), and the splash screen, the app icon (with its one-colour themed layer) and the scan balance chip ("0 scans" signed out, 48 dp touch target) are built.
 - **Done in #188 (T0):** a test tag on every inventory element (`test_tag_new` in the inventory, `UiTags` in the app), with the existing tests moved from text lookups to tags; `tests_referencing` now counts the test files that use each tag. The note below is how it was before.
   Before it, 19 elements had a tag and about 410 test lookups went by visible text, which is why the brief freezes the copy; now the re-skin can be a pure visual change that the existing tests already guard.
 
@@ -29,7 +30,7 @@ Filed on 2026-10-25 as epic #187 with children #188 to #197 (T0 = #188, T1 = #18
 
 ## When the map comes back
 
-1. Check every id has `redesign.status`, and that nothing was reused or renamed. (I can script this.)
+1. Check every id has `redesign.status`, and that nothing was reused or renamed: `uv run scripts/design_return_check.py` (#191).
 2. Diff `copy-changes.md`; each changed string needs its tests updated in the same ticket.
 3. Elements with `needs_new_function` become their own tickets and wait until after the production release unless you decide otherwise (the `enhancement`/`future` rule).
 4. Each screen ticket then uses the map to find which tests reference a moved or changed element (`tests_referencing`), updates only those, and compares the running app to the annotated PNG for each state.

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Android 12 and later: the platform splash screen, with the designer's mark on its gradient disc on the brand
+         teal. The icon is drawn inside a 192 dp circle of its 288 dp canvas. The optional branding image of the
+         design (the name and tagline) is not used: Android 13 and later no longer show it. -->
+    <style name="Theme.RigCheck" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_window_background</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon</item>
+    </style>
+</resources>

@@ -26,7 +26,8 @@ for e in m2['elements']:
     assert r['new_test_tag'] == by[e['id']]['test_tag_new'], e['id']
     assert r['new_screen'] == by[e['id']]['screen'], e['id']
     for k in by[e['id']]:
-        if k != 'redesign':
+        # the measured fields (#189) were added to the inventory after the hand-back, so its entries do not have them
+        if k not in ('redesign', 'today_measured', 'after_measured'):
             assert e[k] == by[e['id']][k], (e['id'], k)
 # the added list is empty and the revised entry names a tag
 assert m2['added_elements'] == []

@@ -1023,7 +1023,13 @@ network involved:
   until a nickname is typed, then fires `onStartNewRig` with it. (#169) Delete: with no delete handler no Rig
   has a delete control; the bin asks first, and Cancel deletes nothing and does not start a check; "Yes,
   delete" deletes that Rig and closes the question; a delete that fails shows the error, keeps the question
-  open and can be tried again; signing out while the question is open closes it for good.
+  open and can be tried again; signing out while the question is open closes it for good. (#192) Who is signed
+  in: a signed-in header says "Signed in as" and the email, tapping it opens the sheet, and Sign out is the
+  second tap and calls the handler; Cancel closes the sheet and signs nobody out; a signed-out header says
+  "Not signed in", offers Sign in (calls `onSignIn`) and opens no sheet; an account still being looked up has
+  no row; the sheet closes if the account goes away under it. With no saved Rigs the empty state shows
+  (and with one it does not); History opens; a nickname of spaces leaves Create disabled and a typed one is
+  trimmed.
 - `TruckTagEntryScreenTest`, `TrailerTagEntryScreenTest`,
   `ScaleTicketEntryScreenTest` — typing into the description/location
   field updates the model and blank input becomes `null` (matching each
@@ -1063,6 +1069,30 @@ network involved:
   (#118) With a Scan in flight the loading overlay absorbs taps: Enter Manually
   and Scan Photo under it do nothing. `TruckTagEntryScreenTest` (#118): the
   stand-alone ticket button is disabled while it reads and enabled otherwise.
+  (#192) Each document shows its own title, question and "Step n of 3"; the two ways name what they cost
+  ("1 credit", "Free") and the two cards are the same size; a signed-out chip says "0 scans" and still opens
+  the Paywall; Back goes back, and while a Scan is out it is disabled and neither it nor the chip does anything
+  under the overlay (which says "Reading…"); the photo dialog asks its question with Take Photo above Choose
+  from Gallery, and closes on the choice.
+- `RigCheckAccountStatusTest` (#192) — the Rig picker's account row and sheet (`components.md`, "Account status
+  row" and "Bottom sheet"): the signed-in row shows the email and its initial and opens the menu, the signed-out
+  row says "Not signed in" and offers Sign in, the text on the wash and the initial on the avatar meet AA
+  (worked out over the teal bar the wash sits on), the sheet shows the account and its Sign out and Cancel
+  each fire once, and every clickable is at least 48 x 48 dp.
+- `RigPickerChooserLayoutTest` (#192) — the Rig picker, the Chooser (all three documents) and the photo-source
+  dialog against the designer's map, on the emulator. In each state the map draws (`rig_picker__in`,
+  `__signed_out_empty`, `__account_menu`, `__feedback_no_mail`, `chooser__truck`, `__trailer`, `__scale`,
+  `__balance_loading`, `__scan_in_flight`, `photo_source_dialog__default`) every element is on show by its tag;
+  the reading order is the map's `new_order` compared by the elements' tops (a row is one band, because the map
+  numbers left to right across it; a stack, like the nickname, subtitle and last-checked line, is checked by
+  its tops); and the measured width and height are the map's `new_width` and `new_height`: 1.5 dp where the map
+  gives a fixed size, 4 dp on a height given with a "~" and on a width that is a text's, up to 10 dp for the
+  widest text (the frames were drawn in a browser with its own font metrics); "fill" is the full width of the
+  column and "wrap" has no width to check. Every clickable element is at least 48 x 48 dp. At 360 x 640 dp, at
+  font scale 2.0 (where the balance chip moves under the title), and with the keyboard open on the Rig
+  picker, each screen's primary action (Create, the two Chooser cards, the dialog's two buttons) scrolls wholly
+  on show and nothing is wider than the screen. It changes the display size, density and font scale and puts
+  them back, as `LayoutCaptureTest` does; it needs the single emulator and sends no Scan.
 - `LateScanDialogTest` (#118) — the dialog for a Scan that answered after its
   check ended shows its message with OK only (no Try again, Sign in or photo
   step), and OK dismisses.
@@ -1074,7 +1104,8 @@ network involved:
   `PaywallScreenTest` checks the "Beta: test payments" label shows with `isBeta = true` and is gone
   with `false` (the screen takes the flag as a parameter; its default is `BuildConfig.IS_BETA`). That the
   address is the same on Web and in the tester guide is `tests/test_beta_feedback_address.py`.
-- `UiTagsDisplayedTest` (#188, 29 tests) — every element of `docs/android-redesign/ui-inventory.json`
+- `UiTagsDisplayedTest` (#188, 31 tests since #192, which added the picker's account menu and its empty state, and
+  took out the header divider the design removed) — every element of `docs/android-redesign/ui-inventory.json`
   has a `Modifier.testTag` from the `UiTags` object, and this class shows it on a real screen. One test per
   screen, or per state of it that the inventory lists (the picker, the Chooser with and without a Scan in
   flight, the photo choice, the three entry screens, Results with the estimated notice and with the Garage

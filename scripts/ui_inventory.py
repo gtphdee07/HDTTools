@@ -8,7 +8,10 @@
 
 The check fails when
   - ui-inventory.csv is not byte-identical to what this script writes from the JSON;
-  - a `test_tag_new` in the JSON is not a value in the `UiTags` object, or a UiTags value is not in the JSON;
+  - a `test_tag_new` in the JSON is not a value in the `UiTags` object, or a UiTags value is not in the JSON.
+    The design moves two things once a re-skin ticket has built them (its `implemented` flag in
+    implementation-status.json is true): an element the design removed no longer has its tag (the JSON keeps the row,
+    as the designer saw it), and an element the design added has its map's `new_test_tag` (the JSON never lists it);
   - a UiTags constant is not used by any file under android/app/src/main outside UiTags.kt (a tag no screen sets);
   - a UiTags constant is not an argument of an assertShown(...) call in UiTagsDisplayedTest.kt, the instrumented
     test that shows every tagged element on a real screen (a tag that is only tapped or typed into does not count).
@@ -22,6 +25,9 @@ import json
 import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import design_return_check  # noqa: E402  (a sibling script, found through the path line above)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INVENTORY_JSON = REPO_ROOT / "docs" / "android-redesign" / "ui-inventory.json"
@@ -126,6 +132,22 @@ def ui_tags_constants() -> dict[str, str]:
     return dict(_CONST_VALUE.findall(UI_TAGS_KT.read_text(encoding="utf-8")))
 
 
+def design_tag_changes(inventory: dict) -> tuple[set[str], set[str]]:
+    """(the tags of elements the design removed, the tags of elements it added), for the elements that are implemented.
+
+    A re-skin ticket sets an element's `implemented` flag when it has built it (design_return_check.py
+    --set-implemented). From then on a removed element's tag must be gone from UiTags and an added element's
+    `new_test_tag` must be in it, shown by UiTagsDisplayedTest like every other tag."""
+    parts = design_return_check.load_parts()
+    flags = (parts["implemented"] or {}).get("implemented", {})
+    entries = design_return_check.effective_entries(parts["map"], parts["followup"])
+    removed_ids = {e["id"] for e in entries if e["redesign"]["status"] == "removed" and flags.get(e["id"])}
+    removed = {tag for e in inventory["elements"] if e["id"] in removed_ids for tag in element_tags(e)}
+    added_elements = parts["map"].get("added_elements", []) + parts["followup"].get("added_elements", [])
+    added = {a["redesign"]["new_test_tag"] for a in added_elements if flags.get(a["id"])}
+    return removed, added
+
+
 def main_sources_outside_ui_tags() -> str:
     return "\n".join(
         p.read_text(encoding="utf-8") for p in sorted(ANDROID_MAIN.rglob("*.kt")) if p != UI_TAGS_KT
@@ -142,11 +164,14 @@ def problems(inventory: dict | None = None) -> list[str]:
             "(run: uv run scripts/ui_inventory.py)"
         )
 
-    wanted = inventory_tags(inventory)
+    removed, added = design_tag_changes(inventory)
+    wanted = (inventory_tags(inventory) - removed) | added
     constants = ui_tags_constants()
     have = set(constants.values())
-    for tag in sorted(wanted - have):
+    for tag in sorted(wanted - have - added):
         found.append(f"test_tag_new {tag!r} is in ui-inventory.json but not in UiTags")
+    for tag in sorted(added - have):
+        found.append(f"{tag!r} is the new_test_tag of an implemented element the design added but is not in UiTags")
     for tag in sorted(have - wanted):
         found.append(f"UiTags has {tag!r}, which is in no test_tag_new of ui-inventory.json")
     values = list(constants.values())
@@ -175,6 +200,8 @@ def refresh_tests_referencing(inventory: dict) -> dict:
     for element in inventory["elements"]:
         counts: dict[str, int] = {}
         for tag in element_tags(element):
+            if tag not in by_tag:  # an element the design removed has no tag in the app any more
+                continue
             pattern = re.compile(rf"\bUiTags\.{by_tag[tag]}\b")
             for name, text in tests.items():
                 found = len(pattern.findall(text))

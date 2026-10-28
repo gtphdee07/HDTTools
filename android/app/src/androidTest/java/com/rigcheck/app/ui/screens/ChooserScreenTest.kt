@@ -1,7 +1,12 @@
 package com.rigcheck.app.ui.screens
 
 import android.net.Uri
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -27,17 +32,21 @@ class ChooserScreenTest {
     private fun setChooser(
         creditBalance: Int?,
         scanState: ScanUiState = ScanUiState.Idle,
+        module: EntryModule = EntryModule.SCALE,
+        signedOut: Boolean = false,
         onChooseManual: () -> Unit = {},
         onPhotoScanned: (Uri) -> Unit = {},
         onNeedCredits: () -> Unit = {},
         onOpenPaywall: () -> Unit = {},
         onDismissScanError: () -> Unit = {},
         onScanErrorNextStep: (ScanNextStep) -> Unit = {},
+        onBack: () -> Unit = {},
     ) {
         composeRule.setContent {
             ChooserScreen(
-                module = EntryModule.SCALE,
+                module = module,
                 creditBalance = creditBalance,
+                signedOut = signedOut,
                 scanState = scanState,
                 onChooseManual = onChooseManual,
                 onPhotoScanned = onPhotoScanned,
@@ -45,6 +54,7 @@ class ChooserScreenTest {
                 onOpenPaywall = onOpenPaywall,
                 onDismissScanError = onDismissScanError,
                 onScanErrorNextStep = onScanErrorNextStep,
+                onBack = onBack,
             )
         }
     }
@@ -108,6 +118,122 @@ class ChooserScreenTest {
         assertEquals("Enter Manually must not fire under the overlay", 0, chose)
         assertEquals(0, needCredits)
         composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertDoesNotExist()
+    }
+
+    // The three documents share the screen; what differs is the title, the question and the step (the copy lock keeps
+    // the words, this keeps each one on the right document).
+    @Test
+    fun eachDocumentShowsItsOwnTitleQuestionAndStep() {
+        val expected = mapOf(
+            EntryModule.TRUCK to Triple("Truck Tag", "How do you want to enter your truck's compliance-label values?", 1),
+            EntryModule.TRAILER to Triple("Trailer Tag", "How do you want to enter your trailer's compliance-label values?", 2),
+            EntryModule.SCALE to Triple("Scale Ticket", "How do you want to enter your CAT Scale ticket values?", 3),
+        )
+        var module by mutableStateOf(EntryModule.TRUCK)
+        composeRule.setContent {
+            ChooserScreen(
+                module = module,
+                creditBalance = 5,
+                scanState = ScanUiState.Idle,
+                onChooseManual = {},
+                onPhotoScanned = {},
+                onNeedCredits = {},
+                onOpenPaywall = {},
+                onDismissScanError = {},
+                onScanErrorNextStep = {},
+            )
+        }
+
+        for ((each, words) in expected) {
+            composeRule.runOnIdle { module = each }
+            composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, words.first).assertIsDisplayed()
+            composeRule.onNodeWithTagText(UiTags.CHOOSER_PROMPT, words.second).assertIsDisplayed()
+            composeRule.onNodeWithTagText(UiTags.CHOOSER_STEP_BAR, "Step ${words.third} of 3").assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun theTwoWaysSayWhatTheyCostSoManualReadsAsAFirstClassPath() {
+        setChooser(creditBalance = 5)
+
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_SCAN_BADGE, "1 credit").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_MANUAL_BADGE, "Free").assertIsDisplayed()
+        val scan = composeRule.onNodeWithTag(UiTags.CHOOSER_SCAN_CARD).fetchSemanticsNode().size
+        val manual = composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).fetchSemanticsNode().size
+        assertEquals("the two cards are the same size", scan, manual)
+    }
+
+    @Test
+    fun theSignedOutChipSaysZeroScansAndStillOpensThePaywall() {
+        var opened = false
+        setChooser(creditBalance = null, signedOut = true, onOpenPaywall = { opened = true })
+
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_CREDIT_CHIP, "0 scans").assertIsDisplayed().performClick()
+
+        assert(opened) { "the chip should open the Paywall" }
+    }
+
+    // --- Back (#192) ------------------------------------------------------------------------------------
+
+    @Test
+    fun backGoesBack() {
+        var back = 0
+        setChooser(creditBalance = 5, onBack = { back++ })
+
+        composeRule.onNodeWithTag(UiTags.CHOOSER_BACK).assertIsEnabled().performClick()
+
+        assertEquals(1, back)
+    }
+
+    // The brief: during a paid Scan the user cannot leave or restart the check. The overlay covers the top bar too,
+    // so neither Back nor the balance chip works under it, and Back says it is off.
+    @Test
+    fun whileAScanIsInFlightBackAndTheChipDoNothing() {
+        var back = 0
+        var opened = 0
+        setChooser(creditBalance = 5, scanState = ScanUiState.Loading, onBack = { back++ }, onOpenPaywall = { opened++ })
+
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_LOADING_TEXT, "Reading…").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_BACK).assertIsNotEnabled().performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_CREDIT_CHIP).performClick()
+
+        assertEquals("Back must not fire under the overlay", 0, back)
+        assertEquals("the chip must not open the Paywall under the overlay", 0, opened)
+    }
+
+    @Test
+    fun withNoScanInFlightThereIsNoOverlay() {
+        setChooser(creditBalance = 5)
+
+        composeRule.onNodeWithTag(UiTags.CHOOSER_LOADING_OVERLAY).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_LOADING_TEXT).assertDoesNotExist()
+    }
+
+    // --- The photo-source dialog (#192) -------------------------------------------------------------------
+
+    @Test
+    fun thePhotoDialogAsksAndOffersTakePhotoAboveChooseFromGallery() {
+        setChooser(creditBalance = 5)
+
+        composeRule.onNodeWithTag(UiTags.CHOOSER_SCAN_CARD).performClick()
+
+        composeRule.onNodeWithTagText(UiTags.PHOTO_DIALOG_TITLE, "Scan Photo").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PHOTO_DIALOG_BODY, "Take a new photo, or choose one you already have?").assertIsDisplayed()
+        val camera = composeRule.onNodeWithTagText(UiTags.PHOTO_DIALOG_CAMERA, "Take Photo").assertIsDisplayed()
+        val gallery = composeRule.onNodeWithTagText(UiTags.PHOTO_DIALOG_GALLERY, "Choose from Gallery").assertIsDisplayed()
+        assert(camera.fetchSemanticsNode().boundsInRoot.top < gallery.fetchSemanticsNode().boundsInRoot.top) {
+            "the design puts Take Photo (the primary) above Choose from Gallery"
+        }
+    }
+
+    @Test
+    fun theDialogClosesOnTheChoiceItOffers() {
+        setChooser(creditBalance = 5)
+        composeRule.onNodeWithTag(UiTags.CHOOSER_SCAN_CARD).performClick()
+
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_GALLERY).performClick()
+
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_TITLE).assertDoesNotExist()
     }
 
     @Test

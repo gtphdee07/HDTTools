@@ -81,6 +81,7 @@ private fun picker(
     rigs: List<RecentRig> = oneRig,
     balance: Int? = 3,
     onDeleteRig: (suspend (RecentRig) -> Boolean)? = { true },
+    signedOut: Boolean = false,
 ): @Composable () -> Unit = {
     RigPickerScreen(
         recentRigs = rigs,
@@ -89,6 +90,8 @@ private fun picker(
         onStartNewRig = {},
         onOpenPaywall = {},
         onOpenHistory = {},
+        signedOut = signedOut,
+        accountLabel = if (signedOut) null else "dana.rivera@example.com",
         onDeleteRig = onDeleteRig,
     )
 }
@@ -272,7 +275,16 @@ val captureCases: List<CaptureCase> = listOf(
     // rig_picker
     CaptureCase("rig_picker", "no_saved_rigs", content = picker(rigs = emptyList())),
     CaptureCase("rig_picker", "one_saved_rig_signed_in", content = picker()),
-    CaptureCase("rig_picker", "one_saved_rig_signed_out", content = picker(onDeleteRig = null)),
+    CaptureCase("rig_picker", "one_saved_rig_signed_out", content = picker(onDeleteRig = null, signedOut = true)),
+    CaptureCase("rig_picker", "no_saved_rigs_signed_out", content = picker(rigs = emptyList(), onDeleteRig = null, signedOut = true)),
+    CaptureCase(
+        "rig_picker", "account_menu",
+        setUp = {
+            tap(UiTags.PICKER_ACCOUNT_STATUS)
+            rule.waitUntil(timeoutMillis = 5_000) { rule.nodesWithTag(UiTags.PICKER_ACCOUNT_MENU) > 0 }
+        },
+        content = picker(),
+    ),
     CaptureCase("rig_picker", "six_saved_rigs", content = picker(rigs = sixRigs)),
     CaptureCase("rig_picker", "balance_not_loaded", content = picker(balance = null)),
     CaptureCase("rig_picker", "balance_zero", content = picker(balance = 0)),
@@ -287,6 +299,14 @@ val captureCases: List<CaptureCase> = listOf(
         content = picker(),
     ),
 
+    CaptureCase(
+        "rig_picker", "new_rig_keyboard_open",
+        setUp = {
+            tap(UiTags.PICKER_NEW_RIG_INPUT)
+            awaitKeyboardShown()
+        },
+        content = picker(),
+    ),
     CaptureCase(
         "rig_picker", "feedback_no_mail_app",
         setUp = { tap(UiTags.PICKER_FEEDBACK_LINK) },

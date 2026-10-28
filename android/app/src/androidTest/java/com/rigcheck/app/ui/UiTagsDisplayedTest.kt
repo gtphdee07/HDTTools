@@ -106,31 +106,61 @@ class UiTagsDisplayedTest {
         lastUsedAt = Instant.now().minusSeconds(3_600).toString(),
     )
 
-    private fun setPicker(onDeleteRig: (suspend (RecentRig) -> Boolean)?) {
+    private fun setPicker(
+        onDeleteRig: (suspend (RecentRig) -> Boolean)?,
+        rigs: List<RecentRig> = listOf(rig),
+        signedOut: Boolean = false,
+        accountLabel: String? = "dana.rivera@example.com",
+    ) {
         composeRule.setContent {
             RigPickerScreen(
-                recentRigs = listOf(rig),
+                recentRigs = rigs,
                 creditBalance = 3,
                 onSelectRecentRig = {},
                 onStartNewRig = {},
                 onOpenPaywall = {},
                 onOpenHistory = {},
+                signedOut = signedOut,
+                accountLabel = accountLabel,
                 onDeleteRig = onDeleteRig,
             )
         }
     }
 
+    // The account row and the sheet are #192's; picker.header_divider is gone from the design (the bar's rounded edge
+    // replaces it), so no tag of it is left to show.
     @Test
     fun rigPicker() {
         setPicker(onDeleteRig = { true })
 
         assertShown(
-            UiTags.PICKER_APP_TITLE, UiTags.OPEN_HISTORY, UiTags.PICKER_CREDIT_CHIP, UiTags.PICKER_HEADER_DIVIDER,
-            UiTags.PICKER_HEADING, UiTags.PICKER_SUBHEADING, UiTags.PICKER_RIG_CARD, UiTags.PICKER_RIG_AVATAR,
+            UiTags.PICKER_LOGO, UiTags.PICKER_APP_TITLE, UiTags.PICKER_TAGLINE, UiTags.PICKER_CREDIT_CHIP,
+            UiTags.PICKER_ACCOUNT_STATUS, UiTags.PICKER_ACCOUNT_AVATAR, UiTags.OPEN_HISTORY, UiTags.PICKER_HEADING,
+            UiTags.PICKER_SUBHEADING, UiTags.PICKER_RIG_CARD, UiTags.PICKER_RIG_AVATAR,
             UiTags.PICKER_RIG_NICKNAME, UiTags.PICKER_RIG_SUBTITLE, UiTags.PICKER_RIG_LAST_CHECKED,
             UiTags.PICKER_RIG_DELETE, UiTags.PICKER_NEW_RIG_LABEL, UiTags.PICKER_NEW_RIG_INPUT,
             UiTags.PICKER_CREATE_BUTTON, UiTags.PICKER_FEEDBACK_LINK,
         )
+    }
+
+    @Test
+    fun rigPickerAccountMenu() {
+        setPicker(onDeleteRig = { true })
+
+        composeRule.onNodeWithTag(UiTags.PICKER_ACCOUNT_STATUS).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { composeRule.nodesWithTag(UiTags.PICKER_ACCOUNT_MENU) > 0 }
+
+        assertShown(
+            UiTags.PICKER_ACCOUNT_MENU, UiTags.PICKER_ACCOUNT_MENU_EMAIL, UiTags.PICKER_SIGN_OUT_BUTTON,
+            UiTags.PICKER_ACCOUNT_MENU_CANCEL,
+        )
+    }
+
+    @Test
+    fun rigPickerWithNoSavedRigsSignedOut() {
+        setPicker(onDeleteRig = null, rigs = emptyList(), signedOut = true, accountLabel = null)
+
+        assertShown(UiTags.PICKER_EMPTY_STATE, UiTags.PICKER_ACCOUNT_STATUS, UiTags.PICKER_ACCOUNT_AVATAR)
     }
 
     @Test
@@ -182,8 +212,8 @@ class UiTagsDisplayedTest {
         setChooser()
 
         assertShown(
-            UiTags.CHOOSER_TITLE, UiTags.CHOOSER_CREDIT_CHIP, UiTags.CHOOSER_STEP_BAR, UiTags.CHOOSER_PROMPT,
-            UiTags.CHOOSER_SCAN_CARD, UiTags.CHOOSER_SCAN_BADGE, UiTags.CHOOSER_MANUAL_CARD,
+            UiTags.CHOOSER_BACK, UiTags.CHOOSER_TITLE, UiTags.CHOOSER_CREDIT_CHIP, UiTags.CHOOSER_STEP_BAR,
+            UiTags.CHOOSER_PROMPT, UiTags.CHOOSER_SCAN_CARD, UiTags.CHOOSER_SCAN_BADGE, UiTags.CHOOSER_MANUAL_CARD,
             UiTags.CHOOSER_MANUAL_BADGE, UiTags.CHOOSER_FOOTER_NOTE,
         )
     }
@@ -192,7 +222,7 @@ class UiTagsDisplayedTest {
     fun chooserWhileAScanIsInFlight() {
         setChooser(ScanUiState.Loading)
 
-        assertShown(UiTags.CHOOSER_LOADING_OVERLAY)
+        assertShown(UiTags.CHOOSER_LOADING_OVERLAY, UiTags.CHOOSER_LOADING_TEXT)
     }
 
     @Test

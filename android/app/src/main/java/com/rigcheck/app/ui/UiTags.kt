@@ -11,7 +11,6 @@ object UiTags {
     const val PICKER_APP_TITLE = "picker_app_title"
     const val OPEN_HISTORY = "open_history"
     const val PICKER_CREDIT_CHIP = "picker_credit_chip"
-    const val PICKER_HEADER_DIVIDER = "picker_header_divider"
     const val PICKER_HEADING = "picker_heading"
     const val PICKER_SUBHEADING = "picker_subheading"
     const val PICKER_RIG_CARD = "picker_rig_card"
@@ -26,6 +25,17 @@ object UiTags {
     const val PICKER_FEEDBACK_LINK = "picker_feedback_link"
     const val SEND_FEEDBACK_NO_MAIL_APP = "send_feedback_no_mail_app"
 
+    // rig_picker, elements the design added (#192; the maps' `added_elements`, whose tag is `new_test_tag`)
+    const val PICKER_LOGO = "picker_logo"
+    const val PICKER_TAGLINE = "picker_tagline"
+    const val PICKER_ACCOUNT_STATUS = "picker_account_status"
+    const val PICKER_ACCOUNT_AVATAR = "picker_account_avatar"
+    const val PICKER_ACCOUNT_MENU = "picker_account_menu"
+    const val PICKER_ACCOUNT_MENU_EMAIL = "picker_account_menu_email"
+    const val PICKER_SIGN_OUT_BUTTON = "picker_sign_out_button"
+    const val PICKER_ACCOUNT_MENU_CANCEL = "picker_account_menu_cancel"
+    const val PICKER_EMPTY_STATE = "picker_empty_state"
+
     // chooser
     const val CHOOSER_TITLE = "chooser_title"
     const val CHOOSER_CREDIT_CHIP = "chooser_credit_chip"
@@ -37,6 +47,8 @@ object UiTags {
     const val CHOOSER_MANUAL_BADGE = "chooser_manual_badge"
     const val CHOOSER_FOOTER_NOTE = "chooser_footer_note"
     const val CHOOSER_LOADING_OVERLAY = "chooser_loading_overlay"
+    const val CHOOSER_BACK = "chooser_back"
+    const val CHOOSER_LOADING_TEXT = "chooser_loading_text"
 
     // photo_source_dialog
     const val PHOTO_DIALOG_TITLE = "photo_dialog_title"

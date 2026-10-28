@@ -73,7 +73,8 @@ fun rigCheckFieldColors(state: RigCheckFieldState): RigCheckFieldColors = when (
 // Disabled: the disabled fill at 70%. A number field is this with `numeric = true` and a `unit`.
 @Composable
 fun RigCheckTextField(
-    label: String,
+    // null: no label above the box, for a field some other text already labels (the Rig picker's new-rig panel).
+    label: String?,
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -101,7 +102,7 @@ fun RigCheckTextField(
     val valueStyle = RigCheckStyles.body.copy(fontSize = 17.sp, color = colors.value)
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier.fillMaxWidth()) {
-        Text(label, style = RigCheckStyles.label, color = Ink)
+        if (label != null) Text(label, style = RigCheckStyles.label, color = Ink)
         BasicTextField(
             value = value,
             onValueChange = onValueChange,

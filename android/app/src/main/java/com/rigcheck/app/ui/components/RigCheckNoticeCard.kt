@@ -50,6 +50,8 @@ fun RigCheckNoticeCard(
     modifier: Modifier = Modifier,
     title: String? = null,
     icon: ImageVector = if (tone == RigCheckNoticeTone.Info) Icons.Filled.Info else Icons.Filled.Warning,
+    // For the tag of the words (the design measures the words, not the card around them).
+    textModifier: Modifier = Modifier,
 ) {
     val colors = rigCheckNoticeColors(tone)
     Surface(
@@ -65,7 +67,7 @@ fun RigCheckNoticeCard(
             Icon(icon, contentDescription = null, tint = colors.icon, modifier = Modifier.size(22.dp))
             Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
                 if (title != null) Text(title, style = RigCheckStyles.titleSm, color = colors.text)
-                Text(text, style = RigCheckStyles.bodySm, color = colors.text)
+                Text(text, style = RigCheckStyles.bodySm, color = colors.text, modifier = textModifier)
             }
         }
     }

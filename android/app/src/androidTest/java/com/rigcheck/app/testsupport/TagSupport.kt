@@ -3,8 +3,8 @@ package com.rigcheck.app.testsupport
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
-import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -41,9 +41,10 @@ fun SemanticsNodeInteractionsProvider.onRigCard(nickname: String): SemanticsNode
 fun SemanticsNodeInteractionsProvider.rigCardCount(nickname: String): Int =
     onAllNodes(hasRigCard(nickname)).fetchSemanticsNodes().size
 
-// The delete control on that Rig's card.
+// The delete control on that Rig's card. It sits beside the card's tappable body, not inside it (#192: the bin is its
+// own target), so it is found by the name it has for a screen reader, "Delete <nickname>".
 fun SemanticsNodeInteractionsProvider.onRigDeleteButton(nickname: String): SemanticsNodeInteraction =
-    onNode(hasTestTag(UiTags.PICKER_RIG_DELETE) and hasAnyAncestor(hasRigCard(nickname)))
+    onNode(hasTestTag(UiTags.PICKER_RIG_DELETE) and hasContentDescription("Delete $nickname"))
 
 // A History entry, found by the Rig nickname it shows.
 fun SemanticsNodeInteractionsProvider.onHistoryEntry(nickname: String): SemanticsNodeInteraction =

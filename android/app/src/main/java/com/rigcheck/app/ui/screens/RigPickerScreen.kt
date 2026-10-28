@@ -1,33 +1,30 @@
 package com.rigcheck.app.ui.screens
 
 import android.text.format.DateUtils
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,17 +34,43 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.rigcheck.app.R
 import com.rigcheck.app.domain.model.RecentRig
-import com.rigcheck.app.ui.components.CreditBalanceChip
 import com.rigcheck.app.ui.UiTags
+import com.rigcheck.app.ui.components.CreditBalanceChip
 import com.rigcheck.app.ui.components.FeedbackLink
-import com.rigcheck.app.ui.theme.AvatarPalette
+import com.rigcheck.app.ui.components.RigCheckAccount
+import com.rigcheck.app.ui.components.RigCheckAccountSheet
+import com.rigcheck.app.ui.components.RigCheckAccountStatus
+import com.rigcheck.app.ui.components.RigCheckButton
+import com.rigcheck.app.ui.components.RigCheckButtonKind
+import com.rigcheck.app.ui.components.RigCheckButtonSize
+import com.rigcheck.app.ui.components.RigCheckEmptyState
+import com.rigcheck.app.ui.components.RigCheckRigCard
+import com.rigcheck.app.ui.components.RigCheckTextField
+import com.rigcheck.app.ui.components.RigCheckTopBar
+import com.rigcheck.app.ui.components.chipBelowTitle
+import com.rigcheck.app.ui.theme.Ink
+import com.rigcheck.app.ui.theme.InkMuted
+import com.rigcheck.app.ui.theme.PurpleDeep
+import com.rigcheck.app.ui.theme.Radii
+import com.rigcheck.app.ui.theme.RigCheckStyles
+import com.rigcheck.app.ui.theme.Sizes
+import com.rigcheck.app.ui.theme.TintPurple
+import com.rigcheck.app.ui.theme.Surface as SurfaceWhite
 import java.time.Instant
 import kotlinx.coroutines.launch
+
+// Below this content width (a 360 dp phone is 328 dp of content), "History" goes under the heading, full width
+// (resize-rules.md, "360 x 640").
+private val HistoryBesideHeadingMinWidth = 360.dp
 
 @Composable
 fun RigPickerScreen(
@@ -57,8 +80,15 @@ fun RigPickerScreen(
     onStartNewRig: (String) -> Unit,
     onOpenPaywall: () -> Unit,
     onOpenHistory: () -> Unit = {},
-    // Whether the account is signed out: then the balance chip says "0 scans", not "…".
+    // Whether the account is signed out: then the balance chip says "0 scans", not "…", and the header says
+    // "Not signed in".
     signedOut: Boolean = false,
+    // The signed-in account's email (its id if it has none): the header says "Signed in as" and it. null with
+    // `signedOut` false is an account still being looked up: the header has no account row yet.
+    accountLabel: String? = null,
+    // Signed out: the account row goes to sign-in (the same route the chip takes). Signed in: the sheet's Sign out.
+    onSignIn: () -> Unit = {},
+    onSignOut: () -> Unit = {},
     // Deletes a Rig from the Garage: true once it is gone, false if it could not be deleted and is still
     // there. Passed only when Rigs can be deleted (a signed-in account); with null no Rig has a delete control.
     onDeleteRig: (suspend (RecentRig) -> Boolean)? = null,
@@ -66,93 +96,238 @@ fun RigPickerScreen(
     var newRigNickname by remember { mutableStateOf("") }
     // The Rig the user has asked to delete and has not yet confirmed or cancelled.
     var rigToDelete by remember { mutableStateOf<RecentRig?>(null) }
+    var accountSheetOpen by remember { mutableStateOf(false) }
     // Signing out takes the delete handler away; the open question goes with it and does not come back at the
     // next sign-in.
     LaunchedEffect(onDeleteRig == null) { if (onDeleteRig == null) rigToDelete = null }
 
+    val account: RigCheckAccount? = when {
+        signedOut -> RigCheckAccount.SignedOut
+        accountLabel != null -> RigCheckAccount.SignedIn(accountLabel)
+        else -> null
+    }
+    // The account the user is signed in as goes away with the sign-out; so does the sheet that offered it.
+    LaunchedEffect(account is RigCheckAccount.SignedIn) { if (account !is RigCheckAccount.SignedIn) accountSheetOpen = false }
+
+    // At a large font the chip goes to a row of its own under the name (resize-rules.md).
+    val chipBelow = chipBelowTitle()
+    // At a large font with the keyboard open the pinned bar would leave no room for the form: it drops the tagline and
+    // the account row (the keyboard-open bar is compact, resize-rules.md) so the new-Rig panel can still scroll into view.
+    @OptIn(ExperimentalLayoutApi::class)
+    val compact = chipBelow && WindowInsets.isImeVisible
+    val chip: @Composable (Modifier) -> Unit = { modifier ->
+        CreditBalanceChip(
+            balance = creditBalance,
+            signedOut = signedOut,
+            modifier = modifier.testTag(UiTags.PICKER_CREDIT_CHIP),
+            onClick = onOpenPaywall,
+        )
+    }
+    val belowTheNameAndLogo: (@Composable ColumnScope.() -> Unit)? = if ((account == null || compact) && !chipBelow) {
+        null
+    } else {
+        {
+            if (chipBelow) chip(Modifier.align(Alignment.End))
+            if (account != null && !compact) {
+                RigCheckAccountStatus(
+                    account = account,
+                    onClick = if (account is RigCheckAccount.SignedIn) ({ accountSheetOpen = true }) else onSignIn,
+                    modifier = Modifier.testTag(UiTags.PICKER_ACCOUNT_STATUS),
+                    avatarModifier = Modifier.testTag(UiTags.PICKER_ACCOUNT_AVATAR),
+                )
+            }
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                "RigCheck",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.weight(1f).testTag(UiTags.PICKER_APP_TITLE),
-            )
-            TextButton(onClick = onOpenHistory, modifier = Modifier.testTag(UiTags.OPEN_HISTORY)) { Text("History") }
-            CreditBalanceChip(
-                balance = creditBalance,
-                signedOut = signedOut,
-                modifier = Modifier.testTag(UiTags.PICKER_CREDIT_CHIP),
-                onClick = onOpenPaywall,
-            )
-        }
-        HorizontalDivider(modifier = Modifier.testTag(UiTags.PICKER_HEADER_DIVIDER))
+        RigCheckTopBar(
+            title = "RigCheck",
+            compact = compact,
+            brand = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Logo(modifier = Modifier.testTag(UiTags.PICKER_LOGO))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "RigCheck",
+                            style = RigCheckStyles.topBarTitle,
+                            color = Ink,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.testTag(UiTags.PICKER_APP_TITLE),
+                        )
+                        if (!compact) {
+                            Text(
+                                "Weight safety, before you roll",
+                                style = RigCheckStyles.caption.copy(fontSize = 13.sp, lineHeight = 16.sp),
+                                color = Ink,
+                                modifier = Modifier.testTag(UiTags.PICKER_TAGLINE),
+                            )
+                        }
+                    }
+                }
+            },
+            end = { if (!chipBelow) chip(Modifier) },
+            below = belowTheNameAndLogo,
+        )
 
-        Column(modifier = Modifier.padding(20.dp, 16.dp, 20.dp, 8.dp)) {
-            Text(
-                "Which rig?",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.testTag(UiTags.PICKER_HEADING),
-            )
-            Text(
-                "Pick one you have checked before, or start a new one.",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 4.dp).testTag(UiTags.PICKER_SUBHEADING),
-            )
-        }
-
-        LazyColumn(
-            modifier = Modifier.weight(1f).padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
-        ) {
-            itemsIndexed(recentRigs) { index, rig ->
-                RecentRigCard(
-                    rig = rig,
-                    index = index,
-                    onClick = { onSelectRecentRig(rig) },
-                    onAskDelete = if (onDeleteRig != null) ({ rigToDelete = rig }) else null,
-                )
-            }
-        }
-
-        val asked = rigToDelete
-        if (asked != null && onDeleteRig != null) {
-            DeleteRigDialog(rig = asked, onDelete = onDeleteRig, onClose = { rigToDelete = null })
-        }
-
+        // Everything under the bar scrolls as one column (resize-rules.md): the heading, the Rig cards, the new-Rig
+        // panel and the feedback link.
         Column(
-            modifier = Modifier.padding(20.dp, 8.dp, 20.dp, 20.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 24.dp),
         ) {
-            Text(
-                "Or start a new rig",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.testTag(UiTags.PICKER_NEW_RIG_LABEL),
-            )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextField(
-                    value = newRigNickname,
-                    onValueChange = { newRigNickname = it },
-                    placeholder = { Text("Rig nickname") },
-                    modifier = Modifier.weight(1f).testTag(UiTags.PICKER_NEW_RIG_INPUT),
-                )
-                Button(
-                    onClick = { onStartNewRig(newRigNickname.trim()) },
-                    enabled = newRigNickname.isNotBlank(),
-                    modifier = Modifier.testTag(UiTags.PICKER_CREATE_BUTTON),
-                ) { Text("Create") }
+            HeadingRow(onOpenHistory)
+
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                recentRigs.forEachIndexed { index, rig ->
+                    RecentRigCard(
+                        rig = rig,
+                        index = index,
+                        onClick = { onSelectRecentRig(rig) },
+                        onAskDelete = if (onDeleteRig != null) ({ rigToDelete = rig }) else null,
+                    )
+                }
+                if (recentRigs.isEmpty()) {
+                    RigCheckEmptyState(
+                        title = "No saved rigs yet",
+                        text = "Finish a check and your rig shows up here. Manual entry is free.",
+                        mark = { Logo() },
+                        modifier = Modifier.testTag(UiTags.PICKER_EMPTY_STATE),
+                    )
+                }
             }
-            FeedbackLink(linkModifier = Modifier.testTag(UiTags.PICKER_FEEDBACK_LINK))
+
+            NewRigPanel(
+                nickname = newRigNickname,
+                onNicknameChange = { newRigNickname = it },
+                onCreate = { onStartNewRig(newRigNickname.trim()) },
+            )
+            FeedbackLink(
+                modifier = Modifier.fillMaxWidth(),
+                linkModifier = Modifier.testTag(UiTags.PICKER_FEEDBACK_LINK),
+            )
         }
+    }
+
+    val asked = rigToDelete
+    if (asked != null && onDeleteRig != null) {
+        DeleteRigDialog(rig = asked, onDelete = onDeleteRig, onClose = { rigToDelete = null })
+    }
+
+    if (accountSheetOpen && account is RigCheckAccount.SignedIn) {
+        RigCheckAccountSheet(
+            account = account,
+            onSignOut = {
+                accountSheetOpen = false
+                onSignOut()
+            },
+            onDismiss = { accountSheetOpen = false },
+            modifier = Modifier.testTag(UiTags.PICKER_ACCOUNT_MENU),
+            emailModifier = Modifier.testTag(UiTags.PICKER_ACCOUNT_MENU_EMAIL),
+            signOutModifier = Modifier.testTag(UiTags.PICKER_SIGN_OUT_BUTTON),
+            cancelModifier = Modifier.testTag(UiTags.PICKER_ACCOUNT_MENU_CANCEL),
+        )
+    }
+}
+
+// The app's mark: the 52 dp logo in a 14 dp rounded square with a 2 dp white border (so 56 dp in all), as the top bar
+// and the empty state draw it.
+@Composable
+private fun Logo(modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(Radii.Card)
+    Image(
+        painter = painterResource(R.drawable.logo),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = modifier
+            .size(Sizes.TopBarLogo + 4.dp)
+            .border(2.dp, SurfaceWhite, shape)
+            .padding(2.dp)
+            .clip(shape),
+    )
+}
+
+@Composable
+private fun HeadingRow(onOpenHistory: () -> Unit) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val beside = maxWidth >= HistoryBesideHeadingMinWidth
+        val heading: @Composable (Modifier) -> Unit = { modifier ->
+            Column(modifier = modifier) {
+                Text(
+                    "Which rig?",
+                    style = RigCheckStyles.heading,
+                    color = Ink,
+                    modifier = Modifier.testTag(UiTags.PICKER_HEADING),
+                )
+                Text(
+                    "Pick one you have checked before, or start a new one.",
+                    style = RigCheckStyles.body.copy(fontSize = 16.sp, lineHeight = 22.sp),
+                    color = InkMuted,
+                    modifier = Modifier.testTag(UiTags.PICKER_SUBHEADING),
+                )
+            }
+        }
+        val history: @Composable (Modifier) -> Unit = { modifier ->
+            RigCheckButton(
+                text = "History",
+                onClick = onOpenHistory,
+                kind = RigCheckButtonKind.Secondary,
+                size = RigCheckButtonSize.Compact,
+                icon = Icons.Outlined.Schedule,
+                modifier = modifier.testTag(UiTags.OPEN_HISTORY),
+            )
+        }
+        if (beside) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                heading(Modifier.weight(1f))
+                history(Modifier)
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                heading(Modifier)
+                history(Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
+// components.md, "Panel (tinted block)": a purple panel, 24 dp radius, 16 dp padding and 12 dp gaps, holding the
+// label, the nickname field and Create (disabled until the nickname is not blank).
+@Composable
+private fun NewRigPanel(nickname: String, onNicknameChange: (String) -> Unit, onCreate: () -> Unit) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(TintPurple, RoundedCornerShape(Radii.Panel))
+            .padding(16.dp),
+    ) {
+        Text(
+            "Or start a new rig",
+            style = RigCheckStyles.title,
+            color = PurpleDeep,
+            modifier = Modifier.fillMaxWidth().testTag(UiTags.PICKER_NEW_RIG_LABEL),
+        )
+        RigCheckTextField(
+            label = null,
+            value = nickname,
+            onValueChange = onNicknameChange,
+            placeholder = "Rig nickname",
+            inputModifier = Modifier.testTag(UiTags.PICKER_NEW_RIG_INPUT),
+        )
+        RigCheckButton(
+            text = "Create",
+            onClick = onCreate,
+            enabled = nickname.isNotBlank(),
+            modifier = Modifier.testTag(UiTags.PICKER_CREATE_BUTTON),
+        )
     }
 }
 
@@ -209,7 +384,6 @@ private fun DeleteRigDialog(rig: RecentRig, onDelete: suspend (RecentRig) -> Boo
 
 @Composable
 private fun RecentRigCard(rig: RecentRig, index: Int, onClick: () -> Unit, onAskDelete: (() -> Unit)?) {
-    val avatarColor = AvatarPalette[index % AvatarPalette.size]
     val subtitle = listOfNotNull(rig.truck.description, rig.trailer.description)
         .filter { it.isNotBlank() }
         .joinToString(" · ")
@@ -223,49 +397,20 @@ private fun RecentRigCard(rig: RecentRig, index: Int, onClick: () -> Unit, onAsk
         }.getOrDefault("")
     }
 
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.fillMaxWidth().testTag(UiTags.PICKER_RIG_CARD).clickable(onClick = onClick),
-    ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(44.dp).background(avatarColor, CircleShape).testTag(UiTags.PICKER_RIG_AVATAR),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    rig.nickname.take(1).uppercase(),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
-                Text(
-                    rig.nickname,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.testTag(UiTags.PICKER_RIG_NICKNAME),
-                )
-                if (subtitle.isNotBlank()) {
-                    Text(
-                        subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.testTag(UiTags.PICKER_RIG_SUBTITLE),
-                    )
-                }
-                if (relativeTime.isNotBlank()) {
-                    Text(
-                        "Last checked $relativeTime",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.testTag(UiTags.PICKER_RIG_LAST_CHECKED),
-                    )
-                }
-            }
-            if (onAskDelete != null) {
-                // A separate control on the card, so tapping it asks about deleting and does not start a check.
-                IconButton(onClick = onAskDelete, modifier = Modifier.testTag(UiTags.PICKER_RIG_DELETE)) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Delete ${rig.nickname}")
-                }
-            }
-        }
-    }
+    // The card's tag is on its body, the part a tap starts a check from: it merges the Rig's words into one node, and
+    // the delete bin beside it is its own control, tagged apart.
+    RigCheckRigCard(
+        nickname = rig.nickname,
+        subtitle = subtitle,
+        lastChecked = relativeTime.takeIf { it.isNotBlank() }?.let { "Last checked $it" },
+        index = index,
+        onClick = onClick,
+        onDelete = onAskDelete,
+        bodyModifier = Modifier.testTag(UiTags.PICKER_RIG_CARD),
+        deleteModifier = Modifier.testTag(UiTags.PICKER_RIG_DELETE),
+        avatarModifier = Modifier.testTag(UiTags.PICKER_RIG_AVATAR),
+        nicknameModifier = Modifier.testTag(UiTags.PICKER_RIG_NICKNAME),
+        subtitleModifier = Modifier.testTag(UiTags.PICKER_RIG_SUBTITLE),
+        lastCheckedModifier = Modifier.testTag(UiTags.PICKER_RIG_LAST_CHECKED),
+    )
 }

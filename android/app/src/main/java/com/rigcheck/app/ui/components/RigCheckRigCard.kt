@@ -72,8 +72,14 @@ fun RigCheckRigCard(
     modifier: Modifier = Modifier,
     onDelete: (() -> Unit)? = null,
     deleteEnabled: Boolean = true,
+    // The tappable body and the bin carry the tags of the card and of its delete control; the four parts of the
+    // body have a modifier each, for theirs.
     bodyModifier: Modifier = Modifier,
     deleteModifier: Modifier = Modifier,
+    avatarModifier: Modifier = Modifier,
+    nicknameModifier: Modifier = Modifier,
+    subtitleModifier: Modifier = Modifier,
+    lastCheckedModifier: Modifier = Modifier,
 ) {
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
@@ -98,7 +104,7 @@ fun RigCheckRigCard(
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(52.dp).background(avatar.fill, CircleShape),
+                    modifier = avatarModifier.size(52.dp).background(avatar.fill, CircleShape),
                 ) {
                     Text(
                         nickname.trim().take(1).uppercase(),
@@ -113,10 +119,25 @@ fun RigCheckRigCard(
                         color = Ink,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = nicknameModifier,
                     )
-                    Text(subtitle, style = RigCheckStyles.bodySm, color = InkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (subtitle.isNotBlank()) {
+                        Text(
+                            subtitle,
+                            style = RigCheckStyles.bodySm,
+                            color = InkMuted,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = subtitleModifier,
+                        )
+                    }
                     if (lastChecked != null) {
-                        Text(lastChecked, style = RigCheckStyles.micro.copy(fontWeight = FontWeight.Medium), color = InkMuted)
+                        Text(
+                            lastChecked,
+                            style = RigCheckStyles.micro.copy(fontWeight = FontWeight.Medium),
+                            color = InkMuted,
+                            modifier = lastCheckedModifier,
+                        )
                     }
                 }
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = InkMuted)

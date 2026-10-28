@@ -239,10 +239,12 @@ def test_a_missing_top_level_token_key_fails(parts, key):
     assert _problems_with(parts, f"tokens.json lacks {key}")
 
 
-# Rule: every element has an implemented flag, false until a re-skin ticket builds it.
-def test_every_element_starts_not_implemented(real):
-    assert not any(real["implemented"]["implemented"].values())
-    assert len(real["implemented"]["implemented"]) == 167 + 26
+# Rule: every element has an implemented flag, a plain true or false (false until a re-skin ticket builds it; #192 was
+# the first to set any, so this no longer says that none is true).
+def test_every_element_has_a_true_or_false_implemented_flag(real):
+    flags = real["implemented"]["implemented"]
+    assert len(flags) == 167 + 26
+    assert all(isinstance(value, bool) for value in flags.values())
 
 
 def test_an_element_without_a_flag_fails(parts):

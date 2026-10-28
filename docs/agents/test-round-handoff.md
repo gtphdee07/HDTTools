@@ -18,7 +18,7 @@ Two lanes, one build session each, a **new** session for every ticket. Lane A is
 |---|---|---|---|---|
 | 1 | [#188](#188-a-test-tag-on-every-android-ui-element-redesign-step-1) A test tag on every UI element | A | nothing blocks it | none |
 | 2 | [#189](#189-baseline-screenshots-and-measured-bounds-redesign-step-2) Baseline screenshots (emulator alone) | A | #188 merged | none |
-| 3 | [#191](#191-theme-tokens-and-shared-components-from-the-design) Theme, tokens, shared components | A | #189 merged | look through the copy and frames first |
+| 3 | [#191](#191-theme-tokens-and-shared-components-from-the-design) Theme, tokens, shared components | A | #189 merged | look through the frames first |
 | 4 to 8 | #192 to #196 re-skin: [Rig picker and Chooser](#192-re-skin-the-rig-picker-chooser-and-photo-source-dialog), [entry screens](#193-re-skin-the-truck-tag-trailer-tag-and-scale-ticket-entry-screens), [Disclaimer and Results](#194-re-skin-the-disclaimer-and-results-screens), [History](#195-re-skin-the-history-screen), [Paywall, Account, dialogs](#196-re-skin-the-paywall-account-and-the-two-scan-dialogs) | A | #191 merged | compare with the designer's picture on your phone |
 | 9 | [#197](#197-final-pass-and-sign-off) Final pass and sign-off | A | #192 to #196 merged | check every screen, sign off |
 | optional | [#132](#132-optional-is-mutation-testing-worth-running-research) Is mutation testing worth running? | any | any time | none |
@@ -49,7 +49,8 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - [ ] With the rebuilt APK (after #197), on the phone: **Send feedback** at the foot of the Rig picker and of the sign-in screen opens a draft to WTIAppDev@gmail.com; the Paywall shows the bold "Beta: test payments" line. Optionally crash the app once and check that the next launch asks "RigCheck closed unexpectedly last time. Send details?" (Send opens a draft, Not now deletes the report).
 - [x] The design round (#190) ran and its hand-back is merged (2026-10-27).
 - [x] The hand-back's four decisions are answered and recorded on #191 (2026-10-27): approve the simplified logo mark (launcher icon and splash); bundle Outfit and DM Sans; keep the scan-balance chip on the Truck screen; defer the pinned label crop to #199.
-- [ ] Before #191 starts, look through `docs/android-redesign/design-return/copy-changes.md` (four changed strings and the new ones; the empty Rig picker text is the only wholly new wording) and the frames in `annotated/`, and tell Claude any string or screen you want changed. Anything you do not mention is built as drawn.
+- [x] The copy in `copy-changes.md` is approved as written (2026-10-27, recorded on #191).
+- [ ] Before #191 starts, look through the frames in `docs/android-redesign/design-return/annotated/` and tell Claude any screen you want changed. Anything you do not mention is built as drawn.
 - [ ] On each re-skin ticket (#192 to #196): compare the screenshot in the STATUS comment with the designer's picture on your phone before Claude merges it. On #197, check every screen and sign off.
 - [ ] After #197: build the tester APK with a higher `-PappVersionCode` (4 or more; raise it for every APK you send), from `android`: `.\gradlew.bat assembleBeta -PappVersionCode=<n>`. Confirm `keytool -printcert -jarfile app\build\outputs\apk\beta\app-beta.apk` shows the SHA-1 in `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`.
 - [ ] Before inviting: add each Alpha tester's Gmail as a Google test user (up to 5); send the APK and the guide.

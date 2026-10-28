@@ -109,6 +109,11 @@ fun RigCheckNavHost(
                 recentRigs = recentRigs,
                 creditBalance = viewModel.creditBalance,
                 signedOut = accountState is AccountState.SignedOut,
+                accountLabel = (accountState as? AccountState.SignedIn)?.account?.let { it.email ?: it.id },
+                // Signed out, the account row goes where the balance chip goes: the Paywall route, which shows the
+                // sign-in screen to a signed-out user.
+                onSignIn = { navController.navigate(RigCheckRoute.Paywall) },
+                onSignOut = { viewModel.signOut() },
                 onSelectRecentRig = { rig ->
                     viewModel.selectRecentRig(rig)
                     navController.navigate(RigCheckRoute.Chooser(EntryModule.SCALE))
@@ -156,6 +161,7 @@ fun RigCheckNavHost(
                 onOpenPaywall = { navController.navigate(RigCheckRoute.Paywall) },
                 onDismissScanError = { viewModel.clearScanError() },
                 onScanErrorNextStep = { step -> followScanNextStep(step, context.contentResolver) },
+                onBack = { navController.popBackStack() },
             )
         }
 

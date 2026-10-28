@@ -46,6 +46,61 @@ def test_a_ui_tags_constant_that_no_screen_sets_is_reported(monkeypatch):
     assert any("UiTags.OPEN_HISTORY" in p and "set by no screen" in p for p in ui_inventory.problems())
 
 
+def _with_implemented(monkeypatch, **flags):
+    """The design hand-back as it stands, with the implemented flag of the given ids (id with `_` for `.`) changed."""
+    real = ui_inventory.design_return_check.load_parts
+
+    def load_parts():
+        parts = real()
+        parts["implemented"] = {"implemented": {**parts["implemented"]["implemented"], **{k.replace("_", ".", 1): v for k, v in flags.items()}}}
+        return parts
+
+    monkeypatch.setattr(ui_inventory.design_return_check, "load_parts", load_parts)
+
+
+def test_an_implemented_element_the_design_added_must_have_its_tag_in_ui_tags(monkeypatch):
+    _with_implemented(monkeypatch, picker_logo=True)
+    constants = ui_inventory.ui_tags_constants()
+    constants.pop("PICKER_LOGO")
+    monkeypatch.setattr(ui_inventory, "ui_tags_constants", lambda: constants)
+
+    assert any(
+        "'picker_logo' is the new_test_tag of an implemented element the design added but is not in UiTags" in p
+        for p in ui_inventory.problems()
+    )
+
+
+def test_an_element_the_design_added_needs_no_tag_until_a_ticket_has_built_it(monkeypatch):
+    _with_implemented(monkeypatch, picker_logo=False)
+    constants = ui_inventory.ui_tags_constants()
+    constants.pop("PICKER_LOGO")
+    monkeypatch.setattr(ui_inventory, "ui_tags_constants", lambda: constants)
+
+    assert not any("picker_logo" in p for p in ui_inventory.problems())
+
+
+def test_a_tag_of_an_added_element_that_is_not_yet_implemented_is_reported_as_in_no_element(monkeypatch):
+    _with_implemented(monkeypatch, picker_logo=False)
+
+    assert any("UiTags has 'picker_logo', which is in no test_tag_new" in p for p in ui_inventory.problems())
+
+
+def test_an_element_the_design_removed_loses_its_tag_once_it_is_implemented(monkeypatch):
+    _with_implemented(monkeypatch, picker_header_divider=True)
+    constants = {**ui_inventory.ui_tags_constants(), "PICKER_HEADER_DIVIDER": "picker_header_divider"}
+    monkeypatch.setattr(ui_inventory, "ui_tags_constants", lambda: constants)
+
+    assert any("UiTags has 'picker_header_divider', which is in no test_tag_new" in p for p in ui_inventory.problems())
+
+
+def test_an_element_the_design_removed_keeps_its_tag_until_it_is_implemented(monkeypatch):
+    _with_implemented(monkeypatch, picker_header_divider=False)
+    constants = ui_inventory.ui_tags_constants()
+    monkeypatch.setattr(ui_inventory, "ui_tags_constants", lambda: constants)
+
+    assert any("test_tag_new 'picker_header_divider' is in ui-inventory.json but not in UiTags" in p for p in ui_inventory.problems())
+
+
 def test_a_tag_the_displayed_test_only_taps_is_not_counted_as_shown(monkeypatch, tmp_path):
     text = ui_inventory.DISPLAYED_TEST.read_text(encoding="utf-8")
     # OPEN_HISTORY stays named in the file, but not as an assertShown argument.

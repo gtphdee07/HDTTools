@@ -6,37 +6,59 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.rigcheck.app.data.createScanPhotoUri
 import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanUiState
 import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.canStartScan
 import com.rigcheck.app.ui.components.CreditBalanceChip
+import com.rigcheck.app.ui.components.RigCheckBadge
+import com.rigcheck.app.ui.components.RigCheckBadgeKind
+import com.rigcheck.app.ui.components.RigCheckButton
+import com.rigcheck.app.ui.components.RigCheckButtonKind
+import com.rigcheck.app.ui.components.RigCheckButtonSize
+import com.rigcheck.app.ui.components.RigCheckDialog
+import com.rigcheck.app.ui.components.RigCheckNoticeCard
+import com.rigcheck.app.ui.components.RigCheckNoticeTone
+import com.rigcheck.app.ui.components.RigCheckOptionCard
+import com.rigcheck.app.ui.components.RigCheckOptionKind
+import com.rigcheck.app.ui.components.RigCheckStepIndicator
+import com.rigcheck.app.ui.components.RigCheckTopBar
 import com.rigcheck.app.ui.components.ScanErrorDialog
-import com.rigcheck.app.ui.components.ScanOrManualChooser
-import com.rigcheck.app.ui.components.StepProgressBar
+import com.rigcheck.app.ui.components.chipBelowTitle
 import com.rigcheck.app.ui.navigation.EntryModule
+import com.rigcheck.app.ui.theme.Border
+import com.rigcheck.app.ui.theme.Ink
+import com.rigcheck.app.ui.theme.Opacity
+import com.rigcheck.app.ui.theme.RigCheckStyles
+import com.rigcheck.app.ui.theme.TealDeep
+import com.rigcheck.app.ui.theme.Surface as SurfaceWhite
 
 private data class ChooserCopy(val title: String, val prompt: String)
 
@@ -59,6 +81,8 @@ fun ChooserScreen(
     onOpenPaywall: () -> Unit,
     onDismissScanError: () -> Unit,
     onScanErrorNextStep: (ScanNextStep) -> Unit,
+    // The top bar's Back. It is disabled, and the overlay takes every tap, while a Scan is out.
+    onBack: () -> Unit = {},
 ) {
     val copy = copyFor(module)
     val context = LocalContext.current
@@ -92,87 +116,143 @@ fun ChooserScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    copy.title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.weight(1f).testTag(UiTags.CHOOSER_TITLE),
-                )
+        Column(modifier = Modifier.fillMaxSize()) {
+            // At a large font the chip goes to a row of its own under the title (resize-rules.md).
+            val chipBelow = chipBelowTitle()
+            val chip: @Composable (Modifier) -> Unit = { modifier ->
                 CreditBalanceChip(
                     balance = creditBalance,
                     signedOut = signedOut,
-                    modifier = Modifier.testTag(UiTags.CHOOSER_CREDIT_CHIP),
+                    modifier = modifier.testTag(UiTags.CHOOSER_CREDIT_CHIP),
                     onClick = onOpenPaywall,
                 )
             }
-            StepProgressBar(
-                step = module.ordinal + 1,
-                totalSteps = 3,
-                modifier = Modifier.padding(top = 16.dp).testTag(UiTags.CHOOSER_STEP_BAR),
-            )
-            Text(
-                copy.prompt,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp).testTag(UiTags.CHOOSER_PROMPT),
-            )
-            ScanOrManualChooser(
-                onScanPhoto = {
-                    if (canStartScan(creditBalance)) {
-                        showSourceDialog = true
-                    } else {
-                        onNeedCredits()
-                    }
+            RigCheckTopBar(
+                title = copy.title,
+                onBack = onBack,
+                backEnabled = scanState !is ScanUiState.Loading,
+                titleModifier = Modifier.testTag(UiTags.CHOOSER_TITLE),
+                backModifier = Modifier.testTag(UiTags.CHOOSER_BACK),
+                end = { if (!chipBelow) chip(Modifier) },
+                below = {
+                    if (chipBelow) chip(Modifier.align(Alignment.End))
+                    RigCheckStepIndicator(step = module.ordinal + 1, modifier = Modifier.testTag(UiTags.CHOOSER_STEP_BAR))
                 },
-                onChooseManual = onChooseManual,
             )
-            Text(
-                "This same choice appears again before the trailer tag and scale ticket screens.",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 16.dp).testTag(UiTags.CHOOSER_FOOTER_NOTE),
-            )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 24.dp),
+            ) {
+                Text(
+                    copy.prompt,
+                    style = RigCheckStyles.titleLg,
+                    color = Ink,
+                    modifier = Modifier.fillMaxWidth().testTag(UiTags.CHOOSER_PROMPT),
+                )
+                RigCheckOptionCard(
+                    kind = RigCheckOptionKind.Scan,
+                    title = "Scan Photo",
+                    description = "Photograph the label — Claude reads the fields for you.",
+                    icon = Icons.Filled.CameraAlt,
+                    onClick = {
+                        if (canStartScan(creditBalance)) {
+                            showSourceDialog = true
+                        } else {
+                            onNeedCredits()
+                        }
+                    },
+                    modifier = Modifier.testTag(UiTags.CHOOSER_SCAN_CARD),
+                    badge = {
+                        RigCheckBadge("1 credit", RigCheckBadgeKind.Credit, modifier = Modifier.testTag(UiTags.CHOOSER_SCAN_BADGE))
+                    },
+                )
+                RigCheckOptionCard(
+                    kind = RigCheckOptionKind.Manual,
+                    title = "Enter Manually",
+                    description = "Type the values in yourself — free, no photo, works offline.",
+                    icon = Icons.Filled.Keyboard,
+                    onClick = onChooseManual,
+                    modifier = Modifier.testTag(UiTags.CHOOSER_MANUAL_CARD),
+                    badge = {
+                        RigCheckBadge("Free", RigCheckBadgeKind.Free, modifier = Modifier.testTag(UiTags.CHOOSER_MANUAL_BADGE))
+                    },
+                )
+                RigCheckNoticeCard(
+                    text = "This same choice appears again before the trailer tag and scale ticket screens.",
+                    tone = RigCheckNoticeTone.Info,
+                    textModifier = Modifier.testTag(UiTags.CHOOSER_FOOTER_NOTE),
+                )
+            }
         }
 
         if (scanState is ScanUiState.Loading) {
             // Absorbs taps (#118): without a pointer handler a Box lets them through
             // to the buttons under it, so a second Scan, or manual entry with the
-            // first still out, could be started behind the spinner.
-            Box(
+            // first still out, could be started behind the spinner. It covers the top bar
+            // too, so Back and the balance chip are shut as well.
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f))
+                    .background(SurfaceWhite.copy(alpha = Opacity.ScanOverlayWash))
                     .pointerInput(Unit) { detectTapGestures { } }
                     .testTag(UiTags.CHOOSER_LOADING_OVERLAY),
-                contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    color = TealDeep,
+                    trackColor = Border,
+                    strokeWidth = 4.dp,
+                )
+                Text(
+                    "Reading…",
+                    style = RigCheckStyles.titleLg.copy(fontSize = 20.sp, lineHeight = 24.sp),
+                    color = Ink,
+                    modifier = Modifier.testTag(UiTags.CHOOSER_LOADING_TEXT),
+                )
             }
         }
     }
 
     if (showSourceDialog) {
-        AlertDialog(
+        RigCheckDialog(
             onDismissRequest = { showSourceDialog = false },
-            title = { Text("Scan Photo", modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_TITLE)) },
-            text = {
+            title = { Text("Scan Photo", style = RigCheckStyles.titleLg, color = Ink, modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_TITLE)) },
+            body = {
                 Text(
                     "Take a new photo, or choose one you already have?",
+                    style = RigCheckStyles.body.copy(lineHeight = 24.sp),
+                    color = Ink,
                     modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_BODY),
                 )
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    showSourceDialog = false
-                    launchGallery()
-                }, modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_GALLERY)) { Text("Choose from Gallery") }
-            },
-            dismissButton = {
-                TextButton(onClick = {
+        ) {
+            RigCheckButton(
+                text = "Take Photo",
+                onClick = {
                     showSourceDialog = false
                     launchCamera()
-                }, modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_CAMERA)) { Text("Take Photo") }
-            },
-        )
+                },
+                size = RigCheckButtonSize.Dialog,
+                icon = Icons.Filled.CameraAlt,
+                modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_CAMERA),
+            )
+            RigCheckButton(
+                text = "Choose from Gallery",
+                onClick = {
+                    showSourceDialog = false
+                    launchGallery()
+                },
+                kind = RigCheckButtonKind.Secondary,
+                size = RigCheckButtonSize.Dialog,
+                modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_GALLERY),
+            )
+        }
     }
 
     if (scanState is ScanUiState.Error) {

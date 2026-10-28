@@ -48,8 +48,9 @@ internal val RigCheckStepLabels = listOf("Truck", "Trailer", "Scale")
 fun RigCheckStepIndicator(step: Int, modifier: Modifier = Modifier) {
     val total = RigCheckStepLabels.size
     require(step in 1..total) { "step must be 1..$total, was $step" }
+    // 76 dp in all (the map's new_height): the caption (16), 8 dp, the circles (32), 4 dp and the label (16).
     Column(
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier.fillMaxWidth().semantics(mergeDescendants = true) {
             contentDescription = "Step $step of $total: ${RigCheckStepLabels[step - 1]}"
         },
@@ -62,7 +63,7 @@ fun RigCheckStepIndicator(step: Int, modifier: Modifier = Modifier) {
                     index + 1 == step -> RigCheckStepStatus.Current
                     else -> RigCheckStepStatus.Upcoming
                 }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     StepCircle(number = index + 1, status = status)
                     Text(
                         label,

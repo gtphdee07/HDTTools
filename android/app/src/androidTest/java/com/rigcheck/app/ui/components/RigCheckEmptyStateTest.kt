@@ -15,6 +15,7 @@ import com.rigcheck.app.testsupport.setRigCheckContent
 import com.rigcheck.app.ui.theme.Ink
 import com.rigcheck.app.ui.theme.InkMuted
 import com.rigcheck.app.ui.theme.SurfaceSunken
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -42,8 +43,9 @@ class RigCheckEmptyStateTest {
         assertReadable()
     }
 
+    // The designer's frames (rig_picker__signed_out_empty, history__empty) draw the mark at the left of the text.
     @Test
-    fun emptyStateWithAMarkShowsItAboveTheText() {
+    fun emptyStateWithAMarkShowsItBesideTheText() {
         composeRule.setRigCheckContent {
             RigCheckEmptyState("No history yet", "Your finished checks will be listed here.", mark = {
                 Box(Modifier.fillMaxSize().testTag("mark"))
@@ -51,6 +53,9 @@ class RigCheckEmptyStateTest {
         }
         composeRule.onNodeWithTag("mark").assertIsDisplayed()
         composeRule.onNodeWithText("No history yet").assertIsDisplayed()
+        val mark = composeRule.onNodeWithTag("mark").fetchSemanticsNode().boundsInRoot
+        val title = composeRule.onNodeWithText("No history yet").fetchSemanticsNode().boundsInRoot
+        assertTrue("the mark is left of the text, not above it", mark.right <= title.left && mark.top < title.bottom)
         composeRule.assertEveryClickableIsAtLeast48dp()
         assertReadable()
     }

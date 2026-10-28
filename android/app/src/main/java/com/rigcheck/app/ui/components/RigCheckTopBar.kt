@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.ui.theme.Elevations
@@ -22,6 +23,14 @@ import com.rigcheck.app.ui.theme.Ink
 import com.rigcheck.app.ui.theme.Radii
 import com.rigcheck.app.ui.theme.RigCheckStyles
 import com.rigcheck.app.ui.theme.Teal
+
+/**
+ * At a large font the title and the balance chip no longer fit one row on a small phone: the chip moves to a row of its
+ * own under the title (resize-rules.md, "Font scale 2.0"). From a font scale of 1.6, where the chip, at least 48 dp
+ * high and one line long, already takes more than half of a 360 dp phone.
+ */
+@Composable
+fun chipBelowTitle(): Boolean = LocalDensity.current.fontScale >= 1.6f
 
 /** What the bar draws with, named so its test holds exactly these to AA: ink on teal. */
 object RigCheckTopBarColors {
@@ -41,6 +50,12 @@ fun RigCheckTopBar(
     onBack: (() -> Unit)? = null,
     backEnabled: Boolean = true,
     compact: Boolean = false,
+    // The tags of the title text and of the Back button (a screen tags them; `modifier` is for the whole bar).
+    titleModifier: Modifier = Modifier,
+    backModifier: Modifier = Modifier,
+    // The Rig picker's variant: the logo, the name and the tagline in place of the plain title (the content brings its
+    // own weight, as the title does).
+    brand: (@Composable RowScope.() -> Unit)? = null,
     end: @Composable RowScope.() -> Unit = {},
     below: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
@@ -63,16 +78,21 @@ fun RigCheckTopBar(
                         onClick = onBack,
                         enabled = backEnabled,
                         onTeal = true,
+                        modifier = backModifier,
                     )
                 }
-                Text(
-                    title,
-                    style = RigCheckStyles.topBarTitle,
-                    color = RigCheckTopBarColors.content,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
+                if (brand != null) {
+                    brand()
+                } else {
+                    Text(
+                        title,
+                        style = RigCheckStyles.topBarTitle,
+                        color = RigCheckTopBarColors.content,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).then(titleModifier),
+                    )
+                }
                 end()
             }
             if (below != null) below()

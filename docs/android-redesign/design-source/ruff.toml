@@ -1,0 +1,6 @@
+# Design tooling, not application code. Same correctness rules as the repo's ruff.toml, minus the ones this
+# generator breaks on purpose: `from lib import *` (F403, F405) and one-line statements in the screen files (E701, E702).
+extend = "../../../ruff.toml"
+
+[lint]
+extend-ignore = ["F403", "F405", "E701", "E702", "E731", "E401", "E741"]

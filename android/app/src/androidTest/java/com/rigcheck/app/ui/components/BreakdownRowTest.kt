@@ -2,11 +2,13 @@ package com.rigcheck.app.ui.components
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.domain.BreakdownItem
 import com.rigcheck.app.domain.Tone
+import com.rigcheck.app.testsupport.onNodeWithTagText
+import com.rigcheck.app.ui.UiTags
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,11 +30,11 @@ class BreakdownRowTest {
         composeRule.setContent { BreakdownRow(item) }
 
         // Not displayed until the row is tapped.
-        composeRule.onNodeWithText(noteText).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.RESULTS_ROW_NOTE, useUnmergedTree = true).assertDoesNotExist()
 
-        composeRule.onNodeWithText("Tow Vehicle Total (GVWR)").performClick()
+        composeRule.onNodeWithTag(UiTags.RESULTS_ROW).performClick()
 
-        composeRule.onNodeWithText(noteText).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_NOTE, noteText).assertIsDisplayed()
     }
 
     @Test
@@ -46,8 +48,8 @@ class BreakdownRowTest {
         // clickable(enabled = item.note != null) means tapping a no-note
         // row is a no-op - confirms it doesn't crash and the row still
         // renders normally afterward.
-        composeRule.onNodeWithText("Trailer Total (GVWR)").performClick()
-        composeRule.onNodeWithText("Trailer Total (GVWR)").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.RESULTS_ROW).performClick()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_LABEL, "Trailer Total (GVWR)").assertIsDisplayed()
     }
 
     @Test
@@ -58,7 +60,7 @@ class BreakdownRowTest {
         )
         composeRule.setContent { BreakdownRow(item) }
 
-        composeRule.onNodeWithText("Front Axle (Steer)").assertIsDisplayed()
-        composeRule.onNodeWithText("0%").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_LABEL, "Front Axle (Steer)").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_PCT, "0%").assertIsDisplayed()
     }
 }

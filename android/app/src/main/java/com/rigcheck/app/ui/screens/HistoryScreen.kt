@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.data.HistoryEntry
 import com.rigcheck.app.domain.Tone
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.historyDateText
 import com.rigcheck.app.ui.theme.DangerRed
 import com.rigcheck.app.ui.theme.Pine
@@ -37,22 +38,27 @@ fun HistoryScreen(
     onUpgrade: () -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
-        Text("Check History", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+        Text(
+            "Check History",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.testTag(UiTags.HISTORY_TITLE),
+        )
         Text(
             "Every check you have run and where you stood.",
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
+            modifier = Modifier.padding(top = 4.dp, bottom = 16.dp).testTag(UiTags.HISTORY_SUBTITLE),
         )
 
         if (limitNotice != null) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).testTag("history_limit_notice"),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).testTag(UiTags.HISTORY_LIMIT_NOTICE),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(limitNotice, style = MaterialTheme.typography.bodyMedium)
-                    TextButton(onClick = onUpgrade, modifier = Modifier.testTag("history_upgrade")) {
+                    TextButton(onClick = onUpgrade, modifier = Modifier.testTag(UiTags.HISTORY_UPGRADE)) {
                         Text("Upgrade to Pro")
                     }
                 }
@@ -63,7 +69,7 @@ fun HistoryScreen(
             Text(
                 "No checks yet. Finish a check and it will be listed here.",
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.testTag("history_empty"),
+                modifier = Modifier.testTag(UiTags.HISTORY_EMPTY),
             )
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
@@ -84,14 +90,28 @@ private fun HistoryEntryCard(entry: HistoryEntry) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.fillMaxWidth().testTag("history_entry"),
+        modifier = Modifier.fillMaxWidth().testTag(UiTags.HISTORY_ENTRY),
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(entry.rigNickname, style = MaterialTheme.typography.titleMedium)
-                Text(historyDateText(entry.checkedAt), style = MaterialTheme.typography.bodySmall)
+                Text(
+                    entry.rigNickname,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.testTag(UiTags.HISTORY_ENTRY_RIG),
+                )
+                Text(
+                    historyDateText(entry.checkedAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag(UiTags.HISTORY_ENTRY_DATE),
+                )
             }
-            Text(badge.label, style = MaterialTheme.typography.labelLarge, color = toneColor, fontWeight = FontWeight.Bold)
+            Text(
+                badge.label,
+                style = MaterialTheme.typography.labelLarge,
+                color = toneColor,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.testTag(UiTags.HISTORY_ENTRY_VERDICT),
+            )
         }
     }
 }

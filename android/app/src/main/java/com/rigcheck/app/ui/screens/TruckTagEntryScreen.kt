@@ -41,6 +41,7 @@ import com.rigcheck.app.domain.model.TruckTag
 import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanNotice
 import com.rigcheck.app.ui.ScanUiState
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.canStartScan
 import com.rigcheck.app.ui.components.LabeledNumberField
 import com.rigcheck.app.ui.components.LabeledTextField
@@ -89,26 +90,31 @@ fun TruckTagEntryScreen(
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
     ) {
-        Text("Truck Tag", style = MaterialTheme.typography.headlineMedium)
-        StepProgressBar(step = 1, totalSteps = 3, modifier = Modifier.padding(top = 8.dp))
+        Text("Truck Tag", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.testTag(UiTags.TRUCK_TITLE))
+        StepProgressBar(
+            step = 1,
+            totalSteps = 3,
+            modifier = Modifier.padding(top = 8.dp).testTag(UiTags.TRUCK_STEP_BAR),
+        )
 
         ScanNoticeCard(scanNotice?.textFor(truck), modifier = Modifier.padding(top = 16.dp))
 
         Text(
             "Find these values on your truck's compliance label (usually inside the driver door jamb).",
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(top = 16.dp, bottom = 12.dp),
+            modifier = Modifier.padding(top = 16.dp, bottom = 12.dp).testTag(UiTags.TRUCK_INSTRUCTIONS),
         )
 
         ReferenceImageCard(
             imageRes = R.drawable.ref_truck_tag,
             contentDescription = "Truck compliance label",
+            modifier = Modifier.testTag(UiTags.TRUCK_REFERENCE_IMAGE),
         )
 
         Text(
             "Hover a field to zoom in on its spot on the tag",
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(vertical = 8.dp),
+            modifier = Modifier.padding(vertical = 8.dp).testTag(UiTags.TRUCK_REFERENCE_HINT),
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -117,40 +123,44 @@ fun TruckTagEntryScreen(
                 value = truck.description ?: "",
                 onValueChange = { onTruckChange(truck.copy(description = it.ifBlank { null })) },
                 placeholder = "e.g. Ford F-450",
-                modifier = Modifier.testTag("truck_description"),
+                modifier = Modifier.testTag(UiTags.TRUCK_DESCRIPTION),
             )
             LabeledTextField(
                 label = "Name",
                 value = truck.name ?: "",
                 onValueChange = { onTruckChange(truck.copy(name = it.ifBlank { null })) },
+                modifier = Modifier.testTag(UiTags.TRUCK_NAME_FIELD),
             )
             LabeledNumberField(
                 label = "GVWR, lb",
                 value = truck.gvwrLb,
                 onValueChange = { onTruckChange(truck.copy(gvwrLb = it)) },
+                modifier = Modifier.testTag(UiTags.TRUCK_GVWR_FIELD),
             )
             LabeledNumberField(
                 label = "Front GAWR, lb",
                 value = truck.frontGawrLb,
                 onValueChange = { onTruckChange(truck.copy(frontGawrLb = it)) },
+                modifier = Modifier.testTag(UiTags.TRUCK_FRONT_GAWR_FIELD),
             )
             LabeledNumberField(
                 label = "Rear GAWR, lb",
                 value = truck.rearGawrLb,
                 onValueChange = { onTruckChange(truck.copy(rearGawrLb = it)) },
+                modifier = Modifier.testTag(UiTags.TRUCK_REAR_GAWR_FIELD),
             )
             Column {
                 LabeledNumberField(
                     label = "GCWR, lb",
                     value = truck.gcwrLb,
                     onValueChange = { onTruckChange(truck.copy(gcwrLb = it)) },
-                    modifier = Modifier.testTag("truck_gcwr"),
+                    modifier = Modifier.testTag(UiTags.TRUCK_GCWR),
                     optionalHint = "optional",
                 )
                 Text(
                     "From your owner's manual. Leave blank if you can't find it.",
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier.padding(top = 4.dp).testTag(UiTags.TRUCK_GCWR_HELP),
                 )
                 if (gcwrBelowGvwr(truck)) {
                     Text(
@@ -158,7 +168,7 @@ fun TruckTagEntryScreen(
                             "We'll still use it.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 4.dp).testTag("truck_gcwr_warning"),
+                        modifier = Modifier.padding(top = 4.dp).testTag(UiTags.TRUCK_GCWR_WARNING),
                     )
                 }
             }
@@ -167,12 +177,14 @@ fun TruckTagEntryScreen(
                     Text(
                         "Stand-alone weight, lb — optional",
                         style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.testTag(UiTags.TRUCK_STANDALONE_LABEL),
                     )
                     Icon(
                         Icons.Filled.Info,
                         contentDescription = "More info",
                         modifier = Modifier
                             .padding(start = 4.dp)
+                            .testTag(UiTags.TRUCK_STANDALONE_INFO)
                             .clickable { showStandaloneInfo = !showStandaloneInfo },
                     )
                 }
@@ -182,13 +194,14 @@ fun TruckTagEntryScreen(
                             "trailer's total weight. Fill this in for a more accurate pin-weight " +
                             "estimate.",
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(bottom = 4.dp),
+                        modifier = Modifier.padding(bottom = 4.dp).testTag(UiTags.TRUCK_STANDALONE_INFO_TEXT),
                     )
                 }
                 LabeledNumberField(
                     label = "",
                     value = truck.standaloneWeightLb,
                     onValueChange = { onTruckChange(truck.copy(standaloneWeightLb = it)) },
+                    modifier = Modifier.testTag(UiTags.TRUCK_STANDALONE_FIELD),
                 )
             }
 
@@ -196,17 +209,19 @@ fun TruckTagEntryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium)
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .testTag(UiTags.TRUCK_STANDALONE_PANEL),
             ) {
                 Text(
                     "Don't know your tow vehicle's stand-alone weight?",
                     style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.testTag(UiTags.TRUCK_STANDALONE_PANEL_TITLE),
                 )
                 Text(
                     "Scan a CAT Scale ticket weighing just your tow vehicle (no trailer attached) " +
                         "and we'll fill in the field above for you.",
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
+                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp).testTag(UiTags.TRUCK_STANDALONE_PANEL_BODY),
                 )
                 OutlinedButton(
                     // Same gate as the main Scan Photo button: no balance above
@@ -215,7 +230,7 @@ fun TruckTagEntryScreen(
                     onClick = { if (canStartScan(creditBalance)) showStandaloneSourceDialog = true else onNeedCredits() },
                     // Off while it reads (#118): a second tap would send a second Scan.
                     enabled = scanState !is ScanUiState.Loading,
-                    modifier = Modifier.testTag("scan_standalone_ticket"),
+                    modifier = Modifier.testTag(UiTags.SCAN_STANDALONE_TICKET),
                 ) {
                     Text(if (scanState is ScanUiState.Loading) "Reading…" else "Scan tow-vehicle-only ticket")
                 }
@@ -225,17 +240,19 @@ fun TruckTagEntryScreen(
                         Text(
                             "No ticket? Estimate pin/hitch weight as $pinWeightPct% of the trailer's weight",
                             style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.testTag(UiTags.TRUCK_PIN_WEIGHT_LABEL),
                         )
                         Slider(
                             value = pinWeightPct.toFloat(),
                             onValueChange = { onPinWeightPctChange(it.roundToInt()) },
                             valueRange = 15f..25f,
                             steps = 9,
-                            modifier = Modifier.testTag("pin_weight_pct_slider"),
+                            modifier = Modifier.testTag(UiTags.PIN_WEIGHT_PCT_SLIDER),
                         )
                         Text(
                             "Industry recommendations are typically 15-25% — we default to 20%.",
                             style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.testTag(UiTags.TRUCK_PIN_WEIGHT_CAPTION),
                         )
                     }
                 }
@@ -245,20 +262,25 @@ fun TruckTagEntryScreen(
 
         Button(
             onClick = onContinue,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp).testTag(UiTags.TRUCK_NEXT_BUTTON),
         ) { Text("Next: Trailer Tag") }
     }
 
     if (showStandaloneSourceDialog) {
         AlertDialog(
             onDismissRequest = { showStandaloneSourceDialog = false },
-            title = { Text("Scan Photo") },
-            text = { Text("Take a new photo, or choose one you already have?") },
+            title = { Text("Scan Photo", modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_TITLE)) },
+            text = {
+                Text(
+                    "Take a new photo, or choose one you already have?",
+                    modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_BODY),
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showStandaloneSourceDialog = false
                     galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }) { Text("Choose from Gallery") }
+                }, modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_GALLERY)) { Text("Choose from Gallery") }
             },
             dismissButton = {
                 TextButton(onClick = {
@@ -266,7 +288,7 @@ fun TruckTagEntryScreen(
                     val uri = createScanPhotoUri(context)
                     pendingPhotoUri = uri
                     cameraLauncher.launch(uri)
-                }) { Text("Take Photo") }
+                }, modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_CAMERA)) { Text("Take Photo") }
             },
         )
     }

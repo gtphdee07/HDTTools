@@ -3,9 +3,7 @@ package com.rigcheck.app.ui.navigation
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.core.view.ViewCompat
@@ -24,7 +22,10 @@ import com.rigcheck.app.data.HistoryCaps
 import com.rigcheck.app.data.HistoryEntry
 import com.rigcheck.app.domain.VerdictStatus
 import com.rigcheck.app.domain.model.RecentRig
+import com.rigcheck.app.testsupport.nodesWithTagShowing
+import com.rigcheck.app.testsupport.onNodeWithTagText
 import com.rigcheck.app.ui.RigCheckViewModel
+import com.rigcheck.app.ui.UiTags
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
@@ -107,13 +108,13 @@ class HistoryNavigationTest {
         }
     }
 
-    private fun waitForText(text: String) = composeRule.waitUntil(timeoutMillis = 10_000) {
-        composeRule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+    private fun waitForHistoryEntry(nickname: String) = composeRule.waitUntil(timeoutMillis = 10_000) {
+        composeRule.nodesWithTagShowing(UiTags.HISTORY_ENTRY, nickname) > 0
     }
 
     // Same recipe as RigCheckNavHostTest (#125): leave the soft keyboard really closed.
     private fun enterNickname(nickname: String) {
-        composeRule.onNodeWithText("Rig nickname").performTextInput(nickname)
+        composeRule.onNodeWithTag(UiTags.PICKER_NEW_RIG_INPUT).performTextInput(nickname)
         composeRule.waitUntil(timeoutMillis = 30_000) { isKeyboardVisible() }
         closeSoftKeyboard()
         composeRule.waitUntil(timeoutMillis = 30_000) { !isKeyboardVisible() }
@@ -131,20 +132,20 @@ class HistoryNavigationTest {
     // The disclaimer is shown once per app session, so a second check in the same session goes straight to Results.
     private fun checkNewRigThroughToResults(nickname: String, disclaimerShown: Boolean = true) {
         enterNickname(nickname)
-        composeRule.onNodeWithText("Create").performClick()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Trailer Tag").performClick()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Scale Ticket").performClick()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Check Weights").performClick()
-        if (disclaimerShown) composeRule.onNodeWithText("I Understand, Continue").performClick()
-        composeRule.onNodeWithText("Start another check").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRAILER_NEXT_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.SCALE_CHECK_BUTTON).performClick()
+        if (disclaimerShown) composeRule.onNodeWithTag(UiTags.DISCLAIMER_ACCEPT_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.RESULTS_START_ANOTHER_BUTTON).assertIsDisplayed()
     }
 
     private fun openHistory() {
-        composeRule.onNodeWithTag("open_history").performClick()
-        composeRule.onNodeWithText("Check History").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.OPEN_HISTORY).performClick()
+        composeRule.onNodeWithTagText(UiTags.HISTORY_TITLE, "Check History").assertIsDisplayed()
     }
 
     @Test
@@ -154,8 +155,8 @@ class HistoryNavigationTest {
 
         openHistory()
 
-        waitForText("Made on Web")
-        composeRule.onNodeWithText("Over Limit").assertIsDisplayed()
+        waitForHistoryEntry("Made on Web")
+        composeRule.onNodeWithTagText(UiTags.HISTORY_ENTRY_VERDICT, "Over Limit").assertIsDisplayed()
     }
 
     // The app has been open a while: the check from the other device was made after sign-in read the History.
@@ -167,8 +168,8 @@ class HistoryNavigationTest {
 
         openHistory()
 
-        waitForText("Made on Web")
-        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
+        waitForHistoryEntry("Made on Web")
+        composeRule.onNodeWithTagText(UiTags.HISTORY_ENTRY_VERDICT, "Safe to Tow").assertIsDisplayed()
     }
 
     @Test
@@ -178,12 +179,12 @@ class HistoryNavigationTest {
 
         checkNewRigThroughToResults("Big Blue")
         composeRule.waitUntil(timeoutMillis = 10_000) { history.saved().isNotEmpty() }
-        composeRule.onNodeWithText("Start another check").performClick()
+        composeRule.onNodeWithTag(UiTags.RESULTS_START_ANOTHER_BUTTON).performClick()
         openHistory()
 
-        waitForText("Big Blue")
+        waitForHistoryEntry("Big Blue")
         // A check with nothing entered has nothing to check, which is not an over-limit one.
-        composeRule.onNodeWithText("Not Enough Info").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.HISTORY_ENTRY_VERDICT, "Not Enough Info").assertIsDisplayed()
         assertEquals(listOf("Big Blue" to VerdictStatus.INSUFFICIENT), history.saved())
     }
 
@@ -208,7 +209,7 @@ class HistoryNavigationTest {
         showApp(history)
         checkNewRigThroughToResults("Big Blue")
         composeRule.waitUntil(timeoutMillis = 10_000) { history.saved().size == 1 }
-        composeRule.onNodeWithText("Start another check").performClick()
+        composeRule.onNodeWithTag(UiTags.RESULTS_START_ANOTHER_BUTTON).performClick()
 
         checkNewRigThroughToResults("Red Rig", disclaimerShown = false)
 
@@ -224,11 +225,10 @@ class HistoryNavigationTest {
         checkNewRigThroughToResults("Big Blue")
 
         composeRule.waitUntil(timeoutMillis = 10_000) {
-            composeRule.onAllNodesWithText("couldn't save this check to your History", substring = true)
-                .fetchSemanticsNodes().isNotEmpty()
+            composeRule.nodesWithTagShowing(UiTags.HISTORY_NOTICE, "couldn't save this check to your History", substring = true) > 0
         }
-        composeRule.onNodeWithTag("history_notice").assertIsDisplayed()
-        composeRule.onNodeWithText("Start another check").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.HISTORY_NOTICE).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.RESULTS_START_ANOTHER_BUTTON).assertIsDisplayed()
         assertEquals(emptyList<Pair<String, VerdictStatus>>(), history.saved())
     }
 }

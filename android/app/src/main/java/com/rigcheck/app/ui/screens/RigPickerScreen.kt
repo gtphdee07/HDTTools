@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.domain.model.RecentRig
 import com.rigcheck.app.ui.components.CreditBalanceChip
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.components.FeedbackLink
 import com.rigcheck.app.ui.theme.AvatarPalette
 import java.time.Instant
@@ -79,19 +80,28 @@ fun RigPickerScreen(
                 "RigCheck",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).testTag(UiTags.PICKER_APP_TITLE),
             )
-            TextButton(onClick = onOpenHistory, modifier = Modifier.testTag("open_history")) { Text("History") }
-            CreditBalanceChip(balance = creditBalance, onClick = onOpenPaywall)
+            TextButton(onClick = onOpenHistory, modifier = Modifier.testTag(UiTags.OPEN_HISTORY)) { Text("History") }
+            CreditBalanceChip(
+                balance = creditBalance,
+                modifier = Modifier.testTag(UiTags.PICKER_CREDIT_CHIP),
+                onClick = onOpenPaywall,
+            )
         }
-        HorizontalDivider()
+        HorizontalDivider(modifier = Modifier.testTag(UiTags.PICKER_HEADER_DIVIDER))
 
         Column(modifier = Modifier.padding(20.dp, 16.dp, 20.dp, 8.dp)) {
-            Text("Which rig?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+            Text(
+                "Which rig?",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.testTag(UiTags.PICKER_HEADING),
+            )
             Text(
                 "Pick one you have checked before, or start a new one.",
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = 4.dp).testTag(UiTags.PICKER_SUBHEADING),
             )
         }
 
@@ -119,20 +129,26 @@ fun RigPickerScreen(
             modifier = Modifier.padding(20.dp, 8.dp, 20.dp, 20.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Or start a new rig", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Text(
+                "Or start a new rig",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.testTag(UiTags.PICKER_NEW_RIG_LABEL),
+            )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextField(
                     value = newRigNickname,
                     onValueChange = { newRigNickname = it },
                     placeholder = { Text("Rig nickname") },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).testTag(UiTags.PICKER_NEW_RIG_INPUT),
                 )
                 Button(
                     onClick = { onStartNewRig(newRigNickname.trim()) },
                     enabled = newRigNickname.isNotBlank(),
+                    modifier = Modifier.testTag(UiTags.PICKER_CREATE_BUTTON),
                 ) { Text("Create") }
             }
-            FeedbackLink()
+            FeedbackLink(linkModifier = Modifier.testTag(UiTags.PICKER_FEEDBACK_LINK))
         }
     }
 }
@@ -148,16 +164,19 @@ private fun DeleteRigDialog(rig: RecentRig, onDelete: suspend (RecentRig) -> Boo
     AlertDialog(
         // Back and a tap outside cancel, but not while the delete runs.
         onDismissRequest = { if (!deleting) onClose() },
-        modifier = Modifier.testTag("delete_rig_dialog"),
-        title = { Text("Delete \"${rig.nickname}\"?") },
+        modifier = Modifier.testTag(UiTags.DELETE_RIG_DIALOG),
+        title = { Text("Delete \"${rig.nickname}\"?", modifier = Modifier.testTag(UiTags.DELETE_RIG_TITLE)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("This frees its spot in your Garage and can't be undone.")
+                Text(
+                    "This frees its spot in your Garage and can't be undone.",
+                    modifier = Modifier.testTag(UiTags.DELETE_RIG_BODY),
+                )
                 if (failed) {
                     Text(
                         "We couldn't delete \"${rig.nickname}\". It's still in your Garage; please try again.",
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.testTag("delete_rig_error"),
+                        modifier = Modifier.testTag(UiTags.DELETE_RIG_ERROR),
                     )
                 }
             }
@@ -174,11 +193,11 @@ private fun DeleteRigDialog(rig: RecentRig, onDelete: suspend (RecentRig) -> Boo
                     }
                 },
                 enabled = !deleting,
-                modifier = Modifier.testTag("delete_rig_confirm"),
+                modifier = Modifier.testTag(UiTags.DELETE_RIG_CONFIRM),
             ) { Text(if (deleting) "Deleting…" else "Yes, delete") }
         },
         dismissButton = {
-            TextButton(onClick = onClose, enabled = !deleting, modifier = Modifier.testTag("delete_rig_cancel")) {
+            TextButton(onClick = onClose, enabled = !deleting, modifier = Modifier.testTag(UiTags.DELETE_RIG_CANCEL)) {
                 Text("Cancel")
             }
         },
@@ -204,11 +223,11 @@ private fun RecentRigCard(rig: RecentRig, index: Int, onClick: () -> Unit, onAsk
     Surface(
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().testTag(UiTags.PICKER_RIG_CARD).clickable(onClick = onClick),
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(44.dp).background(avatarColor, CircleShape),
+                modifier = Modifier.size(44.dp).background(avatarColor, CircleShape).testTag(UiTags.PICKER_RIG_AVATAR),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -218,17 +237,29 @@ private fun RecentRigCard(rig: RecentRig, index: Int, onClick: () -> Unit, onAsk
                 )
             }
             Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
-                Text(rig.nickname, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    rig.nickname,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.testTag(UiTags.PICKER_RIG_NICKNAME),
+                )
                 if (subtitle.isNotBlank()) {
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.testTag(UiTags.PICKER_RIG_SUBTITLE),
+                    )
                 }
                 if (relativeTime.isNotBlank()) {
-                    Text("Last checked $relativeTime", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "Last checked $relativeTime",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.testTag(UiTags.PICKER_RIG_LAST_CHECKED),
+                    )
                 }
             }
             if (onAskDelete != null) {
                 // A separate control on the card, so tapping it asks about deleting and does not start a check.
-                IconButton(onClick = onAskDelete) {
+                IconButton(onClick = onAskDelete, modifier = Modifier.testTag(UiTags.PICKER_RIG_DELETE)) {
                     Icon(Icons.Filled.Delete, contentDescription = "Delete ${rig.nickname}")
                 }
             }

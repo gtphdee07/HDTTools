@@ -5,11 +5,12 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.data.AccountResult
+import com.rigcheck.app.testsupport.onNodeWithTagText
+import com.rigcheck.app.ui.UiTags
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -49,34 +50,34 @@ class AccountScreenTest {
     }
 
     private fun fillCredentials(email: String = "me@example.com", password: String = "hunter22") {
-        composeRule.onNodeWithText("Email").performTextInput(email)
-        composeRule.onNodeWithText("Password").performTextInput(password)
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_EMAIL_FIELD).performTextInput(email)
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_PASSWORD_FIELD).performTextInput(password)
     }
 
     @Test
     fun showsTheReasonAndAllThreeSignInMethods() {
         show(Recorder())
 
-        composeRule.onNodeWithText("Sign in to buy scans.").assertIsDisplayed()
-        composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
-        composeRule.onNodeWithText("Continue with Apple").assertIsDisplayed()
-        composeRule.onNodeWithText("Email").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.ACCOUNT_REASON, "Sign in to buy scans.").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_APPLE_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_EMAIL_FIELD).assertIsDisplayed()
         // At the foot of a scrolling screen, so it exists without necessarily being on show (#182).
-        composeRule.onNodeWithText("Send feedback").assertExists()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_FEEDBACK_LINK).assertExists()
     }
 
     @Test
     fun signInStaysDisabledUntilThereIsAnEmailAndAPassword() {
         show(Recorder())
 
-        composeRule.onNodeWithTag("account_submit").assertIsNotEnabled()
-        composeRule.onNodeWithText("Email").performTextInput("me@example.com")
-        composeRule.onNodeWithTag("account_submit").assertIsNotEnabled()
-        composeRule.onNodeWithText("Password").performTextInput("abc")
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_SUBMIT).assertIsNotEnabled()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_EMAIL_FIELD).performTextInput("me@example.com")
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_SUBMIT).assertIsNotEnabled()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_PASSWORD_FIELD).performTextInput("abc")
         // Too short a password still blocks submission.
-        composeRule.onNodeWithTag("account_submit").assertIsNotEnabled()
-        composeRule.onNodeWithText("Password").performTextInput("def")
-        composeRule.onNodeWithTag("account_submit").assertIsEnabled()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_SUBMIT).assertIsNotEnabled()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_PASSWORD_FIELD).performTextInput("def")
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_SUBMIT).assertIsEnabled()
     }
 
     @Test
@@ -85,7 +86,7 @@ class AccountScreenTest {
         show(recorder)
 
         fillCredentials(email = " me@example.com ")
-        composeRule.onNodeWithTag("account_submit").performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_SUBMIT).performClick()
 
         assert(recorder.calls == listOf("signIn:me@example.com:hunter22")) { recorder.calls.toString() }
     }
@@ -95,10 +96,10 @@ class AccountScreenTest {
         val recorder = Recorder()
         show(recorder)
 
-        composeRule.onNodeWithText("New here? Create an account").performClick()
-        composeRule.onNodeWithText("Create your account").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_TOGGLE_MODE).performClick()
+        composeRule.onNodeWithTagText(UiTags.ACCOUNT_TITLE, "Create your account").assertIsDisplayed()
         fillCredentials()
-        composeRule.onNodeWithTag("account_submit").performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_SUBMIT).performClick()
 
         assert(recorder.calls == listOf("signUp:me@example.com:hunter22")) { recorder.calls.toString() }
     }
@@ -109,10 +110,10 @@ class AccountScreenTest {
         show(recorder)
 
         fillCredentials()
-        composeRule.onNodeWithTag("account_submit").performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_SUBMIT).performClick()
 
-        composeRule.onNodeWithText("Invalid login credentials").assertIsDisplayed()
-        composeRule.onNodeWithText("Continue with Google").assertIsEnabled()
+        composeRule.onNodeWithTagText(UiTags.ACCOUNT_ERROR, "Invalid login credentials").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertIsEnabled()
     }
 
     @Test
@@ -120,11 +121,11 @@ class AccountScreenTest {
         val recorder = Recorder().apply { nextResult = AccountResult.NeedsConfirmation }
         show(recorder)
 
-        composeRule.onNodeWithText("New here? Create an account").performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_TOGGLE_MODE).performClick()
         fillCredentials()
-        composeRule.onNodeWithTag("account_submit").performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_SUBMIT).performClick()
 
-        composeRule.onNodeWithText("Check your email to confirm your account, then sign in.").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.ACCOUNT_INFO, "Check your email to confirm your account, then sign in.").assertIsDisplayed()
     }
 
     @Test
@@ -132,8 +133,8 @@ class AccountScreenTest {
         val recorder = Recorder()
         show(recorder)
 
-        composeRule.onNodeWithText("Continue with Google").performClick()
-        composeRule.onNodeWithText("Continue with Apple").performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_APPLE_BUTTON).performClick()
 
         assert(recorder.calls == listOf("google", "apple")) { recorder.calls.toString() }
     }
@@ -144,17 +145,17 @@ class AccountScreenTest {
     fun hidesTheAppleButtonWhenAppleIsNotEnabled() {
         show(Recorder(), showApple = false)
 
-        composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
-        composeRule.onNodeWithText("Continue with Apple").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_APPLE_BUTTON).assertDoesNotExist()
     }
 
     @Test
     fun appleExplainsThatSigningInContinuesInTheBrowser() {
         show(Recorder())
 
-        composeRule.onNodeWithText("Continue with Apple").performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_APPLE_BUTTON).performClick()
 
-        composeRule.onNodeWithText("Finish signing in with Apple in your browser.").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.ACCOUNT_INFO, "Finish signing in with Apple in your browser.").assertIsDisplayed()
     }
 
     @Test
@@ -162,9 +163,9 @@ class AccountScreenTest {
         val recorder = Recorder().apply { nextResult = AccountResult.Cancelled }
         show(recorder)
 
-        composeRule.onNodeWithText("Continue with Google").performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).performClick()
 
-        composeRule.onNodeWithText("Continue with Google").assertIsEnabled()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertIsEnabled()
     }
 
     @Test
@@ -172,15 +173,15 @@ class AccountScreenTest {
         val recorder = Recorder().apply { hold = true }
         show(recorder)
 
-        composeRule.onNodeWithText("Continue with Google").performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).performClick()
 
-        composeRule.onNodeWithText("Continue with Google").assertIsNotEnabled()
-        composeRule.onNodeWithText("Continue with Apple").assertIsNotEnabled()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertIsNotEnabled()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_APPLE_BUTTON).assertIsNotEnabled()
 
         composeRule.runOnUiThread { recorder.held?.invoke(AccountResult.Cancelled) }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Continue with Google").assertIsEnabled()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertIsEnabled()
     }
 
     @Test
@@ -188,12 +189,12 @@ class AccountScreenTest {
         val recorder = Recorder()
         show(recorder)
 
-        composeRule.onNodeWithText("Forgot password?").assertIsNotEnabled()
-        composeRule.onNodeWithText("Email").performTextInput("me@example.com")
-        composeRule.onNodeWithText("Forgot password?").performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_FORGOT_PASSWORD).assertIsNotEnabled()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_EMAIL_FIELD).performTextInput("me@example.com")
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_FORGOT_PASSWORD).performClick()
 
         assert(recorder.calls == listOf("reset:me@example.com")) { recorder.calls.toString() }
-        composeRule.onNodeWithText("If that email has an account, a reset link is on its way.").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.ACCOUNT_INFO, "If that email has an account, a reset link is on its way.").assertIsDisplayed()
     }
 
     @Test
@@ -201,7 +202,7 @@ class AccountScreenTest {
         var left = false
         show(Recorder(), onNotNow = { left = true })
 
-        composeRule.onNodeWithText("Not now").performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_NOT_NOW_BUTTON).performClick()
 
         assert(left) { "onNotNow should have fired" }
     }

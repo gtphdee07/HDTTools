@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.theme.Orange
 
 // The notice above an entry screen's fields after a Scan that was delivered but
@@ -25,6 +26,6 @@ fun ScanNoticeCard(text: String?, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .background(Orange.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
             .padding(16.dp)
-            .testTag("scan_notice"),
+            .testTag(UiTags.SCAN_NOTICE),
     )
 }

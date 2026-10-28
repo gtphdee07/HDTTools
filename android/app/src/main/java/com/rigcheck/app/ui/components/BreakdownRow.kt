@@ -28,9 +28,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.domain.BreakdownItem
 import com.rigcheck.app.domain.Tone
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.format.formatLb
 import com.rigcheck.app.ui.theme.DangerRed
 import com.rigcheck.app.ui.theme.Pine
@@ -52,6 +54,7 @@ fun BreakdownRow(item: BreakdownItem, modifier: Modifier = Modifier) {
         border = if (item.tone == Tone.WARNING) BorderStroke(1.dp, DangerRed) else null,
         modifier = modifier
             .fillMaxWidth()
+            .testTag(UiTags.RESULTS_ROW)
             .animateContentSize()
             .clickable(enabled = item.note != null) { expanded = !expanded },
     ) {
@@ -65,19 +68,25 @@ fun BreakdownRow(item: BreakdownItem, modifier: Modifier = Modifier) {
                     },
                     contentDescription = null,
                     tint = toneColor,
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(28.dp).testTag(UiTags.RESULTS_ROW_ICON),
                 )
                 Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
-                    Text(item.label, style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        item.label,
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.testTag(UiTags.RESULTS_ROW_LABEL),
+                    )
                     Text(
                         "${formatLb(item.actual)} of ${formatLb(item.limit)}",
                         style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.testTag(UiTags.RESULTS_ROW_VALUES),
                     )
                 }
                 Text(
                     "${item.pct}%",
                     style = MaterialTheme.typography.titleMedium,
                     color = toneColor,
+                    modifier = Modifier.testTag(UiTags.RESULTS_ROW_PCT),
                 )
             }
             LinearProgressIndicator(
@@ -95,11 +104,16 @@ fun BreakdownRow(item: BreakdownItem, modifier: Modifier = Modifier) {
                     .padding(top = 8.dp)
                     .fillMaxWidth()
                     .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
+                    .clip(RoundedCornerShape(3.dp))
+                    .testTag(UiTags.RESULTS_ROW_BAR),
             )
             if (expanded && item.note != null) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                Text(item.note, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    item.note,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag(UiTags.RESULTS_ROW_NOTE),
+                )
             }
         }
     }

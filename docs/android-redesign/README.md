@@ -5,10 +5,10 @@ Prepared 2026-10-25 on `MPSkills`. Nothing here changes the app; it is the mater
 | File | What it is | Who uses it |
 |---|---|---|
 | [REDESIGN_BRIEF.md](REDESIGN_BRIEF.md) | The brief for Claude Design: what to change, what must not, why it looks flat now, brand tokens, what to hand back, build constraints | Claude Design (paste or attach) |
-| [ui-inventory.json](ui-inventory.json) | 150 elements on 13 screens: name, function, exact text, today's region/order/size/style, existing and proposed test tag, which test files mention it, and empty `redesign` fields. Also each screen's list of states to draw | Claude Design fills it in; the build and the tests read it |
+| [ui-inventory.json](ui-inventory.json) | 167 elements on 15 screens (updated 2026-10-27, #188): name, function, exact text, today's region/order/size/style, existing and proposed test tag, which test files mention it, and empty `redesign` fields. Also each screen's list of states to draw | Claude Design fills it in; the build and the tests read it |
 | [ui-inventory.csv](ui-inventory.csv) | The same rows as a spreadsheet (UTF-8 with BOM, opens in Excel). Last 10 columns, `REDESIGN_*`, are for the designer | Same, if a table is easier |
 
-The JSON is the source of truth. If someone edits the CSV instead, the CSV is then the one that wins; do not edit both.
+The JSON is the source of truth, and the CSV is generated from it: edit the JSON, then run `uv run scripts/ui_inventory.py` (`--check` fails if the CSV, the app's `UiTags` object or the screens disagree with the JSON). Edits made in the CSV are overwritten.
 
 ## Before you send it
 
@@ -22,7 +22,8 @@ The JSON is the source of truth. If someone edits the CSV instead, the CSV is th
 These need the emulator, so they belong in lane A and I have not started them:
 
 - **Baseline screenshots plus measured bounds of every screen and state** (a small instrumented test that opens each state from the inventory and writes a PNG and the on-screen position and size of every tagged element). It replaces the estimated sizes in the inventory with real ones, gives the designer true "before" frames to annotate, and the same test is rerun after the re-skin to produce the "after" half of the map automatically.
-- **A test tag on every inventory element** (`test_tag_new` in the inventory), with the existing tests moved from text lookups to tags. Today 19 elements have a tag and about 410 test lookups go by visible text, which is why the brief freezes the copy. Doing this first makes the re-skin a pure visual change that the existing tests already guard.
+- **Done in #188 (T0):** a test tag on every inventory element (`test_tag_new` in the inventory, `UiTags` in the app), with the existing tests moved from text lookups to tags; `tests_referencing` now counts the test files that use each tag. The note below is how it was before.
+- (Was) A test tag on every inventory element, with the existing tests moved from text lookups to tags. Today 19 elements have a tag and about 410 test lookups go by visible text, which is why the brief freezes the copy. Doing this first makes the re-skin a pure visual change that the existing tests already guard.
 
 Filed on 2026-10-25 as epic #187 with children #188 to #197 (T0 = #188, T1 = #189, owner step D = #190, T2 = #191, T3a to T3e = #192 to #196, T4 = #197). Outline: (T0) test tags for every inventory element and tests moved onto them; (T1) baseline capture test; (T2) theme, tokens and shared components from the designer's `tokens.json` and `components.md`; (T3) one ticket per screen group (Rig picker and Chooser; the three entry screens; Disclaimer and Results; History; Paywall and Account and dialogs); (T4) final pass against the annotated PNGs, accessibility checks (48 dp targets, contrast, font scale 2.0, 360 x 640) and 3-button navigation.
 

@@ -9,16 +9,17 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.data.ScanResult
 import com.rigcheck.app.domain.model.TruckTag
+import com.rigcheck.app.testsupport.onNodeWithTagText
 import com.rigcheck.app.testsupport.scrollToIfScrollable
 import com.rigcheck.app.ui.NO_WEIGHT_ERROR
 import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanUiState
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.scanErrorFor
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -38,7 +39,7 @@ class TruckTagEntryScreenTest {
             TruckTagEntryScreen(truck = current, onTruckChange = { current = it }, onContinue = {})
         }
 
-        composeRule.onNodeWithTag("truck_description").performTextInput("Ford F-450")
+        composeRule.onNodeWithTag(UiTags.TRUCK_DESCRIPTION).performTextInput("Ford F-450")
 
         assertEquals("Ford F-450", current.description)
     }
@@ -51,7 +52,7 @@ class TruckTagEntryScreenTest {
         }
 
         // Pinned below the scrolling form, so it is on screen however tall the content is.
-        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed().performClick()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).assertIsDisplayed().performClick()
 
         assert(continued) { "onContinue should have fired" }
     }
@@ -65,8 +66,8 @@ class TruckTagEntryScreenTest {
             TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {}, pinWeightPct = 20)
         }
 
-        composeRule.onNodeWithTag("scan_standalone_ticket").scrollToIfScrollable().assertIsDisplayed()
-        composeRule.onNodeWithText("No ticket? Estimate pin/hitch weight as 20% of the trailer's weight")
+        composeRule.onNodeWithTag(UiTags.SCAN_STANDALONE_TICKET).scrollToIfScrollable().assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.TRUCK_PIN_WEIGHT_LABEL, "No ticket? Estimate pin/hitch weight as 20% of the trailer's weight")
             .scrollToIfScrollable()
             .assertIsDisplayed()
     }
@@ -87,10 +88,10 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Reading…").scrollToIfScrollable().assertIsNotEnabled()
-        composeRule.onNodeWithTag("scan_standalone_ticket").performClick()
+        composeRule.onNodeWithTagText(UiTags.SCAN_STANDALONE_TICKET, "Reading…").scrollToIfScrollable().assertIsNotEnabled()
+        composeRule.onNodeWithTag(UiTags.SCAN_STANDALONE_TICKET).performClick()
 
-        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertDoesNotExist()
         assertEquals(0, needCredits)
     }
 
@@ -100,7 +101,7 @@ class TruckTagEntryScreenTest {
             TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {}, creditBalance = 5)
         }
 
-        composeRule.onNodeWithTag("scan_standalone_ticket").scrollToIfScrollable().assertIsEnabled()
+        composeRule.onNodeWithTag(UiTags.SCAN_STANDALONE_TICKET).scrollToIfScrollable().assertIsEnabled()
     }
 
     @Test
@@ -114,8 +115,8 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithTag("scan_standalone_ticket").scrollToIfScrollable().assertIsDisplayed()
-        composeRule.onNodeWithText("No ticket? Estimate pin/hitch weight as 20% of the trailer's weight")
+        composeRule.onNodeWithTag(UiTags.SCAN_STANDALONE_TICKET).scrollToIfScrollable().assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.TRUCK_PIN_WEIGHT_LABEL, "No ticket? Estimate pin/hitch weight as 20% of the trailer's weight")
             .assertDoesNotExist()
     }
 
@@ -125,10 +126,10 @@ class TruckTagEntryScreenTest {
             TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {}, creditBalance = 3)
         }
 
-        composeRule.onNodeWithTag("scan_standalone_ticket").scrollToIfScrollable().performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_STANDALONE_TICKET).scrollToIfScrollable().performClick()
 
-        composeRule.onNodeWithText("Take Photo").assertIsDisplayed()
-        composeRule.onNodeWithText("Choose from Gallery").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_GALLERY).assertIsDisplayed()
     }
 
     // The same gate as the main Scan Photo button: no balance above zero (none
@@ -148,10 +149,10 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithTag("scan_standalone_ticket").scrollToIfScrollable().performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_STANDALONE_TICKET).scrollToIfScrollable().performClick()
 
         assert(neededCredits) { "onNeedCredits should have fired for a 0-credit user" }
-        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertDoesNotExist()
     }
 
     @Test
@@ -167,10 +168,10 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithTag("scan_standalone_ticket").scrollToIfScrollable().performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_STANDALONE_TICKET).scrollToIfScrollable().performClick()
 
         assert(neededCredits) { "onNeedCredits should have fired when no balance is loaded" }
-        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertDoesNotExist()
     }
 
     @Test
@@ -186,15 +187,15 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Scan failed").assertIsDisplayed()
-        composeRule.onNodeWithText("Could not read the image.").assertIsDisplayed()
-        composeRule.onNodeWithText("Sign in").assertDoesNotExist()
-        composeRule.onNodeWithText("Buy more Scans").assertDoesNotExist()
-        composeRule.onNodeWithText("Try again").assertDoesNotExist()
-        composeRule.onNodeWithText("Choose a different photo").assertDoesNotExist()
-        composeRule.onNodeWithText("Type it in").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_TITLE).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.SCAN_ERROR_MESSAGE, "Could not read the image.").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_SIGN_IN).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_BUY_SCANS).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_CHOOSE_PHOTO).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TYPE_IT_IN).assertDoesNotExist()
 
-        composeRule.onNodeWithText("OK").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_OK_BUTTON).performClick()
 
         assert(dismissed) { "onDismissStandaloneScanError should have fired" }
     }
@@ -212,8 +213,8 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Your sign-in has expired. Nothing was used. Sign in again to scan.").assertIsDisplayed()
-        composeRule.onNodeWithText("Sign in").performClick()
+        composeRule.onNodeWithTagText(UiTags.SCAN_ERROR_MESSAGE, "Your sign-in has expired. Nothing was used. Sign in again to scan.").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_SIGN_IN).performClick()
 
         assertEquals(listOf(ScanNextStep.SIGN_IN), steps)
     }
@@ -231,11 +232,12 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithText(
+        composeRule.onNodeWithTagText(
+            UiTags.SCAN_ERROR_MESSAGE,
             "You're out of Scans. Nothing was used. Buy more Scans, or type the numbers in yourself.",
         ).assertIsDisplayed()
-        composeRule.onNodeWithText("Try again").assertDoesNotExist()
-        composeRule.onNodeWithText("Buy more Scans").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_BUY_SCANS).performClick()
 
         assertEquals(listOf(ScanNextStep.BUY_SCANS), steps)
     }
@@ -253,8 +255,8 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Choose a different photo").assertDoesNotExist()
-        composeRule.onNodeWithText("Try again").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_CHOOSE_PHOTO).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).performClick()
 
         assertEquals(listOf(ScanNextStep.TRY_AGAIN), steps)
     }
@@ -270,9 +272,9 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Type it in").assertIsDisplayed()
-        composeRule.onNodeWithText("Choose a different photo").assertIsDisplayed()
-        composeRule.onNodeWithText("Try again").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TYPE_IT_IN).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_CHOOSE_PHOTO).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertDoesNotExist()
     }
 
     @Test
@@ -286,9 +288,9 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Type it in").assertIsDisplayed()
-        composeRule.onNodeWithText("Choose a different photo").assertIsDisplayed()
-        composeRule.onNodeWithText("Try again").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TYPE_IT_IN).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_CHOOSE_PHOTO).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertDoesNotExist()
     }
 
     // The weight fields are already on this screen, so typing it in only closes
@@ -309,11 +311,11 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Type it in").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TYPE_IT_IN).performClick()
 
-        composeRule.onNodeWithText("Scan failed").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_TITLE).assertDoesNotExist()
         assertEquals(emptyList<ScanNextStep>(), steps)
-        composeRule.onNodeWithTag("truck_description").performTextInput("Ford F-450")
+        composeRule.onNodeWithTag(UiTags.TRUCK_DESCRIPTION).performTextInput("Ford F-450")
         assertEquals("Ford F-450", current.description)
     }
 
@@ -330,13 +332,14 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithText(
+        composeRule.onNodeWithTagText(
+            UiTags.SCAN_ERROR_MESSAGE,
             "We read the ticket but couldn't find a weight. That Scan was used, and trying again uses another. " +
                 "Type the weight in, or choose a different photo.",
         ).assertIsDisplayed()
-        composeRule.onNodeWithText("Type it in").assertIsDisplayed()
-        composeRule.onNodeWithText("Choose a different photo").assertIsDisplayed()
-        composeRule.onNodeWithText("Try again").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TYPE_IT_IN).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_CHOOSE_PHOTO).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertDoesNotExist()
     }
 
     @Test
@@ -354,7 +357,7 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Type it in").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TYPE_IT_IN).performClick()
 
         assert(dismissed) { "the error should be dismissed" }
         assertEquals(emptyList<ScanNextStep>(), steps)
@@ -376,12 +379,12 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Choose a different photo").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_CHOOSE_PHOTO).performClick()
 
         assert(dismissed) { "the error should be dismissed" }
         assertEquals(emptyList<ScanNextStep>(), steps)
-        composeRule.onNodeWithText("Take Photo").assertIsDisplayed()
-        composeRule.onNodeWithText("Choose from Gallery").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_GALLERY).assertIsDisplayed()
     }
 
     // The no-weight answer charged a Scan, so the balance may now be 0: a different
@@ -400,10 +403,10 @@ class TruckTagEntryScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Choose a different photo").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_CHOOSE_PHOTO).performClick()
 
         assert(neededCredits) { "onNeedCredits should have fired for a 0-credit user" }
-        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertDoesNotExist()
     }
 
     // #47: the optional GCWR, typed by hand from the owner's manual.
@@ -415,11 +418,11 @@ class TruckTagEntryScreenTest {
             TruckTagEntryScreen(truck = current, onTruckChange = { current = it }, onContinue = {})
         }
 
-        composeRule.onNodeWithText("GCWR, lb — optional").scrollToIfScrollable().assertIsDisplayed()
-        composeRule.onNodeWithText("From your owner's manual. Leave blank if you can't find it.")
+        composeRule.onNodeWithTag(UiTags.TRUCK_GCWR).scrollToIfScrollable().assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.TRUCK_GCWR_HELP, "From your owner's manual. Leave blank if you can't find it.")
             .scrollToIfScrollable()
             .assertIsDisplayed()
-        composeRule.onNodeWithTag("truck_gcwr").scrollToIfScrollable().performTextInput("26000")
+        composeRule.onNodeWithTag(UiTags.TRUCK_GCWR).scrollToIfScrollable().performTextInput("26000")
 
         assertEquals(26_000.0, current.gcwrLb)
     }
@@ -432,10 +435,10 @@ class TruckTagEntryScreenTest {
             TruckTagEntryScreen(truck = current, onTruckChange = { current = it }, onContinue = {})
         }
 
-        composeRule.onNodeWithTag("truck_gcwr_warning").assertDoesNotExist()
-        composeRule.onNodeWithTag("truck_gcwr").scrollToIfScrollable().performTextInput("13000")
+        composeRule.onNodeWithTag(UiTags.TRUCK_GCWR_WARNING).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.TRUCK_GCWR).scrollToIfScrollable().performTextInput("13000")
 
-        composeRule.onNodeWithTag("truck_gcwr_warning").scrollToIfScrollable().assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.TRUCK_GCWR_WARNING).scrollToIfScrollable().assertIsDisplayed()
         assertEquals(13_000.0, current.gcwrLb)
     }
 
@@ -445,7 +448,7 @@ class TruckTagEntryScreenTest {
             TruckTagEntryScreen(truck = TruckTag(gcwrLb = 13_000.0), onTruckChange = {}, onContinue = {})
         }
 
-        composeRule.onNodeWithTag("truck_gcwr_warning").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.TRUCK_GCWR_WARNING).assertDoesNotExist()
     }
 
     // The error a failed Scan with this code shows, as the app builds it.

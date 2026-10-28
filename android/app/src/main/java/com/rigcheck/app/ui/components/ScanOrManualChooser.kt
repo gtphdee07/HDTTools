@@ -23,7 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.theme.OnOrange
 import com.rigcheck.app.ui.theme.Orange
 import com.rigcheck.app.ui.theme.Pine
@@ -40,6 +42,8 @@ fun ScanOrManualChooser(
             title = "Scan Photo",
             description = "Photograph the label — Claude reads the fields for you.",
             badgeText = "1 credit",
+            cardTag = UiTags.CHOOSER_SCAN_CARD,
+            badgeTag = UiTags.CHOOSER_SCAN_BADGE,
             badgeColor = Orange,
             // Orange fails contrast with white text/icons at this weight - the
             // brand tokens require ink (near-black) on top of it instead.
@@ -52,6 +56,8 @@ fun ScanOrManualChooser(
             title = "Enter Manually",
             description = "Type the values in yourself — free, no photo, works offline.",
             badgeText = "Free",
+            cardTag = UiTags.CHOOSER_MANUAL_CARD,
+            badgeTag = UiTags.CHOOSER_MANUAL_BADGE,
             badgeColor = Pine,
             enabled = true,
             onClick = onChooseManual,
@@ -65,6 +71,8 @@ private fun ChooserOptionCard(
     title: String,
     description: String,
     badgeText: String,
+    cardTag: String,
+    badgeTag: String,
     badgeColor: Color,
     badgeContentColor: Color = Color.White,
     enabled: Boolean,
@@ -80,6 +88,7 @@ private fun ChooserOptionCard(
         color = MaterialTheme.colorScheme.surface,
         modifier = Modifier
             .fillMaxWidth()
+            .testTag(cardTag)
             .alpha(if (enabled) 1f else 0.5f)
             .clickable(enabled = enabled, onClick = onClick),
     ) {
@@ -103,6 +112,7 @@ private fun ChooserOptionCard(
             Surface(
                 shape = RoundedCornerShape(999.dp),
                 color = badgeColor,
+                modifier = Modifier.testTag(badgeTag),
             ) {
                 Text(
                     badgeText,

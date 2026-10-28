@@ -15,8 +15,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.data.CrashReportStore
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.util.FEEDBACK_EMAIL
 import com.rigcheck.app.ui.util.crashReportIntent
 
@@ -45,14 +47,20 @@ fun CrashReportPrompt(
         text = {
             Column {
                 if (noMailApp) {
-                    Text("This phone has no email app. Write to $FEEDBACK_EMAIL instead.")
+                    Text(
+                        "This phone has no email app. Write to $FEEDBACK_EMAIL instead.",
+                        modifier = Modifier.testTag(UiTags.CRASH_PROMPT_NO_MAIL_APP),
+                    )
                 } else {
-                    Text("RigCheck closed unexpectedly last time. Send details?")
+                    Text(
+                        "RigCheck closed unexpectedly last time. Send details?",
+                        modifier = Modifier.testTag(UiTags.CRASH_PROMPT_QUESTION),
+                    )
                     Text(
                         "It holds the error, the app version, your Android version and phone model. " +
                             "Nothing about your account or your rigs. Nothing is sent unless you tap Send.",
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp),
+                        modifier = Modifier.padding(top = 8.dp).testTag(UiTags.CRASH_PROMPT_DETAILS),
                     )
                 }
             }
@@ -60,6 +68,7 @@ fun CrashReportPrompt(
         confirmButton = {
             if (!noMailApp) {
                 TextButton(
+                    modifier = Modifier.testTag(UiTags.CRASH_PROMPT_SEND),
                     onClick = {
                         try {
                             startActivity(crashReportIntent(pendingReport))
@@ -74,7 +83,7 @@ fun CrashReportPrompt(
             }
         },
         dismissButton = {
-            TextButton(onClick = ::answered) {
+            TextButton(onClick = ::answered, modifier = Modifier.testTag(UiTags.CRASH_PROMPT_DISMISS)) {
                 Text(if (noMailApp) "OK" else "Not now")
             }
         },

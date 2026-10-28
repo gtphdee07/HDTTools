@@ -3,6 +3,7 @@ package com.rigcheck.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -34,6 +35,8 @@ import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import com.rigcheck.app.ui.UiTags
+import androidx.compose.ui.test.onNodeWithTag
 
 // External suite, surface `revenuecat-android-sdk` (ADR-0008, #39): what the
 // RevenueCat Android SDK really returns to RevenueCatManager.kt, against the
@@ -166,15 +169,15 @@ class RevenueCatAndroidSdkExternalTest {
 
             composeRule.waitUntil(timeoutMillis = 15_000) {
                 composeRule.onAllNodesWithText(expectedTitle, substring = true).fetchSemanticsNodes().isNotEmpty() ||
-                    composeRule.onAllNodesWithText("Couldn't load offers", substring = true).fetchSemanticsNodes().isNotEmpty()
+                    composeRule.onAllNodesWithTag(UiTags.PAYWALL_LOAD_ERROR).fetchSemanticsNodes().isNotEmpty()
             }
             assertTrue(
                 "The paywall showed its load error instead of the offerings",
-                composeRule.onAllNodesWithText("Couldn't load offers", substring = true).fetchSemanticsNodes().isEmpty(),
+                composeRule.onAllNodesWithTag(UiTags.PAYWALL_LOAD_ERROR).fetchSemanticsNodes().isEmpty(),
             )
             composeRule.onNodeWithText(expectedTitle, substring = true).assertIsDisplayed()
 
-            composeRule.onNodeWithText("Restore purchase").performClick()
+            composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).performClick()
             composeRule.waitUntil(timeoutMillis = 30_000) { restore.get() != null }
             val (success, error) = restore.get()
             assertTrue("Restore failed: $error", success)

@@ -3,11 +3,11 @@ package com.rigcheck.app.ui.screens
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.domain.model.ScaleTicket
+import com.rigcheck.app.ui.UiTags
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -26,7 +26,7 @@ class ScaleTicketEntryScreenTest {
             ScaleTicketEntryScreen(scale = current, onScaleChange = { current = it }, onContinue = {})
         }
 
-        composeRule.onNodeWithTag("scale_location").performTextInput("Loves Country Stores")
+        composeRule.onNodeWithTag(UiTags.SCALE_LOCATION).performTextInput("Loves Country Stores")
 
         assertEquals("Loves Country Stores", current.locationName)
     }
@@ -39,7 +39,7 @@ class ScaleTicketEntryScreenTest {
         }
 
         // Pinned below the scrolling form, so it is on screen however tall the content is.
-        composeRule.onNodeWithText("Check Weights").assertIsDisplayed().performClick()
+        composeRule.onNodeWithTag(UiTags.SCALE_CHECK_BUTTON).assertIsDisplayed().performClick()
 
         assert(continued) { "onContinue should have fired" }
     }

@@ -7,15 +7,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.domain.model.ScaleTicket
 import com.rigcheck.app.domain.model.TrailerTag
 import com.rigcheck.app.domain.model.TruckTag
+import com.rigcheck.app.testsupport.onNodeWithTagText
 import com.rigcheck.app.testsupport.scrollToIfScrollable
 import com.rigcheck.app.ui.ScanMessages
 import com.rigcheck.app.ui.ScanNotice
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.applyScan
 import com.rigcheck.app.ui.navigation.EntryModule
 import kotlinx.serialization.json.Json
@@ -51,9 +52,9 @@ class ScanNoticeScreenTest {
         val applied = scanned(EntryModule.TRUCK, "{}")
         showTruck(applied.truck, applied.notice)
 
-        composeRule.onNodeWithTag("scan_notice").assertIsDisplayed()
-        composeRule.onNodeWithText(ScanMessages.NOTHING_READ).assertIsDisplayed()
-        composeRule.onNodeWithText("Try again").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_NOTICE).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.SCAN_NOTICE, ScanMessages.NOTHING_READ).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertDoesNotExist()
     }
 
     @Test
@@ -61,7 +62,7 @@ class ScanNoticeScreenTest {
         val applied = scanned(EntryModule.TRUCK, """{"manufacturer":"Ford","gvwr_lb":10000}""")
         showTruck(applied.truck, applied.notice)
 
-        composeRule.onNodeWithText(ScanMessages.someNotRead(listOf("Front GAWR", "Rear GAWR"))).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.SCAN_NOTICE, ScanMessages.someNotRead(listOf("Front GAWR", "Rear GAWR"))).assertIsDisplayed()
     }
 
     @Test
@@ -72,25 +73,25 @@ class ScanNoticeScreenTest {
         )
         showTruck(applied.truck, applied.notice)
 
-        composeRule.onNodeWithTag("scan_notice").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_NOTICE).assertDoesNotExist()
     }
 
     @Test
     fun manualEntryShowsNoNotice() {
         showTruck(TruckTag(), notice = null)
 
-        composeRule.onNodeWithTag("scan_notice").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_NOTICE).assertDoesNotExist()
     }
 
     @Test
     fun theNoticeGoesAwayOnceTheMissingFieldIsTypedIn() {
         val applied = scanned(EntryModule.TRUCK, """{"gvwr_lb":10000,"front_gawr_lb":5000,"rear_gawr_lb":6000}""")
         showTruck(applied.truck, applied.notice)
-        composeRule.onNodeWithTag("scan_notice").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_NOTICE).assertIsDisplayed()
 
-        composeRule.onNodeWithTag("truck_description").scrollToIfScrollable().performTextInput("Ford F-450")
+        composeRule.onNodeWithTag(UiTags.TRUCK_DESCRIPTION).scrollToIfScrollable().performTextInput("Ford F-450")
 
-        composeRule.onNodeWithTag("scan_notice").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_NOTICE).assertDoesNotExist()
     }
 
     @Test
@@ -105,8 +106,8 @@ class ScanNoticeScreenTest {
             )
         }
 
-        composeRule.onNodeWithText(ScanMessages.NOTHING_READ).assertIsDisplayed()
-        composeRule.onNodeWithText("Try again").assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.SCAN_NOTICE, ScanMessages.NOTHING_READ).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertDoesNotExist()
     }
 
     @Test
@@ -122,7 +123,7 @@ class ScanNoticeScreenTest {
         }
 
         composeRule
-            .onNodeWithText(ScanMessages.someNotRead(listOf("GAWR per axle", "Unloaded weight (UVW)")))
+            .onNodeWithTagText(UiTags.SCAN_NOTICE, ScanMessages.someNotRead(listOf("GAWR per axle", "Unloaded weight (UVW)")))
             .assertIsDisplayed()
     }
 
@@ -141,7 +142,7 @@ class ScanNoticeScreenTest {
             )
         }
 
-        composeRule.onNodeWithTag("scan_notice").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_NOTICE).assertDoesNotExist()
     }
 
     @Test
@@ -151,8 +152,8 @@ class ScanNoticeScreenTest {
             ScaleTicketEntryScreen(scale = applied.scale, onScaleChange = {}, onContinue = {}, scanNotice = applied.notice)
         }
 
-        composeRule.onNodeWithText(ScanMessages.NOTHING_READ).assertIsDisplayed()
-        composeRule.onNodeWithText("Try again").assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.SCAN_NOTICE, ScanMessages.NOTHING_READ).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertDoesNotExist()
     }
 
     @Test
@@ -165,7 +166,7 @@ class ScanNoticeScreenTest {
             ScaleTicketEntryScreen(scale = applied.scale, onScaleChange = {}, onContinue = {}, scanNotice = applied.notice)
         }
 
-        composeRule.onNodeWithText(ScanMessages.someNotRead(listOf("Trailer axle(s)"))).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.SCAN_NOTICE, ScanMessages.someNotRead(listOf("Trailer axle(s)"))).assertIsDisplayed()
     }
 
     @Test
@@ -179,6 +180,6 @@ class ScanNoticeScreenTest {
             ScaleTicketEntryScreen(scale = applied.scale, onScaleChange = {}, onContinue = {}, scanNotice = applied.notice)
         }
 
-        composeRule.onNodeWithTag("scan_notice").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_NOTICE).assertDoesNotExist()
     }
 }

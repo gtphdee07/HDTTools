@@ -4,8 +4,8 @@ import android.net.Uri
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.core.view.ViewCompat
@@ -16,9 +16,12 @@ import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.MainActivity
 import com.rigcheck.app.data.ScanResult
+import com.rigcheck.app.testsupport.nodesWithTag
+import com.rigcheck.app.testsupport.nodesWithTagShowing
 import com.rigcheck.app.ui.RigCheckViewModel
 import com.rigcheck.app.ui.ScanMessages
 import com.rigcheck.app.ui.ScanUiState
+import com.rigcheck.app.ui.UiTags
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -54,7 +57,7 @@ class ScanInFlightNavigationTest {
     // Same recipe as RigCheckNavHostTest (#125): leave the soft keyboard really
     // closed so a later Back is a Back.
     private fun enterNickname(nickname: String) {
-        composeRule.onNodeWithText("Rig nickname").performTextInput(nickname)
+        composeRule.onNodeWithTag(UiTags.PICKER_NEW_RIG_INPUT).performTextInput(nickname)
         composeRule.waitUntil(timeoutMillis = 30_000) { isKeyboardVisible() }
         closeSoftKeyboard()
         composeRule.waitUntil(timeoutMillis = 30_000) { !isKeyboardVisible() }
@@ -75,8 +78,8 @@ class ScanInFlightNavigationTest {
             viewModel().scanSender = { _, _ -> answers[sent++].await() }
         }
         enterNickname(nickname)
-        composeRule.onNodeWithText("Create").performClick()
-        composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).assertIsDisplayed()
     }
 
     private fun scanTruckTag() {
@@ -91,10 +94,12 @@ class ScanInFlightNavigationTest {
         }
     }
 
-    private fun waitForText(text: String) {
-        composeRule.waitUntil(timeoutMillis = 10_000) {
-            composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
-        }
+    private fun waitForTag(tag: String) {
+        composeRule.waitUntil(timeoutMillis = 10_000) { composeRule.nodesWithTag(tag) > 0 }
+    }
+
+    private fun waitForTagText(tag: String, text: String) {
+        composeRule.waitUntil(timeoutMillis = 10_000) { composeRule.nodesWithTagShowing(tag, text) > 0 }
     }
 
     private fun <T> onUiThread(read: RigCheckViewModel.() -> T): T {
@@ -120,7 +125,7 @@ class ScanInFlightNavigationTest {
 
         assertEquals(1, sent)
         answer.complete(gvwrScan)
-        waitForText("Next: Trailer Tag")
+        waitForTag(UiTags.TRUCK_NEXT_BUTTON)
     }
 
     @Test
@@ -130,7 +135,7 @@ class ScanInFlightNavigationTest {
         scanTruckTag()
         answer.complete(gvwrScan)
 
-        waitForText("Next: Trailer Tag")
+        waitForTag(UiTags.TRUCK_NEXT_BUTTON)
         assertEquals(11111.0, truckGvwr()!!, 0.0)
     }
 
@@ -144,10 +149,10 @@ class ScanInFlightNavigationTest {
 
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).assertIsDisplayed()
         answer.complete(gvwrScan)
 
-        waitForText("Next: Trailer Tag")
+        waitForTag(UiTags.TRUCK_NEXT_BUTTON)
     }
 
     @Test
@@ -155,16 +160,16 @@ class ScanInFlightNavigationTest {
         startRigOnTheChooser("Backed Out")
         scanTruckTag()
         pressBack()
-        composeRule.onNodeWithText("Which rig?").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PICKER_HEADING).assertIsDisplayed()
         // Leaving the check cleared its loading state at once.
         assertEquals(ScanUiState.Idle, scanState())
 
         answer.complete(gvwrScan)
 
-        waitForText(ScanMessages.RESULT_NOT_USED)
+        waitForTagText(UiTags.LATE_SCAN_MESSAGE, ScanMessages.RESULT_NOT_USED)
         assertNull(truckGvwr())
-        composeRule.onNodeWithText("Which rig?").assertIsDisplayed()
-        composeRule.onAllNodesWithText("Next: Trailer Tag").assertCountEquals(0)
+        composeRule.onNodeWithTag(UiTags.PICKER_HEADING).assertIsDisplayed()
+        composeRule.onAllNodesWithTag(UiTags.TRUCK_NEXT_BUTTON).assertCountEquals(0)
     }
 
     @Test
@@ -177,10 +182,10 @@ class ScanInFlightNavigationTest {
 
         answer.complete(gvwrScan)
 
-        waitForText(ScanMessages.RESULT_NOT_USED)
+        waitForTagText(UiTags.LATE_SCAN_MESSAGE, ScanMessages.RESULT_NOT_USED)
         assertNull(truckGvwr())
-        composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
-        composeRule.onAllNodesWithText("Next: Trailer Tag").assertCountEquals(0)
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).assertIsDisplayed()
+        composeRule.onAllNodesWithTag(UiTags.TRUCK_NEXT_BUTTON).assertCountEquals(0)
     }
 
     @Test
@@ -197,14 +202,14 @@ class ScanInFlightNavigationTest {
         // The old Scan answers while the new check's Scan is still out: it is
         // reported, and the new check is still loading, with no error shown.
         answers[0].complete(gvwrScan)
-        waitForText(ScanMessages.RESULT_NOT_USED)
+        waitForTagText(UiTags.LATE_SCAN_MESSAGE, ScanMessages.RESULT_NOT_USED)
         assertEquals(ScanUiState.Loading, scanState())
-        composeRule.onAllNodesWithText("Scan failed").assertCountEquals(0)
+        composeRule.onAllNodesWithTag(UiTags.SCAN_ERROR_TITLE).assertCountEquals(0)
         assertNull(truckGvwr())
 
         // The new check's own Scan then fills it and opens its entry screen.
         answers[1].complete(gvwrScan)
-        waitForText("Next: Trailer Tag")
+        waitForTag(UiTags.TRUCK_NEXT_BUTTON)
         assertEquals(11111.0, truckGvwr()!!, 0.0)
     }
 
@@ -216,18 +221,18 @@ class ScanInFlightNavigationTest {
 
         answer.complete(ScanResult.Failure("extraction_failed", "worker text"))
 
-        waitForText(ScanMessages.EXTRACTION_FAILED)
-        composeRule.onNodeWithText("OK").assertIsDisplayed()
-        composeRule.onAllNodesWithText("Try again").assertCountEquals(0)
-        composeRule.onAllNodesWithText("Scan failed").assertCountEquals(0)
+        waitForTagText(UiTags.LATE_SCAN_MESSAGE, ScanMessages.EXTRACTION_FAILED)
+        composeRule.onNodeWithTag(UiTags.LATE_SCAN_OK_BUTTON).assertIsDisplayed()
+        composeRule.onAllNodesWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertCountEquals(0)
+        composeRule.onAllNodesWithTag(UiTags.SCAN_ERROR_TITLE).assertCountEquals(0)
         assertEquals(ScanUiState.Idle, scanState())
     }
 
     // --- The stand-alone ticket Scan, on the Truck Tag screen ---
 
     private fun openTheTruckTagByHand() {
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).assertIsDisplayed()
     }
 
     @Test
@@ -253,7 +258,7 @@ class ScanInFlightNavigationTest {
         answer.complete(ticketScan)
 
         composeRule.waitUntil(timeoutMillis = 10_000) { standaloneWeight() == 7000.0 }
-        composeRule.onAllNodesWithText(ScanMessages.RESULT_NOT_USED).assertCountEquals(0)
+        composeRule.onAllNodesWithTag(UiTags.LATE_SCAN_MESSAGE).assertCountEquals(0)
     }
 
     @Test
@@ -261,13 +266,13 @@ class ScanInFlightNavigationTest {
         startRigOnTheChooser("Ticket Gone")
         openTheTruckTagByHand()
         scanStandaloneTicket()
-        composeRule.onNodeWithText("Next: Trailer Tag").performClick()
-        composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).assertIsDisplayed()
         assertEquals(ScanUiState.Idle, scanState())
 
         answer.complete(ticketScan)
 
-        waitForText(ScanMessages.RESULT_NOT_USED)
+        waitForTagText(UiTags.LATE_SCAN_MESSAGE, ScanMessages.RESULT_NOT_USED)
         assertNull(standaloneWeight())
     }
 
@@ -280,7 +285,7 @@ class ScanInFlightNavigationTest {
 
         answer.complete(ticketScan)
 
-        waitForText(ScanMessages.RESULT_NOT_USED)
+        waitForTagText(UiTags.LATE_SCAN_MESSAGE, ScanMessages.RESULT_NOT_USED)
         assertNull(standaloneWeight())
     }
 }

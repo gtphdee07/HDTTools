@@ -1071,6 +1071,28 @@ network involved:
   kept the soft keyboard from showing for the next keyboard-waiting test (`GarageNavigationTest`, 30 s
   timeout, the full instrumented suite failed on a fresh boot). The class's `@After` cancels the session
   (`AutofillManager.cancel()`); any test that fills a password field should do the same.
+- `LayoutCaptureTest` (#189, 4 tests, in `layoutcapture/`) — not a regression test but the capture of the
+  redesign's "before" and "after" map. It opens every screen state of `docs/android-redesign/ui-inventory.json`
+  that the app can reach with the existing fixtures (89 states in `CaptureCases.kt`: the real screens inside
+  `RigCheckApp`, RevenueCat faked as the Offering's packages, no Scan sent, no network) once per phone frame:
+  412 x 892 dp (the reference frame), 360 x 640 dp, and the Disclaimer and Results states again at font scale
+  2.0 on both. For each state it writes `<screen>__<state>.png` (a screenshot of the display, status and
+  navigation bars included) and `<screen>__<state>.json` (the position and size in dp of every tagged element,
+  and whether it is on show) under `android/app/build/layout-capture/<frame>/`. **Each state is measured twice,
+  in two freshly launched activities, and the test fails if the two measurements differ**, and it fails (after
+  capturing the rest) naming any state that could not be put on screen. The frame is real: the test sets the
+  display size and density (400 dpi, 2.5 px per dp, so both frames are whole pixels) and the system font scale
+  through `wm` and `settings`, so the window is the frame, and puts them back (`@After`). It is skipped unless
+  the runner is given `-e layoutCapture true`, so `connectedDebugAndroidTest` never runs it. Run it with
+  `uv run scripts/android_layout_capture.py` (the one emulator, `emulator-5554` only; about 13 minutes), then
+  `uv run scripts/ui_inventory.py --merge-bounds android/app/build/layout-capture`, which writes
+  `today_measured` per element and frame into the JSON (`--field after_measured` for the re-skin's rerun) and
+  lists every inventory element no state showed (`tests/test_ui_inventory.py`). The PNGs are build output,
+  not committed; the merged measurements are. **Adding a state:** add a `CaptureCase` (its fixture and the taps
+  into the state) to `captureCases`. **Not captured, with the reason:** the inventory states that are one
+  fixture seen from the outside (balance and plan variants that look the same), the 3-button navigation bar
+  (a device setting, not a fixture; `SystemBarsTest`) and the toast (system UI, untagged); the full list is in
+  the #189 STATUS comment.
 - `CrashReportPromptTest` (#184, 5 tests) — the question after a crash, with the real
   `CrashReportStore` on a folder of its own and `startActivity` faked (no mail app opens). No saved
   crash: nothing is asked. A saved crash: "RigCheck closed unexpectedly last time. Send details?" shows

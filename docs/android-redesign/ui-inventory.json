@@ -25,7 +25,7 @@
       "screens": 15
     },
     "test_tags": "test_tag_new is the Modifier.testTag value of the element (UiTags in the app); null when the element is not tagged (system toasts). An element whose one slot holds several different controls (the Scan error dialog's next-step buttons) also lists test_tag_variants, one per control; test_tag_new then tags the area that holds them. Repeated items (rig card, breakdown row, history entry, offer card) share one tag and are found with onAllNodesWithTag.",
-    "today_measured": "Measured on the emulator by the layout capture (LayoutCaptureTest, #189; merged by `scripts/ui_inventory.py --merge-bounds`), per frame (412x892 is the reference frame, 360x640 the small phone, -font2.0 the same at font scale 2.0). x and y are the element's top-left corner on the display and width and height its size as laid out, all in dp, in the first captured state (in the capture's order) where it is on show; `visible` is whether any of it is on show there; `count` how many elements carry the tag there (a repeated item); `seen_in_states` in how many captured states it is present. null: never found in any state. These supersede the estimates in `today`, which stay for the designer's round."
+    "today_measured": "Measured on the emulator by the layout capture (LayoutCaptureTest, #189; merged by `scripts/ui_inventory.py --merge-bounds`), per frame (412x892 is the reference frame, 360x640 the small phone, -font2.0 the same at font scale 2.0). x and y are the element's top-left corner on the display and width and height its size as laid out, all in dp, in the first captured state (in the capture's order) where it is on show; `visible` is whether any of it is on show there (width and height are the laid-out size, so an element scrolled out of view keeps its size and has visible false); `count` how many elements carry the tag there (a repeated item); `seen_in_states` in how many captured states it is present. null: never found in any state, or untagged (the merge names those). These supersede the estimates in `today`, which stay for the designer's round."
   },
   "screens": [
     {
@@ -8319,7 +8319,7 @@
           "height": 35.2,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         },
         "412x892": {
           "state": "account__sign_in",
@@ -8329,7 +8329,7 @@
           "height": 35.2,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         }
       },
       "test_tag_today": null,
@@ -8376,7 +8376,7 @@
           "height": 20.8,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         },
         "412x892": {
           "state": "account__sign_in",
@@ -8386,7 +8386,7 @@
           "height": 20.8,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         }
       },
       "test_tag_today": null,
@@ -8433,7 +8433,7 @@
           "height": 64.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         },
         "412x892": {
           "state": "account__sign_in",
@@ -8443,7 +8443,7 @@
           "height": 64.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         }
       },
       "test_tag_today": null,
@@ -8490,7 +8490,7 @@
           "height": 64.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         },
         "412x892": {
           "state": "account__sign_in",
@@ -8500,7 +8500,7 @@
           "height": 64.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         }
       },
       "test_tag_today": null,
@@ -8604,7 +8604,7 @@
           "height": 48.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 1
+          "seen_in_states": 2
         },
         "412x892": {
           "state": "account__info_reset_sent",
@@ -8614,7 +8614,7 @@
           "height": 48.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 1
+          "seen_in_states": 2
         }
       },
       "test_tag_today": null,
@@ -8661,7 +8661,7 @@
           "height": 40.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         },
         "412x892": {
           "state": "account__sign_in",
@@ -8671,7 +8671,7 @@
           "height": 40.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         }
       },
       "test_tag_today": "account_submit",
@@ -8718,7 +8718,7 @@
           "height": 40.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         },
         "412x892": {
           "state": "account__sign_in",
@@ -8728,7 +8728,7 @@
           "height": 40.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         }
       },
       "test_tag_today": null,
@@ -8832,7 +8832,7 @@
           "height": 1.2,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         },
         "412x892": {
           "state": "account__sign_in",
@@ -8842,7 +8842,7 @@
           "height": 1.2,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         }
       },
       "test_tag_today": null,
@@ -8888,7 +8888,7 @@
           "height": 40.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         },
         "412x892": {
           "state": "account__sign_in",
@@ -8898,7 +8898,7 @@
           "height": 40.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         }
       },
       "test_tag_today": null,
@@ -9004,7 +9004,7 @@
           "height": 40.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         },
         "412x892": {
           "state": "account__sign_in",
@@ -9014,7 +9014,7 @@
           "height": 40.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         }
       },
       "test_tag_today": null,
@@ -9062,7 +9062,7 @@
           "height": 40.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         },
         "412x892": {
           "state": "account__sign_in",
@@ -9072,7 +9072,7 @@
           "height": 40.0,
           "visible": true,
           "count": 1,
-          "seen_in_states": 8
+          "seen_in_states": 9
         }
       },
       "test_tag_today": null,

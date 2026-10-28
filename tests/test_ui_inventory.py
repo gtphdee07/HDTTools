@@ -148,10 +148,12 @@ def test_merging_writes_the_measurement_of_every_tag_found_and_reports_the_ones_
     assert problems == ["picker.gone (picker_gone) on picker was never found in any captured state"]
 
 
-def test_an_element_without_a_tag_is_not_reported_as_missing():
+def test_an_element_without_a_tag_is_named_as_not_measurable_rather_than_as_missing():
     inventory = _inventory(_element("picker.toast", "picker", None))
 
-    assert ui_inventory.merge_bounds(inventory, {"412x892": [_bounds_file("picker", "empty", 0, {})]}) == []
+    problems = ui_inventory.merge_bounds(inventory, {"412x892": [_bounds_file("picker", "empty", 0, {})]})
+
+    assert problems == ["picker.toast on picker has no test tag, so it cannot be measured"]
     assert inventory["elements"][0]["today_measured"] is None
 
 

@@ -7,8 +7,8 @@ import android.os.Bundle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.platform.app.InstrumentationRegistry
 import com.revenuecat.purchases.Package
@@ -224,13 +224,14 @@ private fun account(
     onSignIn: (String, String, (AccountResult) -> Unit) -> Unit = { _, _, report ->
         report(AccountResult.Failure("Invalid login credentials"))
     },
+    onSignUp: (String, String, (AccountResult) -> Unit) -> Unit = { _, _, _ -> },
     onForgotPassword: (String, (AccountResult) -> Unit) -> Unit = { _, report -> report(AccountResult.Success) },
 ): @Composable () -> Unit = {
     AccountScreen(
         reason = "Sign in to buy scans.",
         showApple = showApple,
         onSignIn = onSignIn,
-        onSignUp = { _, _, _ -> },
+        onSignUp = onSignUp,
         onGoogle = {},
         onApple = {},
         onForgotPassword = onForgotPassword,
@@ -265,7 +266,7 @@ private fun withNoMailApp(content: @Composable () -> Unit): @Composable () -> Un
     CompositionLocalProvider(LocalContext provides noMailApp) { content() }
 }
 
-private val longMessage ="Something went wrong while we were reading the photo. ".repeat(6).trim()
+private val longMessage = "Something went wrong while we were reading the photo. ".repeat(6).trim()
 
 val captureCases: List<CaptureCase> = listOf(
     // rig_picker
@@ -570,6 +571,15 @@ val captureCases: List<CaptureCase> = listOf(
         },
         content = account(),
     ),
+    CaptureCase(
+        "account", "info_confirm_email",
+        setUp = {
+            tap(UiTags.ACCOUNT_TOGGLE_MODE)
+            fillSignIn()
+            tap(UiTags.ACCOUNT_SUBMIT)
+        },
+        content = account(onSignUp = { _, _, report -> report(AccountResult.NeedsConfirmation) }),
+    ),
     CaptureCase("account", "apple_button_shown", content = account(showApple = true)),
     CaptureCase(
         "account", "keyboard_open",
@@ -615,7 +625,7 @@ val captureCases: List<CaptureCase> = listOf(
             picker()()
             CrashReportPrompt(
                 remember { crashStore() },
-                startActivity = { throw android.content.ActivityNotFoundException("no mail app") },
+                startActivity = { throw ActivityNotFoundException("no mail app") },
             )
         },
     ),

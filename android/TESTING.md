@@ -1073,7 +1073,7 @@ network involved:
   (`AutofillManager.cancel()`); any test that fills a password field should do the same.
 - `LayoutCaptureTest` (#189, 4 tests, in `layoutcapture/`) — not a regression test but the capture of the
   redesign's "before" and "after" map. It opens every screen state of `docs/android-redesign/ui-inventory.json`
-  that the app can reach with the existing fixtures (88 states in `CaptureCases.kt`: the real screens inside
+  that the app can reach with the existing fixtures (89 states in `CaptureCases.kt`: the real screens inside
   `RigCheckApp`, RevenueCat faked as the Offering's packages, no Scan sent, no network) once per phone frame:
   412 x 892 dp (the reference frame), 360 x 640 dp, and the Disclaimer and Results states again at font scale
   2.0 on both. For each state it writes `<screen>__<state>.png` (a screenshot of the display, status and

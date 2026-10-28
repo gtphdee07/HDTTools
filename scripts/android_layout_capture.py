@@ -30,7 +30,7 @@ import android_suite_loop  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EMULATOR = "emulator-5554"
-APP_PACKAGE = "com.rigcheck.app"
+APP_PACKAGE = android_suite_loop.APP_PACKAGE
 TEST_CLASS = f"{APP_PACKAGE}.layoutcapture.LayoutCaptureTest"
 DEVICE_FOLDER = f"/sdcard/Android/data/{APP_PACKAGE}/files/layout-capture"
 DEFAULT_OUT = REPO_ROOT / "android" / "app" / "build" / "layout-capture"

@@ -51,8 +51,10 @@ MEASURED_NOTES = {
         "`scripts/ui_inventory.py --merge-bounds`), per frame (412x892 is the reference frame, 360x640 the small phone, "
         "-font2.0 the same at font scale 2.0). x and y are the element's top-left corner on the display and width and "
         "height its size as laid out, all in dp, in the first captured state (in the capture's order) where it is on "
-        "show; `visible` is whether any of it is on show there; `count` how many elements carry the tag there (a "
-        "repeated item); `seen_in_states` in how many captured states it is present. null: never found in any state. "
+        "show; `visible` is whether any of it is on show there (width and height are the laid-out size, so an element "
+        "scrolled out of view keeps its size and has visible false); `count` how many elements carry the tag there (a "
+        "repeated item); `seen_in_states` in how many captured states it is present. null: never found in any state, "
+        "or untagged (the merge names those). "
         "These supersede the estimates in `today`, which stay for the designer's round."
     ),
     "after_measured": "The same measurement of the re-skinned app (#197), merged with `--field after_measured`.",
@@ -254,6 +256,7 @@ def merge_bounds(inventory: dict, frames: dict[str, list[dict]], field: str = "t
     for element in inventory["elements"]:
         if not element_tags(element):
             _set_field(element, field, None)
+            found.append(f"{element['id']} on {element['screen']} has no test tag, so it cannot be measured")
             continue
         measured = _measure(element, frames)
         _set_field(element, field, measured)

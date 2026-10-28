@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The window background while the app starts: teal with the splash icon in the middle. Android 12 and later show
+     their own splash screen (values-v31/themes.xml) and use this only for the moment after it; Android 8 to 11
+     show it as the splash. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background" />
+    <item
+        android:drawable="@drawable/ic_splash_icon"
+        android:gravity="center"
+        android:width="288dp"
+        android:height="288dp" />
+</layer-list>

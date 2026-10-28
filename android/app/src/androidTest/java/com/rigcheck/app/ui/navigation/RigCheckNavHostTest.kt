@@ -194,8 +194,9 @@ class RigCheckNavHostTest {
         composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
         composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Truck Tag").assertIsDisplayed()
 
-        // "…" is CreditBalanceChip's not-yet-loaded placeholder text.
-        composeRule.onNodeWithTagText(UiTags.CHOOSER_CREDIT_CHIP, "…").performClick()
+        // Offline there is no account, so the balance is not known and the chip says "0 scans" (it was "…" before the
+        // redesign's copy change, which keeps the dots for a signed-in balance that is still loading).
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_CREDIT_CHIP, "0 scans").performClick()
 
         composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertIsDisplayed()
 

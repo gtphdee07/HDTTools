@@ -57,6 +57,8 @@ fun RigPickerScreen(
     onStartNewRig: (String) -> Unit,
     onOpenPaywall: () -> Unit,
     onOpenHistory: () -> Unit = {},
+    // Whether the account is signed out: then the balance chip says "0 scans", not "…".
+    signedOut: Boolean = false,
     // Deletes a Rig from the Garage: true once it is gone, false if it could not be deleted and is still
     // there. Passed only when Rigs can be deleted (a signed-in account); with null no Rig has a delete control.
     onDeleteRig: (suspend (RecentRig) -> Boolean)? = null,
@@ -85,6 +87,7 @@ fun RigPickerScreen(
             TextButton(onClick = onOpenHistory, modifier = Modifier.testTag(UiTags.OPEN_HISTORY)) { Text("History") }
             CreditBalanceChip(
                 balance = creditBalance,
+                signedOut = signedOut,
                 modifier = Modifier.testTag(UiTags.PICKER_CREDIT_CHIP),
                 onClick = onOpenPaywall,
             )

@@ -61,7 +61,7 @@ fun TrailerTagEntryScreen(
         )
 
         Text(
-            "Hover a field to zoom in on its spot on the tag",
+            "Tap a field to see its spot on the tag",
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(vertical = 8.dp).testTag(UiTags.TRAILER_REFERENCE_HINT),
         )

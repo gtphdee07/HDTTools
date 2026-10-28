@@ -68,6 +68,7 @@ allow = [
   # (and what the History screen and a check that did not reach it say)
   "com.rigcheck.app.ui.GarageNotice",
   "com.rigcheck.app.ui.GarageNoticeKt",
+  "com.rigcheck.app.ui.CreditChipLabelKt",
   "com.rigcheck.app.ui.HistoryDisplayKt",
   "com.rigcheck.app.ui.ScanApplied",
   "com.rigcheck.app.ui.ScanFailureKt",

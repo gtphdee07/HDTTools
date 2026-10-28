@@ -259,6 +259,10 @@ tasks.withType<Test>().configureEach {
     inputs.dir(rootProject.layout.projectDirectory.dir("../test-vectors"))
         .withPropertyName("sharedTestVectors")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // And the designer's tokens, which DesignTokensTest compares the theme with (#191).
+    inputs.file(rootProject.layout.projectDirectory.file("../docs/android-redesign/design-return/tokens.json"))
+        .withPropertyName("designTokens")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 // Exec (not a doLast { project.exec {...} } block) - the latter isn't
@@ -343,7 +347,6 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.compose.material.icons.extended)
-    implementation(libs.androidx.compose.ui.text.google.fonts)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.revenuecat.purchases)
     implementation(libs.okhttp)

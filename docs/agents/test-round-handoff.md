@@ -4,7 +4,7 @@ Working notes for the Alpha round ([BETA_PLAN.md](../BETA_PLAN.md)). They are te
 
 ## Where things stand (2026-10-27)
 
-- Merged and not yet pushed (72 commits ahead of `origin/MPSkills`, last push 8d91a96): #179, #174 with its #185 fix, #181, #186, #169, #180, #182, #183, #184, #188 (test tags, with a test-only fix on top), #190 (the Claude Design hand-back), and the redesign brief and plan edits. Pushes are checkpoints: Claude asks after #189 and again at the end (see "Pushes").
+- Merged and not yet pushed (76 commits ahead of `origin/MPSkills`, last push 8d91a96): #179, #174 with its #185 fix, #181, #186, #169, #180, #182, #183, #184, #188 (test tags, with a test-only fix on top), #190 (the Claude Design hand-back and its follow-up for 17 controls), and the redesign brief and plan edits. Pushes are checkpoints: Claude asks after #189 and again at the end (see "Pushes").
 - **Lane A:** nothing is running; #189 is next. **Lane B:** has nothing left but the optional #132.
 - **The design round (#190) is done and merged**, ahead of #189: light theme only, same flow and screens, a top app bar with Back. The `today` sizes in its map are estimates until #189's baseline exists.
 - Your phone (SM-G996U, adb name `R3CR50G10ML`) has the beta build, versionCode 3. The emulator is `emulator-5554`. Name the one you mean in every adb command.
@@ -17,7 +17,7 @@ Two lanes, one build session each, a **new** session for every ticket. Lane A is
 | # | Ticket | Lane | Starts when | Your part |
 |---|---|---|---|---|
 | 1 | [#189](#189-baseline-screenshots-and-measured-bounds-redesign-step-2) Baseline screenshots (emulator alone) | A | nothing blocks it | none |
-| 2 | [#191](#191-theme-tokens-and-shared-components-from-the-design) Theme, tokens, shared components | A | #189 merged and the follow-up design committed | run the follow-up design round; look through the frames |
+| 2 | [#191](#191-theme-tokens-and-shared-components-from-the-design) Theme, tokens, shared components | A | #189 merged | look through the frames first |
 | 3 to 7 | #192 to #196 re-skin: [Rig picker and Chooser](#192-re-skin-the-rig-picker-chooser-and-photo-source-dialog), [entry screens](#193-re-skin-the-truck-tag-trailer-tag-and-scale-ticket-entry-screens), [Disclaimer and Results](#194-re-skin-the-disclaimer-and-results-screens), [History](#195-re-skin-the-history-screen), [Paywall, Account, dialogs](#196-re-skin-the-paywall-account-and-the-two-scan-dialogs) | A | #191 merged | compare with the designer's picture on your phone |
 | 8 | [#197](#197-final-pass-and-sign-off) Final pass and sign-off | A | #192 to #196 merged | check every screen, sign off |
 | optional | [#132](#132-optional-is-mutation-testing-worth-running-research) Is mutation testing worth running? | any | any time | none |
@@ -49,8 +49,8 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - [x] The design round (#190) ran and its hand-back is merged (2026-10-27).
 - [x] The hand-back's four decisions are answered and recorded on #191 (2026-10-27): approve the simplified logo mark (launcher icon and splash); bundle Outfit and DM Sans; keep the scan-balance chip on the Truck screen; defer the pinned label crop to #199.
 - [x] The copy in `copy-changes.md` is approved as written (2026-10-27, recorded on #191).
-- [ ] **Follow-up design round** (decided 2026-10-27): the first hand-back has no design for 17 controls added since the inventory was cut (the delete bin on a Rig card and its confirm dialog, the Send feedback links on the Rig picker and sign-in, the Paywall's "Beta: test payments" label, the crash-report dialog). #191's validator needs the map complete. Give the Claude Design session `docs/android-redesign/DESIGN_FOLLOWUP_BRIEF.md`, the updated `ui-inventory.json` (167 elements), `REDESIGN_BRIEF.md` and the `design-return/` folder; commit what it hands back into `docs/android-redesign/design-return/` (its filled entries for the 17 ids, the re-issued and new frames) and tell Claude. It also asks two questions: where the bin goes on the Rig card, and whether the Paywall toast becomes a Snackbar.
-- [ ] Before #191 starts, look through the frames in `docs/android-redesign/design-return/annotated/` and tell Claude any screen you want changed. Anything you do not mention is built as drawn.
+- [x] The follow-up design round (17 controls) is committed and checked (2026-10-27, `design-return/ui-redesign-map-followup.json`): the bin sits at the right end of the Rig card behind a divider; the Paywall toast becomes a Snackbar (you approved; decided on #191 and #196). It added no new strings.
+- [ ] Before #191 starts, look through the frames in `docs/android-redesign/design-return/annotated/` (70 now; the 7 new and 20 re-issued ones are listed in `design-return/README.md`, "Follow-up round") and tell Claude any screen you want changed. Anything you do not mention is built as drawn.
 - [ ] On each re-skin ticket (#192 to #196): compare the screenshot in the STATUS comment with the designer's picture on your phone before Claude merges it. On #197, check every screen and sign off.
 - [ ] After #197: build the tester APK with a higher `-PappVersionCode` (4 or more; raise it for every APK you send), from `android`: `.\gradlew.bat assembleBeta -PappVersionCode=<n>`. Confirm `keytool -printcert -jarfile app\build\outputs\apk\beta\app-beta.apk` shows the SHA-1 in `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`.
 - [ ] Before inviting: add each Alpha tester's Gmail as a Google test user (up to 5); send the APK and the guide.
@@ -95,7 +95,7 @@ Test-round additions:
 
 ### #191 Theme, tokens and shared components from the design
 
-**Lane A.** Start after **#189** has merged and the follow-up design round (see the owner steps) is committed. The design hand-back (#190) is already committed in `docs/android-redesign/design-return/`, and its decisions are in a DECISIONS comment on this ticket: approved logo mark, bundled fonts, balance chip kept on Truck, pinned crop deferred to #199. Android: the single emulator, one Android ticket at a time.
+**Lane A.** Start after **#189** has merged. The design hand-back (#190) is already committed in `docs/android-redesign/design-return/`, and its decisions are in a DECISIONS comment on this ticket: approved logo mark, bundled fonts, balance chip kept on Truck, pinned crop deferred to #199. Android: the single emulator, one Android ticket at a time.
 
 1. In this main-checkout session type `/ticket-start 191`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-191`; if it stops, it says why.
 2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-191` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-191"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.

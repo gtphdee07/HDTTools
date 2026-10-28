@@ -2,10 +2,12 @@ package com.rigcheck.app.ui
 
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.view.autofill.AutofillManager
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
@@ -66,7 +68,7 @@ import org.junit.runner.RunWith
 class UiTagsDisplayedTest {
 
     @get:Rule
-    val composeRule = createComposeRule()
+    val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     private lateinit var crashFolder: File
 
@@ -76,8 +78,11 @@ class UiTagsDisplayedTest {
         crashFolder.deleteRecursively()
     }
 
+    // A filled-in sign-in form leaves an autofill session open; when the activity closes the emulator's Google
+    // autofill service holds the next test's soft keyboard back for 30 s (GarageNavigationTest waits for it).
     @After
-    fun removeCrashStore() {
+    fun cleanUp() {
+        composeRule.activity.getSystemService(AutofillManager::class.java)?.cancel()
         crashFolder.deleteRecursively()
     }
 

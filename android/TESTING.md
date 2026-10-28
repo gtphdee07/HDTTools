@@ -1066,7 +1066,11 @@ network involved:
   `onNodeWithTagText`); a saved Rig's card is found by its nickname, which is the user's data
   (`onRigCard`). A tag on something inside a tappable card or row is only in the *unmerged* tree, which
   those helpers read. Adding an element: add it to the JSON, put its tag in `UiTags`, set it in the screen,
-  name it in this class, then run `uv run scripts/ui_inventory.py`.
+  name it in this class, then run `uv run scripts/ui_inventory.py`. **Autofill:** the sign-in test types into the
+  password field, which opens an autofill session with the emulator's Google autofill service; left open, it
+  kept the soft keyboard from showing for the next keyboard-waiting test (`GarageNavigationTest`, 30 s
+  timeout, the full instrumented suite failed on a fresh boot). The class's `@After` cancels the session
+  (`AutofillManager.cancel()`); any test that fills a password field should do the same.
 - `CrashReportPromptTest` (#184, 5 tests) — the question after a crash, with the real
   `CrashReportStore` on a folder of its own and `startActivity` faked (no mail app opens). No saved
   crash: nothing is asked. A saved crash: "RigCheck closed unexpectedly last time. Send details?" shows

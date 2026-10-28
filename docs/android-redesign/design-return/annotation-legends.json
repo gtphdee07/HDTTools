@@ -1,0 +1,2548 @@
+{
+ "rig_picker__in": [
+  {
+   "n": 1,
+   "id": "picker.logo"
+  },
+  {
+   "n": 2,
+   "id": "picker.app_title"
+  },
+  {
+   "n": 3,
+   "id": "picker.tagline"
+  },
+  {
+   "n": 4,
+   "id": "picker.credit_chip"
+  },
+  {
+   "n": 5,
+   "id": "picker.account_status"
+  },
+  {
+   "n": 6,
+   "id": "picker.account_avatar"
+  },
+  {
+   "n": 7,
+   "id": "picker.heading"
+  },
+  {
+   "n": 8,
+   "id": "picker.subheading"
+  },
+  {
+   "n": 9,
+   "id": "picker.history_button"
+  },
+  {
+   "n": 10,
+   "id": "picker.rig_card"
+  },
+  {
+   "n": 11,
+   "id": "picker.rig_avatar"
+  },
+  {
+   "n": 12,
+   "id": "picker.rig_nickname"
+  },
+  {
+   "n": 13,
+   "id": "picker.rig_subtitle"
+  },
+  {
+   "n": 14,
+   "id": "picker.rig_last_checked"
+  },
+  {
+   "n": 15,
+   "id": "picker.new_rig_label"
+  },
+  {
+   "n": 16,
+   "id": "picker.new_rig_input"
+  },
+  {
+   "n": 17,
+   "id": "picker.create_button"
+  }
+ ],
+ "rig_picker__account_menu": [
+  {
+   "n": 1,
+   "id": "picker.account_menu"
+  },
+  {
+   "n": 2,
+   "id": "picker.account_menu_email"
+  },
+  {
+   "n": 3,
+   "id": "picker.sign_out_button"
+  },
+  {
+   "n": 4,
+   "id": "picker.account_menu_cancel"
+  }
+ ],
+ "rig_picker__signed_out_empty": [
+  {
+   "n": 1,
+   "id": "picker.logo"
+  },
+  {
+   "n": 2,
+   "id": "picker.app_title"
+  },
+  {
+   "n": 3,
+   "id": "picker.tagline"
+  },
+  {
+   "n": 4,
+   "id": "picker.credit_chip"
+  },
+  {
+   "n": 5,
+   "id": "picker.account_status"
+  },
+  {
+   "n": 6,
+   "id": "picker.account_avatar"
+  },
+  {
+   "n": 7,
+   "id": "picker.heading"
+  },
+  {
+   "n": 8,
+   "id": "picker.subheading"
+  },
+  {
+   "n": 9,
+   "id": "picker.history_button"
+  },
+  {
+   "n": 10,
+   "id": "picker.empty_state"
+  },
+  {
+   "n": 11,
+   "id": "picker.new_rig_label"
+  },
+  {
+   "n": 12,
+   "id": "picker.new_rig_input"
+  },
+  {
+   "n": 13,
+   "id": "picker.create_button"
+  }
+ ],
+ "rig_picker__new_rig_typing": [
+  {
+   "n": 1,
+   "id": "picker.logo"
+  },
+  {
+   "n": 2,
+   "id": "picker.app_title"
+  },
+  {
+   "n": 3,
+   "id": "picker.tagline"
+  },
+  {
+   "n": 4,
+   "id": "picker.credit_chip"
+  },
+  {
+   "n": 5,
+   "id": "picker.account_status"
+  },
+  {
+   "n": 6,
+   "id": "picker.account_avatar"
+  },
+  {
+   "n": 7,
+   "id": "picker.rig_last_checked"
+  },
+  {
+   "n": 8,
+   "id": "picker.new_rig_label"
+  },
+  {
+   "n": 9,
+   "id": "picker.new_rig_input"
+  },
+  {
+   "n": 10,
+   "id": "picker.create_button"
+  }
+ ],
+ "chooser__truck": [
+  {
+   "n": 1,
+   "id": "chooser.back"
+  },
+  {
+   "n": 2,
+   "id": "chooser.title"
+  },
+  {
+   "n": 3,
+   "id": "chooser.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "chooser.step_bar"
+  },
+  {
+   "n": 5,
+   "id": "chooser.prompt"
+  },
+  {
+   "n": 6,
+   "id": "chooser.scan_card"
+  },
+  {
+   "n": 7,
+   "id": "chooser.scan_badge"
+  },
+  {
+   "n": 8,
+   "id": "chooser.manual_card"
+  },
+  {
+   "n": 9,
+   "id": "chooser.manual_badge"
+  },
+  {
+   "n": 10,
+   "id": "chooser.footer_note"
+  }
+ ],
+ "chooser__trailer": [
+  {
+   "n": 1,
+   "id": "chooser.back"
+  },
+  {
+   "n": 2,
+   "id": "chooser.title"
+  },
+  {
+   "n": 3,
+   "id": "chooser.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "chooser.step_bar"
+  },
+  {
+   "n": 5,
+   "id": "chooser.prompt"
+  },
+  {
+   "n": 6,
+   "id": "chooser.scan_card"
+  },
+  {
+   "n": 7,
+   "id": "chooser.scan_badge"
+  },
+  {
+   "n": 8,
+   "id": "chooser.manual_card"
+  },
+  {
+   "n": 9,
+   "id": "chooser.manual_badge"
+  },
+  {
+   "n": 10,
+   "id": "chooser.footer_note"
+  }
+ ],
+ "chooser__scale": [
+  {
+   "n": 1,
+   "id": "chooser.back"
+  },
+  {
+   "n": 2,
+   "id": "chooser.title"
+  },
+  {
+   "n": 3,
+   "id": "chooser.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "chooser.step_bar"
+  },
+  {
+   "n": 5,
+   "id": "chooser.prompt"
+  },
+  {
+   "n": 6,
+   "id": "chooser.scan_card"
+  },
+  {
+   "n": 7,
+   "id": "chooser.scan_badge"
+  },
+  {
+   "n": 8,
+   "id": "chooser.manual_card"
+  },
+  {
+   "n": 9,
+   "id": "chooser.manual_badge"
+  },
+  {
+   "n": 10,
+   "id": "chooser.footer_note"
+  }
+ ],
+ "chooser__scan_in_flight": [
+  {
+   "n": 1,
+   "id": "chooser.loading_overlay"
+  },
+  {
+   "n": 2,
+   "id": "chooser.loading_text"
+  }
+ ],
+ "chooser__balance_loading": [
+  {
+   "n": 1,
+   "id": "chooser.back"
+  },
+  {
+   "n": 2,
+   "id": "chooser.title"
+  },
+  {
+   "n": 3,
+   "id": "chooser.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "chooser.step_bar"
+  },
+  {
+   "n": 5,
+   "id": "chooser.prompt"
+  },
+  {
+   "n": 6,
+   "id": "chooser.scan_card"
+  },
+  {
+   "n": 7,
+   "id": "chooser.scan_badge"
+  },
+  {
+   "n": 8,
+   "id": "chooser.manual_card"
+  },
+  {
+   "n": 9,
+   "id": "chooser.manual_badge"
+  },
+  {
+   "n": 10,
+   "id": "chooser.footer_note"
+  }
+ ],
+ "truck_tag_entry__blank": [
+  {
+   "n": 1,
+   "id": "truck.back"
+  },
+  {
+   "n": 2,
+   "id": "truck.title"
+  },
+  {
+   "n": 3,
+   "id": "truck.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "truck.step_bar"
+  },
+  {
+   "n": 5,
+   "id": "truck.reference_hint"
+  },
+  {
+   "n": 6,
+   "id": "truck.reference_image"
+  },
+  {
+   "n": 7,
+   "id": "truck.instructions"
+  },
+  {
+   "n": 8,
+   "id": "truck.description_field"
+  },
+  {
+   "n": 9,
+   "id": "truck.name_field"
+  },
+  {
+   "n": 10,
+   "id": "truck.gvwr_field"
+  },
+  {
+   "n": 11,
+   "id": "truck.next_button"
+  }
+ ],
+ "truck_tag_entry__filled": [
+  {
+   "n": 1,
+   "id": "truck.back"
+  },
+  {
+   "n": 2,
+   "id": "truck.title"
+  },
+  {
+   "n": 3,
+   "id": "truck.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "truck.step_bar"
+  },
+  {
+   "n": 5,
+   "id": "truck.reference_hint"
+  },
+  {
+   "n": 6,
+   "id": "truck.reference_image"
+  },
+  {
+   "n": 7,
+   "id": "truck.gvwr_field"
+  },
+  {
+   "n": 8,
+   "id": "truck.front_gawr_field"
+  },
+  {
+   "n": 9,
+   "id": "truck.rear_gawr_field"
+  },
+  {
+   "n": 10,
+   "id": "truck.gcwr_field"
+  },
+  {
+   "n": 11,
+   "id": "truck.next_button"
+  }
+ ],
+ "truck_tag_entry__scan_notice": [
+  {
+   "n": 1,
+   "id": "truck.back"
+  },
+  {
+   "n": 2,
+   "id": "truck.title"
+  },
+  {
+   "n": 3,
+   "id": "truck.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "truck.step_bar"
+  },
+  {
+   "n": 5,
+   "id": "truck.reference_hint"
+  },
+  {
+   "n": 6,
+   "id": "truck.reference_image"
+  },
+  {
+   "n": 7,
+   "id": "truck.scan_notice"
+  },
+  {
+   "n": 8,
+   "id": "truck.instructions"
+  },
+  {
+   "n": 9,
+   "id": "truck.description_field"
+  },
+  {
+   "n": 10,
+   "id": "truck.name_field"
+  },
+  {
+   "n": 11,
+   "id": "truck.next_button"
+  }
+ ],
+ "truck_tag_entry__gcwr_warning": [
+  {
+   "n": 1,
+   "id": "truck.back"
+  },
+  {
+   "n": 2,
+   "id": "truck.title"
+  },
+  {
+   "n": 3,
+   "id": "truck.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "truck.step_bar"
+  },
+  {
+   "n": 5,
+   "id": "truck.reference_hint"
+  },
+  {
+   "n": 6,
+   "id": "truck.reference_image"
+  },
+  {
+   "n": 7,
+   "id": "truck.gcwr_field"
+  },
+  {
+   "n": 8,
+   "id": "truck.gcwr_help"
+  },
+  {
+   "n": 9,
+   "id": "truck.gcwr_warning"
+  },
+  {
+   "n": 10,
+   "id": "truck.standalone_panel_title"
+  },
+  {
+   "n": 11,
+   "id": "truck.standalone_panel_body"
+  },
+  {
+   "n": 12,
+   "id": "truck.scan_standalone_button"
+  },
+  {
+   "n": 13,
+   "id": "truck.next_button"
+  }
+ ],
+ "truck_tag_entry__standalone_blank": [
+  {
+   "n": 1,
+   "id": "truck.back"
+  },
+  {
+   "n": 2,
+   "id": "truck.title"
+  },
+  {
+   "n": 3,
+   "id": "truck.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "truck.step_bar"
+  },
+  {
+   "n": 5,
+   "id": "truck.reference_hint"
+  },
+  {
+   "n": 6,
+   "id": "truck.reference_image"
+  },
+  {
+   "n": 7,
+   "id": "truck.gcwr_help"
+  },
+  {
+   "n": 8,
+   "id": "truck.standalone_panel"
+  },
+  {
+   "n": 9,
+   "id": "truck.standalone_panel_title"
+  },
+  {
+   "n": 10,
+   "id": "truck.standalone_panel_body"
+  },
+  {
+   "n": 11,
+   "id": "truck.scan_standalone_button"
+  },
+  {
+   "n": 12,
+   "id": "truck.standalone_label"
+  },
+  {
+   "n": 13,
+   "id": "truck.standalone_info"
+  },
+  {
+   "n": 14,
+   "id": "truck.standalone_field"
+  },
+  {
+   "n": 15,
+   "id": "truck.pin_weight_label"
+  },
+  {
+   "n": 16,
+   "id": "truck.next_button"
+  }
+ ],
+ "truck_tag_entry__standalone_pin_weight": [
+  {
+   "n": 1,
+   "id": "truck.back"
+  },
+  {
+   "n": 2,
+   "id": "truck.title"
+  },
+  {
+   "n": 3,
+   "id": "truck.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "truck.step_bar"
+  },
+  {
+   "n": 5,
+   "id": "truck.reference_hint"
+  },
+  {
+   "n": 6,
+   "id": "truck.reference_image"
+  },
+  {
+   "n": 7,
+   "id": "truck.standalone_panel"
+  },
+  {
+   "n": 8,
+   "id": "truck.standalone_panel_body"
+  },
+  {
+   "n": 9,
+   "id": "truck.scan_standalone_button"
+  },
+  {
+   "n": 10,
+   "id": "truck.standalone_label"
+  },
+  {
+   "n": 11,
+   "id": "truck.standalone_info"
+  },
+  {
+   "n": 12,
+   "id": "truck.standalone_field"
+  },
+  {
+   "n": 13,
+   "id": "truck.pin_weight_label"
+  },
+  {
+   "n": 14,
+   "id": "truck.pin_weight_slider"
+  },
+  {
+   "n": 15,
+   "id": "truck.pin_weight_caption"
+  },
+  {
+   "n": 16,
+   "id": "truck.next_button"
+  }
+ ],
+ "truck_tag_entry__standalone_info": [
+  {
+   "n": 1,
+   "id": "truck.back"
+  },
+  {
+   "n": 2,
+   "id": "truck.title"
+  },
+  {
+   "n": 3,
+   "id": "truck.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "truck.step_bar"
+  },
+  {
+   "n": 5,
+   "id": "truck.reference_hint"
+  },
+  {
+   "n": 6,
+   "id": "truck.reference_image"
+  },
+  {
+   "n": 7,
+   "id": "truck.gcwr_help"
+  },
+  {
+   "n": 8,
+   "id": "truck.standalone_panel"
+  },
+  {
+   "n": 9,
+   "id": "truck.standalone_panel_title"
+  },
+  {
+   "n": 10,
+   "id": "truck.standalone_panel_body"
+  },
+  {
+   "n": 11,
+   "id": "truck.scan_standalone_button"
+  },
+  {
+   "n": 12,
+   "id": "truck.standalone_label"
+  },
+  {
+   "n": 13,
+   "id": "truck.standalone_info"
+  },
+  {
+   "n": 14,
+   "id": "truck.standalone_info_text"
+  },
+  {
+   "n": 15,
+   "id": "truck.next_button"
+  }
+ ],
+ "truck_tag_entry__standalone_filled": [
+  {
+   "n": 1,
+   "id": "truck.back"
+  },
+  {
+   "n": 2,
+   "id": "truck.title"
+  },
+  {
+   "n": 3,
+   "id": "truck.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "truck.step_bar"
+  },
+  {
+   "n": 5,
+   "id": "truck.reference_hint"
+  },
+  {
+   "n": 6,
+   "id": "truck.reference_image"
+  },
+  {
+   "n": 7,
+   "id": "truck.gcwr_help"
+  },
+  {
+   "n": 8,
+   "id": "truck.standalone_panel"
+  },
+  {
+   "n": 9,
+   "id": "truck.standalone_panel_title"
+  },
+  {
+   "n": 10,
+   "id": "truck.standalone_panel_body"
+  },
+  {
+   "n": 11,
+   "id": "truck.scan_standalone_button"
+  },
+  {
+   "n": 12,
+   "id": "truck.standalone_label"
+  },
+  {
+   "n": 13,
+   "id": "truck.standalone_info"
+  },
+  {
+   "n": 14,
+   "id": "truck.standalone_field"
+  },
+  {
+   "n": 15,
+   "id": "truck.next_button"
+  }
+ ],
+ "truck_tag_entry__standalone_scan_in_flight": [
+  {
+   "n": 1,
+   "id": "truck.back"
+  },
+  {
+   "n": 2,
+   "id": "truck.title"
+  },
+  {
+   "n": 3,
+   "id": "truck.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "truck.step_bar"
+  },
+  {
+   "n": 5,
+   "id": "truck.reference_hint"
+  },
+  {
+   "n": 6,
+   "id": "truck.reference_image"
+  },
+  {
+   "n": 7,
+   "id": "truck.gcwr_help"
+  },
+  {
+   "n": 8,
+   "id": "truck.standalone_panel"
+  },
+  {
+   "n": 9,
+   "id": "truck.standalone_panel_title"
+  },
+  {
+   "n": 10,
+   "id": "truck.standalone_panel_body"
+  },
+  {
+   "n": 11,
+   "id": "truck.scan_standalone_button"
+  },
+  {
+   "n": 12,
+   "id": "truck.standalone_label"
+  },
+  {
+   "n": 13,
+   "id": "truck.standalone_info"
+  },
+  {
+   "n": 14,
+   "id": "truck.standalone_field"
+  },
+  {
+   "n": 15,
+   "id": "truck.pin_weight_label"
+  },
+  {
+   "n": 16,
+   "id": "truck.next_button"
+  }
+ ],
+ "truck_tag_entry__keyboard_open": [
+  {
+   "n": 1,
+   "id": "truck.back"
+  },
+  {
+   "n": 2,
+   "id": "truck.title"
+  },
+  {
+   "n": 3,
+   "id": "truck.credit_chip"
+  },
+  {
+   "n": 4,
+   "id": "truck.reference_hint"
+  },
+  {
+   "n": 5,
+   "id": "truck.reference_image"
+  },
+  {
+   "n": 6,
+   "id": "truck.front_gawr_field"
+  },
+  {
+   "n": 7,
+   "id": "truck.rear_gawr_field"
+  },
+  {
+   "n": 8,
+   "id": "truck.next_button"
+  }
+ ],
+ "trailer_tag_entry__blank": [
+  {
+   "n": 1,
+   "id": "trailer.back"
+  },
+  {
+   "n": 2,
+   "id": "trailer.title"
+  },
+  {
+   "n": 3,
+   "id": "trailer.step_bar"
+  },
+  {
+   "n": 4,
+   "id": "trailer.reference_hint"
+  },
+  {
+   "n": 5,
+   "id": "trailer.reference_image"
+  },
+  {
+   "n": 6,
+   "id": "trailer.instructions"
+  },
+  {
+   "n": 7,
+   "id": "trailer.description_field"
+  },
+  {
+   "n": 8,
+   "id": "trailer.name_field"
+  },
+  {
+   "n": 9,
+   "id": "trailer.gvwr_field"
+  },
+  {
+   "n": 10,
+   "id": "trailer.next_button"
+  }
+ ],
+ "trailer_tag_entry__filled": [
+  {
+   "n": 1,
+   "id": "trailer.back"
+  },
+  {
+   "n": 2,
+   "id": "trailer.title"
+  },
+  {
+   "n": 3,
+   "id": "trailer.step_bar"
+  },
+  {
+   "n": 4,
+   "id": "trailer.reference_hint"
+  },
+  {
+   "n": 5,
+   "id": "trailer.reference_image"
+  },
+  {
+   "n": 6,
+   "id": "trailer.gvwr_field"
+  },
+  {
+   "n": 7,
+   "id": "trailer.gawr_field"
+  },
+  {
+   "n": 8,
+   "id": "trailer.axle_count_field"
+  },
+  {
+   "n": 9,
+   "id": "trailer.axle_count_help"
+  },
+  {
+   "n": 10,
+   "id": "trailer.uvw_field"
+  },
+  {
+   "n": 11,
+   "id": "trailer.next_button"
+  }
+ ],
+ "trailer_tag_entry__scan_notice": [
+  {
+   "n": 1,
+   "id": "trailer.back"
+  },
+  {
+   "n": 2,
+   "id": "trailer.title"
+  },
+  {
+   "n": 3,
+   "id": "trailer.step_bar"
+  },
+  {
+   "n": 4,
+   "id": "trailer.reference_hint"
+  },
+  {
+   "n": 5,
+   "id": "trailer.reference_image"
+  },
+  {
+   "n": 6,
+   "id": "trailer.scan_notice"
+  },
+  {
+   "n": 7,
+   "id": "trailer.instructions"
+  },
+  {
+   "n": 8,
+   "id": "trailer.description_field"
+  },
+  {
+   "n": 9,
+   "id": "trailer.name_field"
+  },
+  {
+   "n": 10,
+   "id": "trailer.next_button"
+  }
+ ],
+ "trailer_tag_entry__keyboard_open": [
+  {
+   "n": 1,
+   "id": "trailer.back"
+  },
+  {
+   "n": 2,
+   "id": "trailer.title"
+  },
+  {
+   "n": 3,
+   "id": "trailer.reference_hint"
+  },
+  {
+   "n": 4,
+   "id": "trailer.reference_image"
+  },
+  {
+   "n": 5,
+   "id": "trailer.axle_count_field"
+  },
+  {
+   "n": 6,
+   "id": "trailer.axle_count_help"
+  },
+  {
+   "n": 7,
+   "id": "trailer.uvw_field"
+  },
+  {
+   "n": 8,
+   "id": "trailer.next_button"
+  }
+ ],
+ "scale_ticket_entry__blank": [
+  {
+   "n": 1,
+   "id": "scale.back"
+  },
+  {
+   "n": 2,
+   "id": "scale.title"
+  },
+  {
+   "n": 3,
+   "id": "scale.step_bar"
+  },
+  {
+   "n": 4,
+   "id": "scale.instructions"
+  },
+  {
+   "n": 5,
+   "id": "scale.reference_image"
+  },
+  {
+   "n": 6,
+   "id": "scale.legend"
+  },
+  {
+   "n": 7,
+   "id": "scale.location_field"
+  },
+  {
+   "n": 8,
+   "id": "scale.steer_field"
+  },
+  {
+   "n": 9,
+   "id": "scale.drive_field"
+  },
+  {
+   "n": 10,
+   "id": "scale.check_button"
+  }
+ ],
+ "scale_ticket_entry__filled": [
+  {
+   "n": 1,
+   "id": "scale.back"
+  },
+  {
+   "n": 2,
+   "id": "scale.title"
+  },
+  {
+   "n": 3,
+   "id": "scale.step_bar"
+  },
+  {
+   "n": 4,
+   "id": "scale.legend"
+  },
+  {
+   "n": 5,
+   "id": "scale.location_field"
+  },
+  {
+   "n": 6,
+   "id": "scale.steer_field"
+  },
+  {
+   "n": 7,
+   "id": "scale.drive_field"
+  },
+  {
+   "n": 8,
+   "id": "scale.trailer_field"
+  },
+  {
+   "n": 9,
+   "id": "scale.gross_field"
+  },
+  {
+   "n": 10,
+   "id": "scale.check_button"
+  }
+ ],
+ "scale_ticket_entry__scan_notice": [
+  {
+   "n": 1,
+   "id": "scale.back"
+  },
+  {
+   "n": 2,
+   "id": "scale.title"
+  },
+  {
+   "n": 3,
+   "id": "scale.step_bar"
+  },
+  {
+   "n": 4,
+   "id": "scale.scan_notice"
+  },
+  {
+   "n": 5,
+   "id": "scale.instructions"
+  },
+  {
+   "n": 6,
+   "id": "scale.reference_image"
+  },
+  {
+   "n": 7,
+   "id": "scale.legend"
+  },
+  {
+   "n": 8,
+   "id": "scale.location_field"
+  },
+  {
+   "n": 9,
+   "id": "scale.steer_field"
+  },
+  {
+   "n": 10,
+   "id": "scale.check_button"
+  }
+ ],
+ "scale_ticket_entry__keyboard_open": [
+  {
+   "n": 1,
+   "id": "scale.back"
+  },
+  {
+   "n": 2,
+   "id": "scale.title"
+  },
+  {
+   "n": 3,
+   "id": "scale.steer_field"
+  },
+  {
+   "n": 4,
+   "id": "scale.drive_field"
+  },
+  {
+   "n": 5,
+   "id": "scale.trailer_field"
+  },
+  {
+   "n": 6,
+   "id": "scale.gross_field"
+  },
+  {
+   "n": 7,
+   "id": "scale.check_button"
+  }
+ ],
+ "disclaimer__default": [
+  {
+   "n": 1,
+   "id": "disclaimer.icon"
+  },
+  {
+   "n": 2,
+   "id": "disclaimer.title"
+  },
+  {
+   "n": 3,
+   "id": "disclaimer.body_1"
+  },
+  {
+   "n": 4,
+   "id": "disclaimer.body_2"
+  },
+  {
+   "n": 5,
+   "id": "disclaimer.accept_button"
+  }
+ ],
+ "disclaimer__large_font": [
+  {
+   "n": 1,
+   "id": "disclaimer.icon"
+  },
+  {
+   "n": 2,
+   "id": "disclaimer.title"
+  },
+  {
+   "n": 3,
+   "id": "disclaimer.body_1"
+  },
+  {
+   "n": 4,
+   "id": "disclaimer.accept_button"
+  }
+ ],
+ "results__safe": [
+  {
+   "n": 1,
+   "id": "results.back"
+  },
+  {
+   "n": 2,
+   "id": "results.rig_name"
+  },
+  {
+   "n": 3,
+   "id": "results.date"
+  },
+  {
+   "n": 4,
+   "id": "results.verdict"
+  },
+  {
+   "n": 5,
+   "id": "results.verdict_icon"
+  },
+  {
+   "n": 6,
+   "id": "results.breakdown_card"
+  },
+  {
+   "n": 7,
+   "id": "results.row"
+  },
+  {
+   "n": 8,
+   "id": "results.row_icon"
+  },
+  {
+   "n": 9,
+   "id": "results.row_label"
+  },
+  {
+   "n": 10,
+   "id": "results.row_badge"
+  },
+  {
+   "n": 11,
+   "id": "results.row_bar"
+  },
+  {
+   "n": 12,
+   "id": "results.row_values"
+  },
+  {
+   "n": 13,
+   "id": "results.row_pct"
+  },
+  {
+   "n": 14,
+   "id": "results.row_chevron"
+  },
+  {
+   "n": 15,
+   "id": "results.start_another_button"
+  }
+ ],
+ "results__not_safe_row_expanded": [
+  {
+   "n": 1,
+   "id": "results.back"
+  },
+  {
+   "n": 2,
+   "id": "results.rig_name"
+  },
+  {
+   "n": 3,
+   "id": "results.date"
+  },
+  {
+   "n": 4,
+   "id": "results.verdict"
+  },
+  {
+   "n": 5,
+   "id": "results.verdict_icon"
+  },
+  {
+   "n": 6,
+   "id": "results.breakdown_card"
+  },
+  {
+   "n": 7,
+   "id": "results.row"
+  },
+  {
+   "n": 8,
+   "id": "results.row_icon"
+  },
+  {
+   "n": 9,
+   "id": "results.row_label"
+  },
+  {
+   "n": 10,
+   "id": "results.row_badge"
+  },
+  {
+   "n": 11,
+   "id": "results.row_bar"
+  },
+  {
+   "n": 12,
+   "id": "results.row_values"
+  },
+  {
+   "n": 13,
+   "id": "results.row_pct"
+  },
+  {
+   "n": 14,
+   "id": "results.row_chevron"
+  },
+  {
+   "n": 15,
+   "id": "results.row_note"
+  },
+  {
+   "n": 16,
+   "id": "results.start_another_button"
+  }
+ ],
+ "results__partially_checked": [
+  {
+   "n": 1,
+   "id": "results.back"
+  },
+  {
+   "n": 2,
+   "id": "results.rig_name"
+  },
+  {
+   "n": 3,
+   "id": "results.date"
+  },
+  {
+   "n": 4,
+   "id": "results.verdict"
+  },
+  {
+   "n": 5,
+   "id": "results.verdict_icon"
+  },
+  {
+   "n": 6,
+   "id": "results.breakdown_card"
+  },
+  {
+   "n": 7,
+   "id": "results.row"
+  },
+  {
+   "n": 8,
+   "id": "results.row_icon"
+  },
+  {
+   "n": 9,
+   "id": "results.row_label"
+  },
+  {
+   "n": 10,
+   "id": "results.row_badge"
+  },
+  {
+   "n": 11,
+   "id": "results.row_bar"
+  },
+  {
+   "n": 12,
+   "id": "results.row_values"
+  },
+  {
+   "n": 13,
+   "id": "results.row_pct"
+  },
+  {
+   "n": 14,
+   "id": "results.row_chevron"
+  },
+  {
+   "n": 15,
+   "id": "results.start_another_button"
+  }
+ ],
+ "results__not_enough_information": [
+  {
+   "n": 1,
+   "id": "results.back"
+  },
+  {
+   "n": 2,
+   "id": "results.rig_name"
+  },
+  {
+   "n": 3,
+   "id": "results.date"
+  },
+  {
+   "n": 4,
+   "id": "results.verdict"
+  },
+  {
+   "n": 5,
+   "id": "results.verdict_icon"
+  },
+  {
+   "n": 6,
+   "id": "results.breakdown_card"
+  },
+  {
+   "n": 7,
+   "id": "results.row"
+  },
+  {
+   "n": 8,
+   "id": "results.row_icon"
+  },
+  {
+   "n": 9,
+   "id": "results.row_label"
+  },
+  {
+   "n": 10,
+   "id": "results.row_badge"
+  },
+  {
+   "n": 11,
+   "id": "results.row_bar"
+  },
+  {
+   "n": 12,
+   "id": "results.row_values"
+  },
+  {
+   "n": 13,
+   "id": "results.row_pct"
+  },
+  {
+   "n": 14,
+   "id": "results.row_chevron"
+  },
+  {
+   "n": 15,
+   "id": "results.start_another_button"
+  }
+ ],
+ "results__notices": [
+  {
+   "n": 1,
+   "id": "results.back"
+  },
+  {
+   "n": 2,
+   "id": "results.rig_name"
+  },
+  {
+   "n": 3,
+   "id": "results.date"
+  },
+  {
+   "n": 4,
+   "id": "results.verdict"
+  },
+  {
+   "n": 5,
+   "id": "results.verdict_icon"
+  },
+  {
+   "n": 6,
+   "id": "results.estimated_notice"
+  },
+  {
+   "n": 7,
+   "id": "results.garage_notice"
+  },
+  {
+   "n": 8,
+   "id": "results.garage_get_pro"
+  },
+  {
+   "n": 9,
+   "id": "results.start_another_button"
+  }
+ ],
+ "results__notices_scrolled": [
+  {
+   "n": 1,
+   "id": "results.back"
+  },
+  {
+   "n": 2,
+   "id": "results.rig_name"
+  },
+  {
+   "n": 3,
+   "id": "results.date"
+  },
+  {
+   "n": 4,
+   "id": "results.garage_get_pro"
+  },
+  {
+   "n": 5,
+   "id": "results.history_notice"
+  },
+  {
+   "n": 6,
+   "id": "results.breakdown_card"
+  },
+  {
+   "n": 7,
+   "id": "results.row"
+  },
+  {
+   "n": 8,
+   "id": "results.row_icon"
+  },
+  {
+   "n": 9,
+   "id": "results.row_label"
+  },
+  {
+   "n": 10,
+   "id": "results.row_badge"
+  },
+  {
+   "n": 11,
+   "id": "results.row_bar"
+  },
+  {
+   "n": 12,
+   "id": "results.row_values"
+  },
+  {
+   "n": 13,
+   "id": "results.row_pct"
+  },
+  {
+   "n": 14,
+   "id": "results.row_chevron"
+  },
+  {
+   "n": 15,
+   "id": "results.start_another_button"
+  }
+ ],
+ "results__safe_scrolled_to_end": [
+  {
+   "n": 1,
+   "id": "results.back"
+  },
+  {
+   "n": 2,
+   "id": "results.rig_name"
+  },
+  {
+   "n": 3,
+   "id": "results.date"
+  },
+  {
+   "n": 4,
+   "id": "results.breakdown_card"
+  },
+  {
+   "n": 5,
+   "id": "results.row"
+  },
+  {
+   "n": 6,
+   "id": "results.row_bar"
+  },
+  {
+   "n": 7,
+   "id": "results.row_values"
+  },
+  {
+   "n": 8,
+   "id": "results.row_pct"
+  },
+  {
+   "n": 9,
+   "id": "results.row_chevron"
+  },
+  {
+   "n": 10,
+   "id": "results.footer_note"
+  },
+  {
+   "n": 11,
+   "id": "results.start_another_button"
+  }
+ ],
+ "history__few_entries": [
+  {
+   "n": 1,
+   "id": "history.back"
+  },
+  {
+   "n": 2,
+   "id": "history.title"
+  },
+  {
+   "n": 3,
+   "id": "history.subtitle"
+  },
+  {
+   "n": 4,
+   "id": "history.entry_card"
+  },
+  {
+   "n": 5,
+   "id": "history.entry_rig"
+  },
+  {
+   "n": 6,
+   "id": "history.entry_date"
+  },
+  {
+   "n": 7,
+   "id": "history.entry_verdict"
+  }
+ ],
+ "history__limit_notice": [
+  {
+   "n": 1,
+   "id": "history.back"
+  },
+  {
+   "n": 2,
+   "id": "history.title"
+  },
+  {
+   "n": 3,
+   "id": "history.subtitle"
+  },
+  {
+   "n": 4,
+   "id": "history.limit_notice"
+  },
+  {
+   "n": 5,
+   "id": "history.upgrade_button"
+  },
+  {
+   "n": 6,
+   "id": "history.entry_card"
+  },
+  {
+   "n": 7,
+   "id": "history.entry_rig"
+  },
+  {
+   "n": 8,
+   "id": "history.entry_date"
+  },
+  {
+   "n": 9,
+   "id": "history.entry_verdict"
+  }
+ ],
+ "history__empty": [
+  {
+   "n": 1,
+   "id": "history.back"
+  },
+  {
+   "n": 2,
+   "id": "history.title"
+  },
+  {
+   "n": 3,
+   "id": "history.subtitle"
+  },
+  {
+   "n": 4,
+   "id": "history.empty"
+  }
+ ],
+ "paywall__free_pro_offer": [
+  {
+   "n": 1,
+   "id": "paywall.back"
+  },
+  {
+   "n": 2,
+   "id": "paywall.title"
+  },
+  {
+   "n": 3,
+   "id": "paywall.account_label"
+  },
+  {
+   "n": 4,
+   "id": "paywall.sign_out_button"
+  },
+  {
+   "n": 5,
+   "id": "paywall.plan_label"
+  },
+  {
+   "n": 6,
+   "id": "paywall.explainer"
+  },
+  {
+   "n": 7,
+   "id": "paywall.offer_card"
+  },
+  {
+   "n": 8,
+   "id": "paywall.offer_title"
+  },
+  {
+   "n": 9,
+   "id": "paywall.offer_description"
+  },
+  {
+   "n": 10,
+   "id": "paywall.buy_button"
+  },
+  {
+   "n": 11,
+   "id": "paywall.restore_button"
+  }
+ ],
+ "paywall__free_busy": [
+  {
+   "n": 1,
+   "id": "paywall.back"
+  },
+  {
+   "n": 2,
+   "id": "paywall.title"
+  },
+  {
+   "n": 3,
+   "id": "paywall.account_label"
+  },
+  {
+   "n": 4,
+   "id": "paywall.sign_out_button"
+  },
+  {
+   "n": 5,
+   "id": "paywall.plan_label"
+  },
+  {
+   "n": 6,
+   "id": "paywall.explainer"
+  },
+  {
+   "n": 7,
+   "id": "paywall.offer_card"
+  },
+  {
+   "n": 8,
+   "id": "paywall.offer_title"
+  },
+  {
+   "n": 9,
+   "id": "paywall.offer_description"
+  },
+  {
+   "n": 10,
+   "id": "paywall.buy_button"
+  },
+  {
+   "n": 11,
+   "id": "paywall.restore_button"
+  }
+ ],
+ "paywall__free_no_pro": [
+  {
+   "n": 1,
+   "id": "paywall.back"
+  },
+  {
+   "n": 2,
+   "id": "paywall.title"
+  },
+  {
+   "n": 3,
+   "id": "paywall.account_label"
+  },
+  {
+   "n": 4,
+   "id": "paywall.sign_out_button"
+  },
+  {
+   "n": 5,
+   "id": "paywall.plan_label"
+  },
+  {
+   "n": 6,
+   "id": "paywall.explainer"
+  },
+  {
+   "n": 7,
+   "id": "paywall.no_pro"
+  },
+  {
+   "n": 8,
+   "id": "paywall.restore_button"
+  }
+ ],
+ "paywall__pro_packs": [
+  {
+   "n": 1,
+   "id": "paywall.back"
+  },
+  {
+   "n": 2,
+   "id": "paywall.title"
+  },
+  {
+   "n": 3,
+   "id": "paywall.account_label"
+  },
+  {
+   "n": 4,
+   "id": "paywall.sign_out_button"
+  },
+  {
+   "n": 5,
+   "id": "paywall.plan_label"
+  },
+  {
+   "n": 6,
+   "id": "paywall.explainer"
+  },
+  {
+   "n": 7,
+   "id": "paywall.offer_card"
+  },
+  {
+   "n": 8,
+   "id": "paywall.offer_title"
+  },
+  {
+   "n": 9,
+   "id": "paywall.offer_description"
+  },
+  {
+   "n": 10,
+   "id": "paywall.buy_button"
+  },
+  {
+   "n": 11,
+   "id": "paywall.restore_button"
+  },
+  {
+   "n": 12,
+   "id": "paywall.toast"
+  }
+ ],
+ "paywall__pro_no_packs": [
+  {
+   "n": 1,
+   "id": "paywall.back"
+  },
+  {
+   "n": 2,
+   "id": "paywall.title"
+  },
+  {
+   "n": 3,
+   "id": "paywall.account_label"
+  },
+  {
+   "n": 4,
+   "id": "paywall.sign_out_button"
+  },
+  {
+   "n": 5,
+   "id": "paywall.plan_label"
+  },
+  {
+   "n": 6,
+   "id": "paywall.explainer"
+  },
+  {
+   "n": 7,
+   "id": "paywall.no_packs"
+  },
+  {
+   "n": 8,
+   "id": "paywall.restore_button"
+  }
+ ],
+ "paywall__pro_bought_waiting": [
+  {
+   "n": 1,
+   "id": "paywall.back"
+  },
+  {
+   "n": 2,
+   "id": "paywall.title"
+  },
+  {
+   "n": 3,
+   "id": "paywall.account_label"
+  },
+  {
+   "n": 4,
+   "id": "paywall.sign_out_button"
+  },
+  {
+   "n": 5,
+   "id": "paywall.plan_label"
+  },
+  {
+   "n": 6,
+   "id": "paywall.explainer"
+  },
+  {
+   "n": 7,
+   "id": "paywall.pro_bought"
+  },
+  {
+   "n": 8,
+   "id": "paywall.retry_button"
+  },
+  {
+   "n": 9,
+   "id": "paywall.restore_button"
+  }
+ ],
+ "paywall__loading": [
+  {
+   "n": 1,
+   "id": "paywall.back"
+  },
+  {
+   "n": 2,
+   "id": "paywall.title"
+  },
+  {
+   "n": 3,
+   "id": "paywall.account_label"
+  },
+  {
+   "n": 4,
+   "id": "paywall.sign_out_button"
+  },
+  {
+   "n": 5,
+   "id": "paywall.plan_label"
+  },
+  {
+   "n": 6,
+   "id": "paywall.explainer"
+  },
+  {
+   "n": 7,
+   "id": "paywall.loading"
+  },
+  {
+   "n": 8,
+   "id": "paywall.restore_button"
+  }
+ ],
+ "paywall__load_error": [
+  {
+   "n": 1,
+   "id": "paywall.back"
+  },
+  {
+   "n": 2,
+   "id": "paywall.title"
+  },
+  {
+   "n": 3,
+   "id": "paywall.account_label"
+  },
+  {
+   "n": 4,
+   "id": "paywall.sign_out_button"
+  },
+  {
+   "n": 5,
+   "id": "paywall.plan_label"
+  },
+  {
+   "n": 6,
+   "id": "paywall.explainer"
+  },
+  {
+   "n": 7,
+   "id": "paywall.load_error"
+  },
+  {
+   "n": 8,
+   "id": "paywall.restore_button"
+  }
+ ],
+ "paywall__plan_unknown": [
+  {
+   "n": 1,
+   "id": "paywall.back"
+  },
+  {
+   "n": 2,
+   "id": "paywall.title"
+  },
+  {
+   "n": 3,
+   "id": "paywall.account_label"
+  },
+  {
+   "n": 4,
+   "id": "paywall.sign_out_button"
+  },
+  {
+   "n": 5,
+   "id": "paywall.explainer"
+  },
+  {
+   "n": 6,
+   "id": "paywall.plan_unknown"
+  },
+  {
+   "n": 7,
+   "id": "paywall.retry_button"
+  },
+  {
+   "n": 8,
+   "id": "paywall.restore_button"
+  }
+ ],
+ "account__sign_in": [
+  {
+   "n": 1,
+   "id": "account.back"
+  },
+  {
+   "n": 2,
+   "id": "account.title"
+  },
+  {
+   "n": 3,
+   "id": "account.reason"
+  },
+  {
+   "n": 4,
+   "id": "account.email_field"
+  },
+  {
+   "n": 5,
+   "id": "account.password_field"
+  },
+  {
+   "n": 6,
+   "id": "account.submit_button"
+  },
+  {
+   "n": 7,
+   "id": "account.toggle_mode"
+  },
+  {
+   "n": 8,
+   "id": "account.forgot_password"
+  },
+  {
+   "n": 9,
+   "id": "account.divider"
+  },
+  {
+   "n": 10,
+   "id": "account.google_button"
+  },
+  {
+   "n": 11,
+   "id": "account.not_now_button"
+  }
+ ],
+ "account__create_account": [
+  {
+   "n": 1,
+   "id": "account.back"
+  },
+  {
+   "n": 2,
+   "id": "account.title"
+  },
+  {
+   "n": 3,
+   "id": "account.reason"
+  },
+  {
+   "n": 4,
+   "id": "account.email_field"
+  },
+  {
+   "n": 5,
+   "id": "account.password_field"
+  },
+  {
+   "n": 6,
+   "id": "account.submit_button"
+  },
+  {
+   "n": 7,
+   "id": "account.toggle_mode"
+  },
+  {
+   "n": 8,
+   "id": "account.divider"
+  },
+  {
+   "n": 9,
+   "id": "account.google_button"
+  },
+  {
+   "n": 10,
+   "id": "account.not_now_button"
+  }
+ ],
+ "account__error": [
+  {
+   "n": 1,
+   "id": "account.back"
+  },
+  {
+   "n": 2,
+   "id": "account.title"
+  },
+  {
+   "n": 3,
+   "id": "account.reason"
+  },
+  {
+   "n": 4,
+   "id": "account.email_field"
+  },
+  {
+   "n": 5,
+   "id": "account.password_field"
+  },
+  {
+   "n": 6,
+   "id": "account.error"
+  },
+  {
+   "n": 7,
+   "id": "account.submit_button"
+  },
+  {
+   "n": 8,
+   "id": "account.toggle_mode"
+  },
+  {
+   "n": 9,
+   "id": "account.forgot_password"
+  },
+  {
+   "n": 10,
+   "id": "account.divider"
+  },
+  {
+   "n": 11,
+   "id": "account.google_button"
+  },
+  {
+   "n": 12,
+   "id": "account.not_now_button"
+  }
+ ],
+ "account__info_reset_sent": [
+  {
+   "n": 1,
+   "id": "account.back"
+  },
+  {
+   "n": 2,
+   "id": "account.title"
+  },
+  {
+   "n": 3,
+   "id": "account.reason"
+  },
+  {
+   "n": 4,
+   "id": "account.email_field"
+  },
+  {
+   "n": 5,
+   "id": "account.password_field"
+  },
+  {
+   "n": 6,
+   "id": "account.info"
+  },
+  {
+   "n": 7,
+   "id": "account.submit_button"
+  },
+  {
+   "n": 8,
+   "id": "account.toggle_mode"
+  },
+  {
+   "n": 9,
+   "id": "account.forgot_password"
+  },
+  {
+   "n": 10,
+   "id": "account.divider"
+  },
+  {
+   "n": 11,
+   "id": "account.google_button"
+  },
+  {
+   "n": 12,
+   "id": "account.not_now_button"
+  }
+ ],
+ "account__busy": [
+  {
+   "n": 1,
+   "id": "account.back"
+  },
+  {
+   "n": 2,
+   "id": "account.title"
+  },
+  {
+   "n": 3,
+   "id": "account.reason"
+  },
+  {
+   "n": 4,
+   "id": "account.email_field"
+  },
+  {
+   "n": 5,
+   "id": "account.password_field"
+  },
+  {
+   "n": 6,
+   "id": "account.submit_button"
+  },
+  {
+   "n": 7,
+   "id": "account.toggle_mode"
+  },
+  {
+   "n": 8,
+   "id": "account.forgot_password"
+  },
+  {
+   "n": 9,
+   "id": "account.divider"
+  },
+  {
+   "n": 10,
+   "id": "account.google_button"
+  },
+  {
+   "n": 11,
+   "id": "account.not_now_button"
+  }
+ ],
+ "account__keyboard_open": [
+  {
+   "n": 1,
+   "id": "account.back"
+  },
+  {
+   "n": 2,
+   "id": "account.title"
+  },
+  {
+   "n": 3,
+   "id": "account.reason"
+  },
+  {
+   "n": 4,
+   "id": "account.email_field"
+  },
+  {
+   "n": 5,
+   "id": "account.password_field"
+  },
+  {
+   "n": 6,
+   "id": "account.submit_button"
+  },
+  {
+   "n": 7,
+   "id": "account.toggle_mode"
+  },
+  {
+   "n": 8,
+   "id": "account.not_now_button"
+  }
+ ],
+ "account__apple_enabled_future": [
+  {
+   "n": 1,
+   "id": "account.back"
+  },
+  {
+   "n": 2,
+   "id": "account.title"
+  },
+  {
+   "n": 3,
+   "id": "account.reason"
+  },
+  {
+   "n": 4,
+   "id": "account.email_field"
+  },
+  {
+   "n": 5,
+   "id": "account.password_field"
+  },
+  {
+   "n": 6,
+   "id": "account.submit_button"
+  },
+  {
+   "n": 7,
+   "id": "account.toggle_mode"
+  },
+  {
+   "n": 8,
+   "id": "account.forgot_password"
+  },
+  {
+   "n": 9,
+   "id": "account.divider"
+  },
+  {
+   "n": 10,
+   "id": "account.google_button"
+  },
+  {
+   "n": 11,
+   "id": "account.apple_button"
+  },
+  {
+   "n": 12,
+   "id": "account.not_now_button"
+  }
+ ],
+ "photo_source_dialog__default": [
+  {
+   "n": 1,
+   "id": "photo_dialog.title"
+  },
+  {
+   "n": 2,
+   "id": "photo_dialog.body"
+  },
+  {
+   "n": 3,
+   "id": "photo_dialog.camera"
+  },
+  {
+   "n": 4,
+   "id": "photo_dialog.gallery"
+  }
+ ],
+ "scan_error_dialog__message_only": [
+  {
+   "n": 1,
+   "id": "scan_error.title"
+  },
+  {
+   "n": 2,
+   "id": "scan_error.message"
+  },
+  {
+   "n": 3,
+   "id": "scan_error.ok_button"
+  }
+ ],
+ "scan_error_dialog__one_next_step": [
+  {
+   "n": 1,
+   "id": "scan_error.title"
+  },
+  {
+   "n": 2,
+   "id": "scan_error.message"
+  },
+  {
+   "n": 3,
+   "id": "scan_error.next_step_button"
+  },
+  {
+   "n": 4,
+   "id": "scan_error.ok_button"
+  }
+ ],
+ "scan_error_dialog__two_next_steps": [
+  {
+   "n": 1,
+   "id": "scan_error.title"
+  },
+  {
+   "n": 2,
+   "id": "scan_error.message"
+  },
+  {
+   "n": 3,
+   "id": "scan_error.next_step_button"
+  },
+  {
+   "n": 4,
+   "id": "scan_error.ok_button"
+  }
+ ],
+ "scan_error_dialog__long_message": [
+  {
+   "n": 1,
+   "id": "scan_error.title"
+  },
+  {
+   "n": 2,
+   "id": "scan_error.message"
+  },
+  {
+   "n": 3,
+   "id": "scan_error.next_step_button"
+  },
+  {
+   "n": 4,
+   "id": "scan_error.ok_button"
+  }
+ ],
+ "late_scan_dialog__credit_used": [
+  {
+   "n": 1,
+   "id": "late_scan.title"
+  },
+  {
+   "n": 2,
+   "id": "late_scan.message"
+  },
+  {
+   "n": 3,
+   "id": "late_scan.ok_button"
+  }
+ ],
+ "splash__default": [
+  {
+   "n": 1,
+   "id": "splash.background"
+  },
+  {
+   "n": 2,
+   "id": "splash.icon"
+  },
+  {
+   "n": 3,
+   "id": "splash.branding"
+  }
+ ],
+ "app_icon__launcher": [
+  {
+   "n": 1,
+   "id": "app_icon.adaptive"
+  },
+  {
+   "n": 2,
+   "id": "app_icon.layers"
+  }
+ ]
+}

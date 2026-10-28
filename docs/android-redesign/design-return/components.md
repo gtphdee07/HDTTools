@@ -1,0 +1,113 @@
+# Components
+
+Light theme. Sizes in dp. Every touch target is 48 x 48 dp or larger. Names match the `new_style` value in `ui-redesign-map.json` and the `data-style` of the frames. Token names are from `tokens.json`. Every control has default, pressed, focused, disabled and (for inputs) error states; where a state is not drawn, the rule below is the build reference.
+
+Pressed state, all controls: Material ripple using the control's text colour at 12%. Focus (keyboard or switch access): 2 dp `purple-deep` outline with a 2 dp offset, on every surface.
+
+## Top app bar (header)
+Used on every screen except Disclaimer and Splash.
+- **Anatomy:** teal fill, 24 dp bottom corners, shadow `sm`. Status bar allowance 24 dp plus 12 dp top padding, 16 dp side padding, 12 to 16 dp bottom padding. Row 1: Back icon button (48), title or brand block, balance chip (where shown). Optional row 2: account status (Rig picker only) or step indicator (Chooser and Truck, Trailer, Scale entry).
+- **Rig picker variant:** logo (52, 14 dp radius, 2 dp white border), "RigCheck" (`top-bar-title`), tagline (`micro`), chip, then the account status row.
+- **Compact:** while the keyboard is open the step indicator is dropped and bottom padding is 12.
+- **Ids:** `picker.logo`, `picker.app_title`, `picker.tagline`, `*.back`, `*.title`, `picker.credit_chip`, `chooser.credit_chip`, `truck.credit_chip`.
+
+## Icon button (48)
+- 48 x 48 circle. Over the teal bar: `on-teal-wash` fill, `ink` icon (24). Elsewhere: transparent fill, `ink-muted` or `teal-deep` icon.
+- States: pressed ripple; disabled 38% opacity (Back is disabled while a paid Scan is in flight; the Chooser overlay also blocks it); focus ring.
+- Every one needs a content description: Back ("Back"), info ("What is stand-alone weight?"), row toggle ("Show note" or "Hide note").
+- **Ids:** `*.back`, `paywall.back`, `truck.standalone_info`, `results.row_chevron`.
+
+## Button, primary / secondary / ghost / destructive
+- Height 56 (48 compact, 52 in dialogs). Pill (999). Padding 20 horizontal. Label `button` (or `button-compact`). Optional 22 dp icon, 8 dp gap. Full width by default; compact ones hug their label.
+- **Primary:** `orange` fill, `ink` text, shadow `sm`. Pressed: `orange-deep` fill, white text. One primary per screen.
+- **Secondary:** white fill, 1.5 dp `teal-deep` border, `teal-deep` text. Pressed: `tint-teal` fill.
+- **Ghost:** no fill or border, `teal-deep` text. Pressed: `tint-teal` fill.
+- **Destructive:** white fill, 1.5 dp `danger` border and text. Used only for Sign out.
+- **Disabled (all kinds):** `disabled-fill`, `disabled-content` text, no border, no shadow.
+- **Ids:** `picker.create_button`, `picker.history_button`, `picker.sign_out_button`, `picker.account_menu_cancel`, `chooser.*` cards (see Option card), `truck.next_button`, `truck.scan_standalone_button`, `trailer.next_button`, `scale.check_button`, `disclaimer.accept_button`, `results.start_another_button`, `results.garage_get_pro`, `history.upgrade_button`, `paywall.buy_button`, `paywall.restore_button`, `paywall.sign_out_button`, `paywall.retry_button`, `account.submit_button`, `account.toggle_mode`, `account.forgot_password`, `account.google_button`, `account.apple_button`, `account.not_now_button`, dialog buttons.
+
+## Text field (and number field with unit)
+- Label above (`label`, `ink`), then a 56 dp box: 1.5 dp `border-strong`, 8 dp radius, 16 dp side padding, value `body` 17 sp, unit hint ("lb") right-aligned in `ink-muted` 15 sp, placeholder in `ink-muted`. Optional help line under it (`caption`, `ink-muted`).
+- **Focused:** 2 dp `teal-deep` border plus a 4 dp `tint-teal` ring, caret in `teal-deep`.
+- **Error:** 2 dp `danger` border, message line in `danger-text` (`body-sm`, 500). Not colour alone: the message names the problem.
+- **Disabled:** 70% opacity, `#eeeaf3` fill.
+- Numeric fields use the number keyboard. Hint numbers on the Scale screen carry an orange badge (22 dp, `ink` digit) in front of the label.
+- **Ids:** all `*_field`, `picker.new_rig_input`, `account.email_field`, `account.password_field`.
+
+## Option card (Scan Photo, Enter Manually)
+- Min height 148, 24 dp radius, 1.5 dp border (`purple-deep` for Scan, `teal-deep` for Manual), `tint-purple` or `tint-teal` fill, shadow `sm`. 64 dp circular icon at the left (purple with white icon, teal with ink icon), title `title-lg`-ish 20/24 Outfit 700 with the badge beside it, description `body-md` in `ink-muted`.
+- The two cards are the same size so Manual is a first-class path. A balance of 0 changes nothing visually (the Scan card still opens the Paywall as today).
+- **Ids:** `chooser.scan_card`, `chooser.manual_card`.
+
+## Rig card
+- Min height 84, 14 dp radius, 1 dp `border`, shadow `sm`, 12 x 16 padding. 52 dp avatar circle (tint fill, deep-colour initial, Outfit 800 22), nickname `title`, subtitle `body-sm` `ink-muted`, last checked `micro`, chevron at the right. Whole card taps. Avatars cycle teal, purple, orange tints.
+- **Ids:** `picker.rig_card`, `picker.rig_avatar`, `picker.rig_nickname`, `picker.rig_subtitle`, `picker.rig_last_checked`.
+
+## Credit chip
+- 48 high, pill, white fill, shadow `sm`, 26 dp camera icon, label `chip`. Top right of the bar. Labels: "12 scans", "1 scan", "0 scans" (signed out), "…" only while a signed-in balance loads.
+- Tap opens the Paywall route (shows Account when signed out). Content description: "Scan balance: N scans. Opens the Paywall".
+- **Ids:** `picker.credit_chip`, `chooser.credit_chip`, `truck.credit_chip`.
+
+## Account status row
+- 48 high, 14 dp radius, `on-teal-wash` fill, 12 dp padding. 32 dp avatar (purple with white initial when signed in; white with person icon when signed out), two lines ("Signed in as" `micro`, email `body-sm` 700, ellipsised) and a chevron. Signed out: "Not signed in" and a "Sign in" label in `teal-deep`.
+- Signed in opens the account sheet; signed out goes to the Account screen. Not available while a paid Scan is in flight.
+- **Ids:** `picker.account_status`, `picker.account_avatar`.
+
+## Bottom sheet
+- 24 dp top corners, white, shadow `md`, 12 dp top padding, handle 40 x 4 in `border`, 16 dp side padding, 64 dp bottom padding (clears the 3-button bar). Scrim `ink` at 55%. Dismiss: scrim tap, Cancel, system Back.
+- Account sheet: avatar (48) and email, then destructive "Sign out", then ghost "Cancel".
+- **Ids:** `picker.account_menu`, `picker.account_menu_email`, `picker.sign_out_button`, `picker.account_menu_cancel`.
+
+## Dialog
+- 24 dp radius, 24 dp padding, width 364, shadow `md`, scrim 55%. Title `title-lg`, body `body` 16/24. Buttons stacked full width at 52: primary first, secondary second, ghost OK last.
+- **Ids:** `photo_dialog.*`, `scan_error.*`, `late_scan.*`.
+
+## Step indicator
+- Three 32 dp circles (Truck, Trailer, Scale) joined by 2 dp lines at 35% `ink`. Current: `ink` fill, white digit, bold label. Done: `ink` fill. Upcoming: white fill, 2 dp `ink` border. Caption "Step n of 3" (`label`) above. The indicator counts only the three documents, as the old bar did.
+- **Ids:** `chooser.step_bar`, `truck.step_bar`, `trailer.step_bar`, `scale.step_bar`.
+
+## Verdict band
+- 24 dp radius, shadow `md`, 20 dp padding. 64 dp translucent circle (white at 22%) holding a 36 dp icon (check-circle, x-circle or info-circle), headline `headline-verdict`, subline `body-md`, all white. Fill: `pine` (Safe to Tow), `danger` (Not Safe to Tow), `purple` (Partially Checked, Not Enough Information).
+- **Ids:** `results.verdict`, `results.verdict_icon`.
+
+## Breakdown row
+- Row: 26 dp status icon, label `title-sm`-ish (Outfit 700 17), status badge, optional chevron (48 dp target, only when the row has a note). Under it a 10 dp rounded progress bar (track `#e7edf0`; fill `pine`, `danger` or `slate`) and a line with "A lb of B lb" (`body-sm`, `ink-muted`) at the left and the percentage (700) at the right. A fill over 100% is clamped at the bar's end.
+- Expanded: the note appears under the row in a `surface-sunken` block (`body-sm`); 200 ms expand.
+- Tones: pass (check-circle, "Within limit"), fail (x-circle, "Over limit", percentage in `danger-text`), not checked (info-circle, "Not checked", 0%).
+- **Ids:** `results.row` and its parts, `results.row_badge`, `results.row_chevron`, `results.breakdown_card`.
+
+## Badge
+- Pill, 2 x 10 padding, `badge` text, optional 14 dp icon. Kinds: credit (`purple` / white), free (`pine` / white), within limit (`tint-green` / `pine`), over limit (`tint-red` / `danger-text`), partially checked (`tint-purple` / `purple-deep`), not checked (`surface-sunken` with 1 dp `border-strong` / `ink-muted`), plan (`tint-teal` / `teal-deep`).
+- **Ids:** `chooser.scan_badge`, `chooser.manual_badge`, `results.row_badge`, `history.entry_verdict`, `paywall.plan_label`.
+
+## Notice card
+- 14 dp radius, 12 x 14 padding, 22 dp leading icon, text `body-sm` in `ink`, optional title `title-sm`. Tones: info (`surface-sunken`, 1 dp `border`), scan and warn (`tint-orange`, `orange-deep` icon), error (`tint-red`, `danger-text` icon).
+- **Ids:** `truck.scan_notice`, `trailer.scan_notice`, `scale.scan_notice`, `results.garage_notice`, `results.history_notice`, `results.estimated_notice`, `history.limit_notice`, `account.info`, `paywall.load_error`, `paywall.no_packs`, `paywall.no_pro`.
+
+## Reference card (pinned crop) and reference image
+- Pinned under the top bar on Truck and Trailer: white card, 24 dp radius, shadow `md`, 12 dp padding. Caption row (search icon, "Tap a field to see its spot on the tag", and a plan-coloured badge naming the focused field), then a crop of the label showing three lines with the focused line outlined 2.5 dp in `orange` on `tint-orange`.
+- Scale ticket: the image sits in the scroll with orange numbered badges (24 dp) drawn on it; legend pills below match the badges on the field labels.
+- **Ids:** `truck.reference_image`, `truck.reference_hint`, `trailer.reference_image`, `trailer.reference_hint`, `scale.reference_image`, `scale.legend`.
+
+## Panel (tinted block)
+- 24 dp radius, 16 dp padding, 12 dp gaps. Purple tint (new-rig panel) or orange tint (stand-alone weight panel).
+- **Ids:** `picker.new_rig_label` (inside), `truck.standalone_panel`.
+
+## Offer card
+- Free: one large card, `tint-purple` fill, 1.5 dp `purple-deep` border, 24 dp radius, title `offer-title`, description `body-md`, full-width primary button with the store price. Pro: one white row card per pack with the title, description and a compact primary price button; the price text comes from the store ("$4.99", "CA$12.99 one time"), so the button grows and never truncates.
+
+## Slider
+- 4 dp track (`border`), `teal-deep` fill, 28 dp thumb with a 3 dp `teal-deep` ring and white centre, 48 dp touch height. 15 to 25%, default 20%.
+
+## Progress bar, spinner, toast, empty state, divider
+- **Progress bar:** 10 dp, fully rounded.
+- **Spinner:** 40 dp (48 in the Scan overlay), 4 dp ring in `border` with a `teal-deep` arc.
+- **Toast (snackbar):** `ink` fill, white `body-md`, 14 dp radius, 16 dp margins, sits above the pinned footer.
+- **Empty state:** dashed 2 dp `border-strong`, 24 dp radius, `surface-sunken` fill, 56 dp logo, title and text.
+- **Divider:** 1 dp `border`.
+
+## Overlay (Scan in flight)
+- White at 88% over the whole screen including the top bar, centred spinner and "Reading…". Blocks every tap, including Back and the account row.
+
+## Splash and app icon
+See `assets/` and the frames `splash__default` and `app_icon__launcher`.

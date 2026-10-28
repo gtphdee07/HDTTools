@@ -1,0 +1,5742 @@
+{
+ "meta": {
+  "about": "Inventory of every visible element of the RigCheck Android app today, for the redesign. Source of truth for the redesign map.",
+  "generated_from": "android/app/src/main/java/com/rigcheck/app/ui/** read by hand on 2026-10-25 (commit 68db012); `tests_referencing` is a grep of android/app/src/androidTest.",
+  "size_basis": "Sizes are what the Compose code asks for (fixed dp where written; a ~ value is an estimate from padding and text size; '(M3 default)' where Material 3 supplies it; 'wrap'/'fill' otherwise). They are NOT measured on a device. Region and order are reading order on a 412 dp wide phone.",
+  "reference_frame": "412 x 892 dp, edge-to-edge, light theme only",
+  "region_vocabulary": {
+   "header": "fixed at the top, does not scroll",
+   "body": "main area, scrolls if it overflows (except where noted)",
+   "footer": "fixed at the bottom, does not scroll",
+   "overlay": "above the screen (dialog, scrim, toast)"
+  },
+  "status_values": [
+   "kept (same place, same look)",
+   "restyled (same place, new look)",
+   "moved (new place)",
+   "merged (combined into another id; say which)",
+   "split (one became several; list the new ids in added_elements)",
+   "removed (give a reason)",
+   "replaced (different control for the same function; say which)"
+  ],
+  "how_to_fill": "For every element set redesign.status. For anything not 'removed' fill new_screen, new_region, new_order, new_width, new_height, new_style. Put brand-new elements in added_elements (id prefix = screen id). Never reuse an id for a different function. Leave new_text null unless the copy changes.",
+  "counts": {
+   "elements": 150,
+   "screens": 13
+  },
+  "redesign_round": {
+   "about": "Filled in by the Claude Design round for ticket #190, 2026-10-27. Sizes and regions are measured from the rendered frames in annotated/ (412 x 892 dp).",
+   "decisions": {
+    "dark_theme": "No, light only",
+    "navigation": "Re-skin plus layout rework, same flow and same 9 routes; a top app bar was added",
+    "timing": "Design started from the inventory and the live Web app; baseline frames (#189) were not available, so sizes are estimates of today's app"
+   },
+   "status_note": "redesign.status holds the first word of status_values (kept, restyled, moved, merged, split, removed, replaced). Added elements carry \"added\".",
+   "frames": 63
+  }
+ },
+ "screens": [
+  {
+   "id": "rig_picker",
+   "route": "RigPicker (start destination)",
+   "purpose": "Pick a saved rig, or start a new one by nickname. Entry to History and the Scan balance.",
+   "entered_from": "app launch; Results 'Start another check'",
+   "leaves_to": "chooser(scale) for a saved rig; chooser(truck) for a new rig; history; paywall",
+   "states": [
+    "no saved rigs",
+    "1 saved rig",
+    "5+ saved rigs (list scrolls)",
+    "balance not loaded ('…')",
+    "balance 0 / 1 / many",
+    "signed in vs signed out (garage source differs, same look)",
+    "new-rig input empty (Create disabled) vs filled"
+   ]
+  },
+  {
+   "id": "chooser",
+   "route": "Chooser(module = TRUCK | TRAILER | SCALE)",
+   "purpose": "Scan a photo (paid, 1 credit) or enter manually (free) for one document.",
+   "entered_from": "rig_picker; Truck Tag Next; Trailer Tag Next",
+   "leaves_to": "photo_source_dialog; paywall; the matching entry screen",
+   "states": [
+    "three module variants (copy and step 1/2/3 change)",
+    "Scan in flight (overlay)",
+    "Scan error dialog on top",
+    "balance 0 (Scan Photo leads to Paywall, no visual hint today)",
+    "balance null"
+   ]
+  },
+  {
+   "id": "photo_source_dialog",
+   "route": "dialog on chooser and truck_tag_entry",
+   "purpose": "Choose camera or gallery for a Scan.",
+   "entered_from": "chooser.scan_card; truck.scan_standalone_button",
+   "leaves_to": "system camera; Android Photo Picker",
+   "states": [
+    "default"
+   ]
+  },
+  {
+   "id": "truck_tag_entry",
+   "route": "TruckTagEntry",
+   "purpose": "Review or type the truck compliance-label values (also the target of a delivered Scan).",
+   "entered_from": "chooser(truck) manual; a delivered truck Scan",
+   "leaves_to": "chooser(trailer)",
+   "states": [
+    "blank",
+    "filled",
+    "scan notice shown (nothing read / some read)",
+    "GCWR below GVWR warning",
+    "stand-alone info expanded",
+    "stand-alone blank (pin-weight slider shown) vs filled (slider hidden)",
+    "standalone Scan in flight ('Reading…')",
+    "scan error dialog on top",
+    "keyboard open",
+    "image zoom active (press-and-hold)"
+   ]
+  },
+  {
+   "id": "trailer_tag_entry",
+   "route": "TrailerTagEntry",
+   "purpose": "Review or type the trailer compliance-label values.",
+   "entered_from": "chooser(trailer) manual; a delivered trailer Scan",
+   "leaves_to": "chooser(scale)",
+   "states": [
+    "blank",
+    "filled",
+    "scan notice shown",
+    "axle count blank (default 2) vs filled",
+    "keyboard open",
+    "image zoom active"
+   ]
+  },
+  {
+   "id": "scale_ticket_entry",
+   "route": "ScaleTicketEntry",
+   "purpose": "Review or type the CAT Scale ticket values.",
+   "entered_from": "chooser(scale) manual; a delivered scale Scan; saved-rig shortcut",
+   "leaves_to": "disclaimer (first check of the session) or results",
+   "states": [
+    "blank",
+    "filled",
+    "scan notice shown",
+    "keyboard open"
+   ]
+  },
+  {
+   "id": "disclaimer",
+   "route": "Disclaimer",
+   "purpose": "Blocking once-per-session acknowledgement before the first Results.",
+   "entered_from": "scale_ticket_entry Check Weights (first time per app launch)",
+   "leaves_to": "results",
+   "states": [
+    "default",
+    "large font scale (text can push the button off screen)",
+    "small phone (360x640)"
+   ]
+  },
+  {
+   "id": "results",
+   "route": "Results",
+   "purpose": "Verdict plus six (or five) axle comparisons.",
+   "entered_from": "disclaimer; scale_ticket_entry",
+   "leaves_to": "rig_picker; paywall (Garage notice)",
+   "states": [
+    "verdict: Safe to Tow (SUCCESS)",
+    "verdict: Not Safe to Tow (WARNING)",
+    "verdict: Partially Checked (INSUFFICIENT)",
+    "verdict: Not Enough Information (INSUFFICIENT)",
+    "with / without Combined Rig Weight row",
+    "estimated-figures notice shown",
+    "garage notice (Free: with Get Pro; Pro/unknown: without)",
+    "history notice",
+    "row collapsed vs expanded note",
+    "row tones: pass / fail / not checked (0%)",
+    "small phone / large font (the breakdown scrolls inside its card)"
+   ]
+  },
+  {
+   "id": "history",
+   "route": "History",
+   "purpose": "List of past checks (read-only).",
+   "entered_from": "rig_picker History button",
+   "leaves_to": "paywall (Upgrade to Pro)",
+   "states": [
+    "empty",
+    "a few entries",
+    "many entries (scrolls)",
+    "limit notice (Free, full)",
+    "all four verdict labels",
+    "signed out (session-only list)"
+   ]
+  },
+  {
+   "id": "paywall",
+   "route": "Paywall (signed-in branch)",
+   "purpose": "Buy Pro (Free account) or scan packs (Pro account); restore purchases.",
+   "entered_from": "rig_picker/chooser chip; Scan Photo at 0 credits; Scan error 'Buy more Scans'; Results Get Pro; History Upgrade",
+   "leaves_to": "back (system Back; done after buying a pack)",
+   "states": [
+    "offers loading",
+    "offers load error",
+    "plan unknown (Try again)",
+    "Free: one Pro card",
+    "Free after buying Pro (waiting on plan refresh)",
+    "Pro: several scan packs",
+    "Pro: no packs",
+    "Free: no Pro package",
+    "busy (buttons disabled)",
+    "balance 0 / 1 / many",
+    "3-button navigation bar overlapping Restore (#186)"
+   ]
+  },
+  {
+   "id": "account",
+   "route": "Paywall route, signed-out branch (AccountScreen)",
+   "purpose": "Sign in or create an account (email, Google); asked for only when buying or scanning.",
+   "entered_from": "anything that opens the Paywall while signed out",
+   "leaves_to": "paywall (after sign-in); back (Not now)",
+   "states": [
+    "sign in",
+    "create account",
+    "busy (all disabled)",
+    "error",
+    "info (confirm email / reset sent)",
+    "Apple button shown (future)",
+    "keyboard open"
+   ]
+  },
+  {
+   "id": "scan_error_dialog",
+   "route": "dialog on chooser and truck_tag_entry",
+   "purpose": "Says why a Scan failed and offers next steps.",
+   "entered_from": "a failed Scan",
+   "leaves_to": "paywall; retry; photo_source_dialog; entry screen",
+   "states": [
+    "message only + OK",
+    "with 1 next step",
+    "with 2 next steps",
+    "long message"
+   ]
+  },
+  {
+   "id": "late_scan_dialog",
+   "route": "dialog on any screen (NavHost level)",
+   "purpose": "A Scan answered after the user left its check.",
+   "entered_from": "any",
+   "leaves_to": "-",
+   "states": [
+    "credit used",
+    "no credit used"
+   ]
+  }
+ ],
+ "elements": [
+  {
+   "id": "picker.app_title",
+   "screen": "rig_picker",
+   "kind": "text",
+   "name": "App title",
+   "function": "Names the app. No logo, no tagline.",
+   "text": "RigCheck",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "header",
+    "order": 1,
+    "width": "wrap",
+    "height": "wrap",
+    "style": "headlineSmall (NOT overridden in Typography.kt, so it renders in the system font, not Outfit) ExtraBold"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_app_title",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "rig_picker",
+    "new_region": "header",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~30dp)",
+    "new_style": "Outfit 800 26/30 ink, letter-spacing -0.26px",
+    "new_text": null,
+    "new_test_tag": "picker_app_title",
+    "notes": "Now in the teal top bar beside the logo and tagline. Outfit 800 26/30. Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.history_button",
+   "screen": "rig_picker",
+   "kind": "text-button",
+   "name": "History button",
+   "function": "Opens the History screen.",
+   "text": "History",
+   "visible_when": "always",
+   "navigates_to": "history",
+   "today": {
+    "region": "header",
+    "order": 2,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton, primary (orange) text"
+   },
+   "test_tag_today": "open_history",
+   "test_tag_new": "open_history",
+   "tests_referencing": {
+    "HistoryNavigationTest.kt": 1
+   },
+   "redesign": {
+    "status": "moved",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 9,
+    "new_width": "wrap",
+    "new_height": "48dp",
+    "new_style": "Button/Secondary",
+    "new_text": null,
+    "new_test_tag": "open_history",
+    "notes": "Secondary pill button with a clock icon, 48 dp high. Moved from the top bar to the right of the heading so the top bar holds brand, account and balance. Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.credit_chip",
+   "screen": "rig_picker",
+   "kind": "chip",
+   "name": "Scan balance chip",
+   "function": "Shows the Scan Credit balance; tap opens the Paywall.",
+   "text": "<n> scans | 1 scan | … (not loaded)",
+   "visible_when": "always",
+   "navigates_to": "paywall",
+   "today": {
+    "region": "header",
+    "order": 3,
+    "width": "wrap",
+    "height": "wrap (~28dp)",
+    "style": "pill, TintTeal fill, 16dp camera icon, labelMedium, padding 12h/6v"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_credit_chip",
+   "tests_referencing": {
+    "CreditBalanceChipTest.kt": 1,
+    "RigCheckNavHostTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "rig_picker",
+    "new_region": "header",
+    "new_order": 4,
+    "new_width": "125dp",
+    "new_height": "48dp",
+    "new_style": "Chip/Credit",
+    "new_text": "<n> scans | 1 scan | 0 scans (signed out) | … (only while a signed-in balance loads)",
+    "new_test_tag": "picker_credit_chip",
+    "notes": "Stays top right. 48 dp high, 26 dp camera icon (was ~28 dp and 16 dp). Content description \"Scan balance: N scans. Opens the Paywall\". Tap target and navigation unchanged. Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.header_divider",
+   "screen": "rig_picker",
+   "kind": "divider",
+   "name": "Header divider",
+   "function": "Separates header from body.",
+   "text": null,
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "header",
+    "order": 4,
+    "width": "fill",
+    "height": "1dp",
+    "style": "M3 HorizontalDivider"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_header_divider",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "removed",
+    "new_screen": null,
+    "new_region": null,
+    "new_order": null,
+    "new_width": null,
+    "new_height": null,
+    "new_style": null,
+    "new_text": null,
+    "new_test_tag": null,
+    "notes": "Removed: the teal top bar with a 24 dp rounded bottom edge separates header from body, so a hairline is not needed."
+   }
+  },
+  {
+   "id": "picker.heading",
+   "screen": "rig_picker",
+   "kind": "text",
+   "name": "Screen heading",
+   "function": "Asks which rig.",
+   "text": "Which rig?",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 5,
+    "width": "fill",
+    "height": "wrap",
+    "style": "headlineSmall ExtraBold (system font)"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_heading",
+   "tests_referencing": {
+    "ScanInFlightNavigationTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "wrap",
+    "new_height": "wrap (~34dp)",
+    "new_style": "Outfit 800 28/34 ink, letter-spacing -0.28px",
+    "new_text": null,
+    "new_test_tag": "picker_heading",
+    "notes": "Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.subheading",
+   "screen": "rig_picker",
+   "kind": "text",
+   "name": "Screen subheading",
+   "function": "Explains picking vs starting a rig.",
+   "text": "Pick one you have checked before, or start a new one.",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 6,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyLarge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_subheading",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "wrap",
+    "new_height": "wrap (~44dp)",
+    "new_style": "DM Sans 400 16/22 ink-muted",
+    "new_text": null,
+    "new_test_tag": "picker_subheading",
+    "notes": "Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.rig_card",
+   "screen": "rig_picker",
+   "kind": "card",
+   "name": "Saved rig card (repeats)",
+   "function": "Selects a saved rig and skips straight to the Scale Ticket chooser (truck and trailer data are reused).",
+   "text": "(row, see children)",
+   "visible_when": "one per saved rig (cap set by the plan); list scrolls",
+   "navigates_to": "chooser(scale)",
+   "today": {
+    "region": "body",
+    "order": 7,
+    "width": "fill (20dp side margin)",
+    "height": "wrap (~76dp)",
+    "style": "Surface radius 16dp, 1dp outlineVariant border, no fill, no elevation, padding 16dp, 10dp gap between cards"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_rig_card",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 10,
+    "new_width": "fill",
+    "new_height": "wrap (~86dp)",
+    "new_style": "Card",
+    "new_text": null,
+    "new_test_tag": "picker_rig_card",
+    "notes": "White card, 1 dp border, shadow-sm, min 84 dp. Chevron added at the right (decorative). Whole card is the tap target. First card carries the ids in the frame; the rest repeat. Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.rig_avatar",
+   "screen": "rig_picker",
+   "kind": "avatar",
+   "name": "Rig avatar",
+   "function": "Decorative initial; colour cycles by list index.",
+   "text": "<first letter of nickname>",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 8,
+    "width": "44dp",
+    "height": "44dp",
+    "style": "circle; fill rotates Pine / Purple / Blush; white bold initial"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_rig_avatar",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 11,
+    "new_width": "52dp",
+    "new_height": "52dp",
+    "new_style": "Outfit 800 22/normal teal-deep",
+    "new_text": null,
+    "new_test_tag": "picker_rig_avatar",
+    "notes": "Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.rig_nickname",
+   "screen": "rig_picker",
+   "kind": "text",
+   "name": "Rig nickname",
+   "function": "The rig's name.",
+   "text": "<nickname>",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 9,
+    "width": "fill",
+    "height": "wrap",
+    "style": "titleMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_rig_nickname",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 12,
+    "new_width": "wrap",
+    "new_height": "wrap (~22dp)",
+    "new_style": "Outfit 700 18/22 ink",
+    "new_text": null,
+    "new_test_tag": "picker_rig_nickname",
+    "notes": "Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.rig_subtitle",
+   "screen": "rig_picker",
+   "kind": "text",
+   "name": "Rig subtitle",
+   "function": "Truck and trailer descriptions joined by ' · '.",
+   "text": "<truck description> · <trailer description>",
+   "visible_when": "when at least one description exists",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 10,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_rig_subtitle",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 13,
+    "new_width": "wrap",
+    "new_height": "wrap (~18dp)",
+    "new_style": "DM Sans 400 14/18 ink-muted",
+    "new_text": null,
+    "new_test_tag": "picker_rig_subtitle",
+    "notes": "Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.rig_last_checked",
+   "screen": "rig_picker",
+   "kind": "text",
+   "name": "Last checked",
+   "function": "Relative time since the rig was last used.",
+   "text": "Last checked <relative time>",
+   "visible_when": "when the timestamp parses",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 11,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_rig_last_checked",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 14,
+    "new_width": "wrap",
+    "new_height": "wrap (~16dp)",
+    "new_style": "DM Sans 400 12/16 ink-muted",
+    "new_text": null,
+    "new_test_tag": "picker_rig_last_checked",
+    "notes": "Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.new_rig_label",
+   "screen": "rig_picker",
+   "kind": "text",
+   "name": "New rig label",
+   "function": "Introduces the new-rig input.",
+   "text": "Or start a new rig",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "footer",
+    "order": 12,
+    "width": "fill",
+    "height": "wrap",
+    "style": "labelLarge Bold"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_new_rig_label",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "moved",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 15,
+    "new_width": "fill",
+    "new_height": "wrap (~22dp)",
+    "new_style": "Outfit 700 18/22 purple-deep",
+    "new_text": null,
+    "new_test_tag": "picker_new_rig_label",
+    "notes": "The new-rig panel is a tinted purple block that scrolls with the list (it was a fixed footer). Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.new_rig_input",
+   "screen": "rig_picker",
+   "kind": "text-field",
+   "name": "New rig nickname input",
+   "function": "Types the nickname of a new rig.",
+   "text": "placeholder: Rig nickname",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "footer",
+    "order": 13,
+    "width": "fill minus Create button",
+    "height": "56dp min (M3 TextField)",
+    "style": "M3 filled TextField (default M3 shape and grey fill)"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_new_rig_input",
+   "tests_referencing": {
+    "GarageNavigationTest.kt": 1,
+    "HistoryNavigationTest.kt": 1,
+    "RigCheckNavHostTest.kt": 2,
+    "ScanErrorNextStepNavigationTest.kt": 1,
+    "ScanInFlightNavigationTest.kt": 1,
+    "RigPickerScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "moved",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 16,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "picker_new_rig_input",
+    "notes": "Standard text field (56 dp). Focus state: 2 dp Teal-deep border plus 4 dp Tint-teal ring. Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.create_button",
+   "screen": "rig_picker",
+   "kind": "button",
+   "name": "Create button",
+   "function": "Starts a new rig and goes to the Truck Tag chooser.",
+   "text": "Create",
+   "visible_when": "enabled only when the nickname is not blank",
+   "navigates_to": "chooser(truck)",
+   "today": {
+    "region": "footer",
+    "order": 14,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 Button, orange fill, Ink text"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_create_button",
+   "tests_referencing": {
+    "GarageNavigationTest.kt": 1,
+    "HistoryNavigationTest.kt": 1,
+    "RigCheckNavHostTest.kt": 9,
+    "ScanErrorNextStepNavigationTest.kt": 1,
+    "ScanInFlightNavigationTest.kt": 1,
+    "RigPickerScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "moved",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 17,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Disabled",
+    "new_text": null,
+    "new_test_tag": "picker_create_button",
+    "notes": "Primary button, 56 dp. Disabled style while the nickname is blank (see rig_picker__in). Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "chooser.title",
+   "screen": "chooser",
+   "kind": "text",
+   "name": "Screen title",
+   "function": "Names the document being entered (Truck Tag / Trailer Tag / Scale Ticket).",
+   "text": "Truck Tag | Trailer Tag | Scale Ticket",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "header",
+    "order": 1,
+    "width": "fill",
+    "height": "wrap",
+    "style": "headlineSmall (system font), NOT bold-weighted"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "chooser_title",
+   "tests_referencing": {
+    "RigCheckNavHostTest.kt": 11
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "chooser",
+    "new_region": "header",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~30dp)",
+    "new_style": "Outfit 800 26/30 ink, letter-spacing -0.26px",
+    "new_text": null,
+    "new_test_tag": "chooser_title",
+    "notes": "Drawn in chooser__truck.png."
+   }
+  },
+  {
+   "id": "chooser.credit_chip",
+   "screen": "chooser",
+   "kind": "chip",
+   "name": "Scan balance chip",
+   "function": "Shows the Scan Credit balance; tap opens the Paywall.",
+   "text": "<n> scans | 1 scan | …",
+   "visible_when": "always",
+   "navigates_to": "paywall",
+   "today": {
+    "region": "header",
+    "order": 2,
+    "width": "wrap",
+    "height": "wrap (~28dp)",
+    "style": "pill, TintTeal fill, 16dp camera icon"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "chooser_credit_chip",
+   "tests_referencing": {
+    "CreditBalanceChipTest.kt": 1,
+    "RigCheckNavHostTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "chooser",
+    "new_region": "header",
+    "new_order": 3,
+    "new_width": "125dp",
+    "new_height": "48dp",
+    "new_style": "Chip/Credit",
+    "new_text": "<n> scans | 1 scan | 0 scans (signed out) | … (only while a signed-in balance loads)",
+    "new_test_tag": "chooser_credit_chip",
+    "notes": "Same chip and rule as picker.credit_chip. Drawn in chooser__truck.png."
+   }
+  },
+  {
+   "id": "chooser.step_bar",
+   "screen": "chooser",
+   "kind": "progress",
+   "name": "Step bar",
+   "function": "Shows step 1/2/3 of 3 (truck, trailer, scale).",
+   "text": "Step <n> of 3",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 3,
+    "width": "fill",
+    "height": "wrap (label 16dp + 8dp bar)",
+    "style": "labelSmall caption + 3 pill segments 8dp high, 8dp gap; filled = tertiary purple, empty = outlineVariant"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "chooser_step_bar",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "replaced",
+    "new_screen": "chooser",
+    "new_region": "header",
+    "new_order": 4,
+    "new_width": "fill",
+    "new_height": "76dp",
+    "new_style": "StepIndicator",
+    "new_text": null,
+    "new_test_tag": "chooser_step_bar",
+    "notes": "Numbered three-step indicator (Truck, Trailer, Scale) replaces the 8 dp bar. Keeps the visible caption \"Step n of 3\" so tests can still find it. Drawn in chooser__truck.png."
+   }
+  },
+  {
+   "id": "chooser.prompt",
+   "screen": "chooser",
+   "kind": "text",
+   "name": "Prompt",
+   "function": "Asks how to enter the document.",
+   "text": "How do you want to enter your truck's compliance-label values? (trailer's / CAT Scale ticket values)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 4,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyLarge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "chooser_prompt",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "chooser",
+    "new_region": "body",
+    "new_order": 5,
+    "new_width": "fill",
+    "new_height": "wrap (~56dp)",
+    "new_style": "Outfit 700 22/28 ink",
+    "new_text": null,
+    "new_test_tag": "chooser_prompt",
+    "notes": "Drawn in chooser__truck.png."
+   }
+  },
+  {
+   "id": "chooser.scan_card",
+   "screen": "chooser",
+   "kind": "card-button",
+   "name": "Scan Photo option",
+   "function": "Starts a paid Scan: with credits opens the photo-source dialog, with none opens the Paywall (which asks for sign-in first).",
+   "text": "Scan Photo — Photograph the label — Claude reads the fields for you.",
+   "visible_when": "always",
+   "navigates_to": "photo_source_dialog | paywall",
+   "today": {
+    "region": "body",
+    "order": 5,
+    "width": "fill",
+    "height": "wrap (~84dp)",
+    "style": "Surface radius 14dp, 1dp Orange border, padding 18dp; 44dp icon tile (orange 15% tint, radius 12) with CameraAlt; right pill badge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "chooser_scan_card",
+   "tests_referencing": {
+    "RigCheckNavHostTest.kt": 4,
+    "ChooserScreenTest.kt": 3
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "chooser",
+    "new_region": "body",
+    "new_order": 6,
+    "new_width": "fill",
+    "new_height": "wrap (~148dp)",
+    "new_style": "Card/Option",
+    "new_text": null,
+    "new_test_tag": "chooser_scan_card",
+    "notes": "Purple-tinted option card, min 148 dp, 64 dp circular icon. Description text is unchanged; the separator is an em dash as in the app. Drawn in chooser__truck.png."
+   }
+  },
+  {
+   "id": "chooser.scan_badge",
+   "screen": "chooser",
+   "kind": "badge",
+   "name": "Scan cost badge",
+   "function": "Says it costs one credit.",
+   "text": "1 credit",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 6,
+    "width": "wrap",
+    "height": "wrap",
+    "style": "pill, Orange fill, Ink text, labelMedium, padding 12h/6v"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "chooser_scan_badge",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "chooser",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "66dp",
+    "new_height": "22dp",
+    "new_style": "Badge",
+    "new_text": null,
+    "new_test_tag": "chooser_scan_badge",
+    "notes": "Drawn in chooser__truck.png."
+   }
+  },
+  {
+   "id": "chooser.manual_card",
+   "screen": "chooser",
+   "kind": "card-button",
+   "name": "Enter Manually option",
+   "function": "Goes straight to the entry screen for this document (free, offline).",
+   "text": "Enter Manually — Type the values in yourself — free, no photo, works offline.",
+   "visible_when": "always",
+   "navigates_to": "truck_tag_entry | trailer_tag_entry | scale_ticket_entry",
+   "today": {
+    "region": "body",
+    "order": 7,
+    "width": "fill",
+    "height": "wrap (~84dp)",
+    "style": "same card as Scan Photo; icon tile uses Pine; Orange 1dp border (same as Scan, so neither option stands out)"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "chooser_manual_card",
+   "tests_referencing": {
+    "GarageNavigationTest.kt": 3,
+    "HistoryNavigationTest.kt": 3,
+    "RigCheckNavHostTest.kt": 16,
+    "ScanErrorNextStepNavigationTest.kt": 3,
+    "ScanInFlightNavigationTest.kt": 5,
+    "ChooserScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "chooser",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "fill",
+    "new_height": "wrap (~148dp)",
+    "new_style": "Card/Option",
+    "new_text": null,
+    "new_test_tag": "chooser_manual_card",
+    "notes": "Teal-tinted option card, same size as Scan Photo, so manual entry reads as a first-class path. Drawn in chooser__truck.png."
+   }
+  },
+  {
+   "id": "chooser.manual_badge",
+   "screen": "chooser",
+   "kind": "badge",
+   "name": "Free badge",
+   "function": "Says it is free.",
+   "text": "Free",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 8,
+    "width": "wrap",
+    "height": "wrap",
+    "style": "pill, Pine fill, white text"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "chooser_manual_badge",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "chooser",
+    "new_region": "body",
+    "new_order": 9,
+    "new_width": "48dp",
+    "new_height": "22dp",
+    "new_style": "Badge",
+    "new_text": null,
+    "new_test_tag": "chooser_manual_badge",
+    "notes": "Drawn in chooser__truck.png."
+   }
+  },
+  {
+   "id": "chooser.footer_note",
+   "screen": "chooser",
+   "kind": "text",
+   "name": "Footer note",
+   "function": "Filler: says the choice repeats on the next screens.",
+   "text": "This same choice appears again before the trailer tag and scale ticket screens.",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 9,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "chooser_footer_note",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "chooser",
+    "new_region": "body",
+    "new_order": 10,
+    "new_width": "wrap",
+    "new_height": "wrap (~40dp)",
+    "new_style": "DM Sans 400 14/20 ink-muted",
+    "new_text": null,
+    "new_test_tag": "chooser_footer_note",
+    "notes": "Sunken info row with an info icon. Drawn in chooser__truck.png."
+   }
+  },
+  {
+   "id": "chooser.loading_overlay",
+   "screen": "chooser",
+   "kind": "overlay",
+   "name": "Scan-in-flight overlay",
+   "function": "Blocks all taps while a Scan is out.",
+   "text": null,
+   "visible_when": "while a Scan is in flight",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 10,
+    "width": "fill screen",
+    "height": "fill screen",
+    "style": "scrim 30% + M3 CircularProgressIndicator centred, no text"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "chooser_loading_overlay",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "chooser",
+    "new_region": "overlay",
+    "new_order": 1,
+    "new_width": "fill",
+    "new_height": "892dp",
+    "new_style": "Overlay/Scan",
+    "new_text": null,
+    "new_test_tag": "chooser_loading_overlay",
+    "notes": "White wash at 88% with spinner and \"Reading…\" text. Still blocks every tap during a paid Scan. Back is blocked too. Drawn in chooser__scan_in_flight.png."
+   }
+  },
+  {
+   "id": "photo_dialog.title",
+   "screen": "photo_source_dialog",
+   "kind": "dialog-title",
+   "name": "Dialog title",
+   "function": "Titles the source choice.",
+   "text": "Scan Photo",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 1,
+    "width": "M3 dialog",
+    "height": "wrap",
+    "style": "M3 AlertDialog"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "photo_dialog_title",
+   "tests_referencing": {
+    "RigCheckNavHostTest.kt": 4,
+    "ChooserScreenTest.kt": 3
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "photo_source_dialog",
+    "new_region": "overlay",
+    "new_order": 1,
+    "new_width": "wrap",
+    "new_height": "wrap (~28dp)",
+    "new_style": "Outfit 700 22/28 ink",
+    "new_text": null,
+    "new_test_tag": "photo_dialog_title",
+    "notes": "Drawn in photo_source_dialog__default.png."
+   }
+  },
+  {
+   "id": "photo_dialog.body",
+   "screen": "photo_source_dialog",
+   "kind": "text",
+   "name": "Dialog message",
+   "function": "Asks camera vs gallery.",
+   "text": "Take a new photo, or choose one you already have?",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 2,
+    "width": "M3 dialog",
+    "height": "wrap",
+    "style": "M3 AlertDialog text"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "photo_dialog_body",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "photo_source_dialog",
+    "new_region": "overlay",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~48dp)",
+    "new_style": "DM Sans 400 16/24 ink",
+    "new_text": null,
+    "new_test_tag": "photo_dialog_body",
+    "notes": "Drawn in photo_source_dialog__default.png."
+   }
+  },
+  {
+   "id": "photo_dialog.gallery",
+   "screen": "photo_source_dialog",
+   "kind": "text-button",
+   "name": "Choose from Gallery",
+   "function": "Opens the Android Photo Picker.",
+   "text": "Choose from Gallery",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 3,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton as the CONFIRM action (right side)"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "photo_dialog_gallery",
+   "tests_referencing": {
+    "ChooserScreenTest.kt": 2,
+    "TruckTagEntryScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "photo_source_dialog",
+    "new_region": "overlay",
+    "new_order": 4,
+    "new_width": "wrap",
+    "new_height": "52dp",
+    "new_style": "Button/Secondary",
+    "new_text": null,
+    "new_test_tag": "photo_dialog_gallery",
+    "notes": "Secondary button below Take Photo. Drawn in photo_source_dialog__default.png."
+   }
+  },
+  {
+   "id": "photo_dialog.camera",
+   "screen": "photo_source_dialog",
+   "kind": "text-button",
+   "name": "Take Photo",
+   "function": "Opens the system camera app.",
+   "text": "Take Photo",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 4,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton as the DISMISS action (left of confirm)"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "photo_dialog_camera",
+   "tests_referencing": {
+    "RigCheckNavHostTest.kt": 1,
+    "ChooserScreenTest.kt": 6,
+    "TruckTagEntryScreenTest.kt": 6
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "photo_source_dialog",
+    "new_region": "overlay",
+    "new_order": 3,
+    "new_width": "wrap",
+    "new_height": "52dp",
+    "new_style": "Button/Primary",
+    "new_text": null,
+    "new_test_tag": "photo_dialog_camera",
+    "notes": "Primary button. Order swapped: Take Photo above Choose from Gallery (today Gallery is first). Drawn in photo_source_dialog__default.png."
+   }
+  },
+  {
+   "id": "truck.title",
+   "screen": "truck_tag_entry",
+   "kind": "text",
+   "name": "Screen title",
+   "function": "Names the screen.",
+   "text": "Truck Tag",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 1,
+    "width": "fill",
+    "height": "wrap",
+    "style": "headlineMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_title",
+   "tests_referencing": {
+    "RigCheckNavHostTest.kt": 6
+   },
+   "redesign": {
+    "status": "moved",
+    "new_screen": "truck_tag_entry",
+    "new_region": "header",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~30dp)",
+    "new_style": "Outfit 800 26/30 ink, letter-spacing -0.26px",
+    "new_text": null,
+    "new_test_tag": "truck_title",
+    "notes": "Moved into the top bar (26/30 Outfit 800). Drawn in truck_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "truck.step_bar",
+   "screen": "truck_tag_entry",
+   "kind": "progress",
+   "name": "Step bar",
+   "function": "Step 1 of 3.",
+   "text": "Step 1 of 3",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 2,
+    "width": "fill",
+    "height": "wrap",
+    "style": "StepProgressBar (see chooser.step_bar)"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_step_bar",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "replaced",
+    "new_screen": "truck_tag_entry",
+    "new_region": "header",
+    "new_order": 4,
+    "new_width": "fill",
+    "new_height": "76dp",
+    "new_style": "StepIndicator",
+    "new_text": null,
+    "new_test_tag": "truck_step_bar",
+    "notes": "Numbered step indicator in the top bar; collapses away while the keyboard is open. Drawn in truck_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "truck.scan_notice",
+   "screen": "truck_tag_entry",
+   "kind": "notice",
+   "name": "Scan notice",
+   "function": "After a Scan that read nothing or only some fields: says a Scan was used and names the unread fields.",
+   "text": "A Scan was used and nothing could be read… | <unread fields named>",
+   "visible_when": "after a delivered Scan that did not read every field",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 3,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyMedium on Orange 12% tint, radius 12dp, padding 16dp"
+   },
+   "test_tag_today": "scan_notice",
+   "test_tag_new": "scan_notice",
+   "tests_referencing": {
+    "RigCheckNavHostTest.kt": 6,
+    "ScanNoticeScreenTest.kt": 7
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "fill",
+    "new_height": "wrap (~84dp)",
+    "new_style": "Notice",
+    "new_text": null,
+    "new_test_tag": "scan_notice",
+    "notes": "Drawn in truck_tag_entry__scan_notice.png."
+   }
+  },
+  {
+   "id": "truck.instructions",
+   "screen": "truck_tag_entry",
+   "kind": "text",
+   "name": "Instructions",
+   "function": "Tells where the label is on the truck.",
+   "text": "Find these values on your truck's compliance label (usually inside the driver door jamb).",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 4,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyLarge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_instructions",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "fill",
+    "new_height": "wrap (~44dp)",
+    "new_style": "DM Sans 400 16/22 ink-muted",
+    "new_text": null,
+    "new_test_tag": "truck_instructions",
+    "notes": "Drawn in truck_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "truck.reference_image",
+   "screen": "truck_tag_entry",
+   "kind": "image-interactive",
+   "name": "Reference photo of a truck label",
+   "function": "Press-and-hold then drag to zoom 2.5x into that spot (orange 3dp ring). No visible affordance.",
+   "text": "(image: ref_truck_tag.jpg)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 5,
+    "width": "fill",
+    "height": "image aspect ratio (FillWidth)",
+    "style": "radius 14dp clip; long-press-drag gesture; zoom border Orange 3dp"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_reference_image",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "replaced",
+    "new_screen": "truck_tag_entry",
+    "new_region": "header",
+    "new_order": 6,
+    "new_width": "fill",
+    "new_height": "116dp",
+    "new_style": "ReferenceCrop",
+    "new_text": null,
+    "new_test_tag": "truck_reference_image",
+    "notes": "Pinned reference card above the scrolling form. Shows three lines of the label with the focused field's line outlined in orange. No hover or press-and-hold. In the frames the crop is a placeholder; production uses the cropped ref photo (keep the redacted VIN block). Drawn in truck_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "truck.reference_hint",
+   "screen": "truck_tag_entry",
+   "kind": "text",
+   "name": "Reference hint",
+   "function": "Hint for the zoom. WRONG for touch: says 'Hover' (copied from Web).",
+   "text": "Hover a field to zoom in on its spot on the tag",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 6,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_reference_hint",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "moved",
+    "new_screen": "truck_tag_entry",
+    "new_region": "header",
+    "new_order": 5,
+    "new_width": "wrap",
+    "new_height": "wrap (~20dp)",
+    "new_style": "DM Sans 400 14/20 ink-muted",
+    "new_text": "Tap a field to see its spot on the tag",
+    "new_test_tag": "truck_reference_hint",
+    "notes": "Wording changed because a phone has no hover. See copy-changes.md. Drawn in truck_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "truck.description_field",
+   "screen": "truck_tag_entry",
+   "kind": "text-field",
+   "name": "Description field",
+   "function": "Free text: make and model.",
+   "text": "Description (placeholder: e.g. Ford F-450)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 7,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "labelLarge label above; M3 filled TextField, 8dp top corners, underline"
+   },
+   "test_tag_today": "truck_description",
+   "test_tag_new": "truck_description",
+   "tests_referencing": {
+    "ScanNoticeScreenTest.kt": 1,
+    "TruckTagEntryScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "truck_description",
+    "notes": "Drawn in truck_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "truck.name_field",
+   "screen": "truck_tag_entry",
+   "kind": "text-field",
+   "name": "Name field",
+   "function": "Free text: nickname of this vehicle.",
+   "text": "Name",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 8,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "same as above"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_name_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 9,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "truck_name_field",
+    "notes": "Drawn in truck_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "truck.gvwr_field",
+   "screen": "truck_tag_entry",
+   "kind": "number-field",
+   "name": "GVWR field",
+   "function": "Gross vehicle weight rating, lb.",
+   "text": "GVWR, lb",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 9,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "number keyboard"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_gvwr_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 10,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "truck_gvwr_field",
+    "notes": "Drawn in truck_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "truck.front_gawr_field",
+   "screen": "truck_tag_entry",
+   "kind": "number-field",
+   "name": "Front GAWR field",
+   "function": "Front gross axle weight rating, lb.",
+   "text": "Front GAWR, lb",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 10,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "number keyboard"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_front_gawr_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "truck_front_gawr_field",
+    "notes": "Drawn in truck_tag_entry__filled.png."
+   }
+  },
+  {
+   "id": "truck.rear_gawr_field",
+   "screen": "truck_tag_entry",
+   "kind": "number-field",
+   "name": "Rear GAWR field",
+   "function": "Rear gross axle weight rating, lb.",
+   "text": "Rear GAWR, lb",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 11,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "number keyboard"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_rear_gawr_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 9,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "truck_rear_gawr_field",
+    "notes": "Drawn in truck_tag_entry__filled.png."
+   }
+  },
+  {
+   "id": "truck.gcwr_field",
+   "screen": "truck_tag_entry",
+   "kind": "number-field",
+   "name": "GCWR field (optional)",
+   "function": "Gross combined weight rating, lb; enables the Combined Rig Weight row.",
+   "text": "GCWR, lb — optional",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 12,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "number keyboard"
+   },
+   "test_tag_today": "truck_gcwr",
+   "test_tag_new": "truck_gcwr",
+   "tests_referencing": {
+    "TruckTagEntryScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 10,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "truck_gcwr",
+    "notes": "Drawn in truck_tag_entry__filled.png."
+   }
+  },
+  {
+   "id": "truck.gcwr_help",
+   "screen": "truck_tag_entry",
+   "kind": "text",
+   "name": "GCWR help",
+   "function": "Says where to find GCWR.",
+   "text": "From your owner's manual. Leave blank if you can't find it.",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 13,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_gcwr_help",
+   "tests_referencing": {
+    "TruckTagEntryScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "fill",
+    "new_height": "wrap (~18dp)",
+    "new_style": "DM Sans 400 13/18 ink-muted",
+    "new_text": null,
+    "new_test_tag": "truck_gcwr_help",
+    "notes": "Drawn in truck_tag_entry__gcwr_warning.png."
+   }
+  },
+  {
+   "id": "truck.gcwr_warning",
+   "screen": "truck_tag_entry",
+   "kind": "text",
+   "name": "GCWR warning",
+   "function": "Warns when GCWR is below GVWR (still used).",
+   "text": "This is lower than your GVWR. Check it against your owner's manual. We'll still use it.",
+   "visible_when": "when GCWR < GVWR",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 14,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall, error colour (no icon)"
+   },
+   "test_tag_today": "truck_gcwr_warning",
+   "test_tag_new": "truck_gcwr_warning",
+   "tests_referencing": {
+    "TruckTagEntryScreenTest.kt": 3
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 9,
+    "new_width": "fill",
+    "new_height": "wrap (~36dp)",
+    "new_style": "DM Sans 500 13/18 orange-deep",
+    "new_text": null,
+    "new_test_tag": "truck_gcwr_warning",
+    "notes": "Drawn in truck_tag_entry__gcwr_warning.png."
+   }
+  },
+  {
+   "id": "truck.standalone_label",
+   "screen": "truck_tag_entry",
+   "kind": "text",
+   "name": "Stand-alone weight label",
+   "function": "Labels the optional stand-alone field.",
+   "text": "Stand-alone weight, lb — optional",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 15,
+    "width": "wrap",
+    "height": "wrap",
+    "style": "labelLarge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_standalone_label",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 12,
+    "new_width": "wrap",
+    "new_height": "wrap (~16dp)",
+    "new_style": "DM Sans 700 13/16 ink, letter-spacing 0.52px",
+    "new_text": null,
+    "new_test_tag": "truck_standalone_label",
+    "notes": "Drawn in truck_tag_entry__standalone_blank.png."
+   }
+  },
+  {
+   "id": "truck.standalone_info",
+   "screen": "truck_tag_entry",
+   "kind": "icon-button",
+   "name": "Stand-alone info icon",
+   "function": "Toggles the inline help text (contentDescription 'More info').",
+   "text": "(Info icon)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 16,
+    "width": "24dp (icon default; NOT padded to a 48dp touch target)",
+    "height": "24dp",
+    "style": "Icons.Filled.Info, clickable, no ripple bounds beyond icon"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_standalone_info",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 13,
+    "new_width": "48dp",
+    "new_height": "48dp",
+    "new_style": "IconButton/48",
+    "new_text": null,
+    "new_test_tag": "truck_standalone_info",
+    "notes": "Padded to a 48 dp target (was 24 dp). Content description \"What is stand-alone weight?\". Drawn in truck_tag_entry__standalone_blank.png."
+   }
+  },
+  {
+   "id": "truck.standalone_info_text",
+   "screen": "truck_tag_entry",
+   "kind": "text",
+   "name": "Stand-alone info text",
+   "function": "Explains the 80% assumption.",
+   "text": "If left blank, we'll assume the trailer axle reading is 80% of the trailer's total weight. Fill this in for a more accurate pin-weight estimate.",
+   "visible_when": "after tapping the info icon",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 17,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_standalone_info_text",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 14,
+    "new_width": "fill",
+    "new_height": "wrap (~74dp)",
+    "new_style": "DM Sans 400 13/18 ink",
+    "new_text": null,
+    "new_test_tag": "truck_standalone_info_text",
+    "notes": "Shown on a white strip inside the orange panel after the info icon is tapped. Drawn in truck_tag_entry__standalone_info.png."
+   }
+  },
+  {
+   "id": "truck.standalone_field",
+   "screen": "truck_tag_entry",
+   "kind": "number-field",
+   "name": "Stand-alone weight field",
+   "function": "Truck weight with no trailer, lb (always manual).",
+   "text": "(no label of its own; label is truck.standalone_label)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 18,
+    "width": "fill",
+    "height": "56dp min (M3 TextField)",
+    "style": "number keyboard"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_standalone_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 14,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "truck_standalone_field",
+    "notes": "Drawn in truck_tag_entry__standalone_blank.png."
+   }
+  },
+  {
+   "id": "truck.standalone_panel",
+   "screen": "truck_tag_entry",
+   "kind": "panel",
+   "name": "Stand-alone helper panel",
+   "function": "Groups the scan-a-ticket helper and the pin-weight slider.",
+   "text": "(panel)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 19,
+    "width": "fill",
+    "height": "wrap",
+    "style": "surfaceVariant fill (very light grey-blue), radius 12dp (shapes.medium), padding 16dp"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_standalone_panel",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "fill",
+    "new_height": "wrap (~464dp)",
+    "new_style": "Panel/Tint",
+    "new_text": null,
+    "new_test_tag": "truck_standalone_panel",
+    "notes": "Tint-orange panel, 24 dp radius. Drawn in truck_tag_entry__standalone_blank.png."
+   }
+  },
+  {
+   "id": "truck.standalone_panel_title",
+   "screen": "truck_tag_entry",
+   "kind": "text",
+   "name": "Helper panel title",
+   "function": "Question prompting the scan helper.",
+   "text": "Don't know your tow vehicle's stand-alone weight?",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 20,
+    "width": "fill",
+    "height": "wrap",
+    "style": "labelLarge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_standalone_panel_title",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 10,
+    "new_width": "fill",
+    "new_height": "wrap (~44dp)",
+    "new_style": "Outfit 700 18/22 orange-deep",
+    "new_text": null,
+    "new_test_tag": "truck_standalone_panel_title",
+    "notes": "Drawn in truck_tag_entry__gcwr_warning.png."
+   }
+  },
+  {
+   "id": "truck.standalone_panel_body",
+   "screen": "truck_tag_entry",
+   "kind": "text",
+   "name": "Helper panel body",
+   "function": "Explains scanning a tow-vehicle-only CAT ticket.",
+   "text": "Scan a CAT Scale ticket weighing just your tow vehicle (no trailer attached) and we'll fill in the field above for you.",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 21,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_standalone_panel_body",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 11,
+    "new_width": "fill",
+    "new_height": "wrap (~60dp)",
+    "new_style": "DM Sans 400 14/20 ink-muted",
+    "new_text": null,
+    "new_test_tag": "truck_standalone_panel_body",
+    "notes": "Drawn in truck_tag_entry__gcwr_warning.png."
+   }
+  },
+  {
+   "id": "truck.scan_standalone_button",
+   "screen": "truck_tag_entry",
+   "kind": "outlined-button",
+   "name": "Scan tow-vehicle-only ticket",
+   "function": "Starts a paid Scan of a truck-only ticket (credit gate as chooser.scan_card). Label becomes 'Reading…' while out.",
+   "text": "Scan tow-vehicle-only ticket | Reading…",
+   "visible_when": "disabled while a Scan is in flight",
+   "navigates_to": "photo_source_dialog | paywall",
+   "today": {
+    "region": "body",
+    "order": 22,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 OutlinedButton"
+   },
+   "test_tag_today": "scan_standalone_ticket",
+   "test_tag_new": "scan_standalone_ticket",
+   "tests_referencing": {
+    "RigCheckNavHostTest.kt": 2,
+    "ScanErrorNextStepNavigationTest.kt": 1,
+    "TruckTagEntryScreenTest.kt": 9
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 12,
+    "new_width": "fill",
+    "new_height": "52dp",
+    "new_style": "Button/Secondary",
+    "new_text": null,
+    "new_test_tag": "scan_standalone_ticket",
+    "notes": "Secondary button, 52 dp. While a Scan is in flight it reads \"Reading…\" and is disabled. Drawn in truck_tag_entry__gcwr_warning.png."
+   }
+  },
+  {
+   "id": "truck.pin_weight_label",
+   "screen": "truck_tag_entry",
+   "kind": "text",
+   "name": "Pin weight label",
+   "function": "Shows the current pin-weight estimate percentage.",
+   "text": "No ticket? Estimate pin/hitch weight as <n>% of the trailer's weight",
+   "visible_when": "only while the stand-alone field is blank",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 23,
+    "width": "fill",
+    "height": "wrap",
+    "style": "labelLarge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_pin_weight_label",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 15,
+    "new_width": "fill",
+    "new_height": "wrap (~40dp)",
+    "new_style": "DM Sans 500 14/20 ink",
+    "new_text": null,
+    "new_test_tag": "truck_pin_weight_label",
+    "notes": "Drawn in truck_tag_entry__standalone_blank.png."
+   }
+  },
+  {
+   "id": "truck.pin_weight_slider",
+   "screen": "truck_tag_entry",
+   "kind": "slider",
+   "name": "Pin weight slider",
+   "function": "Sets pin-weight estimate 15-25%, 10 steps, default 20.",
+   "text": "(slider 15-25%)",
+   "visible_when": "only while the stand-alone field is blank",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 24,
+    "width": "fill",
+    "height": "48dp (M3 Slider)",
+    "style": "M3 Slider default colours (primary orange)"
+   },
+   "test_tag_today": "pin_weight_pct_slider",
+   "test_tag_new": "pin_weight_pct_slider",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 14,
+    "new_width": "fill",
+    "new_height": "32dp",
+    "new_style": "Slider",
+    "new_text": null,
+    "new_test_tag": "pin_weight_pct_slider",
+    "notes": "4 dp track, 28 dp thumb, 48 dp touch height. Content description \"Pin weight, percent of trailer weight\". Hidden when the stand-alone field has a value. Drawn in truck_tag_entry__standalone_pin_weight.png."
+   }
+  },
+  {
+   "id": "truck.pin_weight_caption",
+   "screen": "truck_tag_entry",
+   "kind": "text",
+   "name": "Pin weight caption",
+   "function": "Gives the industry range.",
+   "text": "Industry recommendations are typically 15-25% — we default to 20%.",
+   "visible_when": "only while the stand-alone field is blank",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 25,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_pin_weight_caption",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "body",
+    "new_order": 15,
+    "new_width": "fill",
+    "new_height": "wrap (~32dp)",
+    "new_style": "DM Sans 400 12/16 ink-muted",
+    "new_text": null,
+    "new_test_tag": "truck_pin_weight_caption",
+    "notes": "Drawn in truck_tag_entry__standalone_pin_weight.png."
+   }
+  },
+  {
+   "id": "truck.next_button",
+   "screen": "truck_tag_entry",
+   "kind": "button",
+   "name": "Next: Trailer Tag",
+   "function": "Continues to the Trailer Tag chooser. Never blocked by empty fields.",
+   "text": "Next: Trailer Tag",
+   "visible_when": "always",
+   "navigates_to": "chooser(trailer)",
+   "today": {
+    "region": "footer",
+    "order": 26,
+    "width": "fill (20dp side margin)",
+    "height": "40dp (M3 default)",
+    "style": "M3 Button orange fill, Ink text; pinned under the scroll area, padding 16dp vertical"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "truck_next_button",
+   "tests_referencing": {
+    "GarageNavigationTest.kt": 1,
+    "HistoryNavigationTest.kt": 1,
+    "RigCheckNavHostTest.kt": 9,
+    "ScanErrorNextStepNavigationTest.kt": 2,
+    "ScanInFlightNavigationTest.kt": 8,
+    "TruckTagEntryScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "truck_tag_entry",
+    "new_region": "footer",
+    "new_order": 11,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Primary",
+    "new_text": null,
+    "new_test_tag": "truck_next_button",
+    "notes": "Primary button, 56 dp, pinned footer with a top shadow. Arrow icon added. Drawn in truck_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "trailer.title",
+   "screen": "trailer_tag_entry",
+   "kind": "text",
+   "name": "Screen title",
+   "function": "Names the screen.",
+   "text": "Trailer Tag",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 1,
+    "width": "fill",
+    "height": "wrap",
+    "style": "headlineMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "trailer_title",
+   "tests_referencing": {
+    "RigCheckNavHostTest.kt": 2
+   },
+   "redesign": {
+    "status": "moved",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "header",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~30dp)",
+    "new_style": "Outfit 800 26/30 ink, letter-spacing -0.26px",
+    "new_text": null,
+    "new_test_tag": "trailer_title",
+    "notes": "Moved into the top bar. Drawn in trailer_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "trailer.step_bar",
+   "screen": "trailer_tag_entry",
+   "kind": "progress",
+   "name": "Step bar",
+   "function": "Step 2 of 3.",
+   "text": "Step 2 of 3",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 2,
+    "width": "fill",
+    "height": "wrap",
+    "style": "StepProgressBar"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "trailer_step_bar",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "replaced",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "header",
+    "new_order": 3,
+    "new_width": "fill",
+    "new_height": "76dp",
+    "new_style": "StepIndicator",
+    "new_text": null,
+    "new_test_tag": "trailer_step_bar",
+    "notes": "Numbered step indicator in the top bar. Drawn in trailer_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "trailer.scan_notice",
+   "screen": "trailer_tag_entry",
+   "kind": "notice",
+   "name": "Scan notice",
+   "function": "As truck.scan_notice.",
+   "text": "A Scan was used and nothing could be read… | <unread fields named>",
+   "visible_when": "after a partial/empty Scan",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 3,
+    "width": "fill",
+    "height": "wrap",
+    "style": "Orange 12% tint, radius 12dp"
+   },
+   "test_tag_today": "scan_notice",
+   "test_tag_new": "scan_notice",
+   "tests_referencing": {
+    "RigCheckNavHostTest.kt": 6,
+    "ScanNoticeScreenTest.kt": 7
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "body",
+    "new_order": 6,
+    "new_width": "fill",
+    "new_height": "wrap (~84dp)",
+    "new_style": "Notice",
+    "new_text": null,
+    "new_test_tag": "scan_notice",
+    "notes": "Drawn in trailer_tag_entry__scan_notice.png."
+   }
+  },
+  {
+   "id": "trailer.instructions",
+   "screen": "trailer_tag_entry",
+   "kind": "text",
+   "name": "Instructions",
+   "function": "Tells where the label is.",
+   "text": "Find these values on your trailer's compliance label (usually near the front, curb side).",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 4,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyLarge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "trailer_instructions",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "body",
+    "new_order": 6,
+    "new_width": "fill",
+    "new_height": "wrap (~44dp)",
+    "new_style": "DM Sans 400 16/22 ink-muted",
+    "new_text": null,
+    "new_test_tag": "trailer_instructions",
+    "notes": "Drawn in trailer_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "trailer.reference_image",
+   "screen": "trailer_tag_entry",
+   "kind": "image-interactive",
+   "name": "Reference photo of a trailer label",
+   "function": "Press-and-hold zoom as truck.reference_image.",
+   "text": "(image: ref_trailer_tag.jpg)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 5,
+    "width": "fill",
+    "height": "image aspect ratio",
+    "style": "radius 14dp; zoom 2.5x with Orange 3dp ring"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "trailer_reference_image",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "replaced",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "header",
+    "new_order": 5,
+    "new_width": "fill",
+    "new_height": "116dp",
+    "new_style": "ReferenceCrop",
+    "new_text": null,
+    "new_test_tag": "trailer_reference_image",
+    "notes": "Pinned reference card, same pattern as the truck screen. Placeholder crop in the frames. Drawn in trailer_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "trailer.reference_hint",
+   "screen": "trailer_tag_entry",
+   "kind": "text",
+   "name": "Reference hint",
+   "function": "Same wrong 'Hover' copy.",
+   "text": "Hover a field to zoom in on its spot on the tag",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 6,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "trailer_reference_hint",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "moved",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "header",
+    "new_order": 4,
+    "new_width": "wrap",
+    "new_height": "wrap (~20dp)",
+    "new_style": "DM Sans 400 14/20 ink-muted",
+    "new_text": "Tap a field to see its spot on the tag",
+    "new_test_tag": "trailer_reference_hint",
+    "notes": "See copy-changes.md. Drawn in trailer_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "trailer.description_field",
+   "screen": "trailer_tag_entry",
+   "kind": "text-field",
+   "name": "Description field",
+   "function": "Free text: make and model.",
+   "text": "Description (placeholder: e.g. Brinkley RV)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 7,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "as truck"
+   },
+   "test_tag_today": "trailer_description",
+   "test_tag_new": "trailer_description",
+   "tests_referencing": {
+    "TrailerTagEntryScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "trailer_description",
+    "notes": "Drawn in trailer_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "trailer.name_field",
+   "screen": "trailer_tag_entry",
+   "kind": "text-field",
+   "name": "Name field",
+   "function": "Free text: nickname of this trailer.",
+   "text": "Name",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 8,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "as truck"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "trailer_name_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "trailer_name_field",
+    "notes": "Drawn in trailer_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "trailer.gvwr_field",
+   "screen": "trailer_tag_entry",
+   "kind": "number-field",
+   "name": "GVWR field",
+   "function": "Trailer gross weight rating, lb.",
+   "text": "GVWR, lb",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 9,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "number keyboard"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "trailer_gvwr_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "body",
+    "new_order": 9,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "trailer_gvwr_field",
+    "notes": "Drawn in trailer_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "trailer.gawr_field",
+   "screen": "trailer_tag_entry",
+   "kind": "number-field",
+   "name": "GAWR per axle field",
+   "function": "Rating of each axle, lb.",
+   "text": "GAWR per axle, lb",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 10,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "number keyboard"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "trailer_gawr_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "trailer_gawr_field",
+    "notes": "Drawn in trailer_tag_entry__filled.png."
+   }
+  },
+  {
+   "id": "trailer.axle_count_field",
+   "screen": "trailer_tag_entry",
+   "kind": "number-field",
+   "name": "Axle count field (optional)",
+   "function": "Whole number; blank means 2.",
+   "text": "Axle count — optional",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 11,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "number keyboard"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "trailer_axle_count_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "trailer_axle_count_field",
+    "notes": "Drawn in trailer_tag_entry__filled.png."
+   }
+  },
+  {
+   "id": "trailer.axle_count_help",
+   "screen": "trailer_tag_entry",
+   "kind": "text",
+   "name": "Axle count help",
+   "function": "Says the default.",
+   "text": "Defaults to 2 if left blank.",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 12,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "trailer_axle_count_help",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "body",
+    "new_order": 9,
+    "new_width": "fill",
+    "new_height": "wrap (~18dp)",
+    "new_style": "DM Sans 400 13/18 ink-muted",
+    "new_text": null,
+    "new_test_tag": "trailer_axle_count_help",
+    "notes": "Drawn in trailer_tag_entry__filled.png."
+   }
+  },
+  {
+   "id": "trailer.uvw_field",
+   "screen": "trailer_tag_entry",
+   "kind": "number-field",
+   "name": "Unloaded weight field",
+   "function": "Unloaded vehicle weight, lb.",
+   "text": "Unloaded weight (UVW), lb",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 13,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "number keyboard"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "trailer_uvw_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "body",
+    "new_order": 10,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "trailer_uvw_field",
+    "notes": "Drawn in trailer_tag_entry__filled.png."
+   }
+  },
+  {
+   "id": "trailer.next_button",
+   "screen": "trailer_tag_entry",
+   "kind": "button",
+   "name": "Next: Scale Ticket",
+   "function": "Continues to the Scale Ticket chooser.",
+   "text": "Next: Scale Ticket",
+   "visible_when": "always",
+   "navigates_to": "chooser(scale)",
+   "today": {
+    "region": "footer",
+    "order": 14,
+    "width": "fill (20dp side margin)",
+    "height": "40dp (M3 default)",
+    "style": "M3 Button pinned under the scroll area"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "trailer_next_button",
+   "tests_referencing": {
+    "GarageNavigationTest.kt": 1,
+    "HistoryNavigationTest.kt": 1,
+    "RigCheckNavHostTest.kt": 5,
+    "TrailerTagEntryScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "footer",
+    "new_order": 10,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Primary",
+    "new_text": null,
+    "new_test_tag": "trailer_next_button",
+    "notes": "Primary button, 56 dp, pinned footer. Drawn in trailer_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "scale.title",
+   "screen": "scale_ticket_entry",
+   "kind": "text",
+   "name": "Screen title",
+   "function": "Names the screen.",
+   "text": "Scale Ticket",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 1,
+    "width": "fill",
+    "height": "wrap",
+    "style": "headlineMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scale_title",
+   "tests_referencing": {
+    "RigCheckNavHostTest.kt": 3
+   },
+   "redesign": {
+    "status": "moved",
+    "new_screen": "scale_ticket_entry",
+    "new_region": "header",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~30dp)",
+    "new_style": "Outfit 800 26/30 ink, letter-spacing -0.26px",
+    "new_text": null,
+    "new_test_tag": "scale_title",
+    "notes": "Moved into the top bar. Drawn in scale_ticket_entry__blank.png."
+   }
+  },
+  {
+   "id": "scale.step_bar",
+   "screen": "scale_ticket_entry",
+   "kind": "progress",
+   "name": "Step bar",
+   "function": "Step 3 of 3.",
+   "text": "Step 3 of 3",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 2,
+    "width": "fill",
+    "height": "wrap",
+    "style": "StepProgressBar"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scale_step_bar",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "replaced",
+    "new_screen": "scale_ticket_entry",
+    "new_region": "header",
+    "new_order": 3,
+    "new_width": "fill",
+    "new_height": "76dp",
+    "new_style": "StepIndicator",
+    "new_text": null,
+    "new_test_tag": "scale_step_bar",
+    "notes": "Numbered step indicator in the top bar. Drawn in scale_ticket_entry__blank.png."
+   }
+  },
+  {
+   "id": "scale.scan_notice",
+   "screen": "scale_ticket_entry",
+   "kind": "notice",
+   "name": "Scan notice",
+   "function": "As truck.scan_notice.",
+   "text": "A Scan was used and nothing could be read… | <unread fields named>",
+   "visible_when": "after a partial/empty Scan",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 3,
+    "width": "fill",
+    "height": "wrap",
+    "style": "Orange 12% tint, radius 12dp"
+   },
+   "test_tag_today": "scan_notice",
+   "test_tag_new": "scan_notice",
+   "tests_referencing": {
+    "RigCheckNavHostTest.kt": 6,
+    "ScanNoticeScreenTest.kt": 7
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "scale_ticket_entry",
+    "new_region": "body",
+    "new_order": 4,
+    "new_width": "fill",
+    "new_height": "wrap (~84dp)",
+    "new_style": "Notice",
+    "new_text": null,
+    "new_test_tag": "scan_notice",
+    "notes": "Drawn in scale_ticket_entry__scan_notice.png."
+   }
+  },
+  {
+   "id": "scale.instructions",
+   "screen": "scale_ticket_entry",
+   "kind": "text",
+   "name": "Instructions",
+   "function": "Tells where the values are.",
+   "text": "Find these values on your CAT Scale printout.",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 4,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyLarge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scale_instructions",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "scale_ticket_entry",
+    "new_region": "body",
+    "new_order": 4,
+    "new_width": "fill",
+    "new_height": "wrap (~22dp)",
+    "new_style": "DM Sans 400 16/22 ink-muted",
+    "new_text": null,
+    "new_test_tag": "scale_instructions",
+    "notes": "Drawn in scale_ticket_entry__blank.png."
+   }
+  },
+  {
+   "id": "scale.reference_image",
+   "screen": "scale_ticket_entry",
+   "kind": "image",
+   "name": "Reference photo of a CAT Scale ticket",
+   "function": "Static photo, no zoom, no numbered badges on it.",
+   "text": "(image: ref_scale_ticket.jpg)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 5,
+    "width": "fill",
+    "height": "image aspect ratio",
+    "style": "radius 14dp clip"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scale_reference_image",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "scale_ticket_entry",
+    "new_region": "body",
+    "new_order": 5,
+    "new_width": "fill",
+    "new_height": "167dp",
+    "new_style": "ReferenceImage",
+    "new_text": null,
+    "new_test_tag": "scale_reference_image",
+    "notes": "Numbered orange badges (1 to 5) are drawn on the ticket image and match the badges on the field labels. Placeholder image in the frames. Drawn in scale_ticket_entry__blank.png."
+   }
+  },
+  {
+   "id": "scale.legend",
+   "screen": "scale_ticket_entry",
+   "kind": "text-row",
+   "name": "Numbered legend",
+   "function": "Names fields 1-5; but the numbers are not drawn on the photo, so the legend matches nothing.",
+   "text": "1 Scale location   2 Steer   3 Drive   4 Trailer   5 Gross",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 6,
+    "width": "fill (may overflow on narrow phones)",
+    "height": "wrap",
+    "style": "bodySmall in Orange (fails contrast on white), 10dp gaps"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scale_legend",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "replaced",
+    "new_screen": "scale_ticket_entry",
+    "new_region": "body",
+    "new_order": 6,
+    "new_width": "fill",
+    "new_height": "wrap (~70dp)",
+    "new_style": "DM Sans 400 16/normal ink",
+    "new_text": null,
+    "new_test_tag": "scale_legend",
+    "notes": "Five numbered pills that wrap, in the same orange badge style as the fields. Text is unchanged (\"Scale location\", \"Steer\", \"Drive\", \"Trailer\", \"Gross\"). Replaces orange text on white, which failed contrast. Drawn in scale_ticket_entry__blank.png."
+   }
+  },
+  {
+   "id": "scale.location_field",
+   "screen": "scale_ticket_entry",
+   "kind": "text-field",
+   "name": "Scale location field",
+   "function": "Free text.",
+   "text": "Scale location",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 7,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "M3 filled TextField"
+   },
+   "test_tag_today": "scale_location",
+   "test_tag_new": "scale_location",
+   "tests_referencing": {
+    "ScaleTicketEntryScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "scale_ticket_entry",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "scale_location",
+    "notes": "Label carries badge 1. Steer 2, Drive 3, Trailer 4, Gross 5. Drawn in scale_ticket_entry__blank.png."
+   }
+  },
+  {
+   "id": "scale.steer_field",
+   "screen": "scale_ticket_entry",
+   "kind": "number-field",
+   "name": "Steer axle field",
+   "function": "Steer axle weight, lb.",
+   "text": "Steer axle, lb",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 8,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "number keyboard"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scale_steer_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "scale_ticket_entry",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "scale_steer_field",
+    "notes": "Drawn in scale_ticket_entry__blank.png."
+   }
+  },
+  {
+   "id": "scale.drive_field",
+   "screen": "scale_ticket_entry",
+   "kind": "number-field",
+   "name": "Drive axle field",
+   "function": "Drive axle weight, lb.",
+   "text": "Drive axle, lb",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 9,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "number keyboard"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scale_drive_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "scale_ticket_entry",
+    "new_region": "body",
+    "new_order": 9,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "scale_drive_field",
+    "notes": "Drawn in scale_ticket_entry__blank.png."
+   }
+  },
+  {
+   "id": "scale.trailer_field",
+   "screen": "scale_ticket_entry",
+   "kind": "number-field",
+   "name": "Trailer axle field",
+   "function": "Trailer axle(s) weight, lb.",
+   "text": "Trailer axle(s), lb",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 10,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "number keyboard"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scale_trailer_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "scale_ticket_entry",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "scale_trailer_field",
+    "notes": "Drawn in scale_ticket_entry__filled.png."
+   }
+  },
+  {
+   "id": "scale.gross_field",
+   "screen": "scale_ticket_entry",
+   "kind": "number-field",
+   "name": "Gross weight field",
+   "function": "Gross weight, lb.",
+   "text": "Gross weight, lb",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 11,
+    "width": "fill",
+    "height": "56dp min (M3 TextField) + label above",
+    "style": "number keyboard"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scale_gross_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "scale_ticket_entry",
+    "new_region": "body",
+    "new_order": 9,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "scale_gross_field",
+    "notes": "Drawn in scale_ticket_entry__filled.png."
+   }
+  },
+  {
+   "id": "scale.check_button",
+   "screen": "scale_ticket_entry",
+   "kind": "button",
+   "name": "Check Weights",
+   "function": "Runs the check: goes to the Disclaimer the first time in a session, otherwise to Results.",
+   "text": "Check Weights",
+   "visible_when": "always",
+   "navigates_to": "disclaimer | results",
+   "today": {
+    "region": "footer",
+    "order": 12,
+    "width": "fill (20dp side margin)",
+    "height": "40dp (M3 default)",
+    "style": "M3 Button pinned under the scroll area"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scale_check_button",
+   "tests_referencing": {
+    "GarageNavigationTest.kt": 1,
+    "HistoryNavigationTest.kt": 1,
+    "RigCheckNavHostTest.kt": 4,
+    "ScaleTicketEntryScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "scale_ticket_entry",
+    "new_region": "footer",
+    "new_order": 10,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Primary",
+    "new_text": null,
+    "new_test_tag": "scale_check_button",
+    "notes": "Primary button, 56 dp, pinned footer. Drawn in scale_ticket_entry__blank.png."
+   }
+  },
+  {
+   "id": "disclaimer.icon",
+   "screen": "disclaimer",
+   "kind": "icon-tile",
+   "name": "Warning icon",
+   "function": "Decorative.",
+   "text": "(Warning triangle)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 1,
+    "width": "72dp",
+    "height": "72dp",
+    "style": "circle TintOrange fill, 36dp Warning icon OrangeDeep; 48dp above, 24dp below"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "disclaimer_icon",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "disclaimer",
+    "new_region": "body",
+    "new_order": 1,
+    "new_width": "72dp",
+    "new_height": "72dp",
+    "new_style": "IconTile",
+    "new_text": null,
+    "new_test_tag": "disclaimer_icon",
+    "notes": "72 dp rounded tile in Tint-orange with an Orange-deep warning glyph. Drawn in disclaimer__default.png."
+   }
+  },
+  {
+   "id": "disclaimer.title",
+   "screen": "disclaimer",
+   "kind": "text",
+   "name": "Title",
+   "function": "Blocking acknowledgement title.",
+   "text": "Experimental Tool —\nNot for Safety Decisions",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 2,
+    "width": "fill",
+    "height": "wrap",
+    "style": "headlineMedium, centred"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "disclaimer_title",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "disclaimer",
+    "new_region": "body",
+    "new_order": 2,
+    "new_width": "fill",
+    "new_height": "wrap (~68dp)",
+    "new_style": "Outfit 800 28/34 ink, letter-spacing -0.28px",
+    "new_text": null,
+    "new_test_tag": "disclaimer_title",
+    "notes": "Drawn in disclaimer__default.png."
+   }
+  },
+  {
+   "id": "disclaimer.body_1",
+   "screen": "disclaimer",
+   "kind": "text",
+   "name": "First paragraph",
+   "function": "Says it is experimental.",
+   "text": "RigCheck is an experimental project built to learn app development, not a certified or professional weight-safety tool. You type in numbers straight off your own tag and ticket photos, and the math that follows is simplified — any step of that chain can be wrong.",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 3,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyLarge, left aligned (title is centred)"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "disclaimer_body_1",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "disclaimer",
+    "new_region": "body",
+    "new_order": 3,
+    "new_width": "fill",
+    "new_height": "wrap (~144dp)",
+    "new_style": "DM Sans 400 16/24 ink",
+    "new_text": null,
+    "new_test_tag": "disclaimer_body_1",
+    "notes": "Disclaimer wording is legally reviewed and unchanged. Drawn in disclaimer__default.png."
+   }
+  },
+  {
+   "id": "disclaimer.body_2",
+   "screen": "disclaimer",
+   "kind": "text",
+   "name": "Second paragraph",
+   "function": "Says do not use for safety decisions.",
+   "text": "Do not use this tool to decide whether your rig is safe to tow. Always verify actual weights and ratings using a certified scale and your vehicle's official documentation, and consult a qualified professional if you're unsure. You use this tool, and any decisions you make based on it, entirely at your own risk and responsibility.",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 4,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyLarge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "disclaimer_body_2",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "disclaimer",
+    "new_region": "body",
+    "new_order": 4,
+    "new_width": "fill",
+    "new_height": "wrap (~168dp)",
+    "new_style": "DM Sans 400 16/24 ink",
+    "new_text": null,
+    "new_test_tag": "disclaimer_body_2",
+    "notes": "Disclaimer wording is legally reviewed and unchanged. Drawn in disclaimer__default.png."
+   }
+  },
+  {
+   "id": "disclaimer.accept_button",
+   "screen": "disclaimer",
+   "kind": "button",
+   "name": "I Understand, Continue",
+   "function": "Acknowledges for the app session and goes to Results.",
+   "text": "I Understand, Continue",
+   "visible_when": "always",
+   "navigates_to": "results",
+   "today": {
+    "region": "body",
+    "order": 5,
+    "width": "fill",
+    "height": "40dp (M3 default)",
+    "style": "M3 Button; sits directly under the text (NOT pinned; page does not scroll, so large fonts or small phones push it off screen)"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "disclaimer_accept_button",
+   "tests_referencing": {
+    "GarageNavigationTest.kt": 1,
+    "HistoryNavigationTest.kt": 1,
+    "RigCheckNavHostTest.kt": 2,
+    "DisclaimerScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "moved",
+    "new_screen": "disclaimer",
+    "new_region": "footer",
+    "new_order": 5,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Primary",
+    "new_text": null,
+    "new_test_tag": "disclaimer_accept_button",
+    "notes": "Moved into a pinned footer so the whole page scrolls above it. Fixes the button being pushed off screen at large font sizes. Wording is unchanged. Drawn in disclaimer__default.png."
+   }
+  },
+  {
+   "id": "results.rig_name",
+   "screen": "results",
+   "kind": "text",
+   "name": "Rig name",
+   "function": "Names the rig checked.",
+   "text": "<nickname> | Rig",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 1,
+    "width": "fill",
+    "height": "wrap",
+    "style": "titleLarge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_rig_name",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "moved",
+    "new_screen": "results",
+    "new_region": "header",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~30dp)",
+    "new_style": "Outfit 800 26/30 ink, letter-spacing -0.26px",
+    "new_text": null,
+    "new_test_tag": "results_rig_name",
+    "notes": "Moved into the top bar next to Back. Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "results.date",
+   "screen": "results",
+   "kind": "text",
+   "name": "Date",
+   "function": "Today's date.",
+   "text": "MMM d, yyyy",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 2,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_date",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "moved",
+    "new_screen": "results",
+    "new_region": "header",
+    "new_order": 3,
+    "new_width": "wrap",
+    "new_height": "wrap (~16dp)",
+    "new_style": "DM Sans 400 13/16 ink",
+    "new_text": null,
+    "new_test_tag": "results_date",
+    "notes": "Moved into the top bar under the rig name. Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "results.verdict",
+   "screen": "results",
+   "kind": "banner",
+   "name": "Verdict pill",
+   "function": "The overall answer. Tone SUCCESS (Pine), WARNING (DangerRed), INSUFFICIENT (Purple).",
+   "text": "<headline> / <subline> (e.g. Safe to Tow / Every axle checks out under its rated limit.)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 3,
+    "width": "fill",
+    "height": "wrap (~72dp)",
+    "style": "Surface radius 20dp, 2dp tone border, NO fill; tone icon 24dp (CheckCircle / Warning / Info); headline labelLarge + subline bodyMedium in tone colour. Web uses a solid-colour 24dp-radius hero band with white text instead."
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_verdict",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 4,
+    "new_width": "fill",
+    "new_height": "wrap (~120dp)",
+    "new_style": "VerdictBand",
+    "new_text": null,
+    "new_test_tag": "results_verdict",
+    "notes": "Hero band, 24 dp radius, shadow-md. Pass = Pine, Fail = Danger, Partial and Insufficient = Purple. White text. Icon shape differs for each tone. Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "results.garage_notice",
+   "screen": "results",
+   "kind": "notice",
+   "name": "Garage notice",
+   "function": "Says the rig was not saved to the Garage (full / failed). Check is unaffected.",
+   "text": "Your Garage is full (...), so \"<nickname>\" wasn't saved to it. Your check is not affected.",
+   "visible_when": "when the Garage save was refused or failed",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 4,
+    "width": "fill",
+    "height": "wrap",
+    "style": "Surface radius 16dp, 1dp outlineVariant border, padding 16dp"
+   },
+   "test_tag_today": "garage_notice",
+   "test_tag_new": "garage_notice",
+   "tests_referencing": {
+    "GarageNavigationTest.kt": 1,
+    "ResultsScreenTest.kt": 3
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "fill",
+    "new_height": "wrap (~66dp)",
+    "new_style": "Notice",
+    "new_text": null,
+    "new_test_tag": "garage_notice",
+    "notes": "Drawn in results__notices.png."
+   }
+  },
+  {
+   "id": "results.garage_get_pro",
+   "screen": "results",
+   "kind": "text-button",
+   "name": "Get Pro for a bigger Garage",
+   "function": "Opens the Paywall (Free account with a full Garage only).",
+   "text": "Get Pro for a bigger Garage",
+   "visible_when": "Free account, Garage full",
+   "navigates_to": "paywall",
+   "today": {
+    "region": "body",
+    "order": 5,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton"
+   },
+   "test_tag_today": "garage_notice_get_pro",
+   "test_tag_new": "garage_notice_get_pro",
+   "tests_referencing": {
+    "ResultsScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "fill",
+    "new_height": "48dp",
+    "new_style": "Button/Ghost",
+    "new_text": null,
+    "new_test_tag": "garage_notice_get_pro",
+    "notes": "Ghost button, 48 dp. Drawn in results__notices.png."
+   }
+  },
+  {
+   "id": "results.history_notice",
+   "screen": "results",
+   "kind": "notice",
+   "name": "History notice",
+   "function": "Says the check could not be saved to History.",
+   "text": "We couldn't save this check to your History. Your check is not affected.",
+   "visible_when": "when the History save failed",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 6,
+    "width": "fill",
+    "height": "wrap",
+    "style": "Surface radius 16dp, 1dp border, padding 16dp"
+   },
+   "test_tag_today": "history_notice",
+   "test_tag_new": "history_notice",
+   "tests_referencing": {
+    "HistoryNavigationTest.kt": 1,
+    "ResultsScreenTest.kt": 3
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 5,
+    "new_width": "fill",
+    "new_height": "wrap (~66dp)",
+    "new_style": "Notice",
+    "new_text": null,
+    "new_test_tag": "history_notice",
+    "notes": "Drawn in results__notices_scrolled.png."
+   }
+  },
+  {
+   "id": "results.estimated_notice",
+   "screen": "results",
+   "kind": "notice",
+   "name": "Estimated figures notice",
+   "function": "Persistent caution when any row uses the pin-weight estimate; 1 title + 4 bullets of legal copy.",
+   "text": "⚠️ Estimated Figures — Confirm Before You Buy + 4 bullets",
+   "visible_when": "when any breakdown row is estimated",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 7,
+    "width": "fill",
+    "height": "wrap (tall: title + 4 bullets)",
+    "style": "Orange 12% tint, radius 12dp, padding 16dp; emoji in the title; titleSmall + bodySmall bullets"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_estimated_notice",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 6,
+    "new_width": "fill",
+    "new_height": "wrap (~370dp)",
+    "new_style": "Notice",
+    "new_text": null,
+    "new_test_tag": "results_estimated_notice",
+    "notes": "Tint-orange notice. The title keeps its warning emoji because the text is frozen; no extra icon is drawn. Drawn in results__notices.png."
+   }
+  },
+  {
+   "id": "results.breakdown_card",
+   "screen": "results",
+   "kind": "card",
+   "name": "Breakdown card",
+   "function": "Container for the six rows. The rows are a LazyColumn nested inside a non-scrolling page, so the page does not scroll and the list scrolls inside the card.",
+   "text": "(card)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 8,
+    "width": "fill",
+    "height": "fills remaining height",
+    "style": "Surface radius 20dp, 1dp outlineVariant border, padding 20dp, 12dp between rows"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_breakdown_card",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 6,
+    "new_width": "fill",
+    "new_height": "wrap (~659dp)",
+    "new_style": "Card",
+    "new_text": null,
+    "new_test_tag": "results_breakdown_card",
+    "notes": "White card, 24 dp radius. Lives inside the page scroll; the card no longer scrolls on its own. Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "results.row",
+   "screen": "results",
+   "kind": "card",
+   "name": "Breakdown row (repeats, 5-6 per check)",
+   "function": "One axle/total comparison. Tap expands the note when it has one (no chevron or hint).",
+   "text": "<label> / <actual> of <limit> / <pct>%",
+   "visible_when": "Front Axle (Steer), Rear Axle (Drive), Tow Vehicle Total (GVWR), Trailer Axle(s), Trailer Total (GVWR), plus Combined Rig Weight only if GCWR was entered",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 9,
+    "width": "fill",
+    "height": "wrap (~84dp collapsed)",
+    "style": "Surface radius 14dp; WARNING rows get a 1dp DangerRed border; animateContentSize"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_row",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "fill",
+    "new_height": "wrap (~104dp)",
+    "new_style": "BreakdownRow",
+    "new_text": null,
+    "new_test_tag": "results_row",
+    "notes": "Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "results.row_icon",
+   "screen": "results",
+   "kind": "icon",
+   "name": "Row status icon",
+   "function": "Pass / fail / not-checked mark (shape differs, not only colour).",
+   "text": "(CheckCircle | Cancel | Info)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 10,
+    "width": "28dp",
+    "height": "28dp",
+    "style": "tone colour"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_row_icon",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "26dp",
+    "new_height": "31dp",
+    "new_style": "StatusIcon",
+    "new_text": null,
+    "new_test_tag": "results_row_icon",
+    "notes": "26 dp (was 28). Shapes: check-circle, x-circle, info-circle. Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "results.row_label",
+   "screen": "results",
+   "kind": "text",
+   "name": "Row label",
+   "function": "Names the comparison.",
+   "text": "<label>",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 11,
+    "width": "fill",
+    "height": "wrap",
+    "style": "titleSmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_row_label",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 9,
+    "new_width": "wrap",
+    "new_height": "wrap (~22dp)",
+    "new_style": "Outfit 700 17/22 ink",
+    "new_text": null,
+    "new_test_tag": "results_row_label",
+    "notes": "Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "results.row_values",
+   "screen": "results",
+   "kind": "text",
+   "name": "Row values",
+   "function": "Actual weight of rated limit.",
+   "text": "<actual> lb of <limit> lb",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 12,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_row_values",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 12,
+    "new_width": "wrap",
+    "new_height": "wrap (~18dp)",
+    "new_style": "DM Sans 400 14/18 ink-muted",
+    "new_text": null,
+    "new_test_tag": "results_row_values",
+    "notes": "Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "results.row_pct",
+   "screen": "results",
+   "kind": "text",
+   "name": "Row percentage",
+   "function": "Percent of limit, tone-coloured.",
+   "text": "<n>%",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 13,
+    "width": "wrap",
+    "height": "wrap",
+    "style": "titleMedium in tone colour (plain text, no pill)"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_row_pct",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 13,
+    "new_width": "wrap",
+    "new_height": "wrap (~18dp)",
+    "new_style": "DM Sans 700 14/18 ink",
+    "new_text": null,
+    "new_test_tag": "results_row_pct",
+    "notes": "Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "results.row_bar",
+   "screen": "results",
+   "kind": "progress",
+   "name": "Row percent bar",
+   "function": "Percent-of-limit bar, capped at 100%.",
+   "text": "(bar)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 14,
+    "width": "fill",
+    "height": "6dp",
+    "style": "M3 LinearProgressIndicator, tone colour on 20% tone track, radius 3dp"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_row_bar",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 11,
+    "new_width": "fill",
+    "new_height": "10dp",
+    "new_style": "ProgressBar",
+    "new_text": null,
+    "new_test_tag": "results_row_bar",
+    "notes": "10 dp rounded bar (was 6 dp). Fill: Pine pass, Danger fail, Slate not checked. Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "results.row_note",
+   "screen": "results",
+   "kind": "text",
+   "name": "Row note",
+   "function": "Explanatory note, shown only after tapping the row.",
+   "text": "<note>",
+   "visible_when": "expanded and the row has a note",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 15,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall under a divider"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_row_note",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 15,
+    "new_width": "fill",
+    "new_height": "wrap (~60dp)",
+    "new_style": "DM Sans 400 14/20 ink",
+    "new_text": null,
+    "new_test_tag": "results_row_note",
+    "notes": "Sunken note block under the row; shown when the row is expanded. Drawn in results__not_safe_row_expanded.png."
+   }
+  },
+  {
+   "id": "results.footer_note",
+   "screen": "results",
+   "kind": "text",
+   "name": "Footer note",
+   "function": "Short disclaimer.",
+   "text": "Experimental tool, not a certified safety decision.",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 16,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_footer_note",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 10,
+    "new_width": "fill",
+    "new_height": "wrap (~18dp)",
+    "new_style": "DM Sans 400 13/18 ink-muted",
+    "new_text": null,
+    "new_test_tag": "results_footer_note",
+    "notes": "Drawn in results__safe_scrolled_to_end.png."
+   }
+  },
+  {
+   "id": "results.start_another_button",
+   "screen": "results",
+   "kind": "button",
+   "name": "Start another check",
+   "function": "Returns to the Rig picker and clears the back stack.",
+   "text": "Start another check",
+   "visible_when": "always",
+   "navigates_to": "rig_picker",
+   "today": {
+    "region": "footer",
+    "order": 17,
+    "width": "fill (20dp side margin)",
+    "height": "40dp (M3 default)",
+    "style": "M3 Button pinned at the bottom"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "results_start_another_button",
+   "tests_referencing": {
+    "GarageNavigationTest.kt": 2,
+    "HistoryNavigationTest.kt": 4,
+    "RigCheckNavHostTest.kt": 2,
+    "ResultsScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "results",
+    "new_region": "footer",
+    "new_order": 15,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Primary",
+    "new_text": null,
+    "new_test_tag": "results_start_another_button",
+    "notes": "Primary button, 56 dp, pinned footer. Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "history.title",
+   "screen": "history",
+   "kind": "text",
+   "name": "Screen title",
+   "function": "Names the screen.",
+   "text": "Check History",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 1,
+    "width": "fill",
+    "height": "wrap",
+    "style": "headlineSmall ExtraBold (system font)"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "history_title",
+   "tests_referencing": {
+    "HistoryNavigationTest.kt": 1
+   },
+   "redesign": {
+    "status": "moved",
+    "new_screen": "history",
+    "new_region": "header",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~30dp)",
+    "new_style": "Outfit 800 26/30 ink, letter-spacing -0.26px",
+    "new_text": null,
+    "new_test_tag": "history_title",
+    "notes": "Moved into the top bar. Drawn in history__few_entries.png."
+   }
+  },
+  {
+   "id": "history.subtitle",
+   "screen": "history",
+   "kind": "text",
+   "name": "Subtitle",
+   "function": "Explains the list.",
+   "text": "Every check you have run and where you stood.",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 2,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyLarge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "history_subtitle",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "history",
+    "new_region": "body",
+    "new_order": 3,
+    "new_width": "fill",
+    "new_height": "wrap (~22dp)",
+    "new_style": "DM Sans 400 16/22 ink-muted",
+    "new_text": null,
+    "new_test_tag": "history_subtitle",
+    "notes": "Drawn in history__few_entries.png."
+   }
+  },
+  {
+   "id": "history.limit_notice",
+   "screen": "history",
+   "kind": "notice",
+   "name": "Limit notice",
+   "function": "Tells a Free account with a full History what Free and Pro keep.",
+   "text": "The Free plan keeps your last <n> checks, and the oldest drops off as you add more. Pro keeps your last <n>.",
+   "visible_when": "Free account, History full",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 3,
+    "width": "fill",
+    "height": "wrap",
+    "style": "Surface radius 16dp, 1dp border, padding 16dp"
+   },
+   "test_tag_today": "history_limit_notice",
+   "test_tag_new": "history_limit_notice",
+   "tests_referencing": {
+    "HistoryScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "history",
+    "new_region": "body",
+    "new_order": 4,
+    "new_width": "fill",
+    "new_height": "wrap (~86dp)",
+    "new_style": "Notice",
+    "new_text": null,
+    "new_test_tag": "history_limit_notice",
+    "notes": "Drawn in history__limit_notice.png."
+   }
+  },
+  {
+   "id": "history.upgrade_button",
+   "screen": "history",
+   "kind": "text-button",
+   "name": "Upgrade to Pro",
+   "function": "Opens the Paywall.",
+   "text": "Upgrade to Pro",
+   "visible_when": "with the limit notice",
+   "navigates_to": "paywall",
+   "today": {
+    "region": "body",
+    "order": 4,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton"
+   },
+   "test_tag_today": "history_upgrade",
+   "test_tag_new": "history_upgrade",
+   "tests_referencing": {
+    "HistoryScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "history",
+    "new_region": "body",
+    "new_order": 5,
+    "new_width": "fill",
+    "new_height": "48dp",
+    "new_style": "Button/Ghost",
+    "new_text": null,
+    "new_test_tag": "history_upgrade",
+    "notes": "Ghost button, 48 dp. Drawn in history__limit_notice.png."
+   }
+  },
+  {
+   "id": "history.empty",
+   "screen": "history",
+   "kind": "text",
+   "name": "Empty state",
+   "function": "Nothing yet.",
+   "text": "No checks yet. Finish a check and it will be listed here.",
+   "visible_when": "no checks",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 5,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyMedium, plain text, no illustration"
+   },
+   "test_tag_today": "history_empty",
+   "test_tag_new": "history_empty",
+   "tests_referencing": {
+    "HistoryScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "history",
+    "new_region": "body",
+    "new_order": 4,
+    "new_width": "wrap",
+    "new_height": "wrap (~44dp)",
+    "new_style": "DM Sans 400 16/22 ink",
+    "new_text": null,
+    "new_test_tag": "history_empty",
+    "notes": "Drawn in history__empty.png."
+   }
+  },
+  {
+   "id": "history.entry_card",
+   "screen": "history",
+   "kind": "card",
+   "name": "Check entry card (repeats)",
+   "function": "One past check. Read-only: no tap action.",
+   "text": "(row)",
+   "visible_when": "one per check, newest first",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 6,
+    "width": "fill",
+    "height": "wrap (~72dp)",
+    "style": "Surface radius 16dp, 1dp border, padding 16dp, 10dp gap"
+   },
+   "test_tag_today": "history_entry",
+   "test_tag_new": "history_entry",
+   "tests_referencing": {
+    "HistoryScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "history",
+    "new_region": "body",
+    "new_order": 4,
+    "new_width": "fill",
+    "new_height": "wrap (~72dp)",
+    "new_style": "Card",
+    "new_text": null,
+    "new_test_tag": "history_entry",
+    "notes": "Drawn in history__few_entries.png."
+   }
+  },
+  {
+   "id": "history.entry_rig",
+   "screen": "history",
+   "kind": "text",
+   "name": "Entry rig nickname",
+   "function": "Which rig.",
+   "text": "<nickname>",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 7,
+    "width": "fill",
+    "height": "wrap",
+    "style": "titleMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "history_entry_rig",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "history",
+    "new_region": "body",
+    "new_order": 5,
+    "new_width": "wrap",
+    "new_height": "wrap (~22dp)",
+    "new_style": "Outfit 700 18/22 ink",
+    "new_text": null,
+    "new_test_tag": "history_entry_rig",
+    "notes": "Drawn in history__few_entries.png."
+   }
+  },
+  {
+   "id": "history.entry_date",
+   "screen": "history",
+   "kind": "text",
+   "name": "Entry date",
+   "function": "When.",
+   "text": "MMM d, yyyy",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 8,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "history_entry_date",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "history",
+    "new_region": "body",
+    "new_order": 6,
+    "new_width": "wrap",
+    "new_height": "wrap (~18dp)",
+    "new_style": "DM Sans 400 13/18 ink-muted",
+    "new_text": null,
+    "new_test_tag": "history_entry_date",
+    "notes": "Drawn in history__few_entries.png."
+   }
+  },
+  {
+   "id": "history.entry_verdict",
+   "screen": "history",
+   "kind": "text",
+   "name": "Entry verdict",
+   "function": "Verdict word in tone colour; NOT a pill badge (Web uses a Badge).",
+   "text": "Safe to Tow | Over Limit | Partially Checked | Not Enough Info",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 9,
+    "width": "wrap",
+    "height": "wrap",
+    "style": "labelLarge Bold, tone colour"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "history_entry_verdict",
+   "tests_referencing": {
+    "HistoryNavigationTest.kt": 3,
+    "HistoryScreenTest.kt": 3,
+    "ResultsScreenTest.kt": 7
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "history",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "wrap",
+    "new_height": "wrap (~22dp)",
+    "new_style": "Badge",
+    "new_text": null,
+    "new_test_tag": "history_entry_verdict",
+    "notes": "Now a pill badge with an icon (Web uses a Badge) instead of coloured text. Words unchanged. Drawn in history__few_entries.png."
+   }
+  },
+  {
+   "id": "paywall.title",
+   "screen": "paywall",
+   "kind": "text",
+   "name": "Screen title",
+   "function": "Names the screen by plan.",
+   "text": "Unlock Pro | Get More Scans",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 1,
+    "width": "fill",
+    "height": "wrap",
+    "style": "headlineMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_title",
+   "tests_referencing": {
+    "ScanErrorNextStepNavigationTest.kt": 3,
+    "PaywallScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "moved",
+    "new_screen": "paywall",
+    "new_region": "header",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~30dp)",
+    "new_style": "Outfit 800 26/30 ink, letter-spacing -0.26px",
+    "new_text": null,
+    "new_test_tag": "paywall_title",
+    "notes": "Moved into the top bar. Drawn in paywall__free_pro_offer.png."
+   }
+  },
+  {
+   "id": "paywall.account_label",
+   "screen": "paywall",
+   "kind": "text",
+   "name": "Account label",
+   "function": "Says which account the purchase is for.",
+   "text": "Buying for <email or id>",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 2,
+    "width": "fill minus Sign out",
+    "height": "wrap",
+    "style": "bodyMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_account_label",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 3,
+    "new_width": "wrap",
+    "new_height": "wrap (~20dp)",
+    "new_style": "DM Sans 400 14/20 ink-muted",
+    "new_text": null,
+    "new_test_tag": "paywall_account_label",
+    "notes": "Drawn in paywall__free_pro_offer.png."
+   }
+  },
+  {
+   "id": "paywall.sign_out_button",
+   "screen": "paywall",
+   "kind": "text-button",
+   "name": "Sign out",
+   "function": "Signs out of the account on this device.",
+   "text": "Sign out",
+   "visible_when": "disabled while a purchase is busy",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 3,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_sign_out_button",
+   "tests_referencing": {
+    "PaywallScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 4,
+    "new_width": "wrap",
+    "new_height": "48dp",
+    "new_style": "Button/Ghost",
+    "new_text": null,
+    "new_test_tag": "paywall_sign_out_button",
+    "notes": "Ghost button with a logout icon, 48 dp. Drawn in paywall__free_pro_offer.png."
+   }
+  },
+  {
+   "id": "paywall.plan_label",
+   "screen": "paywall",
+   "kind": "text",
+   "name": "Plan label",
+   "function": "Shows the plan when known.",
+   "text": "Pro plan | Free plan",
+   "visible_when": "plan known",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 4,
+    "width": "fill",
+    "height": "wrap",
+    "style": "titleMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_plan_label",
+   "tests_referencing": {
+    "PaywallScreenTest.kt": 8
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 5,
+    "new_width": "wrap",
+    "new_height": "wrap (~22dp)",
+    "new_style": "Badge",
+    "new_text": null,
+    "new_test_tag": "paywall_plan_label",
+    "notes": "Pill badge. Drawn in paywall__free_pro_offer.png."
+   }
+  },
+  {
+   "id": "paywall.explainer",
+   "screen": "paywall",
+   "kind": "text",
+   "name": "Explainer",
+   "function": "Balance and what Pro or a pack gives.",
+   "text": "You have <n> scan(s) left. [Pro is a one-time purchase, yours to keep, and comes with a starter bundle of scans. | Buy more scans any time. ]Claude reads your truck tag, trailer tag, or scale ticket for you.",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 5,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyLarge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_explainer",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 6,
+    "new_width": "fill",
+    "new_height": "wrap (~88dp)",
+    "new_style": "DM Sans 400 15/22 ink",
+    "new_text": null,
+    "new_test_tag": "paywall_explainer",
+    "notes": "Drawn in paywall__free_pro_offer.png."
+   }
+  },
+  {
+   "id": "paywall.loading",
+   "screen": "paywall",
+   "kind": "spinner",
+   "name": "Offers loading",
+   "function": "Waiting on RevenueCat.",
+   "text": "(spinner)",
+   "visible_when": "offers loading",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 6,
+    "width": "40dp",
+    "height": "40dp",
+    "style": "M3 CircularProgressIndicator, left aligned"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_loading",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "40dp",
+    "new_height": "40dp",
+    "new_style": "Spinner",
+    "new_text": null,
+    "new_test_tag": "paywall_loading",
+    "notes": "Drawn in paywall__loading.png."
+   }
+  },
+  {
+   "id": "paywall.load_error",
+   "screen": "paywall",
+   "kind": "text",
+   "name": "Offers error",
+   "function": "Offers failed to load.",
+   "text": "Couldn't load offers: <message>",
+   "visible_when": "load failure",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 7,
+    "width": "fill",
+    "height": "wrap",
+    "style": "error colour"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_load_error",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "fill",
+    "new_height": "wrap (~46dp)",
+    "new_style": "Notice",
+    "new_text": null,
+    "new_test_tag": "paywall_load_error",
+    "notes": "Drawn in paywall__load_error.png."
+   }
+  },
+  {
+   "id": "paywall.plan_unknown",
+   "screen": "paywall",
+   "kind": "text",
+   "name": "Plan unknown message",
+   "function": "Offers nothing until the plan is known.",
+   "text": "Checking your plan before showing what you can buy.",
+   "visible_when": "plan not known",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 8,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_plan_unknown",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 6,
+    "new_width": "fill",
+    "new_height": "wrap (~22dp)",
+    "new_style": "DM Sans 400 15/22 ink",
+    "new_text": null,
+    "new_test_tag": "paywall_plan_unknown",
+    "notes": "Drawn in paywall__plan_unknown.png."
+   }
+  },
+  {
+   "id": "paywall.retry_button",
+   "screen": "paywall",
+   "kind": "text-button",
+   "name": "Try again",
+   "function": "Reads the plan again.",
+   "text": "Try again",
+   "visible_when": "plan unknown, or Pro bought and plan not yet updated",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 9,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_retry_button",
+   "tests_referencing": {
+    "LateScanDialogTest.kt": 1,
+    "ScanInFlightNavigationTest.kt": 1,
+    "ChooserScreenTest.kt": 6,
+    "PaywallScreenTest.kt": 2,
+    "ScanNoticeScreenTest.kt": 3,
+    "TruckTagEntryScreenTest.kt": 6
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "fill",
+    "new_height": "48dp",
+    "new_style": "Button/Secondary",
+    "new_text": null,
+    "new_test_tag": "paywall_retry_button",
+    "notes": "Drawn in paywall__pro_bought_waiting.png."
+   }
+  },
+  {
+   "id": "paywall.offer_card",
+   "screen": "paywall",
+   "kind": "card",
+   "name": "Offer card (repeats)",
+   "function": "One Pro unlock or scan pack.",
+   "text": "(row)",
+   "visible_when": "Free: one Pro card; Pro: one card per scan pack",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 10,
+    "width": "fill",
+    "height": "wrap (~80dp)",
+    "style": "Surface radius 12dp, tonalElevation 1dp, padding 16dp, 12dp gap"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_offer_card",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "fill",
+    "new_height": "wrap (~188dp)",
+    "new_style": "Card/Offer",
+    "new_text": null,
+    "new_test_tag": "paywall_offer_card",
+    "notes": "Free: one large Tint-purple Pro card. Pro: one white row card per pack. Prices from the store; the frames show a short ($4.99) and a long (CA$12.99 one time) one. Drawn in paywall__free_pro_offer.png."
+   }
+  },
+  {
+   "id": "paywall.offer_title",
+   "screen": "paywall",
+   "kind": "text",
+   "name": "Offer title",
+   "function": "Store product title.",
+   "text": "<store title>",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 11,
+    "width": "fill",
+    "height": "wrap",
+    "style": "titleMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_offer_title",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "fill",
+    "new_height": "wrap (~28dp)",
+    "new_style": "Outfit 800 22/28 purple-deep",
+    "new_text": null,
+    "new_test_tag": "paywall_offer_title",
+    "notes": "Drawn in paywall__free_pro_offer.png."
+   }
+  },
+  {
+   "id": "paywall.offer_description",
+   "screen": "paywall",
+   "kind": "text",
+   "name": "Offer description",
+   "function": "Store product description.",
+   "text": "<store description>",
+   "visible_when": "when the store gives one",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 12,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_offer_description",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 9,
+    "new_width": "fill",
+    "new_height": "wrap (~42dp)",
+    "new_style": "DM Sans 400 15/21 ink",
+    "new_text": null,
+    "new_test_tag": "paywall_offer_description",
+    "notes": "Drawn in paywall__free_pro_offer.png."
+   }
+  },
+  {
+   "id": "paywall.buy_button",
+   "screen": "paywall",
+   "kind": "button",
+   "name": "Buy button (price)",
+   "function": "Buys the package; Pro stays on screen, a pack closes it.",
+   "text": "<store formatted price>",
+   "visible_when": "disabled while busy",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 13,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 Button orange"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_buy_button",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 10,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Primary",
+    "new_text": null,
+    "new_test_tag": "paywall_buy_button",
+    "notes": "Primary button. 56 dp on the Pro card, 48 dp inside pack rows. Never shown to a Free account for packs, never to a Pro account for the Pro offer. Drawn in paywall__free_pro_offer.png."
+   }
+  },
+  {
+   "id": "paywall.no_packs",
+   "screen": "paywall",
+   "kind": "text",
+   "name": "No packs message",
+   "function": "Empty state for Pro accounts.",
+   "text": "No scan packs are available right now.",
+   "visible_when": "Pro, no packs",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 14,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_no_packs",
+   "tests_referencing": {
+    "PaywallScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "fill",
+    "new_height": "wrap (~48dp)",
+    "new_style": "Notice",
+    "new_text": null,
+    "new_test_tag": "paywall_no_packs",
+    "notes": "Drawn in paywall__pro_no_packs.png."
+   }
+  },
+  {
+   "id": "paywall.no_pro",
+   "screen": "paywall",
+   "kind": "text",
+   "name": "No Pro message",
+   "function": "Empty state for Free accounts.",
+   "text": "Pro isn't available to buy right now.",
+   "visible_when": "Free, no Pro package",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 15,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_no_pro",
+   "tests_referencing": {
+    "PaywallScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "fill",
+    "new_height": "wrap (~48dp)",
+    "new_style": "Notice",
+    "new_text": null,
+    "new_test_tag": "paywall_no_pro",
+    "notes": "Drawn in paywall__free_no_pro.png."
+   }
+  },
+  {
+   "id": "paywall.pro_bought",
+   "screen": "paywall",
+   "kind": "text",
+   "name": "Pro bought message",
+   "function": "Waiting on plan refresh after Pro purchase.",
+   "text": "Pro is yours. Updating your plan to show scan packs.",
+   "visible_when": "just after buying Pro",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 16,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_pro_bought",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "fill",
+    "new_height": "wrap (~22dp)",
+    "new_style": "DM Sans 400 15/22 ink",
+    "new_text": null,
+    "new_test_tag": "paywall_pro_bought",
+    "notes": "Drawn in paywall__pro_bought_waiting.png."
+   }
+  },
+  {
+   "id": "paywall.restore_button",
+   "screen": "paywall",
+   "kind": "text-button",
+   "name": "Restore purchase",
+   "function": "Restores earlier purchases.",
+   "text": "Restore purchase",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "footer",
+    "order": 17,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton at the bottom of a non-scrolling page (covered by the system nav bar on 3-button phones: #186)"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_restore_button",
+   "tests_referencing": {
+    "RevenueCatAndroidSdkExternalTest.kt": 1,
+    "PaywallScreenTest.kt": 9
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "footer",
+    "new_order": 11,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Ghost",
+    "new_text": null,
+    "new_test_tag": "paywall_restore_button",
+    "notes": "Ghost button, 56 dp, pinned footer so the 3-button navigation bar can no longer cover it (ticket #186). Drawn in paywall__free_pro_offer.png."
+   }
+  },
+  {
+   "id": "paywall.toast",
+   "screen": "paywall",
+   "kind": "toast",
+   "name": "Toasts",
+   "function": "Result of a purchase or restore.",
+   "text": "Purchase complete! | Pro unlocked! | Purchases restored. | <store error>",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 18,
+    "width": "system",
+    "height": "system",
+    "style": "Android Toast (system styling)"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_toast",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "overlay",
+    "new_order": 12,
+    "new_width": "fill",
+    "new_height": "48dp",
+    "new_style": "Toast",
+    "new_text": null,
+    "new_test_tag": "paywall_toast",
+    "notes": "Snackbar above the Restore button: Ink background, white text. Drawn in paywall__pro_packs.png."
+   }
+  },
+  {
+   "id": "paywall.back",
+   "screen": "paywall",
+   "kind": "missing",
+   "name": "Back control (MISSING today)",
+   "function": "No on-screen way back; system Back only. #186 adds one.",
+   "text": null,
+   "visible_when": "n/a",
+   "navigates_to": null,
+   "today": {
+    "region": "header",
+    "order": 19,
+    "width": "-",
+    "height": "-",
+    "style": "does not exist yet"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_back",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "replaced",
+    "new_screen": "paywall",
+    "new_region": "header",
+    "new_order": 1,
+    "new_width": "48dp",
+    "new_height": "48dp",
+    "new_style": "IconButton/48",
+    "new_text": null,
+    "new_test_tag": "paywall_back",
+    "notes": "The Paywall had no Back control. This is the new back icon button (content description \"Back\"). Blocked while a purchase is busy. Drawn in paywall__free_pro_offer.png."
+   }
+  },
+  {
+   "id": "account.title",
+   "screen": "account",
+   "kind": "text",
+   "name": "Screen title",
+   "function": "Names the mode.",
+   "text": "Sign in | Create your account",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 1,
+    "width": "fill",
+    "height": "wrap",
+    "style": "headlineMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "account_title",
+   "tests_referencing": {
+    "LateScanDialogTest.kt": 1,
+    "ScanErrorNextStepNavigationTest.kt": 3,
+    "AccountScreenTest.kt": 1,
+    "ChooserScreenTest.kt": 2,
+    "TruckTagEntryScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "moved",
+    "new_screen": "account",
+    "new_region": "header",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~30dp)",
+    "new_style": "Outfit 800 26/30 ink, letter-spacing -0.26px",
+    "new_text": null,
+    "new_test_tag": "account_title",
+    "notes": "Moved into the top bar. Drawn in account__sign_in.png."
+   }
+  },
+  {
+   "id": "account.reason",
+   "screen": "account",
+   "kind": "text",
+   "name": "Reason",
+   "function": "Says why an account is needed.",
+   "text": "Sign in or create an account to buy scans. Your purchases and scan balance follow your account to every device.",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 2,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyLarge"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "account_reason",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "account",
+    "new_region": "body",
+    "new_order": 3,
+    "new_width": "fill",
+    "new_height": "wrap (~66dp)",
+    "new_style": "DM Sans 400 16/22 ink-muted",
+    "new_text": null,
+    "new_test_tag": "account_reason",
+    "notes": "Drawn in account__sign_in.png."
+   }
+  },
+  {
+   "id": "account.email_field",
+   "screen": "account",
+   "kind": "text-field",
+   "name": "Email field",
+   "function": "Account email.",
+   "text": "Email",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 3,
+    "width": "fill",
+    "height": "56dp min (M3 TextField)",
+    "style": "M3 OutlinedTextField with floating label (different style from the filled fields on the entry screens)"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "account_email_field",
+   "tests_referencing": {
+    "AccountScreenTest.kt": 4
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "account",
+    "new_region": "body",
+    "new_order": 4,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "account_email_field",
+    "notes": "Same field style as every other screen (it was outlined here and filled elsewhere). Drawn in account__sign_in.png."
+   }
+  },
+  {
+   "id": "account.password_field",
+   "screen": "account",
+   "kind": "text-field",
+   "name": "Password field",
+   "function": "Account password; hidden.",
+   "text": "Password (supporting text when creating: At least 6 characters)",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 4,
+    "width": "fill",
+    "height": "56dp min (M3 TextField)",
+    "style": "M3 OutlinedTextField, PasswordVisualTransformation, no show/hide toggle"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "account_password_field",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "account",
+    "new_region": "body",
+    "new_order": 5,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Field/Text",
+    "new_text": null,
+    "new_test_tag": "account_password_field",
+    "notes": "Same field style. Shows \"At least 6 characters\" under it when creating an account. Drawn in account__sign_in.png."
+   }
+  },
+  {
+   "id": "account.error",
+   "screen": "account",
+   "kind": "text",
+   "name": "Error message",
+   "function": "Sign-in failure.",
+   "text": "<error>",
+   "visible_when": "after a failure",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 5,
+    "width": "fill",
+    "height": "wrap",
+    "style": "error colour, no icon"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "account_error",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "account",
+    "new_region": "body",
+    "new_order": 6,
+    "new_width": "fill",
+    "new_height": "wrap (~20dp)",
+    "new_style": "DM Sans 500 14/20 danger-text",
+    "new_text": null,
+    "new_test_tag": "account_error",
+    "notes": "Drawn in account__error.png."
+   }
+  },
+  {
+   "id": "account.info",
+   "screen": "account",
+   "kind": "text",
+   "name": "Info message",
+   "function": "Confirmation or reset-sent message.",
+   "text": "Check your email to confirm your account, then sign in. | If that email has an account, a reset link is on its way.",
+   "visible_when": "after success states",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 6,
+    "width": "fill",
+    "height": "wrap",
+    "style": "primary (orange) text colour: low contrast on white"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "account_info",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "account",
+    "new_region": "body",
+    "new_order": 6,
+    "new_width": "fill",
+    "new_height": "wrap (~64dp)",
+    "new_style": "Notice",
+    "new_text": null,
+    "new_test_tag": "account_info",
+    "notes": "Drawn in account__info_reset_sent.png."
+   }
+  },
+  {
+   "id": "account.submit_button",
+   "screen": "account",
+   "kind": "button",
+   "name": "Submit",
+   "function": "Signs in or creates the account.",
+   "text": "Sign in | Create account",
+   "visible_when": "enabled when email not blank and password >= 6 chars",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 7,
+    "width": "fill",
+    "height": "40dp (M3 default)",
+    "style": "M3 Button orange"
+   },
+   "test_tag_today": "account_submit",
+   "test_tag_new": "account_submit",
+   "tests_referencing": {
+    "LateScanDialogTest.kt": 1,
+    "ScanErrorNextStepNavigationTest.kt": 3,
+    "AccountScreenTest.kt": 8,
+    "ChooserScreenTest.kt": 2,
+    "TruckTagEntryScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "account",
+    "new_region": "body",
+    "new_order": 6,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Primary",
+    "new_text": null,
+    "new_test_tag": "account_submit",
+    "notes": "Primary button, 56 dp. Drawn in account__sign_in.png."
+   }
+  },
+  {
+   "id": "account.toggle_mode",
+   "screen": "account",
+   "kind": "text-button",
+   "name": "Switch mode",
+   "function": "Switches between sign-in and create.",
+   "text": "New here? Create an account | Have an account? Sign in",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 8,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton, left of a space-between row"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "account_toggle_mode",
+   "tests_referencing": {
+    "AccountScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "account",
+    "new_region": "body",
+    "new_order": 7,
+    "new_width": "wrap",
+    "new_height": "48dp",
+    "new_style": "Button/Ghost",
+    "new_text": null,
+    "new_test_tag": "account_toggle_mode",
+    "notes": "Drawn in account__sign_in.png."
+   }
+  },
+  {
+   "id": "account.forgot_password",
+   "screen": "account",
+   "kind": "text-button",
+   "name": "Forgot password?",
+   "function": "Sends a reset email.",
+   "text": "Forgot password?",
+   "visible_when": "sign-in mode only; enabled when email not blank",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 9,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton, right of the same row"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "account_forgot_password",
+   "tests_referencing": {
+    "AccountScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "account",
+    "new_region": "body",
+    "new_order": 8,
+    "new_width": "wrap",
+    "new_height": "48dp",
+    "new_style": "Button/Ghost",
+    "new_text": null,
+    "new_test_tag": "account_forgot_password",
+    "notes": "Drawn in account__sign_in.png."
+   }
+  },
+  {
+   "id": "account.divider",
+   "screen": "account",
+   "kind": "divider",
+   "name": "Divider",
+   "function": "Separates email from social sign-in.",
+   "text": null,
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 10,
+    "width": "fill",
+    "height": "1dp",
+    "style": "M3 HorizontalDivider, no 'or' label"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "account_divider",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "account",
+    "new_region": "body",
+    "new_order": 9,
+    "new_width": "fill",
+    "new_height": "1dp",
+    "new_style": "Divider",
+    "new_text": null,
+    "new_test_tag": "account_divider",
+    "notes": "Drawn in account__sign_in.png."
+   }
+  },
+  {
+   "id": "account.google_button",
+   "screen": "account",
+   "kind": "outlined-button",
+   "name": "Continue with Google",
+   "function": "Google sign-in.",
+   "text": "Continue with Google",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 11,
+    "width": "fill",
+    "height": "40dp (M3 default)",
+    "style": "M3 OutlinedButton, no Google logo"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "account_google_button",
+   "tests_referencing": {
+    "RigCheckNavHostTest.kt": 4,
+    "ScanErrorNextStepNavigationTest.kt": 3,
+    "AccountScreenTest.kt": 9
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "account",
+    "new_region": "body",
+    "new_order": 10,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Secondary",
+    "new_text": null,
+    "new_test_tag": "account_google_button",
+    "notes": "Secondary button. The Google glyph is not drawn; use the official asset when building. Drawn in account__sign_in.png."
+   }
+  },
+  {
+   "id": "account.apple_button",
+   "screen": "account",
+   "kind": "outlined-button",
+   "name": "Continue with Apple",
+   "function": "Apple sign-in (hidden until #77).",
+   "text": "Continue with Apple",
+   "visible_when": "only when Apple is enabled (not today)",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 12,
+    "width": "fill",
+    "height": "40dp (M3 default)",
+    "style": "M3 OutlinedButton"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "account_apple_button",
+   "tests_referencing": {
+    "AccountScreenTest.kt": 5
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "account",
+    "new_region": "body",
+    "new_order": 11,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Secondary",
+    "new_text": null,
+    "new_test_tag": "account_apple_button",
+    "notes": "Not shown today. Drawn only in account__apple_enabled_future: same style as the Google button. Drawn in account__apple_enabled_future.png."
+   }
+  },
+  {
+   "id": "account.not_now_button",
+   "screen": "account",
+   "kind": "text-button",
+   "name": "Not now",
+   "function": "Leaves without signing in.",
+   "text": "Not now",
+   "visible_when": "always",
+   "navigates_to": "back",
+   "today": {
+    "region": "body",
+    "order": 13,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton at the end of the scroll area"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "account_not_now_button",
+   "tests_referencing": {
+    "RigCheckNavHostTest.kt": 4,
+    "AccountScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "moved",
+    "new_screen": "account",
+    "new_region": "footer",
+    "new_order": 11,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Ghost",
+    "new_text": null,
+    "new_test_tag": "account_not_now_button",
+    "notes": "Ghost button in a pinned footer. Drawn in account__sign_in.png."
+   }
+  },
+  {
+   "id": "scan_error.title",
+   "screen": "scan_error_dialog",
+   "kind": "dialog-title",
+   "name": "Dialog title",
+   "function": "Titles a failed Scan.",
+   "text": "Scan failed",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 1,
+    "width": "M3 dialog",
+    "height": "wrap",
+    "style": "M3 AlertDialog"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scan_error_title",
+   "tests_referencing": {
+    "ScanErrorNextStepNavigationTest.kt": 2,
+    "ScanInFlightNavigationTest.kt": 2,
+    "ChooserScreenTest.kt": 1,
+    "TruckTagEntryScreenTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "scan_error_dialog",
+    "new_region": "overlay",
+    "new_order": 1,
+    "new_width": "wrap",
+    "new_height": "wrap (~28dp)",
+    "new_style": "Outfit 700 22/28 ink",
+    "new_text": null,
+    "new_test_tag": "scan_error_title",
+    "notes": "M3 AlertDialog restyled: 24 dp radius, 24 dp padding, shadow-md, Outfit 700 22/28 title. Drawn in scan_error_dialog__message_only.png."
+   }
+  },
+  {
+   "id": "scan_error.message",
+   "screen": "scan_error_dialog",
+   "kind": "text",
+   "name": "Dialog message",
+   "function": "Why it failed and whether a credit was used (see Scan outcomes in workers/scan-proxy/CONTEXT.md).",
+   "text": "<one of ~12 fixed messages>",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 2,
+    "width": "M3 dialog",
+    "height": "wrap",
+    "style": "M3 AlertDialog text"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scan_error_message",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "scan_error_dialog",
+    "new_region": "overlay",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~96dp)",
+    "new_style": "DM Sans 400 16/24 ink",
+    "new_text": null,
+    "new_test_tag": "scan_error_message",
+    "notes": "Drawn in scan_error_dialog__message_only.png."
+   }
+  },
+  {
+   "id": "scan_error.next_step_button",
+   "screen": "scan_error_dialog",
+   "kind": "text-button",
+   "name": "Next-step buttons (0-2 shown)",
+   "function": "Sign in / Buy more Scans / Try again / Choose a different photo / Type it in, stacked and right-aligned above OK.",
+   "text": "Sign in | Buy more Scans | Try again | Choose a different photo | Type it in",
+   "visible_when": "depends on the failure kind",
+   "navigates_to": "paywall | retry | photo_source_dialog | entry screen",
+   "today": {
+    "region": "overlay",
+    "order": 3,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton stacked in a Column"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scan_error_next_step_button",
+   "tests_referencing": {
+    "LateScanDialogTest.kt": 3,
+    "ScanErrorNextStepNavigationTest.kt": 5,
+    "ScanInFlightNavigationTest.kt": 1,
+    "ChooserScreenTest.kt": 20,
+    "PaywallScreenTest.kt": 2,
+    "ScanNoticeScreenTest.kt": 3,
+    "TruckTagEntryScreenTest.kt": 23
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "scan_error_dialog",
+    "new_region": "overlay",
+    "new_order": 3,
+    "new_width": "wrap",
+    "new_height": "52dp",
+    "new_style": "Button/Primary",
+    "new_text": null,
+    "new_test_tag": "scan_error_next_step_button",
+    "notes": "Stacked full-width buttons, 52 dp: first next step is primary, a second is secondary. OK sits last as a ghost button. Drawn in scan_error_dialog__one_next_step.png."
+   }
+  },
+  {
+   "id": "scan_error.ok_button",
+   "screen": "scan_error_dialog",
+   "kind": "text-button",
+   "name": "OK",
+   "function": "Dismisses.",
+   "text": "OK",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 4,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "scan_error_ok_button",
+   "tests_referencing": {
+    "LateScanDialogTest.kt": 2,
+    "ScanErrorNextStepNavigationTest.kt": 2,
+    "ScanInFlightNavigationTest.kt": 1,
+    "ChooserScreenTest.kt": 1,
+    "TruckTagEntryScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "scan_error_dialog",
+    "new_region": "overlay",
+    "new_order": 3,
+    "new_width": "wrap",
+    "new_height": "52dp",
+    "new_style": "Button/Ghost",
+    "new_text": null,
+    "new_test_tag": "scan_error_ok_button",
+    "notes": "Drawn in scan_error_dialog__message_only.png."
+   }
+  },
+  {
+   "id": "late_scan.title",
+   "screen": "late_scan_dialog",
+   "kind": "dialog-title",
+   "name": "Dialog title",
+   "function": "Titles a Scan that finished after the user left its check.",
+   "text": "A Scan finished late",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 1,
+    "width": "M3 dialog",
+    "height": "wrap",
+    "style": "M3 AlertDialog"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "late_scan_title",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "late_scan_dialog",
+    "new_region": "overlay",
+    "new_order": 1,
+    "new_width": "wrap",
+    "new_height": "wrap (~28dp)",
+    "new_style": "Outfit 700 22/28 ink",
+    "new_text": null,
+    "new_test_tag": "late_scan_title",
+    "notes": "Same dialog style as the Scan failed dialog. Drawn in late_scan_dialog__credit_used.png."
+   }
+  },
+  {
+   "id": "late_scan.message",
+   "screen": "late_scan_dialog",
+   "kind": "text",
+   "name": "Dialog message",
+   "function": "Says whether a credit was used.",
+   "text": "<message>",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 2,
+    "width": "M3 dialog",
+    "height": "wrap",
+    "style": "M3 AlertDialog text"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "late_scan_message",
+   "tests_referencing": {},
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "late_scan_dialog",
+    "new_region": "overlay",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~72dp)",
+    "new_style": "DM Sans 400 16/24 ink",
+    "new_text": null,
+    "new_test_tag": "late_scan_message",
+    "notes": "Drawn in late_scan_dialog__credit_used.png."
+   }
+  },
+  {
+   "id": "late_scan.ok_button",
+   "screen": "late_scan_dialog",
+   "kind": "text-button",
+   "name": "OK",
+   "function": "Dismisses (only way forward).",
+   "text": "OK",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 3,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "late_scan_ok_button",
+   "tests_referencing": {
+    "LateScanDialogTest.kt": 2,
+    "ScanErrorNextStepNavigationTest.kt": 2,
+    "ScanInFlightNavigationTest.kt": 1,
+    "ChooserScreenTest.kt": 1,
+    "TruckTagEntryScreenTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "late_scan_dialog",
+    "new_region": "overlay",
+    "new_order": 3,
+    "new_width": "wrap",
+    "new_height": "52dp",
+    "new_style": "Button/Ghost",
+    "new_text": null,
+    "new_test_tag": "late_scan_ok_button",
+    "notes": "Drawn in late_scan_dialog__credit_used.png."
+   }
+  }
+ ],
+ "added_elements": [
+  {
+   "id": "picker.logo",
+   "screen": "rig_picker",
+   "kind": "image",
+   "name": "Logo",
+   "function": "Brand mark in the top bar.",
+   "text": null,
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "rig_picker",
+    "new_region": "header",
+    "new_order": 1,
+    "new_width": "56dp",
+    "new_height": "56dp",
+    "new_style": "Logo/52",
+    "new_text": null,
+    "new_test_tag": "picker_logo",
+    "notes": "Decorative: empty content description. Source web/public/logo.png. Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.tagline",
+   "screen": "rig_picker",
+   "kind": "text",
+   "name": "Tagline",
+   "function": "Brand tagline under the app name.",
+   "text": "Weight safety, before you roll",
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "rig_picker",
+    "new_region": "header",
+    "new_order": 3,
+    "new_width": "175dp",
+    "new_height": "16dp",
+    "new_style": "DM Sans 400 13",
+    "new_text": "Weight safety, before you roll",
+    "new_test_tag": "picker_tagline",
+    "notes": "Same words as Web. Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.account_status",
+   "screen": "rig_picker",
+   "kind": "button",
+   "name": "Account status",
+   "function": "Shows whether the user is signed in and as whom; opens the account sheet (signed in) or the sign-in route (signed out).",
+   "text": "Signed in as <email> | Not signed in",
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "rig_picker",
+    "new_region": "header",
+    "new_order": 5,
+    "new_width": "fill",
+    "new_height": "48dp",
+    "new_style": "AccountStatus",
+    "new_text": "Signed in as <email> | Not signed in",
+    "new_test_tag": "picker_account_status",
+    "notes": "Owner feedback item 3. 48 dp tall. Content description: \"Account: signed in as <email>. Opens account menu\" or \"Not signed in. Sign in\". Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.account_avatar",
+   "screen": "rig_picker",
+   "kind": "avatar",
+   "name": "Account avatar",
+   "function": "First letter of the email (signed in) or a person icon (signed out).",
+   "text": "<first letter of email>",
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "rig_picker",
+    "new_region": "header",
+    "new_order": 6,
+    "new_width": "32dp",
+    "new_height": "32dp",
+    "new_style": "Outfit 700 15",
+    "new_text": "<first letter of email>",
+    "new_test_tag": "picker_account_avatar",
+    "notes": "Decorative. Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.account_menu",
+   "screen": "rig_picker",
+   "kind": "bottom-sheet",
+   "name": "Account menu sheet",
+   "function": "Bottom sheet with the email, Sign out and Cancel.",
+   "text": null,
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "rig_picker",
+    "new_region": "overlay",
+    "new_order": 1,
+    "new_width": "fill",
+    "new_height": "288dp",
+    "new_style": "BottomSheet",
+    "new_text": null,
+    "new_test_tag": "picker_account_menu",
+    "notes": "Owner feedback item 4. Opens in one tap from picker.account_status. Cannot be opened while a paid Scan is in flight. Drawn in rig_picker__account_menu.png."
+   }
+  },
+  {
+   "id": "picker.account_menu_email",
+   "screen": "rig_picker",
+   "kind": "text",
+   "name": "Account menu email",
+   "function": "The signed-in email, repeated in the sheet.",
+   "text": "<email>",
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "rig_picker",
+    "new_region": "overlay",
+    "new_order": 2,
+    "new_width": "197dp",
+    "new_height": "22dp",
+    "new_style": "Outfit 700 16",
+    "new_text": "<email>",
+    "new_test_tag": "picker_account_menu_email",
+    "notes": "Drawn in rig_picker__account_menu.png."
+   }
+  },
+  {
+   "id": "picker.sign_out_button",
+   "screen": "rig_picker",
+   "kind": "button",
+   "name": "Sign out (sheet)",
+   "function": "Signs the user out, the same action as paywall.sign_out_button.",
+   "text": "Sign out",
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "rig_picker",
+    "new_region": "overlay",
+    "new_order": 3,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Destructive",
+    "new_text": "Sign out",
+    "new_test_tag": "picker_sign_out_button",
+    "notes": "Destructive style. Existing function, new place. Drawn in rig_picker__account_menu.png."
+   }
+  },
+  {
+   "id": "picker.account_menu_cancel",
+   "screen": "rig_picker",
+   "kind": "text-button",
+   "name": "Cancel (sheet)",
+   "function": "Closes the account sheet.",
+   "text": "Cancel",
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "rig_picker",
+    "new_region": "overlay",
+    "new_order": 4,
+    "new_width": "fill",
+    "new_height": "56dp",
+    "new_style": "Button/Ghost",
+    "new_text": "Cancel",
+    "new_test_tag": "picker_account_menu_cancel",
+    "notes": "Same as tapping outside or the system Back button. Drawn in rig_picker__account_menu.png."
+   }
+  },
+  {
+   "id": "picker.empty_state",
+   "screen": "rig_picker",
+   "kind": "panel",
+   "name": "Empty rigs state",
+   "function": "Shown when the user has no saved rigs.",
+   "text": "No saved rigs yet / Finish a check and your rig shows up here. Manual entry is free.",
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 10,
+    "new_width": "fill",
+    "new_height": "108dp",
+    "new_style": "EmptyState",
+    "new_text": "No saved rigs yet / Finish a check and your rig shows up here. Manual entry is free.",
+    "new_test_tag": "picker_empty_state",
+    "notes": "New wording (see copy-changes.md). Drawn in rig_picker__signed_out_empty.png."
+   }
+  },
+  {
+   "id": "chooser.back",
+   "screen": "chooser",
+   "kind": "icon-button",
+   "name": "Back",
+   "function": "Goes back one screen, the same as the system Back button. Blocked while a paid Scan is in flight.",
+   "text": null,
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "chooser",
+    "new_region": "header",
+    "new_order": 1,
+    "new_width": "48dp",
+    "new_height": "48dp",
+    "new_style": "IconButton/48",
+    "new_text": null,
+    "new_test_tag": "chooser_back",
+    "notes": "Content description \"Back\". Drawn in chooser__truck.png."
+   }
+  },
+  {
+   "id": "chooser.loading_text",
+   "screen": "chooser",
+   "kind": "text",
+   "name": "Scan overlay text",
+   "function": "Words under the spinner while a Scan is in flight.",
+   "text": "Reading…",
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "chooser",
+    "new_region": "overlay",
+    "new_order": 2,
+    "new_width": "92dp",
+    "new_height": "24dp",
+    "new_style": "Outfit 700 20",
+    "new_text": "Reading…",
+    "new_test_tag": "chooser_loading_text",
+    "notes": "Reuses the existing \"Reading…\" string. The overlay still blocks all taps. Drawn in chooser__scan_in_flight.png."
+   }
+  },
+  {
+   "id": "truck.back",
+   "screen": "truck_tag_entry",
+   "kind": "icon-button",
+   "name": "Back",
+   "function": "Goes back one screen, the same as the system Back button. Blocked while a paid Scan is in flight.",
+   "text": null,
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "truck_tag_entry",
+    "new_region": "header",
+    "new_order": 1,
+    "new_width": "48dp",
+    "new_height": "48dp",
+    "new_style": "IconButton/48",
+    "new_text": null,
+    "new_test_tag": "truck_back",
+    "notes": "Content description \"Back\". Drawn in truck_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "truck.credit_chip",
+   "screen": "truck_tag_entry",
+   "kind": "chip",
+   "name": "Scan balance chip",
+   "function": "Scan balance, top right, as on the Rig picker and Chooser. Opens the Paywall.",
+   "text": "<n> scans | 1 scan | …",
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "truck_tag_entry",
+    "new_region": "header",
+    "new_order": 3,
+    "new_width": "125dp",
+    "new_height": "48dp",
+    "new_style": "Chip/Credit",
+    "new_text": "<n> scans | 1 scan | …",
+    "new_test_tag": "truck_credit_chip",
+    "notes": "Added to the Truck screen only because it has a paid stand-alone Scan button. Not on Trailer or Scale. Drawn in truck_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "trailer.back",
+   "screen": "trailer_tag_entry",
+   "kind": "icon-button",
+   "name": "Back",
+   "function": "Goes back one screen, the same as the system Back button. Blocked while a paid Scan is in flight.",
+   "text": null,
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "trailer_tag_entry",
+    "new_region": "header",
+    "new_order": 1,
+    "new_width": "48dp",
+    "new_height": "48dp",
+    "new_style": "IconButton/48",
+    "new_text": null,
+    "new_test_tag": "trailer_back",
+    "notes": "Content description \"Back\". Drawn in trailer_tag_entry__blank.png."
+   }
+  },
+  {
+   "id": "scale.back",
+   "screen": "scale_ticket_entry",
+   "kind": "icon-button",
+   "name": "Back",
+   "function": "Goes back one screen, the same as the system Back button. Blocked while a paid Scan is in flight.",
+   "text": null,
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "scale_ticket_entry",
+    "new_region": "header",
+    "new_order": 1,
+    "new_width": "48dp",
+    "new_height": "48dp",
+    "new_style": "IconButton/48",
+    "new_text": null,
+    "new_test_tag": "scale_back",
+    "notes": "Content description \"Back\". Drawn in scale_ticket_entry__blank.png."
+   }
+  },
+  {
+   "id": "results.back",
+   "screen": "results",
+   "kind": "icon-button",
+   "name": "Back",
+   "function": "Goes back, the same as the system Back button.",
+   "text": null,
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "results",
+    "new_region": "header",
+    "new_order": 1,
+    "new_width": "48dp",
+    "new_height": "48dp",
+    "new_style": "IconButton/48",
+    "new_text": null,
+    "new_test_tag": "results_back",
+    "notes": "Content description \"Back\". Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "results.verdict_icon",
+   "screen": "results",
+   "kind": "icon",
+   "name": "Verdict icon",
+   "function": "Check, cross or info glyph in a translucent circle inside the verdict band.",
+   "text": "(CheckCircle | Cancel | Info)",
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 5,
+    "new_width": "64dp",
+    "new_height": "64dp",
+    "new_style": "DM Sans 400 16",
+    "new_text": "(CheckCircle | Cancel | Info)",
+    "new_test_tag": "results_verdict_icon",
+    "notes": "Non-colour cue for the verdict. Decorative: the headline carries the meaning. Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "results.row_badge",
+   "screen": "results",
+   "kind": "badge",
+   "name": "Row status badge",
+   "function": "Says the row status in words: Within limit, Over limit or Not checked, with a matching icon.",
+   "text": "Within limit | Over limit | Not checked",
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 10,
+    "new_width": "112dp",
+    "new_height": "22dp",
+    "new_style": "Badge",
+    "new_text": "Within limit | Over limit | Not checked",
+    "new_test_tag": "results_row_badge",
+    "notes": "Fail never relies on colour alone. Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "results.row_chevron",
+   "screen": "results",
+   "kind": "icon-button",
+   "name": "Row note toggle",
+   "function": "Shows that a row has a note and expands or collapses it.",
+   "text": null,
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "results",
+    "new_region": "body",
+    "new_order": 14,
+    "new_width": "38dp",
+    "new_height": "48dp",
+    "new_style": "Chevron/48",
+    "new_text": null,
+    "new_test_tag": "results_row_chevron",
+    "notes": "Only on rows that have a note (Tow Vehicle Total, Trailer Axle(s), Trailer Total). 48 dp target. Content description \"Show note\" or \"Hide note\". Drawn in results__safe.png."
+   }
+  },
+  {
+   "id": "history.back",
+   "screen": "history",
+   "kind": "icon-button",
+   "name": "Back",
+   "function": "Goes back, the same as the system Back button.",
+   "text": null,
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "history",
+    "new_region": "header",
+    "new_order": 1,
+    "new_width": "48dp",
+    "new_height": "48dp",
+    "new_style": "IconButton/48",
+    "new_text": null,
+    "new_test_tag": "history_back",
+    "notes": "Content description \"Back\". Drawn in history__few_entries.png."
+   }
+  },
+  {
+   "id": "account.back",
+   "screen": "account",
+   "kind": "icon-button",
+   "name": "Back",
+   "function": "Goes back, the same as the \"Not now\" button.",
+   "text": null,
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "account",
+    "new_region": "header",
+    "new_order": 1,
+    "new_width": "48dp",
+    "new_height": "48dp",
+    "new_style": "IconButton/48",
+    "new_text": null,
+    "new_test_tag": "account_back",
+    "notes": "Content description \"Back\". Drawn in account__sign_in.png."
+   }
+  },
+  {
+   "id": "splash.background",
+   "screen": "splash",
+   "kind": "splash",
+   "name": "Splash background",
+   "function": "Brand colour behind the splash icon.",
+   "text": null,
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "splash",
+    "new_region": "body",
+    "new_order": 1,
+    "new_width": "fill",
+    "new_height": "892dp",
+    "new_style": "SplashBackground",
+    "new_text": null,
+    "new_test_tag": "splash_background",
+    "notes": "Teal #12b5ae. Android 12+ windowSplashScreenBackground. Drawn in splash__default.png."
+   }
+  },
+  {
+   "id": "splash.icon",
+   "screen": "splash",
+   "kind": "splash",
+   "name": "Splash icon",
+   "function": "Mark on a sky-gradient disc, shown while the app starts.",
+   "text": null,
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "splash",
+    "new_region": "body",
+    "new_order": 2,
+    "new_width": "200dp",
+    "new_height": "205dp",
+    "new_style": "SplashIcon",
+    "new_text": null,
+    "new_test_tag": "splash_icon",
+    "notes": "See assets/splash_icon.svg. Owner feedback item 1. Drawn in splash__default.png."
+   }
+  },
+  {
+   "id": "splash.branding",
+   "screen": "splash",
+   "kind": "splash",
+   "name": "Splash branding",
+   "function": "App name and tagline at the bottom of the splash.",
+   "text": "RigCheck / Weight safety, before you roll",
+   "needs_new_function": false,
+   "redesign": {
+    "status": "added",
+    "new_screen": "splash",
+    "new_region": "body",
+    "new_order": 3,
+    "new_width": "fill",
+    "new_height": "54dp",
+    "new_style": "DM Sans 400 16",
+    "new_text": "RigCheck / Weight safety, before you roll",
+    "new_test_tag": "splash_branding",
+    "notes": "Optional (windowSplashScreenBrandingImage); drop if it cannot be built. Drawn in splash__default.png."
+   }
+  }
+ ]
+}

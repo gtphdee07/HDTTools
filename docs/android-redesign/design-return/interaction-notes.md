@@ -12,7 +12,7 @@ A pinned crop that follows the focused field. The old hover and the press-and-ho
 - With no field focused it shows the first three lines and the hint "Tap a field to see its spot on the tag".
 - No gesture is needed anywhere. (A tap on the card to open the full photo with pinch zoom would be a nice extra, but it is a new function: if wanted, raise it as its own ticket after the re-skin.)
 - Why not tap-and-hold: it is hidden, and it hides the thing you are trying to type next to. A pinned card needs no gesture and stays visible while the keyboard is open.
-- In the frames the crop is a placeholder drawn from text. In the app, crop the real photo (keep the redacted VIN block). Each field needs a crop rectangle stored as fractions of the photo.
+- In the frames the crop is a placeholder drawn from text. In the app, crop the real photo (keep the redacted VIN block). Each field needs a crop rectangle stored as fractions of the photo. **That is new data and a new function**, so the two focus badges are flagged `needs_new_function` in the map; if the owner prefers, the card can show the whole label with no highlight until a follow-up ticket adds the rectangles.
 
 ## Scale ticket
 No pinned card. The ticket image carries numbered orange badges (1 to 5). The same numbers sit on the field labels and in the legend pills, so the match is by number, not by hover.

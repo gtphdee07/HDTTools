@@ -30,7 +30,7 @@ Used on every screen except Disclaimer and Splash.
 - Label above (`label`, `ink`), then a 56 dp box: 1.5 dp `border-strong`, 8 dp radius, 16 dp side padding, value `body` 17 sp, unit hint ("lb") right-aligned in `ink-muted` 15 sp, placeholder in `ink-muted`. Optional help line under it (`caption`, `ink-muted`).
 - **Focused:** 2 dp `teal-deep` border plus a 4 dp `tint-teal` ring, caret in `teal-deep`.
 - **Error:** 2 dp `danger` border, message line in `danger-text` (`body-sm`, 500). Not colour alone: the message names the problem.
-- **Disabled:** 70% opacity, `#eeeaf3` fill.
+- **Disabled:** `disabled-fill` background at 70% opacity. No frame draws a disabled field.
 - Numeric fields use the number keyboard. Hint numbers on the Scale screen carry an orange badge (22 dp, `ink` digit) in front of the label.
 - **Ids:** all `*_field`, `picker.new_rig_input`, `account.email_field`, `account.password_field`.
 
@@ -74,7 +74,7 @@ Used on every screen except Disclaimer and Splash.
 - Row: 26 dp status icon, label `title-sm`-ish (Outfit 700 17), status badge, optional chevron (48 dp target, only when the row has a note). Under it a 10 dp rounded progress bar (track `#e7edf0`; fill `pine`, `danger` or `slate`) and a line with "A lb of B lb" (`body-sm`, `ink-muted`) at the left and the percentage (700) at the right. A fill over 100% is clamped at the bar's end.
 - Expanded: the note appears under the row in a `surface-sunken` block (`body-sm`); 200 ms expand.
 - Tones: pass (check-circle, "Within limit"), fail (x-circle, "Over limit", percentage in `danger-text`), not checked (info-circle, "Not checked", 0%).
-- **Ids:** `results.row` and its parts, `results.row_badge`, `results.row_chevron`, `results.breakdown_card`.
+- **Ids:** `results.row` and its parts (`results.row_icon`, `results.row_label`, `results.row_values`, `results.row_pct`, `results.row_bar`, `results.row_note`), `results.row_badge`, `results.row_chevron`, `results.breakdown_card`, `results.verdict_icon` (64 dp circle with a 36 dp icon).
 
 ## Badge
 - Pill, 2 x 10 padding, `badge` text, optional 14 dp icon. Kinds: credit (`purple` / white), free (`pine` / white), within limit (`tint-green` / `pine`), over limit (`tint-red` / `danger-text`), partially checked (`tint-purple` / `purple-deep`), not checked (`surface-sunken` with 1 dp `border-strong` / `ink-muted`), plan (`tint-teal` / `teal-deep`).
@@ -87,24 +87,28 @@ Used on every screen except Disclaimer and Splash.
 ## Reference card (pinned crop) and reference image
 - Pinned under the top bar on Truck and Trailer: white card, 24 dp radius, shadow `md`, 12 dp padding. Caption row (search icon, "Tap a field to see its spot on the tag", and a plan-coloured badge naming the focused field), then a crop of the label showing three lines with the focused line outlined 2.5 dp in `orange` on `tint-orange`.
 - Scale ticket: the image sits in the scroll with orange numbered badges (24 dp) drawn on it; legend pills below match the badges on the field labels.
-- **Ids:** `truck.reference_image`, `truck.reference_hint`, `trailer.reference_image`, `trailer.reference_hint`, `scale.reference_image`, `scale.legend`.
+- **Ids:** `truck.reference_image`, `truck.reference_hint`, `truck.reference_focus_badge`, `trailer.reference_image`, `trailer.reference_hint`, `trailer.reference_focus_badge`, `scale.reference_image`, `scale.legend`.
+- The focused-field badge and the crop need a stored crop rectangle per field. That is new data (see `interaction-notes.md`).
 
 ## Panel (tinted block)
 - 24 dp radius, 16 dp padding, 12 dp gaps. Purple tint (new-rig panel) or orange tint (stand-alone weight panel).
 - **Ids:** `picker.new_rig_label` (inside), `truck.standalone_panel`.
 
 ## Offer card
+- **Ids:** `paywall.offer_card`, `paywall.offer_title`, `paywall.offer_description`, `paywall.buy_button`.
+- **States:** default; buttons disabled while a purchase is busy (frame `paywall__free_busy`).
 - Free: one large card, `tint-purple` fill, 1.5 dp `purple-deep` border, 24 dp radius, title `offer-title`, description `body-md`, full-width primary button with the store price. Pro: one white row card per pack with the title, description and a compact primary price button; the price text comes from the store ("$4.99", "CA$12.99 one time"), so the button grows and never truncates.
 
 ## Slider
+- **Ids:** `truck.pin_weight_slider`. The element is 48 dp tall. States: default (frame `truck_tag_entry__standalone_pin_weight`); pressed thumb grows to 32; hidden when the stand-alone field has a value.
 - 4 dp track (`border`), `teal-deep` fill, 28 dp thumb with a 3 dp `teal-deep` ring and white centre, 48 dp touch height. 15 to 25%, default 20%.
 
 ## Progress bar, spinner, toast, empty state, divider
-- **Progress bar:** 10 dp, fully rounded.
-- **Spinner:** 40 dp (48 in the Scan overlay), 4 dp ring in `border` with a `teal-deep` arc.
-- **Toast (snackbar):** `ink` fill, white `body-md`, 14 dp radius, 16 dp margins, sits above the pinned footer.
-- **Empty state:** dashed 2 dp `border-strong`, 24 dp radius, `surface-sunken` fill, 56 dp logo, title and text.
-- **Divider:** 1 dp `border`.
+- **Progress bar:** 10 dp, fully rounded. Id `results.row_bar`. States: pass, fail, not checked (colours above).
+- **Spinner:** 40 dp (48 in the Scan overlay), 4 dp ring in `border` with a `teal-deep` arc. Ids `paywall.loading`. Indeterminate; rotation is the essential animation.
+- **Toast (snackbar):** `ink` fill, white `body-md`, 14 dp radius, 16 dp margins, sits above the pinned footer. Id `paywall.toast`. Shown 4 s, then fades.
+- **Empty state:** dashed 2 dp `border-strong`, 24 dp radius, `surface-sunken` fill, 56 dp logo, title and text. Ids `picker.empty_state`, `history.empty`.
+- **Divider:** 1 dp `border`. Id `account.divider`.
 
 ## Overlay (Scan in flight)
 - White at 88% over the whole screen including the top bar, centred spinner and "Reading…". Blocks every tap, including Back and the account row.

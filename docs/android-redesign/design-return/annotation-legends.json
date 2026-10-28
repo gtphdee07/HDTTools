@@ -430,26 +430,30 @@
   },
   {
    "n": 6,
-   "id": "truck.reference_image"
+   "id": "truck.reference_focus_badge"
   },
   {
    "n": 7,
-   "id": "truck.gvwr_field"
+   "id": "truck.reference_image"
   },
   {
    "n": 8,
-   "id": "truck.front_gawr_field"
+   "id": "truck.gvwr_field"
   },
   {
    "n": 9,
-   "id": "truck.rear_gawr_field"
+   "id": "truck.front_gawr_field"
   },
   {
    "n": 10,
-   "id": "truck.gcwr_field"
+   "id": "truck.rear_gawr_field"
   },
   {
    "n": 11,
+   "id": "truck.gcwr_field"
+  },
+  {
+   "n": 12,
    "id": "truck.next_button"
   }
  ],
@@ -650,38 +654,34 @@
   },
   {
    "n": 8,
-   "id": "truck.standalone_panel_body"
-  },
-  {
-   "n": 9,
    "id": "truck.scan_standalone_button"
   },
   {
-   "n": 10,
+   "n": 9,
    "id": "truck.standalone_label"
   },
   {
-   "n": 11,
+   "n": 10,
    "id": "truck.standalone_info"
   },
   {
-   "n": 12,
+   "n": 11,
    "id": "truck.standalone_field"
   },
   {
-   "n": 13,
+   "n": 12,
    "id": "truck.pin_weight_label"
   },
   {
-   "n": 14,
+   "n": 13,
    "id": "truck.pin_weight_slider"
   },
   {
-   "n": 15,
+   "n": 14,
    "id": "truck.pin_weight_caption"
   },
   {
-   "n": 16,
+   "n": 15,
    "id": "truck.next_button"
   }
  ],
@@ -894,18 +894,22 @@
   },
   {
    "n": 5,
-   "id": "truck.reference_image"
+   "id": "truck.reference_focus_badge"
   },
   {
    "n": 6,
-   "id": "truck.front_gawr_field"
+   "id": "truck.reference_image"
   },
   {
    "n": 7,
-   "id": "truck.rear_gawr_field"
+   "id": "truck.front_gawr_field"
   },
   {
    "n": 8,
+   "id": "truck.rear_gawr_field"
+  },
+  {
+   "n": 9,
    "id": "truck.next_button"
   }
  ],
@@ -970,30 +974,34 @@
   },
   {
    "n": 5,
-   "id": "trailer.reference_image"
+   "id": "trailer.reference_focus_badge"
   },
   {
    "n": 6,
-   "id": "trailer.gvwr_field"
+   "id": "trailer.reference_image"
   },
   {
    "n": 7,
-   "id": "trailer.gawr_field"
+   "id": "trailer.gvwr_field"
   },
   {
    "n": 8,
-   "id": "trailer.axle_count_field"
+   "id": "trailer.gawr_field"
   },
   {
    "n": 9,
-   "id": "trailer.axle_count_help"
+   "id": "trailer.axle_count_field"
   },
   {
    "n": 10,
-   "id": "trailer.uvw_field"
+   "id": "trailer.axle_count_help"
   },
   {
    "n": 11,
+   "id": "trailer.uvw_field"
+  },
+  {
+   "n": 12,
    "id": "trailer.next_button"
   }
  ],
@@ -1054,22 +1062,26 @@
   },
   {
    "n": 4,
-   "id": "trailer.reference_image"
+   "id": "trailer.reference_focus_badge"
   },
   {
    "n": 5,
-   "id": "trailer.axle_count_field"
+   "id": "trailer.reference_image"
   },
   {
    "n": 6,
-   "id": "trailer.axle_count_help"
+   "id": "trailer.axle_count_field"
   },
   {
    "n": 7,
-   "id": "trailer.uvw_field"
+   "id": "trailer.axle_count_help"
   },
   {
    "n": 8,
+   "id": "trailer.uvw_field"
+  },
+  {
+   "n": 9,
    "id": "trailer.next_button"
   }
  ],
@@ -2535,14 +2547,5 @@
    "id": "splash.branding"
   }
  ],
- "app_icon__launcher": [
-  {
-   "n": 1,
-   "id": "app_icon.adaptive"
-  },
-  {
-   "n": 2,
-   "id": "app_icon.layers"
-  }
- ]
+ "app_icon__launcher": []
 }

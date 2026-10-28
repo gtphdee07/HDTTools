@@ -8,8 +8,8 @@ The check fails when
   - ui-inventory.csv is not byte-identical to what this script writes from the JSON;
   - a `test_tag_new` in the JSON is not a value in the `UiTags` object, or a UiTags value is not in the JSON;
   - a UiTags constant is not used by any file under android/app/src/main outside UiTags.kt (a tag no screen sets);
-  - a UiTags constant is not named in UiTagsDisplayedTest.kt, the instrumented test that shows every tagged
-    element on a real screen (the elements that cannot be shown are listed in NOT_SHOWN_BY_THE_TEST).
+  - a UiTags constant is not an argument of an assertShown(...) call in UiTagsDisplayedTest.kt, the instrumented
+    test that shows every tagged element on a real screen (a tag that is only tapped or typed into does not count).
 """
 
 from __future__ import annotations
@@ -32,8 +32,8 @@ DISPLAYED_TEST = (
     / "UiTagsDisplayedTest.kt"
 )
 
-# Elements that a screen test cannot show on a real screen, with the reason. They are still tagged.
-NOT_SHOWN_BY_THE_TEST: dict[str, str] = {}
+# The arguments of one assertShown(...) call in UiTagsDisplayedTest (they hold no parentheses of their own).
+ASSERT_SHOWN_CALL = re.compile(r"assertShown\(([^()]*)\)")
 
 FIXED_COLUMNS = [
     "id", "screen", "kind", "name", "function", "text", "visible_when", "navigates_to",
@@ -133,10 +133,11 @@ def problems(inventory: dict | None = None) -> list[str]:
 
     used_in = main_sources_outside_ui_tags()
     test_text = DISPLAYED_TEST.read_text(encoding="utf-8") if DISPLAYED_TEST.exists() else ""
+    shown_text = "\n".join(ASSERT_SHOWN_CALL.findall(test_text))
     for name, tag in sorted(constants.items()):
         if not re.search(rf"\bUiTags\.{name}\b", used_in):
             found.append(f"UiTags.{name} ({tag!r}) is set by no screen or component under android/app/src/main")
-        if tag not in NOT_SHOWN_BY_THE_TEST and not re.search(rf"\bUiTags\.{name}\b", test_text):
+        if not re.search(rf"\bUiTags\.{name}\b", shown_text):
             found.append(f"UiTags.{name} ({tag!r}) is not shown by UiTagsDisplayedTest")
     return found
 

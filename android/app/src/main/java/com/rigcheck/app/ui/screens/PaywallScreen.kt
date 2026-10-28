@@ -215,10 +215,10 @@ fun PaywallScreen(
                                 modifier = Modifier.testTag(UiTags.PAYWALL_PRO_BOUGHT),
                             )
                             TextButton(
-                        enabled = !isBusy,
-                        onClick = onRetryPlan,
-                        modifier = Modifier.testTag(UiTags.PAYWALL_RETRY_BUTTON),
-                    ) { Text("Try again") }
+                                enabled = !isBusy,
+                                onClick = onRetryPlan,
+                                modifier = Modifier.testTag(UiTags.PAYWALL_RETRY_BUTTON),
+                            ) { Text("Try again") }
                         }
                     }
                 } ?: Text("Pro isn't available to buy right now.", modifier = Modifier.testTag(UiTags.PAYWALL_NO_PRO))

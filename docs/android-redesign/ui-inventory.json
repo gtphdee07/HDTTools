@@ -166,7 +166,7 @@
       "route": "Paywall (signed-in branch)",
       "purpose": "Buy Pro (Free account) or scan packs (Pro account); restore purchases.",
       "entered_from": "rig_picker/chooser chip; Scan Photo at 0 credits; Scan error 'Buy more Scans'; Results Get Pro; History Upgrade",
-      "leaves_to": "back (system Back; done after buying a pack)",
+      "leaves_to": "back (the Back control or system Back; done after buying a pack)",
       "states": [
         "offers loading",
         "offers load error",

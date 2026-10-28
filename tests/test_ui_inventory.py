@@ -44,6 +44,18 @@ def test_a_ui_tags_constant_that_no_screen_sets_is_reported(monkeypatch):
     assert any("UiTags.OPEN_HISTORY" in p and "set by no screen" in p for p in ui_inventory.problems())
 
 
+def test_a_tag_the_displayed_test_only_taps_is_not_counted_as_shown(monkeypatch, tmp_path):
+    text = ui_inventory.DISPLAYED_TEST.read_text(encoding="utf-8")
+    # OPEN_HISTORY stays named in the file, but not as an assertShown argument.
+    edited = text.replace("UiTags.OPEN_HISTORY, ", "", 1) + "\n// composeRule.onNodeWithTag(UiTags.OPEN_HISTORY).performClick()\n"
+    assert edited != text
+    copy = tmp_path / "UiTagsDisplayedTest.kt"
+    copy.write_text(edited, encoding="utf-8")
+    monkeypatch.setattr(ui_inventory, "DISPLAYED_TEST", copy)
+
+    assert any("UiTags.OPEN_HISTORY" in p and "is not shown by UiTagsDisplayedTest" in p for p in ui_inventory.problems())
+
+
 def test_a_csv_that_is_not_what_the_generator_writes_is_reported(monkeypatch, tmp_path):
     stale = tmp_path / "ui-inventory.csv"
     stale.write_bytes(ui_inventory.INVENTORY_CSV.read_bytes() + b"extra,row\r\n")

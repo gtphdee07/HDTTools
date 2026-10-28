@@ -58,15 +58,23 @@
   },
   {
    "n": 15,
-   "id": "picker.new_rig_label"
+   "id": "picker.rig_delete_button"
   },
   {
    "n": 16,
-   "id": "picker.new_rig_input"
+   "id": "picker.new_rig_label"
   },
   {
    "n": 17,
+   "id": "picker.new_rig_input"
+  },
+  {
+   "n": 18,
    "id": "picker.create_button"
+  },
+  {
+   "n": 19,
+   "id": "picker.feedback_link"
   }
  ],
  "rig_picker__account_menu": [
@@ -139,6 +147,84 @@
   {
    "n": 13,
    "id": "picker.create_button"
+  },
+  {
+   "n": 14,
+   "id": "picker.feedback_link"
+  }
+ ],
+ "rig_picker__feedback_no_mail": [
+  {
+   "n": 1,
+   "id": "picker.logo"
+  },
+  {
+   "n": 2,
+   "id": "picker.app_title"
+  },
+  {
+   "n": 3,
+   "id": "picker.tagline"
+  },
+  {
+   "n": 4,
+   "id": "picker.credit_chip"
+  },
+  {
+   "n": 5,
+   "id": "picker.account_status"
+  },
+  {
+   "n": 6,
+   "id": "picker.account_avatar"
+  },
+  {
+   "n": 7,
+   "id": "picker.subheading"
+  },
+  {
+   "n": 8,
+   "id": "picker.rig_card"
+  },
+  {
+   "n": 9,
+   "id": "picker.rig_avatar"
+  },
+  {
+   "n": 10,
+   "id": "picker.rig_nickname"
+  },
+  {
+   "n": 11,
+   "id": "picker.rig_subtitle"
+  },
+  {
+   "n": 12,
+   "id": "picker.rig_last_checked"
+  },
+  {
+   "n": 13,
+   "id": "picker.rig_delete_button"
+  },
+  {
+   "n": 14,
+   "id": "picker.new_rig_label"
+  },
+  {
+   "n": 15,
+   "id": "picker.new_rig_input"
+  },
+  {
+   "n": 16,
+   "id": "picker.create_button"
+  },
+  {
+   "n": 17,
+   "id": "picker.feedback_link"
+  },
+  {
+   "n": 18,
+   "id": "picker.feedback_no_mail"
   }
  ],
  "rig_picker__new_rig_typing": [
@@ -168,19 +254,19 @@
   },
   {
    "n": 7,
-   "id": "picker.rig_last_checked"
-  },
-  {
-   "n": 8,
    "id": "picker.new_rig_label"
   },
   {
-   "n": 9,
+   "n": 8,
    "id": "picker.new_rig_input"
   },
   {
-   "n": 10,
+   "n": 9,
    "id": "picker.create_button"
+  },
+  {
+   "n": 10,
+   "id": "picker.feedback_link"
   }
  ],
  "chooser__truck": [
@@ -1776,38 +1862,42 @@
   },
   {
    "n": 3,
-   "id": "paywall.account_label"
+   "id": "paywall.beta_label"
   },
   {
    "n": 4,
-   "id": "paywall.sign_out_button"
+   "id": "paywall.account_label"
   },
   {
    "n": 5,
-   "id": "paywall.plan_label"
+   "id": "paywall.sign_out_button"
   },
   {
    "n": 6,
-   "id": "paywall.explainer"
+   "id": "paywall.plan_label"
   },
   {
    "n": 7,
-   "id": "paywall.offer_card"
+   "id": "paywall.explainer"
   },
   {
    "n": 8,
-   "id": "paywall.offer_title"
+   "id": "paywall.offer_card"
   },
   {
    "n": 9,
-   "id": "paywall.offer_description"
+   "id": "paywall.offer_title"
   },
   {
    "n": 10,
-   "id": "paywall.buy_button"
+   "id": "paywall.offer_description"
   },
   {
    "n": 11,
+   "id": "paywall.buy_button"
+  },
+  {
+   "n": 12,
    "id": "paywall.restore_button"
   }
  ],
@@ -1822,38 +1912,42 @@
   },
   {
    "n": 3,
-   "id": "paywall.account_label"
+   "id": "paywall.beta_label"
   },
   {
    "n": 4,
-   "id": "paywall.sign_out_button"
+   "id": "paywall.account_label"
   },
   {
    "n": 5,
-   "id": "paywall.plan_label"
+   "id": "paywall.sign_out_button"
   },
   {
    "n": 6,
-   "id": "paywall.explainer"
+   "id": "paywall.plan_label"
   },
   {
    "n": 7,
-   "id": "paywall.offer_card"
+   "id": "paywall.explainer"
   },
   {
    "n": 8,
-   "id": "paywall.offer_title"
+   "id": "paywall.offer_card"
   },
   {
    "n": 9,
-   "id": "paywall.offer_description"
+   "id": "paywall.offer_title"
   },
   {
    "n": 10,
-   "id": "paywall.buy_button"
+   "id": "paywall.offer_description"
   },
   {
    "n": 11,
+   "id": "paywall.buy_button"
+  },
+  {
+   "n": 12,
    "id": "paywall.restore_button"
   }
  ],
@@ -1868,26 +1962,30 @@
   },
   {
    "n": 3,
-   "id": "paywall.account_label"
+   "id": "paywall.beta_label"
   },
   {
    "n": 4,
-   "id": "paywall.sign_out_button"
+   "id": "paywall.account_label"
   },
   {
    "n": 5,
-   "id": "paywall.plan_label"
+   "id": "paywall.sign_out_button"
   },
   {
    "n": 6,
-   "id": "paywall.explainer"
+   "id": "paywall.plan_label"
   },
   {
    "n": 7,
-   "id": "paywall.no_pro"
+   "id": "paywall.explainer"
   },
   {
    "n": 8,
+   "id": "paywall.no_pro"
+  },
+  {
+   "n": 9,
    "id": "paywall.restore_button"
   }
  ],
@@ -1902,42 +2000,46 @@
   },
   {
    "n": 3,
-   "id": "paywall.account_label"
+   "id": "paywall.beta_label"
   },
   {
    "n": 4,
-   "id": "paywall.sign_out_button"
+   "id": "paywall.account_label"
   },
   {
    "n": 5,
-   "id": "paywall.plan_label"
+   "id": "paywall.sign_out_button"
   },
   {
    "n": 6,
-   "id": "paywall.explainer"
+   "id": "paywall.plan_label"
   },
   {
    "n": 7,
-   "id": "paywall.offer_card"
+   "id": "paywall.explainer"
   },
   {
    "n": 8,
-   "id": "paywall.offer_title"
+   "id": "paywall.offer_card"
   },
   {
    "n": 9,
-   "id": "paywall.offer_description"
+   "id": "paywall.offer_title"
   },
   {
    "n": 10,
-   "id": "paywall.buy_button"
+   "id": "paywall.offer_description"
   },
   {
    "n": 11,
-   "id": "paywall.restore_button"
+   "id": "paywall.buy_button"
   },
   {
    "n": 12,
+   "id": "paywall.restore_button"
+  },
+  {
+   "n": 13,
    "id": "paywall.toast"
   }
  ],
@@ -1952,26 +2054,30 @@
   },
   {
    "n": 3,
-   "id": "paywall.account_label"
+   "id": "paywall.beta_label"
   },
   {
    "n": 4,
-   "id": "paywall.sign_out_button"
+   "id": "paywall.account_label"
   },
   {
    "n": 5,
-   "id": "paywall.plan_label"
+   "id": "paywall.sign_out_button"
   },
   {
    "n": 6,
-   "id": "paywall.explainer"
+   "id": "paywall.plan_label"
   },
   {
    "n": 7,
-   "id": "paywall.no_packs"
+   "id": "paywall.explainer"
   },
   {
    "n": 8,
+   "id": "paywall.no_packs"
+  },
+  {
+   "n": 9,
    "id": "paywall.restore_button"
   }
  ],
@@ -1986,30 +2092,34 @@
   },
   {
    "n": 3,
-   "id": "paywall.account_label"
+   "id": "paywall.beta_label"
   },
   {
    "n": 4,
-   "id": "paywall.sign_out_button"
+   "id": "paywall.account_label"
   },
   {
    "n": 5,
-   "id": "paywall.plan_label"
+   "id": "paywall.sign_out_button"
   },
   {
    "n": 6,
-   "id": "paywall.explainer"
+   "id": "paywall.plan_label"
   },
   {
    "n": 7,
-   "id": "paywall.pro_bought"
+   "id": "paywall.explainer"
   },
   {
    "n": 8,
-   "id": "paywall.retry_button"
+   "id": "paywall.pro_bought"
   },
   {
    "n": 9,
+   "id": "paywall.retry_button"
+  },
+  {
+   "n": 10,
    "id": "paywall.restore_button"
   }
  ],
@@ -2024,26 +2134,30 @@
   },
   {
    "n": 3,
-   "id": "paywall.account_label"
+   "id": "paywall.beta_label"
   },
   {
    "n": 4,
-   "id": "paywall.sign_out_button"
+   "id": "paywall.account_label"
   },
   {
    "n": 5,
-   "id": "paywall.plan_label"
+   "id": "paywall.sign_out_button"
   },
   {
    "n": 6,
-   "id": "paywall.explainer"
+   "id": "paywall.plan_label"
   },
   {
    "n": 7,
-   "id": "paywall.loading"
+   "id": "paywall.explainer"
   },
   {
    "n": 8,
+   "id": "paywall.loading"
+  },
+  {
+   "n": 9,
    "id": "paywall.restore_button"
   }
  ],
@@ -2058,26 +2172,30 @@
   },
   {
    "n": 3,
-   "id": "paywall.account_label"
+   "id": "paywall.beta_label"
   },
   {
    "n": 4,
-   "id": "paywall.sign_out_button"
+   "id": "paywall.account_label"
   },
   {
    "n": 5,
-   "id": "paywall.plan_label"
+   "id": "paywall.sign_out_button"
   },
   {
    "n": 6,
-   "id": "paywall.explainer"
+   "id": "paywall.plan_label"
   },
   {
    "n": 7,
-   "id": "paywall.load_error"
+   "id": "paywall.explainer"
   },
   {
    "n": 8,
+   "id": "paywall.load_error"
+  },
+  {
+   "n": 9,
    "id": "paywall.restore_button"
   }
  ],
@@ -2092,26 +2210,30 @@
   },
   {
    "n": 3,
-   "id": "paywall.account_label"
+   "id": "paywall.beta_label"
   },
   {
    "n": 4,
-   "id": "paywall.sign_out_button"
+   "id": "paywall.account_label"
   },
   {
    "n": 5,
-   "id": "paywall.explainer"
+   "id": "paywall.sign_out_button"
   },
   {
    "n": 6,
-   "id": "paywall.plan_unknown"
+   "id": "paywall.explainer"
   },
   {
    "n": 7,
-   "id": "paywall.retry_button"
+   "id": "paywall.plan_unknown"
   },
   {
    "n": 8,
+   "id": "paywall.retry_button"
+  },
+  {
+   "n": 9,
    "id": "paywall.restore_button"
   }
  ],
@@ -2158,6 +2280,10 @@
   },
   {
    "n": 11,
+   "id": "account.feedback_link"
+  },
+  {
+   "n": 12,
    "id": "account.not_now_button"
   }
  ],
@@ -2200,6 +2326,10 @@
   },
   {
    "n": 10,
+   "id": "account.feedback_link"
+  },
+  {
+   "n": 11,
    "id": "account.not_now_button"
   }
  ],
@@ -2250,6 +2380,10 @@
   },
   {
    "n": 12,
+   "id": "account.feedback_link"
+  },
+  {
+   "n": 13,
    "id": "account.not_now_button"
   }
  ],
@@ -2300,6 +2434,10 @@
   },
   {
    "n": 12,
+   "id": "account.feedback_link"
+  },
+  {
+   "n": 13,
    "id": "account.not_now_button"
   }
  ],
@@ -2346,6 +2484,10 @@
   },
   {
    "n": 11,
+   "id": "account.feedback_link"
+  },
+  {
+   "n": 12,
    "id": "account.not_now_button"
   }
  ],
@@ -2380,6 +2522,60 @@
   },
   {
    "n": 8,
+   "id": "account.not_now_button"
+  }
+ ],
+ "account__feedback_no_mail": [
+  {
+   "n": 1,
+   "id": "account.back"
+  },
+  {
+   "n": 2,
+   "id": "account.title"
+  },
+  {
+   "n": 3,
+   "id": "account.reason"
+  },
+  {
+   "n": 4,
+   "id": "account.email_field"
+  },
+  {
+   "n": 5,
+   "id": "account.password_field"
+  },
+  {
+   "n": 6,
+   "id": "account.submit_button"
+  },
+  {
+   "n": 7,
+   "id": "account.toggle_mode"
+  },
+  {
+   "n": 8,
+   "id": "account.forgot_password"
+  },
+  {
+   "n": 9,
+   "id": "account.divider"
+  },
+  {
+   "n": 10,
+   "id": "account.google_button"
+  },
+  {
+   "n": 11,
+   "id": "account.feedback_link"
+  },
+  {
+   "n": 12,
+   "id": "account.feedback_no_mail"
+  },
+  {
+   "n": 13,
    "id": "account.not_now_button"
   }
  ],
@@ -2430,6 +2626,10 @@
   },
   {
    "n": 12,
+   "id": "account.feedback_link"
+  },
+  {
+   "n": 13,
    "id": "account.not_now_button"
   }
  ],
@@ -2531,6 +2731,104 @@
   {
    "n": 3,
    "id": "late_scan.ok_button"
+  }
+ ],
+ "delete_rig_dialog__question": [
+  {
+   "n": 1,
+   "id": "delete_rig.dialog"
+  },
+  {
+   "n": 2,
+   "id": "delete_rig.title"
+  },
+  {
+   "n": 3,
+   "id": "delete_rig.body"
+  },
+  {
+   "n": 4,
+   "id": "delete_rig.confirm_button"
+  },
+  {
+   "n": 5,
+   "id": "delete_rig.cancel_button"
+  }
+ ],
+ "delete_rig_dialog__deleting": [
+  {
+   "n": 1,
+   "id": "delete_rig.dialog"
+  },
+  {
+   "n": 2,
+   "id": "delete_rig.title"
+  },
+  {
+   "n": 3,
+   "id": "delete_rig.body"
+  },
+  {
+   "n": 4,
+   "id": "delete_rig.confirm_button"
+  },
+  {
+   "n": 5,
+   "id": "delete_rig.cancel_button"
+  }
+ ],
+ "delete_rig_dialog__delete_failed": [
+  {
+   "n": 1,
+   "id": "delete_rig.dialog"
+  },
+  {
+   "n": 2,
+   "id": "delete_rig.title"
+  },
+  {
+   "n": 3,
+   "id": "delete_rig.body"
+  },
+  {
+   "n": 4,
+   "id": "delete_rig.error"
+  },
+  {
+   "n": 5,
+   "id": "delete_rig.confirm_button"
+  },
+  {
+   "n": 6,
+   "id": "delete_rig.cancel_button"
+  }
+ ],
+ "crash_report_dialog__question": [
+  {
+   "n": 1,
+   "id": "crash_prompt.question"
+  },
+  {
+   "n": 2,
+   "id": "crash_prompt.details"
+  },
+  {
+   "n": 3,
+   "id": "crash_prompt.send_button"
+  },
+  {
+   "n": 4,
+   "id": "crash_prompt.dismiss_button"
+  }
+ ],
+ "crash_report_dialog__no_email_app": [
+  {
+   "n": 1,
+   "id": "crash_prompt.no_mail_app"
+  },
+  {
+   "n": 2,
+   "id": "crash_prompt.dismiss_button"
   }
  ],
  "splash__default": [

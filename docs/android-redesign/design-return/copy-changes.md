@@ -49,3 +49,9 @@ These appear in the frames only to make them look real. They come from the store
 - The plan limits in the History notice ("last 10 checks", "last 100"). The real numbers come from the plan configuration.
 - The Account error sentence.
 - The row notes are the real notes from `breakdown.py`.
+
+## Follow-up round (17 controls)
+
+No string was changed. The new frames use the inventory's text exactly, including `Delete "<nickname>"?`, "Yes, delete", "Deleting…", "Send feedback", the no-mail line, the crash-report question and details, and the Paywall beta line. These strings are not yet reviewed by the owner (see `DESIGN_FOLLOWUP_BRIEF.md`).
+
+The only text in the new frames that is not from the inventory is sample data: the feedback address in the no-mail lines is the beta address `WTIAppDev@gmail.com` from `docs/BETA_PLAN.md`, and the app shows its own constant. New content descriptions: "Delete <nickname>" (already in the inventory).

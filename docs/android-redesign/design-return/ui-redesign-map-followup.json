@@ -1,0 +1,673 @@
+{
+ "about": "Follow-up design round for the 17 controls the first hand-back did not cover (DESIGN_FOLLOWUP_BRIEF.md). Same format as ui-redesign-map.json: each entry is the updated inventory record with `redesign` filled. Sizes, regions and order are measured from the rendered frames.",
+ "inventory_elements": 167,
+ "status_note": "redesign.status is the first word of meta.status_values, as in the first map. `moved` here means the region changed against the inventory's `today`.",
+ "elements": [
+  {
+   "id": "picker.rig_delete_button",
+   "screen": "rig_picker",
+   "kind": "icon-button",
+   "name": "Delete rig button (repeats)",
+   "function": "Asks whether to delete this saved Rig from the Garage; does not start a check.",
+   "text": "(Delete icon)",
+   "visible_when": "signed in (Rigs can be deleted); one per saved rig",
+   "navigates_to": "delete_rig_dialog",
+   "today": {
+    "region": "body",
+    "order": 11,
+    "width": "48dp (M3 default)",
+    "height": "48dp",
+    "style": "M3 IconButton, Delete icon, content description 'Delete <nickname>'"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_rig_delete",
+   "tests_referencing": {
+    "UiTagsDisplayedTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 15,
+    "new_width": "48dp",
+    "new_height": "48dp",
+    "new_style": "IconButton/48",
+    "new_text": null,
+    "new_test_tag": "picker_rig_delete",
+    "notes": "Answer to question 1. A 48 x 48 dp icon button at the right end of every Rig card: a 24 dp trash icon in ink-muted, after a 1 dp vertical divider (40 dp tall) and with a 4 dp right margin. The divider splits the card in two: the left part (avatar, text, chevron) is the only part that starts a check, the right part is the bin and nothing else. Their ripples and hit areas never overlap, so a tap on the bin cannot start a check. Content description \"Delete <nickname>\". Shown only when signed in. One per card; the frame tags the first card, the others repeat. Pressed: ripple confined to the bin, icon turns danger-text. Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.feedback_link",
+   "screen": "rig_picker",
+   "kind": "text-button",
+   "name": "Send feedback link",
+   "function": "Opens a new email to the beta feedback address (#182).",
+   "text": "Send feedback",
+   "visible_when": "always",
+   "navigates_to": "email app",
+   "today": {
+    "region": "footer",
+    "order": 15,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton, primary (orange) text"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "picker_feedback_link",
+   "tests_referencing": {
+    "FeedbackLinkTest.kt": 3,
+    "RigPickerScreenTest.kt": 1,
+    "UiTagsDisplayedTest.kt": 3
+   },
+   "redesign": {
+    "status": "moved",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 19,
+    "new_width": "wrap",
+    "new_height": "48dp",
+    "new_style": "Button/Ghost",
+    "new_text": null,
+    "new_test_tag": "picker_feedback_link",
+    "notes": "Ghost button (teal-deep text, 48 dp high) centred at the end of the scrolling body, below the new-rig panel. It was orange text in the footer; orange text fails contrast on white, and the screen has no pinned footer, so it moved into the body. Opens the email app. Drawn in rig_picker__in.png."
+   }
+  },
+  {
+   "id": "picker.feedback_no_mail",
+   "screen": "rig_picker",
+   "kind": "text",
+   "name": "No email app line",
+   "function": "Tells a phone with no email app where to write instead.",
+   "text": "This phone has no email app. Write to <feedback address> instead.",
+   "visible_when": "after Send feedback is tapped on a phone with no email app",
+   "navigates_to": null,
+   "today": {
+    "region": "footer",
+    "order": 16,
+    "width": "wrap",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": "send_feedback_no_mail_app",
+   "test_tag_new": "send_feedback_no_mail_app",
+   "tests_referencing": {
+    "FeedbackLinkTest.kt": 2,
+    "UiTagsDisplayedTest.kt": 1
+   },
+   "redesign": {
+    "status": "moved",
+    "new_screen": "rig_picker",
+    "new_region": "body",
+    "new_order": 18,
+    "new_width": "fill",
+    "new_height": "wrap (~36dp)",
+    "new_style": "DM Sans 400 13/18 ink-muted",
+    "new_text": null,
+    "new_test_tag": "send_feedback_no_mail_app",
+    "notes": "Caption (13/18, ink-muted, centred) directly under the link. The address in the frame, WTIAppDev@gmail.com, is the beta address from docs/BETA_PLAN.md; the app fills in its own constant. Drawn in rig_picker__feedback_no_mail.png."
+   }
+  },
+  {
+   "id": "account.feedback_link",
+   "screen": "account",
+   "kind": "text-button",
+   "name": "Send feedback link",
+   "function": "Opens a new email to the beta feedback address, for trouble signing in (#182).",
+   "text": "Send feedback",
+   "visible_when": "always",
+   "navigates_to": "email app",
+   "today": {
+    "region": "body",
+    "order": 14,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton, primary (orange) text"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "account_feedback_link",
+   "tests_referencing": {
+    "AccountScreenTest.kt": 1,
+    "UiTagsDisplayedTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "account",
+    "new_region": "body",
+    "new_order": 11,
+    "new_width": "wrap",
+    "new_height": "48dp",
+    "new_style": "Button/Ghost",
+    "new_text": null,
+    "new_test_tag": "account_feedback_link",
+    "notes": "Ghost button, 48 dp, centred below \"Continue with Google\" (and \"Continue with Apple\" when enabled), above the pinned \"Not now\". Same component as picker.feedback_link. Not hidden while an account request is busy, so a user stuck on sign-in can still write. Drawn in account__sign_in.png."
+   }
+  },
+  {
+   "id": "account.feedback_no_mail",
+   "screen": "account",
+   "kind": "text",
+   "name": "No email app line",
+   "function": "Tells a phone with no email app where to write instead.",
+   "text": "This phone has no email app. Write to <feedback address> instead.",
+   "visible_when": "after Send feedback is tapped on a phone with no email app",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 15,
+    "width": "wrap",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": "send_feedback_no_mail_app",
+   "test_tag_new": "send_feedback_no_mail_app",
+   "tests_referencing": {
+    "FeedbackLinkTest.kt": 2,
+    "UiTagsDisplayedTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "account",
+    "new_region": "body",
+    "new_order": 12,
+    "new_width": "fill",
+    "new_height": "wrap (~36dp)",
+    "new_style": "DM Sans 400 13/18 ink-muted",
+    "new_text": null,
+    "new_test_tag": "send_feedback_no_mail_app",
+    "notes": "Caption under the link, same style as picker.feedback_no_mail. Drawn in account__feedback_no_mail.png."
+   }
+  },
+  {
+   "id": "paywall.beta_label",
+   "screen": "paywall",
+   "kind": "text",
+   "name": "Beta label",
+   "function": "Says the offers are bought with test cards (beta build only, #182).",
+   "text": "Beta: test payments. Every purchase uses a test card; no real money moves.",
+   "visible_when": "beta build only (BuildConfig.IS_BETA)",
+   "navigates_to": null,
+   "today": {
+    "region": "body",
+    "order": 5,
+    "width": "fill",
+    "height": "wrap",
+    "style": "bodyMedium Bold"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "paywall_beta_label",
+   "tests_referencing": {
+    "PaywallScreenTest.kt": 2,
+    "UiTagsDisplayedTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "paywall",
+    "new_region": "body",
+    "new_order": 3,
+    "new_width": "fill",
+    "new_height": "wrap (~64dp)",
+    "new_style": "Notice",
+    "new_text": null,
+    "new_test_tag": "paywall_beta_label",
+    "notes": "Notice card, tone \"scan\" (tint-orange fill, orange-deep info icon), bold body-sm text, full width at the very top of the body, above the \"Buying for\" line. BETA BUILD ONLY: every Paywall frame in this round is drawn as a beta build shows it. A production build leaves the notice out and everything below moves up by 80 dp. Drawn in paywall__free_pro_offer.png."
+   }
+  },
+  {
+   "id": "delete_rig.dialog",
+   "screen": "delete_rig_dialog",
+   "kind": "dialog",
+   "name": "Delete-rig dialog",
+   "function": "The dialog around the delete question (#169).",
+   "text": null,
+   "visible_when": "after the delete control of a saved Rig",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 1,
+    "width": "M3 dialog",
+    "height": "wrap",
+    "style": "M3 AlertDialog"
+   },
+   "test_tag_today": "delete_rig_dialog",
+   "test_tag_new": "delete_rig_dialog",
+   "tests_referencing": {
+    "RigPickerScreenTest.kt": 7,
+    "UiTagsDisplayedTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "delete_rig_dialog",
+    "new_region": "overlay",
+    "new_order": 1,
+    "new_width": "fill",
+    "new_height": "wrap (~268dp)",
+    "new_style": "Dialog",
+    "new_text": null,
+    "new_test_tag": "delete_rig_dialog",
+    "notes": "Answer: keeps the Material 3 AlertDialog shape, restyled like the Scan failed dialog (24 dp radius, 24 dp padding, 364 dp wide, shadow md, scrim at 55%). Opens over the Rig picker. Dismiss by scrim tap or Back is the same as Cancel, and is ignored while the delete runs. Drawn in delete_rig_dialog__question.png."
+   }
+  },
+  {
+   "id": "delete_rig.title",
+   "screen": "delete_rig_dialog",
+   "kind": "dialog-title",
+   "name": "Dialog title",
+   "function": "Names the Rig that would be deleted.",
+   "text": "Delete \"<nickname>\"?",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 2,
+    "width": "M3 dialog",
+    "height": "wrap",
+    "style": "M3 AlertDialog"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "delete_rig_title",
+   "tests_referencing": {
+    "RigPickerScreenTest.kt": 1,
+    "UiTagsDisplayedTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "delete_rig_dialog",
+    "new_region": "overlay",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~28dp)",
+    "new_style": "Outfit 700 22/28 ink",
+    "new_text": null,
+    "new_test_tag": "delete_rig_title",
+    "notes": "Title style title-lg (Outfit 700 22/28). The nickname is quoted. Drawn in delete_rig_dialog__question.png."
+   }
+  },
+  {
+   "id": "delete_rig.body",
+   "screen": "delete_rig_dialog",
+   "kind": "text",
+   "name": "Dialog body",
+   "function": "Says what deleting does.",
+   "text": "This frees its spot in your Garage and can't be undone.",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 3,
+    "width": "M3 dialog",
+    "height": "wrap",
+    "style": "bodyMedium"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "delete_rig_body",
+   "tests_referencing": {
+    "UiTagsDisplayedTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "delete_rig_dialog",
+    "new_region": "overlay",
+    "new_order": 3,
+    "new_width": "wrap",
+    "new_height": "wrap (~48dp)",
+    "new_style": "DM Sans 400 16/24 ink",
+    "new_text": null,
+    "new_test_tag": "delete_rig_body",
+    "notes": "Body 16/24 ink. Drawn in delete_rig_dialog__question.png."
+   }
+  },
+  {
+   "id": "delete_rig.error",
+   "screen": "delete_rig_dialog",
+   "kind": "text",
+   "name": "Delete error",
+   "function": "Says the delete failed and the Rig is still in the Garage.",
+   "text": "We couldn't delete \"<nickname>\". It's still in your Garage; please try again.",
+   "visible_when": "after a failed delete",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 4,
+    "width": "M3 dialog",
+    "height": "wrap",
+    "style": "bodyMedium, error colour"
+   },
+   "test_tag_today": "delete_rig_error",
+   "test_tag_new": "delete_rig_error",
+   "tests_referencing": {
+    "RigPickerScreenTest.kt": 2,
+    "UiTagsDisplayedTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "delete_rig_dialog",
+    "new_region": "overlay",
+    "new_order": 4,
+    "new_width": "wrap",
+    "new_height": "wrap (~40dp)",
+    "new_style": "DM Sans 500 14/20 danger-text",
+    "new_text": null,
+    "new_test_tag": "delete_rig_error",
+    "notes": "Only after a failed delete (frame delete_rig_dialog__delete_failed). body-sm 500 in danger-text, under the body text, above the buttons. The dialog stays open so the user can try again. Drawn in delete_rig_dialog__delete_failed.png."
+   }
+  },
+  {
+   "id": "delete_rig.confirm_button",
+   "screen": "delete_rig_dialog",
+   "kind": "text-button",
+   "name": "Yes, delete",
+   "function": "Deletes the Rig; the dialog stays open with the error if that fails.",
+   "text": "Yes, delete | Deleting…",
+   "visible_when": "always (off while the delete runs)",
+   "navigates_to": "rig_picker",
+   "today": {
+    "region": "overlay",
+    "order": 5,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton"
+   },
+   "test_tag_today": "delete_rig_confirm",
+   "test_tag_new": "delete_rig_confirm",
+   "tests_referencing": {
+    "GarageNavigationTest.kt": 1,
+    "RigPickerScreenTest.kt": 4,
+    "UiTagsDisplayedTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "delete_rig_dialog",
+    "new_region": "overlay",
+    "new_order": 4,
+    "new_width": "wrap",
+    "new_height": "52dp",
+    "new_style": "Button/Destructive",
+    "new_text": null,
+    "new_test_tag": "delete_rig_confirm",
+    "notes": "Destructive button, 52 dp, full width, first of the stacked buttons. While the delete runs it reads \"Deleting…\" and is drawn disabled (frame delete_rig_dialog__deleting). Drawn in delete_rig_dialog__question.png."
+   }
+  },
+  {
+   "id": "delete_rig.cancel_button",
+   "screen": "delete_rig_dialog",
+   "kind": "text-button",
+   "name": "Cancel",
+   "function": "Closes the dialog without deleting.",
+   "text": "Cancel",
+   "visible_when": "always (off while the delete runs)",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 6,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton"
+   },
+   "test_tag_today": "delete_rig_cancel",
+   "test_tag_new": "delete_rig_cancel",
+   "tests_referencing": {
+    "RigPickerScreenTest.kt": 1,
+    "UiTagsDisplayedTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "delete_rig_dialog",
+    "new_region": "overlay",
+    "new_order": 5,
+    "new_width": "wrap",
+    "new_height": "52dp",
+    "new_style": "Button/Ghost",
+    "new_text": null,
+    "new_test_tag": "delete_rig_cancel",
+    "notes": "Ghost button, 52 dp, below the confirm button. Disabled while the delete runs. Drawn in delete_rig_dialog__question.png."
+   }
+  },
+  {
+   "id": "crash_prompt.question",
+   "screen": "crash_report_dialog",
+   "kind": "text",
+   "name": "Question",
+   "function": "Asks whether to send details of last time's crash (#184).",
+   "text": "RigCheck closed unexpectedly last time. Send details?",
+   "visible_when": "at launch, while a saved crash report is waiting (until answered)",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 1,
+    "width": "M3 dialog",
+    "height": "wrap",
+    "style": "M3 AlertDialog body"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "crash_prompt_question",
+   "tests_referencing": {
+    "CrashReportPromptTest.kt": 7,
+    "UiTagsDisplayedTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "crash_report_dialog",
+    "new_region": "overlay",
+    "new_order": 1,
+    "new_width": "wrap",
+    "new_height": "wrap (~56dp)",
+    "new_style": "Outfit 700 22/28 ink",
+    "new_text": null,
+    "new_test_tag": "crash_prompt_question",
+    "notes": "Drawn as the dialog heading (title-lg) because there is no separate title; today it is the AlertDialog body. Opens over whatever screen the app starts on (the frame uses the Rig picker). Replaced by crash_prompt.no_mail_app when Send finds no mail app. Drawn in crash_report_dialog__question.png."
+   }
+  },
+  {
+   "id": "crash_prompt.details",
+   "screen": "crash_report_dialog",
+   "kind": "text",
+   "name": "What the report holds",
+   "function": "Says what is in the report and that nothing is sent unless Send is tapped.",
+   "text": "It holds the error, the app version, your Android version and phone model. Nothing about your account or your rigs. Nothing is sent unless you tap Send.",
+   "visible_when": "same as the question",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 2,
+    "width": "M3 dialog",
+    "height": "wrap",
+    "style": "bodySmall"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "crash_prompt_details",
+   "tests_referencing": {
+    "UiTagsDisplayedTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "crash_report_dialog",
+    "new_region": "overlay",
+    "new_order": 2,
+    "new_width": "wrap",
+    "new_height": "wrap (~80dp)",
+    "new_style": "DM Sans 400 14/20 ink-muted",
+    "new_text": null,
+    "new_test_tag": "crash_prompt_details",
+    "notes": "body-sm in ink-muted under the question. Hidden together with the question after \"no email app\". Drawn in crash_report_dialog__question.png."
+   }
+  },
+  {
+   "id": "crash_prompt.no_mail_app",
+   "screen": "crash_report_dialog",
+   "kind": "text",
+   "name": "No email app line",
+   "function": "Replaces the question when Send finds no email app.",
+   "text": "This phone has no email app. Write to <feedback address> instead.",
+   "visible_when": "after Send is tapped on a phone with no email app",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 3,
+    "width": "M3 dialog",
+    "height": "wrap",
+    "style": "M3 AlertDialog body"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "crash_prompt_no_mail_app",
+   "tests_referencing": {
+    "CrashReportPromptTest.kt": 1,
+    "UiTagsDisplayedTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "crash_report_dialog",
+    "new_region": "overlay",
+    "new_order": 1,
+    "new_width": "wrap",
+    "new_height": "wrap (~48dp)",
+    "new_style": "DM Sans 400 16/24 ink",
+    "new_text": null,
+    "new_test_tag": "crash_prompt_no_mail_app",
+    "notes": "Replaces the question and details (frame crash_report_dialog__no_email_app). Body 16/24 in ink. The address in the frame is the beta address; the app fills in its own constant. Drawn in crash_report_dialog__no_email_app.png."
+   }
+  },
+  {
+   "id": "crash_prompt.send_button",
+   "screen": "crash_report_dialog",
+   "kind": "text-button",
+   "name": "Send",
+   "function": "Opens an email to the feedback address with the report as its body and deletes the report.",
+   "text": "Send",
+   "visible_when": "while the question is shown (not after 'no email app')",
+   "navigates_to": "email app",
+   "today": {
+    "region": "overlay",
+    "order": 4,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "crash_prompt_send",
+   "tests_referencing": {
+    "CrashReportPromptTest.kt": 2,
+    "UiTagsDisplayedTest.kt": 2
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "crash_report_dialog",
+    "new_region": "overlay",
+    "new_order": 3,
+    "new_width": "wrap",
+    "new_height": "52dp",
+    "new_style": "Button/Primary",
+    "new_text": null,
+    "new_test_tag": "crash_prompt_send",
+    "notes": "Primary button, 52 dp, full width, first of the stacked buttons. Hidden once the no-mail line replaces the question. Drawn in crash_report_dialog__question.png."
+   }
+  },
+  {
+   "id": "crash_prompt.dismiss_button",
+   "screen": "crash_report_dialog",
+   "kind": "text-button",
+   "name": "Not now / OK",
+   "function": "Throws the report away and closes the dialog.",
+   "text": "Not now | OK (after 'no email app')",
+   "visible_when": "always",
+   "navigates_to": null,
+   "today": {
+    "region": "overlay",
+    "order": 5,
+    "width": "wrap",
+    "height": "40dp (M3 default)",
+    "style": "M3 TextButton"
+   },
+   "test_tag_today": null,
+   "test_tag_new": "crash_prompt_dismiss",
+   "tests_referencing": {
+    "CrashReportPromptTest.kt": 3,
+    "UiTagsDisplayedTest.kt": 1
+   },
+   "redesign": {
+    "status": "restyled",
+    "new_screen": "crash_report_dialog",
+    "new_region": "overlay",
+    "new_order": 4,
+    "new_width": "wrap",
+    "new_height": "52dp",
+    "new_style": "Button/Ghost",
+    "new_text": null,
+    "new_test_tag": "crash_prompt_dismiss",
+    "notes": "Ghost button, 52 dp. Reads \"Not now\" with the question and \"OK\" after the no-mail line. It is the only button after the no-mail line. Drawn in crash_report_dialog__question.png."
+   }
+  }
+ ],
+ "added_elements": [],
+ "revised_elements": [
+  {
+   "id": "paywall.toast",
+   "replaces_first_round_entry": true,
+   "redesign": {
+    "status": "replaced",
+    "new_screen": "paywall",
+    "new_region": "overlay",
+    "new_order": 13,
+    "new_width": "fill",
+    "new_height": "48dp",
+    "new_style": "Snackbar",
+    "new_text": null,
+    "new_test_tag": "paywall_toast",
+    "notes": "Answer to question 2: replace the system Toast with a Material 3 Snackbar (same id, so no new id is needed). The frames already drew it: ink fill, white body-md text, 14 dp radius, 16 dp side margins, shadow md, sitting 148 dp above the bottom edge (above the pinned Restore button). Shown 4 s, then it fades. No action button. Needs a test tag: the updated inventory has none for paywall.toast (a system Toast cannot be tagged), so use \"paywall_toast\". Messages are unchanged (\"Purchase complete!\", \"Pro unlocked!\", \"Purchases restored.\", the store error). Code change: SnackbarHost in the Paywall re-skin ticket. Drawn in paywall__pro_packs.png."
+   }
+  }
+ ],
+ "answers": {
+  "bin_on_rig_card": "A 48 dp trash icon button at the right end of the card, behind a 1 dp vertical divider. The card body to the left of the divider is the only part that starts a check; the bin has its own hit area and ripple. See picker.rig_delete_button.",
+  "paywall_toast": "Replace the system Toast with a Snackbar; keep the id paywall.toast and give it the test tag paywall_toast. See revised_elements."
+ },
+ "frames": {
+  "new": [
+   "account__feedback_no_mail",
+   "crash_report_dialog__no_email_app",
+   "crash_report_dialog__question",
+   "delete_rig_dialog__delete_failed",
+   "delete_rig_dialog__deleting",
+   "delete_rig_dialog__question",
+   "rig_picker__feedback_no_mail"
+  ],
+  "reissued": [
+   "account__apple_enabled_future",
+   "account__busy",
+   "account__create_account",
+   "account__error",
+   "account__info_reset_sent",
+   "account__sign_in",
+   "late_scan_dialog__credit_used",
+   "paywall__free_busy",
+   "paywall__free_no_pro",
+   "paywall__free_pro_offer",
+   "paywall__load_error",
+   "paywall__loading",
+   "paywall__plan_unknown",
+   "paywall__pro_bought_waiting",
+   "paywall__pro_no_packs",
+   "paywall__pro_packs",
+   "rig_picker__account_menu",
+   "rig_picker__in",
+   "rig_picker__new_rig_typing",
+   "rig_picker__signed_out_empty"
+  ],
+  "beta_build_only": [
+   "paywall__free_busy",
+   "paywall__free_no_pro",
+   "paywall__free_pro_offer",
+   "paywall__load_error",
+   "paywall__loading",
+   "paywall__plan_unknown",
+   "paywall__pro_bought_waiting",
+   "paywall__pro_no_packs",
+   "paywall__pro_packs"
+  ]
+ },
+ "drift_notes": [
+  "paywall.back: the updated inventory (after #186) says it is an M3 TextButton with a 24 dp ArrowBack icon and the label \"Back\", not \"missing\". The first round drew an icon-only 48 dp back button for it (content description \"Back\"). If tests find it by the visible word \"Back\", the re-skin must keep that text or move those tests to the tag paywall_back. Nothing in the frames changes.",
+  "Every other first-round element: only tests_referencing changed in the updated inventory (the counts moved from text lookups to tag lookups)."
+ ],
+ "needs_new_function": "None. Everything drawn already exists in the app (#169, #172, #184)."
+}

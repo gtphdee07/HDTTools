@@ -40,8 +40,9 @@ Used on every screen except Disclaimer and Splash.
 - **Ids:** `chooser.scan_card`, `chooser.manual_card`.
 
 ## Rig card
+- Follow-up round: the card is split in two by a 1 dp `border` divider (40 dp tall). The left part is the card body and the only tap target that starts a check. The right part is the delete bin (see "Icon button on a card"). The card has no padding of its own: the body carries 12 x 8 x 12 x 16, the bin a 4 dp right margin.
 - Min height 84, 14 dp radius, 1 dp `border`, shadow `sm`, 12 x 16 padding. 52 dp avatar circle (tint fill, deep-colour initial, Outfit 800 22), nickname `title`, subtitle `body-sm` `ink-muted`, last checked `micro`, chevron at the right. Whole card taps. Avatars cycle teal, purple, orange tints.
-- **Ids:** `picker.rig_card`, `picker.rig_avatar`, `picker.rig_nickname`, `picker.rig_subtitle`, `picker.rig_last_checked`.
+- **Ids:** `picker.rig_card`, `picker.rig_avatar`, `picker.rig_nickname`, `picker.rig_subtitle`, `picker.rig_last_checked`, `picker.rig_delete_button`.
 
 ## Credit chip
 - 48 high, pill, white fill, shadow `sm`, 26 dp camera icon, label `chip`. Top right of the bar. Labels: "12 scans", "1 scan", "0 scans" (signed out), "…" only while a signed-in balance loads.
@@ -112,6 +113,26 @@ Used on every screen except Disclaimer and Splash.
 
 ## Overlay (Scan in flight)
 - White at 88% over the whole screen including the top bar, centred spinner and "Reading…". Blocks every tap, including Back and the account row.
+
+## Icon button on a card (follow-up round)
+- 48 x 48 dp circle, transparent fill, 24 dp `trash` glyph in `ink-muted`, 4 dp margin from the card's right edge, 1 dp `border` divider (40 dp tall) on its left. It is a sibling of the card body, not a child of its tap area, so the two hit areas and ripples never overlap.
+- States: pressed (ripple confined to the bin, glyph turns `danger-text`), focused (focus ring around the 48 dp circle), disabled (38% opacity, while a delete runs). Not drawn at all when signed out.
+- Content description "Delete <nickname>". Opens the Delete-Rig dialog; never starts a check.
+- **Ids:** `picker.rig_delete_button`.
+
+## Text link (Send feedback) (follow-up round)
+- The ghost button at 48 dp with `button-compact` text, centred, `teal-deep`. Same component as every other ghost button; there is no separate link style. Orange text is not used for links because it fails contrast on white.
+- Under it the no-mail line: `caption` (13/18) in `ink-muted`, centred, shown in place after the tap finds no mail app. The frame uses the beta address WTIAppDev@gmail.com; the app fills in its own constant.
+- **Ids:** `picker.feedback_link`, `picker.feedback_no_mail`, `account.feedback_link`, `account.feedback_no_mail`.
+
+## Dialog, destructive and crash prompt (follow-up round)
+- Same dialog as above (24 dp radius, 24 dp padding, 364 dp wide, shadow `md`, scrim 55%, 52 dp stacked buttons).
+- **Delete-Rig:** title (`title-lg`), body (`body`), optional error line (`body-sm`, 500, `danger-text`), then "Yes, delete" as the destructive button and "Cancel" as a ghost button. While the delete runs: "Deleting\u2026" and Cancel are drawn disabled; scrim tap and Back are ignored. Ids `delete_rig.dialog`, `delete_rig.title`, `delete_rig.body`, `delete_rig.error`, `delete_rig.confirm_button`, `delete_rig.cancel_button`.
+- **Crash report:** the question is drawn as the heading (`title-lg`), the details as `body-sm` in `ink-muted`, "Send" is the primary button and "Not now" a ghost button. After the no-mail line only "OK" remains. Ids `crash_prompt.question`, `crash_prompt.details`, `crash_prompt.no_mail_app`, `crash_prompt.send_button`, `crash_prompt.dismiss_button`.
+
+## Beta notice and Snackbar (follow-up round)
+- **Beta notice:** the existing Notice card, tone "scan" (tint-orange, orange-deep info icon), body text bold. Full width at the top of the Paywall body. Beta builds only; a production build leaves it out. Id `paywall.beta_label`.
+- **Snackbar:** replaces the system Toast on the Paywall. `ink` fill, white `body-md` text, 14 dp radius, 16 dp side margins, shadow `md`, 148 dp above the bottom edge so it clears the pinned Restore button, shown 4 s. No action button. Id `paywall.toast`, test tag `paywall_toast`.
 
 ## Splash and app icon
 See `assets/` and the frames `splash__default` and `app_icon__launcher`.

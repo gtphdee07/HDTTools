@@ -17,6 +17,18 @@ Editable design canvas (private to the owner): https://claude.ai/artifact/VQMbZM
 | 7 | Resize rules | [resize-rules.md](resize-rules.md) |
 | 8 | Interaction notes | [interaction-notes.md](interaction-notes.md) |
 
+## Follow-up round: 17 controls (added after the first hand-back)
+
+The first round had 150 elements; #188 raised the inventory to 167. This round covers the 17 added controls (the delete bin and its dialog, the Send feedback links, the Paywall beta label and the crash-report dialog). Brief: [../DESIGN_FOLLOWUP_BRIEF.md](../DESIGN_FOLLOWUP_BRIEF.md).
+
+- **Map:** [ui-redesign-map-followup.json](ui-redesign-map-followup.json). All 17 ids have a `redesign` block, `new_test_tag` equals the inventory's `test_tag_new`. It also lists the frames that are new or re-issued, one `revised_elements` entry (`paywall.toast`, now a Snackbar with the tag `paywall_toast`), and one `drift_notes` item (`paywall.back` is a TextButton with the word "Back" in the updated inventory).
+- **Frames:** 7 new (`rig_picker__feedback_no_mail`, `account__feedback_no_mail`, `delete_rig_dialog__question`, `__deleting`, `__delete_failed`, `crash_report_dialog__question`, `__no_email_app`) and 20 re-issued, because the bin, the feedback link or the beta label now shows in them (every Rig picker frame with Rig cards or the empty state, every Account frame except `keyboard_open`, all nine Paywall frames, and the backdrop of `late_scan_dialog__credit_used`). 43 first-round frames are byte-identical. Total 70 frames.
+- **Beta only:** all nine Paywall frames are drawn as a beta build shows them. A production build leaves out `paywall.beta_label` and everything below it moves up by 80 dp.
+- **Answers to the two questions:** the bin sits at the right end of the card behind a divider and has its own hit area; the Paywall toast becomes a Snackbar (same id). Both are in the follow-up map.
+- **Names:** `new_screen` and frame names use the inventory's `screen` values (`delete_rig_dialog`, `crash_report_dialog`).
+- The first map is not edited. Its `new_order` values for the Rig picker, Account and Paywall elements count from before these controls existed; the frames are the reference where they differ.
+- No `needs_new_function`: everything drawn already exists in the app.
+
 ## Reading the map
 - Ids are unchanged and none was reused. Every inventory id has a status. The value is the first word of `meta.status_values`: `kept`, `restyled`, `moved`, `merged`, `split`, `removed`, `replaced`. Added elements carry `added`.
 - Totals: 125 restyled, 16 moved, 8 replaced, 1 removed (`picker.header_divider`, replaced by the top bar's rounded edge), 0 kept, 0 merged, 0 split.

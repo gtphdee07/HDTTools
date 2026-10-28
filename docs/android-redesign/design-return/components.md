@@ -41,7 +41,7 @@ Used on every screen except Disclaimer and Splash.
 
 ## Rig card
 - Follow-up round: the card is split in two by a 1 dp `border` divider (40 dp tall). The left part is the card body and the only tap target that starts a check. The right part is the delete bin (see "Icon button on a card"). The card has no padding of its own: the body carries 12 x 8 x 12 x 16, the bin a 4 dp right margin.
-- Min height 84, 14 dp radius, 1 dp `border`, shadow `sm`, 12 x 16 padding. 52 dp avatar circle (tint fill, deep-colour initial, Outfit 800 22), nickname `title`, subtitle `body-sm` `ink-muted`, last checked `micro`, chevron at the right. Whole card taps. Avatars cycle teal, purple, orange tints.
+- Min height 84, 14 dp radius, 1 dp `border`, shadow `sm`, 12 x 16 padding. 52 dp avatar circle (tint fill, deep-colour initial, Outfit 800 22), nickname `title`, subtitle `body-sm` `ink-muted`, last checked `micro`, chevron at the right. Only the card body (left of the divider) taps; the delete bin is separate (follow-up round). Avatars cycle teal, purple, orange tints.
 - **Ids:** `picker.rig_card`, `picker.rig_avatar`, `picker.rig_nickname`, `picker.rig_subtitle`, `picker.rig_last_checked`, `picker.rig_delete_button`.
 
 ## Credit chip
@@ -105,7 +105,7 @@ Used on every screen except Disclaimer and Splash.
 - 4 dp track (`border`), `teal-deep` fill, 28 dp thumb with a 3 dp `teal-deep` ring and white centre, 48 dp touch height. 15 to 25%, default 20%.
 
 ## Progress bar, spinner, toast, empty state, divider
-- **Progress bar:** 10 dp, fully rounded. Id `results.row_bar`. States: pass, fail, not checked (colours above).
+- **Progress bar:** 10 dp, fully rounded, drawn as one fill on one track with no gap between them and no dot at the track end (the old M3 bar has both; switch them off). Id `results.row_bar`. States: pass, fail, not checked (colours above).
 - **Spinner:** 40 dp (48 in the Scan overlay), 4 dp ring in `border` with a `teal-deep` arc. Ids `paywall.loading`. Indeterminate; rotation is the essential animation.
 - **Toast (snackbar):** `ink` fill, white `body-md`, 14 dp radius, 16 dp margins, sits above the pinned footer. Id `paywall.toast`. Shown 4 s, then fades.
 - **Empty state:** dashed 2 dp `border-strong`, 24 dp radius, `surface-sunken` fill, 56 dp logo, title and text. Ids `picker.empty_state`, `history.empty`.

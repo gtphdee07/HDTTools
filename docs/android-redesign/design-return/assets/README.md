@@ -27,6 +27,7 @@ The app uses Material icons today. Use Material Symbols (outlined, weight 400 to
 | History | `history` |
 | Account (signed out) | `person` |
 | Sign out | `logout` |
+| Delete a Rig (bin on the Rig card) | `delete` |
 | Row, verdict: pass | `check_circle` |
 | Row, verdict: fail | `cancel` |
 | Row, verdict: not checked, info buttons, notices | `info` |

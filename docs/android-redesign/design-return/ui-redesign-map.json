@@ -460,7 +460,7 @@
     "new_style": "Card",
     "new_text": null,
     "new_test_tag": "picker_rig_card",
-    "notes": "White card, 1 dp border, shadow-sm, min 84 dp. Chevron added at the right (decorative). Whole card is the tap target. First card carries the ids in the frame; the rest repeat. Drawn in rig_picker__in.png."
+    "notes": "White card, 1 dp border, shadow-sm, min 84 dp. Chevron added at the right (decorative). Today the whole card is the tap target; the follow-up round splits it, so only the part left of the divider starts a check (see picker.rig_delete_button in ui-redesign-map-followup.json). First card carries the ids in the frame; the rest repeat. Drawn in rig_picker__in.png."
    }
   },
   {
@@ -3373,7 +3373,7 @@
     "new_region": "body",
     "new_order": 8,
     "new_width": "26dp",
-    "new_height": "31dp",
+    "new_height": "26dp",
     "new_style": "StatusIcon",
     "new_text": null,
     "new_test_tag": "results_row_icon",
@@ -3505,7 +3505,7 @@
     "new_style": "ProgressBar",
     "new_text": null,
     "new_test_tag": "results_row_bar",
-    "notes": "10 dp rounded bar (was 6 dp). Fill: Pine pass, Danger fail, Slate not checked. Drawn in results__safe.png."
+    "notes": "10 dp rounded bar. The old bar is drawn at 6 dp; its tagged node measures 304 x 26 dp. Build: switch off the M3 gap between fill and track and the dot at the track end, or the bar will not match the frame. Fill: Pine pass, Danger fail, Slate not checked. Drawn in results__safe.png."
    }
   },
   {

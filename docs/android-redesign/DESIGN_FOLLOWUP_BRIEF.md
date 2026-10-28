@@ -31,7 +31,7 @@ Ids are final; do not rename them. "Today" is how it looks and sits now.
 |---|---|---|
 | `paywall.beta_label` | "Beta: test payments. Every purchase uses a test card; no real money moves." Bold. Beta builds only; it is absent from a production build. | Full-width line near the top of the body |
 
-**Delete-Rig dialog (new screen `delete_rig`, an overlay on the Rig picker)**
+**Delete-Rig dialog (screen `delete_rig_dialog`, an overlay on the Rig picker; element ids start `delete_rig.`)**
 
 | Id | What it is |
 |---|---|
@@ -42,7 +42,7 @@ Ids are final; do not rename them. "Today" is how it looks and sits now.
 | `delete_rig.confirm_button` | "Yes, delete" (reads "Deleting…" and is off while the delete runs) |
 | `delete_rig.cancel_button` | "Cancel" (off while the delete runs) |
 
-**Crash-report dialog (new screen `crash_prompt`, an overlay on any screen, shown at launch)**
+**Crash-report dialog (screen `crash_report_dialog`, an overlay on any screen, shown at launch; element ids start `crash_prompt.`)**
 
 | Id | What it is |
 |---|---|
@@ -56,8 +56,10 @@ Both dialogs are Material 3 `AlertDialog`s today. They may keep that shape, rest
 
 ## What to hand back
 
+**Names:** `new_screen` and the frame file names use the `screen` value in the updated `ui-inventory.json` (`rig_picker`, `account`, `paywall`, `delete_rig_dialog`, `crash_report_dialog`). The element ids keep their own prefixes (`delete_rig.title` sits on the screen `delete_rig_dialog`); the two differ on purpose, as `picker.` and `rig_picker` do.
+
 1. **`ui-redesign-map-followup.json`**: for each of the 17 ids, the same `redesign` block you filled for the others (`status`, `new_screen`, `new_region`, `new_order`, `new_width`, `new_height`, `new_style`, `new_text`, `new_test_tag`, `notes`). `new_test_tag` equals the element's `test_tag_new` in the updated inventory. Anything you add beyond the 17 goes in `added_elements`, as before.
-2. **Frames** (824 x 1784 px, `<screen>__<state>.png`, tags and legend as before). Re-issue these first-round frames with the new controls in place: `rig_picker__in` (with the bin on the card), `rig_picker__new_rig_typing` and `rig_picker__account_menu` if the bin or the feedback link shows in them, `account__sign_in` and `account__create_account` (feedback link), and the Paywall frames that show the offers (add the beta label; say in the notes which frames are "beta build only"). New frames: `delete_rig__confirm`, `delete_rig__error`, `delete_rig__deleting`, `crash_prompt__question`, `crash_prompt__no_mail_app`, `rig_picker__feedback_no_mail`, `account__feedback_no_mail`.
+2. **Frames** (824 x 1784 px, `<screen>__<state>.png`, tags and legend as before). Re-issue these first-round frames with the new controls in place: `rig_picker__in` (with the bin on the card), `rig_picker__new_rig_typing` and `rig_picker__account_menu` if the bin or the feedback link shows in them, `account__sign_in` and `account__create_account` (feedback link), and the Paywall frames that show the offers (add the beta label; say in the notes which frames are "beta build only"). New frames: `delete_rig_dialog__question`, `delete_rig_dialog__deleting`, `delete_rig_dialog__delete_failed`, `crash_report_dialog__question`, `crash_report_dialog__no_email_app`, `rig_picker__feedback_no_mail`, `account__feedback_no_mail`.
 3. **`components.md` additions** for anything new (icon button on a card, dialog, text link). Reuse what you already defined where you can.
 4. **`copy-changes.md`**: only if you want a string above changed (default: none). The owner approved the first round's copy; these strings are not yet reviewed.
 

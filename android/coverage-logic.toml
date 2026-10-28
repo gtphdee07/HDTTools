@@ -97,6 +97,7 @@ allow = [
 # Single classes in a watched package that are deliberately not measured.
 [waive_classes]
 "com.rigcheck.app.ui.RigCheckViewModel" = "View-model wiring (coroutines, Android lifecycle): device and External tests"
+"com.rigcheck.app.ui.UiTags" = "Test-tag string constants: no decisions; scripts/ui_inventory.py --check keeps them equal to the inventory"
 "com.rigcheck.app.data.SupabaseAccountBackend" = "Provider wrapper around the Supabase SDK: External tests"
 "com.rigcheck.app.data.UnavailableAccountBackend" = "Stand-in backend with no logic"
 "com.rigcheck.app.data.RevenueCatManager" = "Provider wrapper around the RevenueCat SDK: External tests"

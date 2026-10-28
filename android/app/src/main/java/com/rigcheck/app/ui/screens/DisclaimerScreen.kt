@@ -17,8 +17,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.theme.OrangeDeep
 import com.rigcheck.app.ui.theme.TintOrange
 
@@ -45,7 +47,8 @@ fun DisclaimerScreen(onAcknowledge: () -> Unit) {
             modifier = Modifier
                 .padding(top = 48.dp, bottom = 24.dp)
                 .size(72.dp)
-                .background(TintOrange, CircleShape),
+                .background(TintOrange, CircleShape)
+                .testTag(UiTags.DISCLAIMER_ICON),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -59,20 +62,21 @@ fun DisclaimerScreen(onAcknowledge: () -> Unit) {
             "Experimental Tool —\nNot for Safety Decisions",
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center,
+            modifier = Modifier.testTag(UiTags.DISCLAIMER_TITLE),
         )
         Text(
             BODY_1,
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(top = 24.dp),
+            modifier = Modifier.padding(top = 24.dp).testTag(UiTags.DISCLAIMER_BODY_1),
         )
         Text(
             BODY_2,
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(top = 16.dp),
+            modifier = Modifier.padding(top = 16.dp).testTag(UiTags.DISCLAIMER_BODY_2),
         )
         Button(
             onClick = onAcknowledge,
-            modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 32.dp).testTag(UiTags.DISCLAIMER_ACCEPT_BUTTON),
         ) {
             Text("I Understand, Continue")
         }

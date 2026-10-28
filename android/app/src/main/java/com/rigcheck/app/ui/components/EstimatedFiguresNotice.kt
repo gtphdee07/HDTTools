@@ -9,7 +9,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.theme.Orange
 
 // Persistent (not dismissible) caution shown alongside any breakdown row
@@ -24,7 +26,8 @@ fun EstimatedFiguresNotice() {
         modifier = Modifier
             .fillMaxWidth()
             .background(Orange.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
-            .padding(16.dp),
+            .padding(16.dp)
+            .testTag(UiTags.RESULTS_ESTIMATED_NOTICE),
     ) {
         Text(
             "⚠️ Estimated Figures — Confirm Before You Buy",

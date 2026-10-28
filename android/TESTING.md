@@ -1049,6 +1049,24 @@ network involved:
   `PaywallScreenTest` checks the "Beta: test payments" label shows with `isBeta = true` and is gone
   with `false` (the screen takes the flag as a parameter; its default is `BuildConfig.IS_BETA`). That the
   address is the same on Web and in the tester guide is `tests/test_beta_feedback_address.py`.
+- `UiTagsDisplayedTest` (#188, 29 tests) — every element of `docs/android-redesign/ui-inventory.json`
+  has a `Modifier.testTag` from the `UiTags` object, and this class shows it on a real screen. One test per
+  screen, or per state of it that the inventory lists (the picker, the Chooser with and without a Scan in
+  flight, the photo choice, the three entry screens, Results with the estimated notice and with the Garage
+  and History notices, History with and without entries, the Paywall as a Free account in the beta, loading,
+  failing to load, plan unknown, no packs, no Pro to buy and after buying Pro, the Account screen with an
+  error and with the reset message, the Scan error dialog with all five next steps, the late-Scan dialog,
+  the delete-Rig dialog after a failed delete and the crash question with and without a mail app), asserts
+  every tag the inventory lists for it is displayed. A tag lost from a screen fails its test.
+  `uv run scripts/ui_inventory.py --check` (run by `tests/test_ui_inventory.py`) fails when a `UiTags`
+  constant is named by no test here, when `UiTags` and the inventory disagree, or when `ui-inventory.csv` is
+  not what `uv run scripts/ui_inventory.py` writes from the JSON. **Finding things in a test:** by tag
+  (`onNodeWithTag(UiTags.X)`), not by visible text, so a re-skin can move, restyle or reword anything. A test
+  about what an element says finds it by tag and compares the words (`testsupport/TagSupport.kt`:
+  `onNodeWithTagText`); a saved Rig's card is found by its nickname, which is the user's data
+  (`onRigCard`). A tag on something inside a tappable card or row is only in the *unmerged* tree, which
+  those helpers read. Adding an element: add it to the JSON, put its tag in `UiTags`, set it in the screen,
+  name it in this class, then run `uv run scripts/ui_inventory.py`.
 - `CrashReportPromptTest` (#184, 5 tests) — the question after a crash, with the real
   `CrashReportStore` on a folder of its own and `startActivity` faked (no mail app opens). No saved
   crash: nothing is asked. A saved crash: "RigCheck closed unexpectedly last time. Send details?" shows

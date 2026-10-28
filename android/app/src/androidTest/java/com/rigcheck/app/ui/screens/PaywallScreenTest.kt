@@ -11,7 +11,6 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -23,6 +22,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.revenuecat.purchases.Package
 import com.revenuecat.purchases.PackageType
 import com.rigcheck.app.testsupport.fakePackage
+import com.rigcheck.app.testsupport.nodesWithTagShowing
+import com.rigcheck.app.testsupport.onNodeWithTagText
+import com.rigcheck.app.ui.UiTags
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -54,11 +56,11 @@ class PaywallScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Get More Scans").assertIsDisplayed()
-        composeRule.onNodeWithText("You have 7 scans left.", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_TITLE, "Get More Scans").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_EXPLAINER, "You have 7 scans left.", substring = true).assertIsDisplayed()
         // The glossary's words are "Scan" and "Scan Credit"; the lower-case "scan credits" is not used.
         composeRule.onNodeWithText("scan credit", substring = true, ignoreCase = true).assertDoesNotExist()
-        composeRule.onNodeWithText("Couldn't load offers", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_LOAD_ERROR, "Couldn't load offers", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -67,7 +69,7 @@ class PaywallScreenTest {
             PaywallScreen(creditBalance = 1, onPurchase = { _, _ -> }, onRestore = { }, onDone = { })
         }
 
-        composeRule.onNodeWithText("You have 1 scan left.", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_EXPLAINER, "You have 1 scan left.", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -76,7 +78,7 @@ class PaywallScreenTest {
             PaywallScreen(creditBalance = 0, onPurchase = { _, _ -> }, onRestore = { }, onDone = { })
         }
 
-        composeRule.onNodeWithText("Restore purchase").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).assertIsDisplayed()
     }
 
     // Purchases land on the signed-in account (#22), so the paywall names
@@ -94,7 +96,7 @@ class PaywallScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Buying for alice@example.com").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_ACCOUNT_LABEL, "Buying for alice@example.com").assertIsDisplayed()
     }
 
     // The plan is the account's, however Pro was bought (#27): a Pro bought on Web
@@ -105,8 +107,8 @@ class PaywallScreenTest {
             PaywallScreen(creditBalance = 2, onPurchase = { _, _ -> }, onRestore = { }, onDone = { }, isPro = true)
         }
 
-        composeRule.onNodeWithText("Pro plan").assertIsDisplayed()
-        composeRule.onNodeWithText("Free plan").assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_PLAN_LABEL, "Pro plan").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_PLAN_LABEL, "Free plan").assertDoesNotExist()
     }
 
     @Test
@@ -115,8 +117,8 @@ class PaywallScreenTest {
             PaywallScreen(creditBalance = 0, onPurchase = { _, _ -> }, onRestore = { }, onDone = { }, isPro = false)
         }
 
-        composeRule.onNodeWithText("Free plan").assertIsDisplayed()
-        composeRule.onNodeWithText("Pro plan").assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_PLAN_LABEL, "Free plan").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_PLAN_LABEL, "Pro plan").assertDoesNotExist()
     }
 
     @Test
@@ -125,8 +127,8 @@ class PaywallScreenTest {
             PaywallScreen(creditBalance = 0, onPurchase = { _, _ -> }, onRestore = { }, onDone = { }, isPro = null)
         }
 
-        composeRule.onNodeWithText("Pro plan").assertDoesNotExist()
-        composeRule.onNodeWithText("Free plan").assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_PLAN_LABEL, "Pro plan").assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_PLAN_LABEL, "Free plan").assertDoesNotExist()
     }
 
     @Test
@@ -143,7 +145,7 @@ class PaywallScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Sign out").performClick()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_SIGN_OUT_BUTTON).performClick()
 
         assert(signedOut) { "onSignOut should have fired" }
     }
@@ -154,7 +156,7 @@ class PaywallScreenTest {
             PaywallScreen(creditBalance = 2, onPurchase = { _, _ -> }, onRestore = { }, onDone = { })
         }
 
-        composeRule.onNodeWithText("Sign out").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_SIGN_OUT_BUTTON).assertDoesNotExist()
     }
 
     // creditBalance = null is a real, previously-untested branch of
@@ -167,7 +169,7 @@ class PaywallScreenTest {
             PaywallScreen(creditBalance = null, onPurchase = { _, _ -> }, onRestore = { }, onDone = { })
         }
 
-        composeRule.onNodeWithText("You have 0 scans left.", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_EXPLAINER, "You have 0 scans left.", substring = true).assertIsDisplayed()
     }
 
     // "Restore purchase" is a real button with real onRestore plumbing
@@ -191,10 +193,10 @@ class PaywallScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Restore purchase").performClick()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).performClick()
 
         assert(restoreInvoked) { "onRestore should have fired" }
-        composeRule.onNodeWithText("Restore purchase").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).assertIsDisplayed()
     }
 
     // Failure path: onRestore reports an error rather than success - the
@@ -215,10 +217,10 @@ class PaywallScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Restore purchase").performClick()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).performClick()
 
         assert(restoreInvoked) { "onRestore should have fired" }
-        composeRule.onNodeWithText("Restore purchase").assertIsEnabled()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).assertIsEnabled()
     }
 
     // isBusy actually gates the button (disabled while a restore is in
@@ -237,8 +239,8 @@ class PaywallScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Restore purchase").performClick()
-        composeRule.onNodeWithText("Restore purchase").assertIsNotEnabled()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).assertIsNotEnabled()
 
         // Must run on the UI thread - PaywallScreen's success branch calls
         // Toast.makeText, which requires a prepared Looper (confirmed by
@@ -250,7 +252,7 @@ class PaywallScreenTest {
         composeRule.runOnUiThread { savedCallback?.invoke(true, null) }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Restore purchase").assertIsEnabled()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).assertIsEnabled()
     }
 
     // Scan packs are for Pro accounts only (#101, ADR-0006's 2026-10-12 amendment).
@@ -261,9 +263,9 @@ class PaywallScreenTest {
     private val smallPack = fakePackage("pkg-b", PackageType.CUSTOM, "10 scans", "\$2.99")
     private val largePack = fakePackage("pkg-c", PackageType.CUSTOM, "50 scans", "\$9.99")
 
-    private fun waitForText(text: String) {
+    private fun waitForTagText(tag: String, text: String) {
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+            composeRule.nodesWithTagShowing(tag, text, substring = true) > 0
         }
     }
 
@@ -280,12 +282,12 @@ class PaywallScreenTest {
             )
         }
 
-        waitForText("Pro (lifetime)")
-        composeRule.onNodeWithText("Unlock Pro").assertIsDisplayed()
-        composeRule.onNodeWithText("\$14.99").assertIsDisplayed()
-        composeRule.onNodeWithText("10 scans").assertDoesNotExist()
-        composeRule.onNodeWithText("50 scans").assertDoesNotExist()
-        composeRule.onNodeWithText("\$2.99").assertDoesNotExist()
+        waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "Pro (lifetime)")
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_TITLE, "Unlock Pro").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$14.99").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_OFFER_TITLE, "10 scans").assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_OFFER_TITLE, "50 scans").assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$2.99").assertDoesNotExist()
     }
 
     @Test
@@ -301,12 +303,12 @@ class PaywallScreenTest {
             )
         }
 
-        waitForText("10 scans")
-        composeRule.onNodeWithText("50 scans").assertIsDisplayed()
-        composeRule.onNodeWithText("\$2.99").assertIsDisplayed()
-        composeRule.onNodeWithText("\$9.99").assertIsDisplayed()
-        composeRule.onNodeWithText("Pro (lifetime)").assertDoesNotExist()
-        composeRule.onNodeWithText("\$14.99").assertDoesNotExist()
+        waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "10 scans")
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_OFFER_TITLE, "50 scans").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$2.99").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$9.99").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_OFFER_TITLE, "Pro (lifetime)").assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$14.99").assertDoesNotExist()
     }
 
     // Nothing is offered while the plan is not known: showing packs to an account
@@ -326,11 +328,11 @@ class PaywallScreenTest {
             )
         }
 
-        waitForText("Checking your plan")
-        composeRule.onNodeWithText("Pro (lifetime)").assertDoesNotExist()
-        composeRule.onNodeWithText("10 scans").assertDoesNotExist()
+        waitForTagText(UiTags.PAYWALL_PLAN_UNKNOWN, "Checking your plan")
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_OFFER_TITLE, "Pro (lifetime)").assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_OFFER_TITLE, "10 scans").assertDoesNotExist()
 
-        composeRule.onNodeWithText("Try again").performClick()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RETRY_BUTTON).performClick()
 
         assertEquals(1, planReads)
     }
@@ -358,15 +360,15 @@ class PaywallScreenTest {
                 loadPackages = { listOf(proPackage, smallPack, largePack) },
             )
         }
-        waitForText("Pro (lifetime)")
+        waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "Pro (lifetime)")
 
-        composeRule.onNodeWithText("\$14.99").performClick()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$14.99").performClick()
 
-        waitForText("10 scans")
+        waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "10 scans")
         assertEquals(proPackage, bought)
         assertFalse("buying Pro must not leave the Paywall", done)
-        composeRule.onNodeWithText("Pro (lifetime)").assertDoesNotExist()
-        composeRule.onNodeWithText("You have 25 scans left.", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_OFFER_TITLE, "Pro (lifetime)").assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_EXPLAINER, "You have 25 scans left.", substring = true).assertIsDisplayed()
     }
 
     // The plan is read again after the purchase, so for a moment the account has Pro but
@@ -390,19 +392,19 @@ class PaywallScreenTest {
                 loadPackages = { listOf(proPackage, smallPack) },
             )
         }
-        waitForText("Pro (lifetime)")
+        waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "Pro (lifetime)")
 
-        composeRule.onNodeWithText("\$14.99").performClick()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$14.99").performClick()
 
-        composeRule.onNodeWithText("\$14.99").assertIsNotEnabled()
-        composeRule.onNodeWithText("Pro is yours.", substring = true).assertIsDisplayed()
-        composeRule.onNodeWithText("Try again").performClick()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$14.99").assertIsNotEnabled()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_PRO_BOUGHT, "Pro is yours.", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RETRY_BUTTON).performClick()
         assertEquals(1, planReads)
         assertEquals(1, purchases)
 
         composeRule.runOnUiThread { isPro.value = true }
-        waitForText("10 scans")
-        composeRule.onNodeWithText("Pro is yours.", substring = true).assertDoesNotExist()
+        waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "10 scans")
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_PRO_BOUGHT, "Pro is yours.", substring = true).assertDoesNotExist()
     }
 
     @Test
@@ -422,9 +424,9 @@ class PaywallScreenTest {
                 loadPackages = { listOf(proPackage, smallPack, largePack) },
             )
         }
-        waitForText("10 scans")
+        waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "10 scans")
 
-        composeRule.onNodeWithText("\$2.99").performClick()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$2.99").performClick()
 
         assertEquals(smallPack, bought)
         assertTrue("buying a pack ends the visit", done)
@@ -443,8 +445,8 @@ class PaywallScreenTest {
             )
         }
 
-        waitForText("Pro isn't available to buy right now.")
-        composeRule.onNodeWithText("10 scans").assertDoesNotExist()
+        waitForTagText(UiTags.PAYWALL_NO_PRO, "Pro isn't available to buy right now.")
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_OFFER_TITLE, "10 scans").assertDoesNotExist()
     }
 
     @Test
@@ -460,8 +462,8 @@ class PaywallScreenTest {
             )
         }
 
-        waitForText("No scan packs are available right now.")
-        composeRule.onNodeWithText("Pro (lifetime)").assertDoesNotExist()
+        waitForTagText(UiTags.PAYWALL_NO_PACKS, "No scan packs are available right now.")
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_OFFER_TITLE, "Pro (lifetime)").assertDoesNotExist()
     }
 
     // --- Scrolling and Back (#186) ---
@@ -486,12 +488,12 @@ class PaywallScreenTest {
                 }
             }
         }
-        waitForText("10 scans")
-        composeRule.onNodeWithText("Restore purchase").assertIsNotDisplayed()
+        waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "10 scans")
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).assertIsNotDisplayed()
 
-        composeRule.onNodeWithText("Restore purchase").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).performScrollTo().assertIsDisplayed()
 
-        composeRule.onNodeWithTag("paywall_back").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_BACK).assertIsDisplayed()
     }
 
     // Restore purchase follows the offers instead of waiting at the bottom of the screen.
@@ -507,10 +509,10 @@ class PaywallScreenTest {
                 loadPackages = { listOf(smallPack) },
             )
         }
-        waitForText("10 scans")
+        waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "10 scans")
 
-        val offerBottom = composeRule.onNodeWithText("\$2.99").fetchSemanticsNode().boundsInRoot.bottom
-        val restoreTop = composeRule.onNodeWithText("Restore purchase").fetchSemanticsNode().boundsInRoot.top
+        val offerBottom = composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$2.99").fetchSemanticsNode().boundsInRoot.bottom
+        val restoreTop = composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).fetchSemanticsNode().boundsInRoot.top
         val windowHeight = composeRule.onRoot().fetchSemanticsNode().boundsInRoot.height
         assertTrue(
             "Restore purchase should sit near the offers, not at the bottom: " +
@@ -533,7 +535,7 @@ class PaywallScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Back").assertIsDisplayed().performClick()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_BACK).assertIsDisplayed().performClick()
 
         assertEquals(1, left)
     }
@@ -561,9 +563,9 @@ class PaywallScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Back").assertIsDisplayed()
-        composeRule.onNodeWithText("Sign out").assertIsDisplayed()
-        composeRule.onNodeWithText("Restore purchase").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_BACK).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_SIGN_OUT_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).assertIsDisplayed()
     }
 
     // Leaving while a restore is out would let its result act on another screen.
@@ -578,9 +580,9 @@ class PaywallScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Restore purchase").performClick()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).performClick()
 
-        composeRule.onNodeWithText("Back").assertIsNotEnabled()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_BACK).assertIsNotEnabled()
     }
 
     // The beta build buys with test cards (#182): the label shows with the flag set and is gone without it.
@@ -591,9 +593,9 @@ class PaywallScreenTest {
             PaywallScreen(creditBalance = 0, onPurchase = { _, _ -> }, onRestore = { }, onDone = { }, isBeta = isBeta.value)
         }
 
-        composeRule.onNodeWithText("Beta: test payments", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BETA_LABEL, "Beta: test payments", substring = true).assertIsDisplayed()
 
         isBeta.value = false
-        composeRule.onNodeWithText("Beta: test payments", substring = true).assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BETA_LABEL, "Beta: test payments", substring = true).assertDoesNotExist()
     }
 }

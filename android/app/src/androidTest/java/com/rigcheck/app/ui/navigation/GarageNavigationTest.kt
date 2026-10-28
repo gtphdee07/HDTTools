@@ -3,10 +3,7 @@ package com.rigcheck.app.ui.navigation
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.core.view.ViewCompat
@@ -25,7 +22,12 @@ import com.rigcheck.app.data.GarageFullException
 import com.rigcheck.app.domain.model.RecentRig
 import com.rigcheck.app.domain.model.TrailerTag
 import com.rigcheck.app.domain.model.TruckTag
+import com.rigcheck.app.testsupport.nodesWithTagShowing
+import com.rigcheck.app.testsupport.onRigCard
+import com.rigcheck.app.testsupport.onRigDeleteButton
+import com.rigcheck.app.testsupport.rigCardCount
 import com.rigcheck.app.ui.RigCheckViewModel
+import com.rigcheck.app.ui.UiTags
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
@@ -102,13 +104,13 @@ class GarageNavigationTest {
         }
     }
 
-    private fun waitForText(text: String) = composeRule.waitUntil(timeoutMillis = 10_000) {
-        composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+    private fun waitForRig(nickname: String) = composeRule.waitUntil(timeoutMillis = 10_000) {
+        composeRule.rigCardCount(nickname) > 0
     }
 
     // Same recipe as RigCheckNavHostTest (#125): leave the soft keyboard really closed.
     private fun enterNickname(nickname: String) {
-        composeRule.onNodeWithText("Rig nickname").performTextInput(nickname)
+        composeRule.onNodeWithTag(UiTags.PICKER_NEW_RIG_INPUT).performTextInput(nickname)
         composeRule.waitUntil(timeoutMillis = 30_000) { isKeyboardVisible() }
         closeSoftKeyboard()
         composeRule.waitUntil(timeoutMillis = 30_000) { !isKeyboardVisible() }
@@ -125,15 +127,15 @@ class GarageNavigationTest {
 
     private fun checkNewRigThroughToResults(nickname: String) {
         enterNickname(nickname)
-        composeRule.onNodeWithText("Create").performClick()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Trailer Tag").performClick()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Scale Ticket").performClick()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Check Weights").performClick()
-        composeRule.onNodeWithText("I Understand, Continue").performClick()
-        composeRule.onNodeWithText("Start another check").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRAILER_NEXT_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.SCALE_CHECK_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.DISCLAIMER_ACCEPT_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.RESULTS_START_ANOTHER_BUTTON).assertIsDisplayed()
     }
 
     @Test
@@ -142,8 +144,8 @@ class GarageNavigationTest {
 
         showApp(garage)
 
-        waitForText("Added on Web")
-        composeRule.onNodeWithText("Added on Web").assertIsDisplayed()
+        waitForRig("Added on Web")
+        composeRule.onRigCard("Added on Web").assertIsDisplayed()
     }
 
     @Test
@@ -166,8 +168,8 @@ class GarageNavigationTest {
         garage.addedElsewhere("Added on Web")
         pressBack()
 
-        waitForText("Added on Web")
-        waitForText("Big Blue")
+        waitForRig("Added on Web")
+        waitForRig("Big Blue")
     }
 
     // #169: the picker's delete control reaches the account's Garage through the nav host and view model.
@@ -175,13 +177,13 @@ class GarageNavigationTest {
     fun aRigDeletedFromThePickerIsGoneFromTheAccountAndThePicker() {
         val garage = PretendGarage(cap = 5).apply { addedElsewhere("Old rig"); addedElsewhere("Keeper") }
         showApp(garage)
-        waitForText("Old rig")
+        waitForRig("Old rig")
 
-        composeRule.onNodeWithContentDescription("Delete Old rig").performClick()
-        composeRule.onNodeWithTag("delete_rig_confirm").performClick()
+        composeRule.onRigDeleteButton("Old rig").performClick()
+        composeRule.onNodeWithTag(UiTags.DELETE_RIG_CONFIRM).performClick()
 
         composeRule.waitUntil(timeoutMillis = 10_000) {
-            composeRule.onAllNodesWithText("Old rig").fetchSemanticsNodes().isEmpty()
+            composeRule.rigCardCount("Old rig") == 0
         }
         assertEquals(listOf("Keeper"), garage.nicknames())
     }
@@ -194,10 +196,10 @@ class GarageNavigationTest {
         checkNewRigThroughToResults("One too many")
 
         composeRule.waitUntil(timeoutMillis = 10_000) {
-            composeRule.onAllNodesWithText("\"One too many\" wasn't saved", substring = true).fetchSemanticsNodes().isNotEmpty()
+            composeRule.nodesWithTagShowing(UiTags.GARAGE_NOTICE, "\"One too many\" wasn't saved", substring = true) > 0
         }
-        composeRule.onNodeWithTag("garage_notice").assertIsDisplayed()
-        composeRule.onNodeWithText("Start another check").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.GARAGE_NOTICE).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.RESULTS_START_ANOTHER_BUTTON).assertIsDisplayed()
         assertEquals(listOf("Already here"), garage.nicknames())
     }
 }

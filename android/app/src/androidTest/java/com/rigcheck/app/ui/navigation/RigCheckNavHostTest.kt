@@ -4,8 +4,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.core.view.ViewCompat
@@ -18,6 +16,8 @@ import com.rigcheck.app.domain.model.RecentRig
 import com.rigcheck.app.domain.model.ScaleTicket
 import com.rigcheck.app.domain.model.TrailerTag
 import com.rigcheck.app.domain.model.TruckTag
+import com.rigcheck.app.testsupport.onNodeWithTagText
+import com.rigcheck.app.testsupport.rigCardCount
 import com.rigcheck.app.testsupport.scrollToIfScrollable
 import com.rigcheck.app.ui.RigCheckViewModel
 import com.rigcheck.app.ui.ScanNotice
@@ -27,6 +27,8 @@ import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import com.rigcheck.app.ui.UiTags
+import com.rigcheck.app.testsupport.onRigCard
 
 // Real RigCheckNavHost + a real RigCheckViewModel - CustomTestRunner keeps
 // this offline (no Purchases.configure()), so the credit chip just shows
@@ -50,7 +52,7 @@ class RigCheckNavHostTest {
     // close it, and wait until it is really gone. Any test that types and later
     // presses Back must enter text through this.
     private fun enterNickname(nickname: String) {
-        composeRule.onNodeWithText("Rig nickname").performTextInput(nickname)
+        composeRule.onNodeWithTag(UiTags.PICKER_NEW_RIG_INPUT).performTextInput(nickname)
         composeRule.waitUntil(timeoutMillis = 30_000) { isKeyboardVisible() }
         closeSoftKeyboard()
         composeRule.waitUntil(timeoutMillis = 30_000) { !isKeyboardVisible() }
@@ -77,25 +79,25 @@ class RigCheckNavHostTest {
     // scrolling area, so they are always on screen and need no scrolling.
     private fun goThroughManualEntryFlow(nickname: String) {
         enterNickname(nickname)
-        composeRule.onNodeWithText("Create").performClick()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
 
-        composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed().performClick()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Truck Tag").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).assertIsDisplayed().performClick()
 
-        composeRule.onNodeWithText("Trailer Tag").assertIsDisplayed()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Scale Ticket").assertIsDisplayed().performClick()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Trailer Tag").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRAILER_NEXT_BUTTON).assertIsDisplayed().performClick()
 
-        composeRule.onNodeWithText("Scale Ticket").assertIsDisplayed()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Check Weights").assertIsDisplayed().performClick()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Scale Ticket").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.SCALE_CHECK_BUTTON).assertIsDisplayed().performClick()
     }
 
     // The re-skinned Results screen has no "Results" title; its pinned
     // "Start another check" button is the one thing only it shows.
     private fun assertOnResults() {
-        composeRule.onNodeWithText("Start another check").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.RESULTS_START_ANOTHER_BUTTON).assertIsDisplayed()
     }
 
     @Test
@@ -105,8 +107,8 @@ class RigCheckNavHostTest {
         goThroughManualEntryFlow("Big Blue")
 
         // First checkout in this session - disclaimer must appear.
-        composeRule.onNodeWithText("Experimental Tool —\nNot for Safety Decisions").assertIsDisplayed()
-        composeRule.onNodeWithText("I Understand, Continue").performClick()
+        composeRule.onNodeWithTagText(UiTags.DISCLAIMER_TITLE, "Experimental Tool —\nNot for Safety Decisions").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.DISCLAIMER_ACCEPT_BUTTON).performClick()
 
         assertOnResults()
     }
@@ -123,7 +125,7 @@ class RigCheckNavHostTest {
         composeRule.setContent { RigCheckNavHost() }
 
         goThroughManualEntryFlow("Goose and Addie")
-        composeRule.onNodeWithText("I Understand, Continue").performClick()
+        composeRule.onNodeWithTag(UiTags.DISCLAIMER_ACCEPT_BUTTON).performClick()
         assertOnResults()
 
         // Results -> RigPicker is a single pop (popUpTo RigPicker, inclusive = false).
@@ -135,18 +137,18 @@ class RigCheckNavHostTest {
         // immediately, since Compose's own idle-sync doesn't wait on
         // arbitrary coroutine/IO completion, only on recomposition.
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithText("Goose and Addie").fetchSemanticsNodes().isNotEmpty()
+            composeRule.rigCardCount("Goose and Addie") > 0
         }
-        composeRule.onNodeWithText("Goose and Addie").performClick()
+        composeRule.onRigCard("Goose and Addie").performClick()
 
         // Must land on the Chooser for the scale ticket, not straight on
         // the entry form - this is the regression check.
-        composeRule.onNodeWithText("Scale Ticket").assertIsDisplayed()
-        composeRule.onNodeWithText("Scan Photo").assertIsDisplayed()
-        composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Scale Ticket").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_SCAN_CARD).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).assertIsDisplayed()
 
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Check Weights").assertIsDisplayed().performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.SCALE_CHECK_BUTTON).assertIsDisplayed().performClick()
 
         // Disclaimer already acknowledged this session - straight to Results.
         assertOnResults()
@@ -165,18 +167,18 @@ class RigCheckNavHostTest {
         composeRule.setContent { RigCheckNavHost() }
 
         enterNickname("Zoomer")
-        composeRule.onNodeWithText("Create").performClick()
-        composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Truck Tag").assertIsDisplayed()
 
-        composeRule.onNodeWithText("Scan Photo").performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_SCAN_CARD).performClick()
 
         // Signed out, buying asks for an account first (#22).
-        composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertIsDisplayed()
 
         goBack()
 
-        composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
-        composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Truck Tag").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).assertIsDisplayed()
     }
 
     // Second, separate entry point into the same Paywall route:
@@ -189,17 +191,17 @@ class RigCheckNavHostTest {
         composeRule.setContent { RigCheckNavHost() }
 
         enterNickname("Chip Test")
-        composeRule.onNodeWithText("Create").performClick()
-        composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Truck Tag").assertIsDisplayed()
 
         // "…" is CreditBalanceChip's not-yet-loaded placeholder text.
-        composeRule.onNodeWithText("…").performClick()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_CREDIT_CHIP, "…").performClick()
 
-        composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertIsDisplayed()
 
         goBack()
 
-        composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Truck Tag").assertIsDisplayed()
     }
 
     // The "Scan tow-vehicle-only ticket" button had no gate: a signed-out tap
@@ -212,18 +214,18 @@ class RigCheckNavHostTest {
         composeRule.setContent { RigCheckNavHost() }
 
         enterNickname("Tow Only")
-        composeRule.onNodeWithText("Create").performClick()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).assertIsDisplayed()
 
-        composeRule.onNodeWithTag("scan_standalone_ticket").scrollToIfScrollable().performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_STANDALONE_TICKET).scrollToIfScrollable().performClick()
 
-        composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
-        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertDoesNotExist()
 
-        composeRule.onNodeWithText("Not now").performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_NOT_NOW_BUTTON).performClick()
 
-        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).assertIsDisplayed()
     }
 
     // The free flow must never be gated: a full manual check reaches
@@ -236,14 +238,14 @@ class RigCheckNavHostTest {
         composeRule.setContent { RigCheckNavHost() }
 
         enterNickname("Maybe Later")
-        composeRule.onNodeWithText("Create").performClick()
-        composeRule.onNodeWithText("Scan Photo").performClick()
-        composeRule.onNodeWithText("Continue with Google").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_SCAN_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertIsDisplayed()
 
-        composeRule.onNodeWithText("Not now").performClick()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_NOT_NOW_BUTTON).performClick()
 
-        composeRule.onNodeWithText("Truck Tag").assertIsDisplayed()
-        composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Truck Tag").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).assertIsDisplayed()
     }
 
     // --- The Scan notice (#120) ---
@@ -272,69 +274,69 @@ class RigCheckNavHostTest {
     fun enteringByHandDropsAScanNoticeLeftOnTheChooser() {
         val viewModel = setContentWithViewModel()
         enterNickname("Hand Entry")
-        composeRule.onNodeWithText("Create").performClick()
-        composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).assertIsDisplayed()
         plant(viewModel, EntryModule.TRUCK)
 
-        composeRule.onNodeWithText("Enter Manually").performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
 
-        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
-        composeRule.onNodeWithTag("scan_notice").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_NOTICE).assertDoesNotExist()
     }
 
     @Test
     fun continuingFromTheTruckTagDropsTheNoticeForGood() {
         val viewModel = setContentWithViewModel()
         enterNickname("Truck Continue")
-        composeRule.onNodeWithText("Create").performClick()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).assertIsDisplayed()
         plant(viewModel, EntryModule.TRUCK)
-        composeRule.onNodeWithTag("scan_notice").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_NOTICE).assertIsDisplayed()
 
-        composeRule.onNodeWithText("Next: Trailer Tag").performClick()
-        composeRule.onNodeWithText("Trailer Tag").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).performClick()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Trailer Tag").assertIsDisplayed()
         goBack()
 
-        composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
-        composeRule.onNodeWithTag("scan_notice").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_NOTICE).assertDoesNotExist()
     }
 
     @Test
     fun continuingFromTheTrailerTagDropsTheNoticeForGood() {
         val viewModel = setContentWithViewModel()
         enterNickname("Trailer Continue")
-        composeRule.onNodeWithText("Create").performClick()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Trailer Tag").performClick()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Scale Ticket").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRAILER_NEXT_BUTTON).assertIsDisplayed()
         plant(viewModel, EntryModule.TRAILER)
-        composeRule.onNodeWithTag("scan_notice").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_NOTICE).assertIsDisplayed()
 
-        composeRule.onNodeWithText("Next: Scale Ticket").performClick()
-        composeRule.onNodeWithText("Scale Ticket").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.TRAILER_NEXT_BUTTON).performClick()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Scale Ticket").assertIsDisplayed()
         goBack()
 
-        composeRule.onNodeWithText("Next: Scale Ticket").assertIsDisplayed()
-        composeRule.onNodeWithTag("scan_notice").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.TRAILER_NEXT_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_NOTICE).assertDoesNotExist()
     }
 
     @Test
     fun continuingFromTheScaleTicketDropsTheNotice() {
         val viewModel = setContentWithViewModel()
         enterNickname("Scale Continue")
-        composeRule.onNodeWithText("Create").performClick()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Trailer Tag").performClick()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Next: Scale Ticket").performClick()
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Check Weights").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRAILER_NEXT_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.SCALE_CHECK_BUTTON).assertIsDisplayed()
         plant(viewModel, EntryModule.SCALE)
-        composeRule.onNodeWithTag("scan_notice").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_NOTICE).assertIsDisplayed()
 
-        composeRule.onNodeWithText("Check Weights").performClick()
+        composeRule.onNodeWithTag(UiTags.SCALE_CHECK_BUTTON).performClick()
 
         composeRule.runOnUiThread { assertNull(viewModel.scanNoticeState.notice) }
     }

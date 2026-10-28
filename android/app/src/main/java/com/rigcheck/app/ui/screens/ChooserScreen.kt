@@ -25,10 +25,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.data.createScanPhotoUri
 import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanUiState
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.canStartScan
 import com.rigcheck.app.ui.components.CreditBalanceChip
 import com.rigcheck.app.ui.components.ScanErrorDialog
@@ -90,14 +92,26 @@ fun ChooserScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(copy.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
-                CreditBalanceChip(balance = creditBalance, onClick = onOpenPaywall)
+                Text(
+                    copy.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.weight(1f).testTag(UiTags.CHOOSER_TITLE),
+                )
+                CreditBalanceChip(
+                    balance = creditBalance,
+                    modifier = Modifier.testTag(UiTags.CHOOSER_CREDIT_CHIP),
+                    onClick = onOpenPaywall,
+                )
             }
-            StepProgressBar(step = module.ordinal + 1, totalSteps = 3, modifier = Modifier.padding(top = 16.dp))
+            StepProgressBar(
+                step = module.ordinal + 1,
+                totalSteps = 3,
+                modifier = Modifier.padding(top = 16.dp).testTag(UiTags.CHOOSER_STEP_BAR),
+            )
             Text(
                 copy.prompt,
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp),
+                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp).testTag(UiTags.CHOOSER_PROMPT),
             )
             ScanOrManualChooser(
                 onScanPhoto = {
@@ -112,7 +126,7 @@ fun ChooserScreen(
             Text(
                 "This same choice appears again before the trailer tag and scale ticket screens.",
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.padding(top = 16.dp).testTag(UiTags.CHOOSER_FOOTER_NOTE),
             )
         }
 
@@ -124,7 +138,8 @@ fun ChooserScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f))
-                    .pointerInput(Unit) { detectTapGestures { } },
+                    .pointerInput(Unit) { detectTapGestures { } }
+                    .testTag(UiTags.CHOOSER_LOADING_OVERLAY),
                 contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator()
@@ -135,19 +150,24 @@ fun ChooserScreen(
     if (showSourceDialog) {
         AlertDialog(
             onDismissRequest = { showSourceDialog = false },
-            title = { Text("Scan Photo") },
-            text = { Text("Take a new photo, or choose one you already have?") },
+            title = { Text("Scan Photo", modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_TITLE)) },
+            text = {
+                Text(
+                    "Take a new photo, or choose one you already have?",
+                    modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_BODY),
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showSourceDialog = false
                     launchGallery()
-                }) { Text("Choose from Gallery") }
+                }, modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_GALLERY)) { Text("Choose from Gallery") }
             },
             dismissButton = {
                 TextButton(onClick = {
                     showSourceDialog = false
                     launchCamera()
-                }) { Text("Take Photo") }
+                }, modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_CAMERA)) { Text("Take Photo") }
             },
         )
     }

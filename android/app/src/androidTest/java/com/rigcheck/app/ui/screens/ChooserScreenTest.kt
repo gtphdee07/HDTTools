@@ -3,12 +3,14 @@ package com.rigcheck.app.ui.screens
 import android.net.Uri
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.data.ScanResult
+import com.rigcheck.app.testsupport.onNodeWithTagText
 import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanUiState
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.navigation.EntryModule
 import com.rigcheck.app.ui.scanErrorFor
 import org.junit.Assert.assertEquals
@@ -53,17 +55,17 @@ class ChooserScreenTest {
     @Test
     fun creditChipShowsTheGivenBalance() {
         setChooser(creditBalance = 7)
-        composeRule.onNodeWithText("7 scans").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_CREDIT_CHIP, "7 scans").assertIsDisplayed()
     }
 
     @Test
     fun scanPhotoWithCreditsOpensTheSourceChoiceDialog() {
         setChooser(creditBalance = 5)
 
-        composeRule.onNodeWithText("Scan Photo").performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_SCAN_CARD).performClick()
 
-        composeRule.onNodeWithText("Take Photo").assertIsDisplayed()
-        composeRule.onNodeWithText("Choose from Gallery").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_GALLERY).assertIsDisplayed()
     }
 
     @Test
@@ -71,10 +73,10 @@ class ChooserScreenTest {
         var neededCredits = false
         setChooser(creditBalance = 0, onNeedCredits = { neededCredits = true })
 
-        composeRule.onNodeWithText("Scan Photo").performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_SCAN_CARD).performClick()
 
         assert(neededCredits) { "onNeedCredits should have fired for a 0-credit user" }
-        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertDoesNotExist()
     }
 
     @Test
@@ -82,7 +84,7 @@ class ChooserScreenTest {
         var chose = false
         setChooser(creditBalance = 5, onChooseManual = { chose = true })
 
-        composeRule.onNodeWithText("Enter Manually").performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
 
         assert(chose) { "onChooseManual should have fired" }
     }
@@ -100,12 +102,12 @@ class ChooserScreenTest {
             onNeedCredits = { needCredits++ },
         )
 
-        composeRule.onNodeWithText("Enter Manually").performClick()
-        composeRule.onNodeWithText("Scan Photo").performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_SCAN_CARD).performClick()
 
         assertEquals("Enter Manually must not fire under the overlay", 0, chose)
         assertEquals(0, needCredits)
-        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertDoesNotExist()
     }
 
     @Test
@@ -117,14 +119,14 @@ class ChooserScreenTest {
             onDismissScanError = { dismissed = true },
         )
 
-        composeRule.onNodeWithText("Scan failed").assertIsDisplayed()
-        composeRule.onNodeWithText("Could not read the image.").assertIsDisplayed()
-        composeRule.onNodeWithText("Sign in").assertDoesNotExist()
-        composeRule.onNodeWithText("Buy more Scans").assertDoesNotExist()
-        composeRule.onNodeWithText("Try again").assertDoesNotExist()
-        composeRule.onNodeWithText("Choose a different photo").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_TITLE).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.SCAN_ERROR_MESSAGE, "Could not read the image.").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_SIGN_IN).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_BUY_SCANS).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_CHOOSE_PHOTO).assertDoesNotExist()
 
-        composeRule.onNodeWithText("OK").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_OK_BUTTON).performClick()
 
         assert(dismissed) { "onDismissScanError should have fired" }
     }
@@ -138,8 +140,8 @@ class ChooserScreenTest {
             onScanErrorNextStep = { steps += it },
         )
 
-        composeRule.onNodeWithText("Your sign-in has expired. Nothing was used. Sign in again to scan.").assertIsDisplayed()
-        composeRule.onNodeWithText("Sign in").performClick()
+        composeRule.onNodeWithTagText(UiTags.SCAN_ERROR_MESSAGE, "Your sign-in has expired. Nothing was used. Sign in again to scan.").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_SIGN_IN).performClick()
 
         assertEquals(listOf(ScanNextStep.SIGN_IN), steps)
     }
@@ -153,11 +155,12 @@ class ChooserScreenTest {
             onScanErrorNextStep = { steps += it },
         )
 
-        composeRule.onNodeWithText(
+        composeRule.onNodeWithTagText(
+            UiTags.SCAN_ERROR_MESSAGE,
             "You're out of Scans. Nothing was used. Buy more Scans, or type the numbers in yourself.",
         ).assertIsDisplayed()
-        composeRule.onNodeWithText("Try again").assertDoesNotExist()
-        composeRule.onNodeWithText("Buy more Scans").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_BUY_SCANS).performClick()
 
         assertEquals(listOf(ScanNextStep.BUY_SCANS), steps)
     }
@@ -169,8 +172,8 @@ class ChooserScreenTest {
         val steps = mutableListOf<ScanNextStep>()
         setChooser(creditBalance = 5, scanState = failed("network_error"), onScanErrorNextStep = { steps += it })
 
-        composeRule.onNodeWithText("Choose a different photo").assertDoesNotExist()
-        composeRule.onNodeWithText("Try again").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_CHOOSE_PHOTO).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).performClick()
 
         assertEquals(listOf(ScanNextStep.TRY_AGAIN), steps)
     }
@@ -179,7 +182,7 @@ class ChooserScreenTest {
     fun scanErrorAfterARefundedReadOffersTryAgain() {
         setChooser(creditBalance = 5, scanState = failed("extraction_failed"))
 
-        composeRule.onNodeWithText("Try again").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertIsDisplayed()
     }
 
     // After a request the service rejected, or a photo that cannot be sent, the
@@ -189,18 +192,18 @@ class ChooserScreenTest {
     fun scanErrorAfterARejectedRequestOffersTypingOrADifferentPhotoAndNotTryAgain() {
         setChooser(creditBalance = 5, scanState = failed("bad_request"))
 
-        composeRule.onNodeWithText("Type it in").assertIsDisplayed()
-        composeRule.onNodeWithText("Choose a different photo").assertIsDisplayed()
-        composeRule.onNodeWithText("Try again").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TYPE_IT_IN).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_CHOOSE_PHOTO).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertDoesNotExist()
     }
 
     @Test
     fun scanErrorAfterAPhotoThatCannotBeSentOffersTypingOrADifferentPhotoAndNotTryAgain() {
         setChooser(creditBalance = 5, scanState = failed("photo_unsendable"))
 
-        composeRule.onNodeWithText("Type it in").assertIsDisplayed()
-        composeRule.onNodeWithText("Choose a different photo").assertIsDisplayed()
-        composeRule.onNodeWithText("Try again").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TYPE_IT_IN).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_CHOOSE_PHOTO).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TRY_AGAIN).assertDoesNotExist()
     }
 
     // Typing it in is the Enter Manually card's destination, reached from the
@@ -221,13 +224,13 @@ class ChooserScreenTest {
             onScanErrorNextStep = { steps += it },
         )
 
-        composeRule.onNodeWithText("Type it in").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TYPE_IT_IN).performClick()
 
         assert(dismissed) { "the error should be dismissed" }
         assertEquals(1, manual)
         assertEquals(emptyList<Uri>(), scanned)
         assertEquals(emptyList<ScanNextStep>(), steps)
-        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertDoesNotExist()
     }
 
     @Test
@@ -235,7 +238,7 @@ class ChooserScreenTest {
         var manual = 0
         setChooser(creditBalance = 5, scanState = failed("photo_unsendable"), onChooseManual = { manual++ })
 
-        composeRule.onNodeWithText("Type it in").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_TYPE_IT_IN).performClick()
 
         assertEquals(1, manual)
     }
@@ -251,12 +254,12 @@ class ChooserScreenTest {
             onScanErrorNextStep = { steps += it },
         )
 
-        composeRule.onNodeWithText("Choose a different photo").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_CHOOSE_PHOTO).performClick()
 
         assert(dismissed) { "the error should be dismissed" }
         assertEquals(emptyList<ScanNextStep>(), steps)
-        composeRule.onNodeWithText("Take Photo").assertIsDisplayed()
-        composeRule.onNodeWithText("Choose from Gallery").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_GALLERY).assertIsDisplayed()
     }
 
     @Test
@@ -268,9 +271,9 @@ class ChooserScreenTest {
             onNeedCredits = { neededCredits = true },
         )
 
-        composeRule.onNodeWithText("Choose a different photo").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_CHOOSE_PHOTO).performClick()
 
         assert(neededCredits) { "onNeedCredits should have fired for a 0-credit user" }
-        composeRule.onNodeWithText("Take Photo").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.PHOTO_DIALOG_CAMERA).assertDoesNotExist()
     }
 }

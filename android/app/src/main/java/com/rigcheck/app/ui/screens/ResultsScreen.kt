@@ -29,6 +29,7 @@ import com.rigcheck.app.domain.BreakdownItem
 import com.rigcheck.app.domain.Tone
 import com.rigcheck.app.domain.VerdictInfo
 import com.rigcheck.app.ui.GarageNotice
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.components.BreakdownRow
 import com.rigcheck.app.ui.components.EstimatedFiguresNotice
 import com.rigcheck.app.ui.theme.DangerRed
@@ -57,15 +58,23 @@ fun ResultsScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.weight(1f).padding(20.dp)) {
-            Text(rigNickname.ifBlank { "Rig" }, style = MaterialTheme.typography.titleLarge)
-            Text(LocalDate.now().format(DATE_FORMAT), style = MaterialTheme.typography.bodySmall)
+            Text(
+                rigNickname.ifBlank { "Rig" },
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.testTag(UiTags.RESULTS_RIG_NAME),
+            )
+            Text(
+                LocalDate.now().format(DATE_FORMAT),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.testTag(UiTags.RESULTS_DATE),
+            )
 
             // The subline is a full sentence, so the verdict pill takes the whole row
             // rather than sharing it with the nickname.
             Surface(
                 shape = RoundedCornerShape(20.dp),
                 border = BorderStroke(2.dp, toneColor),
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp).testTag(UiTags.RESULTS_VERDICT),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -110,7 +119,7 @@ fun ResultsScreen(
             Surface(
                 shape = RoundedCornerShape(20.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 20.dp).testTag(UiTags.RESULTS_BREAKDOWN_CARD),
             ) {
                 LazyColumn(
                     modifier = Modifier.padding(20.dp),
@@ -123,13 +132,14 @@ fun ResultsScreen(
             Text(
                 "Experimental tool, not a certified safety decision.",
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.padding(top = 16.dp).testTag(UiTags.RESULTS_FOOTER_NOTE),
             )
         }
 
         Button(
             onClick = onStartAnother,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)
+                .testTag(UiTags.RESULTS_START_ANOTHER_BUTTON),
         ) { Text("Start another check") }
     }
 }
@@ -140,7 +150,7 @@ private fun HistoryNoticeCard(message: String) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).testTag("history_notice"),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).testTag(UiTags.HISTORY_NOTICE),
     ) {
         Text(message, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(16.dp))
     }
@@ -152,12 +162,12 @@ private fun GarageNoticeCard(notice: GarageNotice, onGetPro: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).testTag("garage_notice"),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).testTag(UiTags.GARAGE_NOTICE),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(notice.message, style = MaterialTheme.typography.bodyMedium)
             if (notice.offerPro) {
-                TextButton(onClick = onGetPro, modifier = Modifier.testTag("garage_notice_get_pro")) {
+                TextButton(onClick = onGetPro, modifier = Modifier.testTag(UiTags.GARAGE_NOTICE_GET_PRO)) {
                     Text("Get Pro for a bigger Garage")
                 }
             }

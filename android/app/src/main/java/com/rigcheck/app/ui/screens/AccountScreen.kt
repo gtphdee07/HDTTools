@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.data.AccountResult
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.components.FeedbackLink
 
 private const val MIN_PASSWORD_LENGTH = 6
@@ -81,8 +82,9 @@ fun AccountScreen(
         Text(
             if (creating) "Create your account" else "Sign in",
             style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.testTag(UiTags.ACCOUNT_TITLE),
         )
-        Text(reason, style = MaterialTheme.typography.bodyLarge)
+        Text(reason, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.testTag(UiTags.ACCOUNT_REASON))
 
         OutlinedTextField(
             value = email,
@@ -90,7 +92,7 @@ fun AccountScreen(
             label = { Text("Email") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().testTag(UiTags.ACCOUNT_EMAIL_FIELD),
         )
         OutlinedTextField(
             value = password,
@@ -104,11 +106,15 @@ fun AccountScreen(
             } else {
                 null
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().testTag(UiTags.ACCOUNT_PASSWORD_FIELD),
         )
 
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        info?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+        error?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag(UiTags.ACCOUNT_ERROR))
+        }
+        info?.let {
+            Text(it, color = MaterialTheme.colorScheme.primary, modifier = Modifier.testTag(UiTags.ACCOUNT_INFO))
+        }
 
         Button(
             enabled = canSubmit,
@@ -116,18 +122,23 @@ fun AccountScreen(
                 if (creating) perform(null) { cb -> onSignUp(email.trim(), password, cb) }
                 else perform(null) { cb -> onSignIn(email.trim(), password, cb) }
             },
-            modifier = Modifier.fillMaxWidth().testTag("account_submit"),
+            modifier = Modifier.fillMaxWidth().testTag(UiTags.ACCOUNT_SUBMIT),
         ) {
             Text(if (creating) "Create account" else "Sign in")
         }
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(enabled = !isBusy, onClick = { creating = !creating; error = null; info = null }) {
+            TextButton(
+                enabled = !isBusy,
+                onClick = { creating = !creating; error = null; info = null },
+                modifier = Modifier.testTag(UiTags.ACCOUNT_TOGGLE_MODE),
+            ) {
                 Text(if (creating) "Have an account? Sign in" else "New here? Create an account")
             }
             if (!creating) {
                 TextButton(
                     enabled = !isBusy && email.isNotBlank(),
+                    modifier = Modifier.testTag(UiTags.ACCOUNT_FORGOT_PASSWORD),
                     onClick = {
                         perform("If that email has an account, a reset link is on its way.") { cb ->
                             onForgotPassword(email.trim(), cb)
@@ -137,23 +148,23 @@ fun AccountScreen(
             }
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp).testTag(UiTags.ACCOUNT_DIVIDER))
 
         OutlinedButton(
             enabled = !isBusy,
             onClick = { perform(null) { cb -> onGoogle(cb) } },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().testTag(UiTags.ACCOUNT_GOOGLE_BUTTON),
         ) { Text("Continue with Google") }
         if (showApple) {
             OutlinedButton(
                 enabled = !isBusy,
                 onClick = { perform("Finish signing in with Apple in your browser.") { cb -> onApple(cb) } },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag(UiTags.ACCOUNT_APPLE_BUTTON),
             ) { Text("Continue with Apple") }
         }
 
-        TextButton(onClick = onNotNow) { Text("Not now") }
+        TextButton(onClick = onNotNow, modifier = Modifier.testTag(UiTags.ACCOUNT_NOT_NOW_BUTTON)) { Text("Not now") }
         // Trouble signing in is a thing a tester needs to report from here (#182).
-        FeedbackLink()
+        FeedbackLink(linkModifier = Modifier.testTag(UiTags.ACCOUNT_FEEDBACK_LINK))
     }
 }

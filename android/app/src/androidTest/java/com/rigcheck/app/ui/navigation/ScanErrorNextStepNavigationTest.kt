@@ -4,8 +4,7 @@ import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.core.view.ViewCompat
@@ -19,9 +18,12 @@ import com.rigcheck.app.data.AccountResult
 import com.rigcheck.app.data.AccountState
 import com.rigcheck.app.data.BackendStatus
 import com.rigcheck.app.data.ScanResult
+import com.rigcheck.app.testsupport.nodesWithTag
+import com.rigcheck.app.testsupport.onNodeWithTagText
 import com.rigcheck.app.ui.RigCheckViewModel
 import com.rigcheck.app.ui.ScanMessages
 import com.rigcheck.app.ui.ScanUiState
+import com.rigcheck.app.ui.UiTags
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
@@ -78,7 +80,7 @@ class ScanErrorNextStepNavigationTest {
 
     // Same recipe as RigCheckNavHostTest (#125): leave the soft keyboard really closed.
     private fun enterNickname(nickname: String) {
-        composeRule.onNodeWithText("Rig nickname").performTextInput(nickname)
+        composeRule.onNodeWithTag(UiTags.PICKER_NEW_RIG_INPUT).performTextInput(nickname)
         composeRule.waitUntil(timeoutMillis = 30_000) { isKeyboardVisible() }
         closeSoftKeyboard()
         composeRule.waitUntil(timeoutMillis = 30_000) { !isKeyboardVisible() }
@@ -115,11 +117,11 @@ class ScanErrorNextStepNavigationTest {
         }
 
         enterNickname("Scan Error Rig")
-        composeRule.onNodeWithText("Create").performClick()
-        composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).assertIsDisplayed()
         if (button == ScanButton.TRUCK_TAG_TICKET) {
-            composeRule.onNodeWithText("Enter Manually").performClick()
-            composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
+            composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+            composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).assertIsDisplayed()
         }
     }
 
@@ -132,18 +134,16 @@ class ScanErrorNextStepNavigationTest {
             }
         }
         composeRule.waitUntil(timeoutMillis = 10_000) {
-            nodesWithText("Scan failed") == 1
+            composeRule.nodesWithTag(UiTags.SCAN_ERROR_TITLE) == 1
         }
-        composeRule.onNodeWithText(message).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.SCAN_ERROR_MESSAGE, message).assertIsDisplayed()
     }
-
-    private fun nodesWithText(text: String): Int = composeRule.onAllNodesWithText(text).fetchSemanticsNodes().size
 
     // Closed means the error is cleared, not just off screen: tapping a button that
     // opens another screen takes the dialog's screen out of the composition, but an
     // error left in the view model would be shown again when the user came back.
     private fun assertDialogClosed() {
-        composeRule.onNodeWithText("Scan failed").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_TITLE).assertDoesNotExist()
         var state: ScanUiState? = null
         composeRule.runOnUiThread { state = viewModel.scanState }
         assertEquals(ScanUiState.Idle, state)
@@ -151,32 +151,32 @@ class ScanErrorNextStepNavigationTest {
 
     // The sign-in screen the Paywall route shows a signed-out user.
     private fun assertOnSignInScreen() {
-        composeRule.waitUntil(timeoutMillis = 10_000) { nodesWithText("Continue with Google") == 1 }
-        composeRule.onNodeWithText("Get More Scans").assertDoesNotExist()
+        composeRule.waitUntil(timeoutMillis = 10_000) { composeRule.nodesWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON) == 1 }
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_TITLE, "Get More Scans").assertDoesNotExist()
     }
 
     private fun assertOnPaywallSignedIn() {
-        composeRule.waitUntil(timeoutMillis = 10_000) { nodesWithText("Get More Scans") == 1 }
-        composeRule.onNodeWithText("Buying for rig@example.com").assertIsDisplayed()
-        composeRule.onNodeWithText("Continue with Google").assertDoesNotExist()
+        composeRule.waitUntil(timeoutMillis = 10_000) { composeRule.nodesWithTag(UiTags.PAYWALL_TITLE) == 1 }
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_ACCOUNT_LABEL, "Buying for rig@example.com").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertDoesNotExist()
     }
 
     // Still where the Scan was started, signed in, with nothing opened.
     private fun assertStayedPut(button: ScanButton) {
         assertDialogClosed()
         when (button) {
-            ScanButton.CHOOSER -> composeRule.onNodeWithText("Enter Manually").assertIsDisplayed()
-            ScanButton.TRUCK_TAG_TICKET -> composeRule.onNodeWithText("Next: Trailer Tag").assertIsDisplayed()
+            ScanButton.CHOOSER -> composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).assertIsDisplayed()
+            ScanButton.TRUCK_TAG_TICKET -> composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).assertIsDisplayed()
         }
-        composeRule.onNodeWithText("Continue with Google").assertDoesNotExist()
-        composeRule.onNodeWithText("Get More Scans").assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_TITLE, "Get More Scans").assertDoesNotExist()
     }
 
     private fun signInAfterRejectedToken(button: ScanButton) {
         startRig(signedIn = true, failure = ScanResult.Failure("unauthorized", "worker text"), button = button)
         failScan(button, ScanMessages.EXPIRED_SIGN_IN)
 
-        composeRule.onNodeWithText("Sign in").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_SIGN_IN).performClick()
 
         assertDialogClosed()
         assertOnSignInScreen()
@@ -188,7 +188,7 @@ class ScanErrorNextStepNavigationTest {
         startRig(signedIn = false, failure = null, button = button)
         failScan(button, ScanMessages.NOT_SIGNED_IN)
 
-        composeRule.onNodeWithText("Sign in").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_SIGN_IN).performClick()
 
         assertDialogClosed()
         assertOnSignInScreen()
@@ -199,7 +199,7 @@ class ScanErrorNextStepNavigationTest {
         startRig(signedIn = true, failure = ScanResult.Failure("insufficient_credits", "worker text"), button = button)
         failScan(button, ScanMessages.OUT_OF_SCANS)
 
-        composeRule.onNodeWithText("Buy more Scans").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_BUY_SCANS).performClick()
 
         assertDialogClosed()
         assertOnPaywallSignedIn()
@@ -211,12 +211,12 @@ class ScanErrorNextStepNavigationTest {
     private fun okOnlyCloses(button: ScanButton) {
         startRig(signedIn = true, failure = ScanResult.Failure("unauthorized", "worker text"), button = button)
         failScan(button, ScanMessages.EXPIRED_SIGN_IN)
-        composeRule.onNodeWithText("OK").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_OK_BUTTON).performClick()
         assertStayedPut(button)
 
         composeRule.runOnUiThread { viewModel.scanSender = { _, _ -> ScanResult.Failure("insufficient_credits", "worker text") } }
         failScan(button, ScanMessages.OUT_OF_SCANS)
-        composeRule.onNodeWithText("OK").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_OK_BUTTON).performClick()
         assertStayedPut(button)
 
         assertEquals(0, backend.signOutCalls)
@@ -228,10 +228,10 @@ class ScanErrorNextStepNavigationTest {
     private fun backFromThePaywall(button: ScanButton) {
         startRig(signedIn = true, failure = ScanResult.Failure("insufficient_credits", "worker text"), button = button)
         failScan(button, ScanMessages.OUT_OF_SCANS)
-        composeRule.onNodeWithText("Buy more Scans").performClick()
+        composeRule.onNodeWithTag(UiTags.SCAN_ERROR_NEXT_BUY_SCANS).performClick()
         assertOnPaywallSignedIn()
 
-        composeRule.onNodeWithText("Back").performClick()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_BACK).performClick()
 
         assertStayedPut(button)
         assert(accountState() is AccountState.SignedIn) { "Back must not end the session" }

@@ -37,6 +37,7 @@ import com.rigcheck.app.BuildConfig
 import com.rigcheck.app.data.PaywallOffers
 import com.rigcheck.app.data.RevenueCatManager
 import com.rigcheck.app.data.paywallOffers
+import com.rigcheck.app.ui.UiTags
 
 // Custom Compose layout per ANDROID_DESIGN_BRIEF.md - not RevenueCat's
 // prebuilt Paywall UI, since the mockup is bespoke/brand-matched. Prices
@@ -94,7 +95,7 @@ fun PaywallScreen(
         TextButton(
             enabled = !isBusy,
             onClick = onDone,
-            modifier = Modifier.padding(horizontal = 8.dp).testTag("paywall_back"),
+            modifier = Modifier.padding(horizontal = 8.dp).testTag(UiTags.PAYWALL_BACK),
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
@@ -108,22 +109,34 @@ fun PaywallScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
         ) {
-            Text(if (isPro == false) "Unlock Pro" else "Get More Scans", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                if (isPro == false) "Unlock Pro" else "Get More Scans",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.testTag(UiTags.PAYWALL_TITLE),
+            )
             accountLabel?.let { label ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Buying for $label", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                    TextButton(enabled = !isBusy, onClick = onSignOut) { Text("Sign out") }
+                    Text(
+                        "Buying for $label",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f).testTag(UiTags.PAYWALL_ACCOUNT_LABEL),
+                    )
+                    TextButton(
+                        enabled = !isBusy,
+                        onClick = onSignOut,
+                        modifier = Modifier.testTag(UiTags.PAYWALL_SIGN_OUT_BUTTON),
+                    ) { Text("Sign out") }
                 }
             }
             isPro?.let { pro ->
                 Text(
                     if (pro) "Pro plan" else "Free plan",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 8.dp),
+                    modifier = Modifier.padding(top = 8.dp).testTag(UiTags.PAYWALL_PLAN_LABEL),
                 )
             }
             val scansLeft = "You have ${creditBalance ?: 0} scan${if (creditBalance == 1) "" else "s"} left. "
@@ -135,7 +148,7 @@ fun PaywallScreen(
                     null -> ""
                 } + whatItIsFor,
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 12.dp, bottom = 24.dp),
+                modifier = Modifier.padding(top = 12.dp, bottom = 24.dp).testTag(UiTags.PAYWALL_EXPLAINER),
             )
 
             // Buying a pack ends the visit; buying Pro stays, because what the account
@@ -160,7 +173,7 @@ fun PaywallScreen(
                     "Beta: test payments. Every purchase uses a test card; no real money moves.",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp),
+                    modifier = Modifier.padding(bottom = 16.dp).testTag(UiTags.PAYWALL_BETA_LABEL),
                 )
             }
 
@@ -169,14 +182,25 @@ fun PaywallScreen(
                 loadError != null -> Text(
                     "Couldn't load offers: $loadError",
                     color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag(UiTags.PAYWALL_LOAD_ERROR),
                 )
-                shown == null -> CircularProgressIndicator()
+                shown == null -> CircularProgressIndicator(modifier = Modifier.testTag(UiTags.PAYWALL_LOADING))
                 isPro == null -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Checking your plan before showing what you can buy.")
-                    TextButton(enabled = !isBusy, onClick = onRetryPlan) { Text("Try again") }
+                    Text(
+                        "Checking your plan before showing what you can buy.",
+                        modifier = Modifier.testTag(UiTags.PAYWALL_PLAN_UNKNOWN),
+                    )
+                    TextButton(
+                        enabled = !isBusy,
+                        onClick = onRetryPlan,
+                        modifier = Modifier.testTag(UiTags.PAYWALL_RETRY_BUTTON),
+                    ) { Text("Try again") }
                 }
                 isPro -> if (shown.scanPacks.isEmpty()) {
-                    Text("No scan packs are available right now.")
+                    Text(
+                        "No scan packs are available right now.",
+                        modifier = Modifier.testTag(UiTags.PAYWALL_NO_PACKS),
+                    )
                 } else {
                     OfferList(shown.scanPacks, isBusy) { pkg -> buy(pkg, closesScreen = true, done = "Purchase complete!") }
                 }
@@ -186,16 +210,23 @@ fun PaywallScreen(
                             buy(it, closesScreen = false, done = "Pro unlocked!") { proBought = true }
                         }
                         if (proBought) {
-                            Text("Pro is yours. Updating your plan to show scan packs.")
-                            TextButton(enabled = !isBusy, onClick = onRetryPlan) { Text("Try again") }
+                            Text(
+                                "Pro is yours. Updating your plan to show scan packs.",
+                                modifier = Modifier.testTag(UiTags.PAYWALL_PRO_BOUGHT),
+                            )
+                            TextButton(
+                                enabled = !isBusy,
+                                onClick = onRetryPlan,
+                                modifier = Modifier.testTag(UiTags.PAYWALL_RETRY_BUTTON),
+                            ) { Text("Try again") }
                         }
                     }
-                } ?: Text("Pro isn't available to buy right now.")
+                } ?: Text("Pro isn't available to buy right now.", modifier = Modifier.testTag(UiTags.PAYWALL_NO_PRO))
             }
 
             TextButton(
                 enabled = !isBusy,
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.padding(top = 16.dp).testTag(UiTags.PAYWALL_RESTORE_BUTTON),
                 onClick = {
                     isBusy = true
                     onRestore { success, error ->
@@ -221,7 +252,7 @@ private fun OfferList(packages: List<Package>, isBusy: Boolean, onBuy: (Package)
             Surface(
                 shape = MaterialTheme.shapes.medium,
                 tonalElevation = 1.dp,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag(UiTags.PAYWALL_OFFER_CARD),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -229,12 +260,24 @@ private fun OfferList(packages: List<Package>, isBusy: Boolean, onBuy: (Package)
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(pkg.product.title, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            pkg.product.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.testTag(UiTags.PAYWALL_OFFER_TITLE),
+                        )
                         pkg.product.description.takeIf { it.isNotBlank() }?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.testTag(UiTags.PAYWALL_OFFER_DESCRIPTION),
+                            )
                         }
                     }
-                    Button(enabled = !isBusy, onClick = { onBuy(pkg) }) {
+                    Button(
+                        enabled = !isBusy,
+                        onClick = { onBuy(pkg) },
+                        modifier = Modifier.testTag(UiTags.PAYWALL_BUY_BUTTON),
+                    ) {
                         Text(pkg.product.price.formatted)
                     }
                 }

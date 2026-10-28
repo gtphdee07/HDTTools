@@ -5,11 +5,13 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.data.HistoryEntry
 import com.rigcheck.app.domain.VerdictStatus
+import com.rigcheck.app.testsupport.onHistoryEntry
+import com.rigcheck.app.testsupport.onNodeWithTagText
+import com.rigcheck.app.ui.UiTags
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,19 +36,19 @@ class HistoryScreenTest {
             )
         }
 
-        composeRule.onAllNodesWithTag("history_entry").assertCountEquals(3)
-        composeRule.onNodeWithText("Goose + Addie").assertIsDisplayed()
-        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
-        composeRule.onNodeWithText("Over Limit").assertIsDisplayed()
-        composeRule.onNodeWithText("Partially Checked").assertIsDisplayed()
+        composeRule.onAllNodesWithTag(UiTags.HISTORY_ENTRY).assertCountEquals(3)
+        composeRule.onHistoryEntry("Goose + Addie").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.HISTORY_ENTRY_VERDICT, "Safe to Tow").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.HISTORY_ENTRY_VERDICT, "Over Limit").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.HISTORY_ENTRY_VERDICT, "Partially Checked").assertIsDisplayed()
     }
 
     @Test
     fun noChecksSaysSoAndShowsNoLimitNotice() {
         composeRule.setContent { HistoryScreen(entries = emptyList()) }
 
-        composeRule.onNodeWithTag("history_empty").assertIsDisplayed()
-        composeRule.onAllNodesWithTag("history_limit_notice").assertCountEquals(0)
+        composeRule.onNodeWithTag(UiTags.HISTORY_EMPTY).assertIsDisplayed()
+        composeRule.onAllNodesWithTag(UiTags.HISTORY_LIMIT_NOTICE).assertCountEquals(0)
     }
 
     @Test
@@ -60,8 +62,8 @@ class HistoryScreenTest {
             )
         }
 
-        composeRule.onNodeWithTag("history_limit_notice").assertIsDisplayed()
-        composeRule.onNodeWithTag("history_upgrade").performClick()
+        composeRule.onNodeWithTag(UiTags.HISTORY_LIMIT_NOTICE).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.HISTORY_UPGRADE).performClick()
         assert(upgrade) { "Upgrade to Pro should have fired onUpgrade" }
     }
 }

@@ -5,9 +5,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
@@ -18,6 +16,8 @@ import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.revenuecat.purchases.PackageType
 import com.rigcheck.app.testsupport.fakePackage
+import com.rigcheck.app.testsupport.nodesWithTag
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.screens.PaywallScreen
 import com.rigcheck.app.ui.screens.RigPickerScreen
 import org.junit.Assert.assertEquals
@@ -88,7 +88,7 @@ class SystemBarsTest {
     // Same recipe as RigCheckNavHostTest (#125): leave the soft keyboard really closed, so
     // the bounds are read in the layout the user sees when the keyboard is away.
     private fun enterNickname(nickname: String) {
-        composeRule.onNodeWithText("Rig nickname").performTextInput(nickname)
+        composeRule.onNodeWithTag(UiTags.PICKER_NEW_RIG_INPUT).performTextInput(nickname)
         composeRule.waitUntil(timeoutMillis = 30_000) { isKeyboardVisible() }
         closeSoftKeyboard()
         composeRule.waitUntil(timeoutMillis = 30_000) { !isKeyboardVisible() }
@@ -122,10 +122,10 @@ class SystemBarsTest {
 
         // The RigCheck title is the first thing under the status bar, Create the last above the navigation bar.
         assertClearOfTheSystemBars(
-            "the RigCheck title" to composeRule.onNodeWithText("RigCheck"),
-            "the Create button" to composeRule.onNodeWithText("Create"),
+            "the RigCheck title" to composeRule.onNodeWithTag(UiTags.PICKER_APP_TITLE),
+            "the Create button" to composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON),
         )
-        composeRule.onNodeWithText("Create").performClick()
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
         assertEquals("Big Blue", created)
     }
 
@@ -149,17 +149,17 @@ class SystemBarsTest {
             }
         }
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithText("Pack 1", substring = true).fetchSemanticsNodes().isNotEmpty()
+            composeRule.nodesWithTag(UiTags.PAYWALL_OFFER_CARD) > 0
         }
 
-        composeRule.onNodeWithText("Restore purchase").performScrollTo()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).performScrollTo()
 
         assertClearOfTheSystemBars(
-            "Restore purchase" to composeRule.onNodeWithText("Restore purchase"),
-            "the Back button" to composeRule.onNodeWithTag("paywall_back"),
+            "Restore purchase" to composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON),
+            "the Back button" to composeRule.onNodeWithTag(UiTags.PAYWALL_BACK),
         )
 
-        composeRule.onNodeWithText("Restore purchase").performClick()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).performClick()
         assertTrue("tapping Restore purchase should have asked for the restore", restored)
     }
 }

@@ -6,6 +6,7 @@ import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -21,6 +22,7 @@ import com.rigcheck.app.data.paywallOffers
 import com.rigcheck.app.testsupport.AssetFixtureFileSource
 import com.rigcheck.app.testsupport.ScanFixturePool
 import com.rigcheck.app.testsupport.weeklyAccessToken
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.navigation.EntryModule
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -106,12 +108,12 @@ class PaywallScreenWeeklyTest {
             // call at all there).
             composeRule.waitUntil(timeoutMillis = 15_000) {
                 composeRule.onAllNodesWithText(expectedTitle, substring = true).fetchSemanticsNodes().isNotEmpty() ||
-                    composeRule.onAllNodesWithText("Couldn't load offers", substring = true).fetchSemanticsNodes().isNotEmpty()
+                    composeRule.onAllNodesWithTag(UiTags.PAYWALL_LOAD_ERROR).fetchSemanticsNodes().isNotEmpty()
             }
 
             assertTrue(
                 "Should not show the offline error state when real offerings are configured",
-                composeRule.onAllNodesWithText("Couldn't load offers", substring = true).fetchSemanticsNodes().isEmpty(),
+                composeRule.onAllNodesWithTag(UiTags.PAYWALL_LOAD_ERROR).fetchSemanticsNodes().isEmpty(),
             )
             composeRule.onNodeWithText(expectedTitle, substring = true).assertIsDisplayed()
             composeRule.onNodeWithText(expectedPrice, substring = true).assertIsDisplayed()

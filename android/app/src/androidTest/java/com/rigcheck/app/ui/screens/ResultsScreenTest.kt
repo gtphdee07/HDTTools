@@ -5,12 +5,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -26,6 +26,8 @@ import com.rigcheck.app.ui.GarageNotice
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import com.rigcheck.app.ui.UiTags
+import com.rigcheck.app.testsupport.onNodeWithTagText
 
 @RunWith(AndroidJUnit4::class)
 class ResultsScreenTest {
@@ -51,9 +53,9 @@ class ResultsScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
-        composeRule.onNodeWithText("Tow Vehicle Total (GVWR)").assertIsDisplayed()
-        composeRule.onNodeWithText("85%").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, "Safe to Tow").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_LABEL, "Tow Vehicle Total (GVWR)").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_PCT, "85%").assertIsDisplayed()
     }
 
     @Test
@@ -71,9 +73,9 @@ class ResultsScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Not Safe to Tow").assertIsDisplayed()
-        composeRule.onNodeWithText("Combined Rig Weight").assertIsDisplayed()
-        composeRule.onNodeWithText("108%").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, "Not Safe to Tow").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_LABEL, "Combined Rig Weight").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_PCT, "108%").assertIsDisplayed()
     }
 
     // #47: the Combined Rig Weight row exists only when the truck has a GCWR, so these
@@ -101,8 +103,8 @@ class ResultsScreenTest {
     fun combinedRigWeightRowIsHiddenWhenNoGcwrWasEntered() {
         showResultsFor(gcwrTruck)
 
-        composeRule.onNodeWithText("Tow Vehicle Total (GVWR)").assertIsDisplayed()
-        composeRule.onNodeWithText("Combined Rig Weight").assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_LABEL, "Tow Vehicle Total (GVWR)").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_LABEL, "Combined Rig Weight").assertDoesNotExist()
     }
 
     @Test
@@ -110,8 +112,8 @@ class ResultsScreenTest {
         showResultsFor(gcwrTruck.copy(gcwrLb = 26_000.0))
 
         // The sixth row sits below the fold of the card's own list, which composes lazily.
-        composeRule.onNode(hasScrollAction()).performScrollToNode(hasText("Combined Rig Weight"))
-        composeRule.onNodeWithText("Combined Rig Weight").assertIsDisplayed()
+        composeRule.onNode(hasScrollAction()).performScrollToNode(hasTestTag(UiTags.RESULTS_ROW) and hasText("Combined Rig Weight"))
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_LABEL, "Combined Rig Weight").assertIsDisplayed()
     }
 
     // #168: the Verdict's subline sits under the headline. Without a GCWR the Safe to Tow
@@ -122,17 +124,17 @@ class ResultsScreenTest {
     fun safeToTowSublineCarriesGcwrCaveatWhenNoGcwrWasEntered() {
         showResultsFor(gcwrTruck)
 
-        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
-        composeRule.onNodeWithText(GCWR_UNCHECKED_CAVEAT, substring = true).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, "Safe to Tow").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, GCWR_UNCHECKED_CAVEAT, substring = true).assertIsDisplayed()
     }
 
     @Test
     fun safeToTowSublineHasNoGcwrCaveatWhenAGcwrWasChecked() {
         showResultsFor(gcwrTruck.copy(gcwrLb = 26_000.0))
 
-        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
-        composeRule.onNodeWithText("Every axle checks out under its rated limit.").assertIsDisplayed()
-        composeRule.onNodeWithText(GCWR_UNCHECKED_CAVEAT, substring = true).assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, "Safe to Tow").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, "Every axle checks out under its rated limit.").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, GCWR_UNCHECKED_CAVEAT, substring = true).assertDoesNotExist()
     }
 
     @Test
@@ -146,7 +148,7 @@ class ResultsScreenTest {
                 onStartAnother = {},
             )
         }
-        composeRule.onNodeWithText(verdictFor(failing).subline).assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, verdictFor(failing).subline).assertIsDisplayed()
     }
 
     @Test
@@ -161,8 +163,8 @@ class ResultsScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Not Enough Information").assertIsDisplayed()
-        composeRule.onNodeWithText("Front Axle (Steer)").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, "Not Enough Information").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_LABEL, "Front Axle (Steer)").assertIsDisplayed()
     }
 
     @Test
@@ -180,7 +182,7 @@ class ResultsScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Partially Checked").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, "Partially Checked").assertIsDisplayed()
     }
 
     @Test
@@ -197,7 +199,7 @@ class ResultsScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("⚠️ Estimated Figures — Confirm Before You Buy").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ESTIMATED_NOTICE, "⚠️ Estimated Figures — Confirm Before You Buy").assertIsDisplayed()
     }
 
     @Test
@@ -212,7 +214,7 @@ class ResultsScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("⚠️ Estimated Figures — Confirm Before You Buy").assertDoesNotExist()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ESTIMATED_NOTICE, "⚠️ Estimated Figures — Confirm Before You Buy").assertDoesNotExist()
     }
 
     @Test
@@ -227,7 +229,7 @@ class ResultsScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Goose + Addie").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_RIG_NAME, "Goose + Addie").assertIsDisplayed()
     }
 
     @Test
@@ -243,7 +245,7 @@ class ResultsScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("Start another check").performClick()
+        composeRule.onNodeWithTag(UiTags.RESULTS_START_ANOTHER_BUTTON).performClick()
 
         assert(started) { "onStartAnother should have fired when the button was tapped" }
     }
@@ -267,8 +269,8 @@ class ResultsScreenTest {
     fun noGarageNoticeIsShownWhenTheRigWasSaved() {
         showResultsWith(notice = null)
 
-        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
-        composeRule.onAllNodesWithTag("garage_notice").assertCountEquals(0)
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, "Safe to Tow").assertIsDisplayed()
+        composeRule.onAllNodesWithTag(UiTags.GARAGE_NOTICE).assertCountEquals(0)
     }
 
     @Test
@@ -279,9 +281,9 @@ class ResultsScreenTest {
             onGetPro = { proOffered = true },
         )
 
-        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
-        composeRule.onNodeWithTag("garage_notice").assertIsDisplayed()
-        composeRule.onNodeWithText("Get Pro for a bigger Garage").performClick()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, "Safe to Tow").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.GARAGE_NOTICE).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.GARAGE_NOTICE_GET_PRO).performClick()
         assert(proOffered) { "Get Pro should have fired onGetPro" }
     }
 
@@ -289,8 +291,8 @@ class ResultsScreenTest {
     fun aGarageNoticeOffersNothingWhenProWouldNotHelp() {
         showResultsWith(notice = GarageNotice("We couldn't save \"Goose\" to your Garage.", offerPro = false))
 
-        composeRule.onNodeWithTag("garage_notice").assertIsDisplayed()
-        composeRule.onAllNodesWithTag("garage_notice_get_pro").assertCountEquals(0)
+        composeRule.onNodeWithTag(UiTags.GARAGE_NOTICE).assertIsDisplayed()
+        composeRule.onAllNodesWithTag(UiTags.GARAGE_NOTICE_GET_PRO).assertCountEquals(0)
     }
 
     // #32: the check went ahead; only its History entry did not reach the account.
@@ -308,11 +310,11 @@ class ResultsScreenTest {
             )
         }
 
-        composeRule.onAllNodesWithTag("history_notice").assertCountEquals(0)
+        composeRule.onAllNodesWithTag(UiTags.HISTORY_NOTICE).assertCountEquals(0)
 
         notice = "We couldn't save this check to your History. Your check is not affected."
 
-        composeRule.onNodeWithText("Safe to Tow").assertIsDisplayed()
-        composeRule.onNodeWithTag("history_notice").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, "Safe to Tow").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.HISTORY_NOTICE).assertIsDisplayed()
     }
 }

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.rigcheck.app.R
 import com.rigcheck.app.domain.model.ScaleTicket
 import com.rigcheck.app.ui.ScanNotice
+import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.components.LabeledNumberField
 import com.rigcheck.app.ui.components.LabeledTextField
 import com.rigcheck.app.ui.components.ScanNoticeCard
@@ -51,26 +52,30 @@ fun ScaleTicketEntryScreen(
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
     ) {
-        Text("Scale Ticket", style = MaterialTheme.typography.headlineMedium)
-        StepProgressBar(step = 3, totalSteps = 3, modifier = Modifier.padding(top = 8.dp))
+        Text("Scale Ticket", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.testTag(UiTags.SCALE_TITLE))
+        StepProgressBar(
+            step = 3,
+            totalSteps = 3,
+            modifier = Modifier.padding(top = 8.dp).testTag(UiTags.SCALE_STEP_BAR),
+        )
 
         ScanNoticeCard(scanNotice?.textFor(scale), modifier = Modifier.padding(top = 16.dp))
 
         Text(
             "Find these values on your CAT Scale printout.",
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(top = 16.dp, bottom = 12.dp),
+            modifier = Modifier.padding(top = 16.dp, bottom = 12.dp).testTag(UiTags.SCALE_INSTRUCTIONS),
         )
 
         Image(
             painter = painterResource(R.drawable.ref_scale_ticket),
             contentDescription = "CAT Scale ticket",
             contentScale = ContentScale.FillWidth,
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)),
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).testTag(UiTags.SCALE_REFERENCE_IMAGE),
         )
 
         Row(
-            modifier = Modifier.padding(vertical = 12.dp),
+            modifier = Modifier.padding(vertical = 12.dp).testTag(UiTags.SCALE_LEGEND),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             LEGEND.forEach { entry ->
@@ -83,34 +88,38 @@ fun ScaleTicketEntryScreen(
                 label = "Scale location",
                 value = scale.locationName ?: "",
                 onValueChange = { onScaleChange(scale.copy(locationName = it.ifBlank { null })) },
-                modifier = Modifier.testTag("scale_location"),
+                modifier = Modifier.testTag(UiTags.SCALE_LOCATION),
             )
             LabeledNumberField(
                 label = "Steer axle, lb",
                 value = scale.steerAxleLb,
                 onValueChange = { onScaleChange(scale.copy(steerAxleLb = it)) },
+                modifier = Modifier.testTag(UiTags.SCALE_STEER_FIELD),
             )
             LabeledNumberField(
                 label = "Drive axle, lb",
                 value = scale.driveAxleLb,
                 onValueChange = { onScaleChange(scale.copy(driveAxleLb = it)) },
+                modifier = Modifier.testTag(UiTags.SCALE_DRIVE_FIELD),
             )
             LabeledNumberField(
                 label = "Trailer axle(s), lb",
                 value = scale.trailerAxleLb,
                 onValueChange = { onScaleChange(scale.copy(trailerAxleLb = it)) },
+                modifier = Modifier.testTag(UiTags.SCALE_TRAILER_FIELD),
             )
             LabeledNumberField(
                 label = "Gross weight, lb",
                 value = scale.grossWeightLb,
                 onValueChange = { onScaleChange(scale.copy(grossWeightLb = it)) },
+                modifier = Modifier.testTag(UiTags.SCALE_GROSS_FIELD),
             )
         }
     }
 
         Button(
             onClick = onContinue,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp).testTag(UiTags.SCALE_CHECK_BUTTON),
         ) { Text("Check Weights") }
     }
 }

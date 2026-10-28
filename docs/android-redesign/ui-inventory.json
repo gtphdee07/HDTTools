@@ -1,7 +1,7 @@
 {
   "meta": {
     "about": "Inventory of every visible element of the RigCheck Android app today, for the redesign. Source of truth for the redesign map.",
-    "generated_from": "android/app/src/main/java/com/rigcheck/app/ui/** read by hand on 2026-10-25 (commit 68db012); `tests_referencing` is a grep of android/app/src/androidTest.",
+    "generated_from": "android/app/src/main/java/com/rigcheck/app/ui/** read by hand on 2026-10-25 (commit 68db012); `tests_referencing` was a grep of android/app/src/androidTest for the element's text; since #188 it counts the uses of the element's UiTags tag(s) per test file (uv run scripts/ui_inventory.py --refresh-tests). Brought up to date on 2026-10-27 (#188) for the elements #186, #182, #184 and #169 added since; the toast is not tagged (test_tag_new null) because it is system UI.",
     "size_basis": "Sizes are what the Compose code asks for (fixed dp where written; a ~ value is an estimate from padding and text size; '(M3 default)' where Material 3 supplies it; 'wrap'/'fill' otherwise). They are NOT measured on a device. Region and order are reading order on a 412 dp wide phone.",
     "reference_frame": "412 x 892 dp, edge-to-edge, light theme only",
     "region_vocabulary": {
@@ -21,9 +21,10 @@
     ],
     "how_to_fill": "For every element set redesign.status. For anything not 'removed' fill new_screen, new_region, new_order, new_width, new_height, new_style. Put brand-new elements in added_elements (id prefix = screen id). Never reuse an id for a different function. Leave new_text null unless the copy changes.",
     "counts": {
-      "elements": 150,
-      "screens": 13
-    }
+      "elements": 167,
+      "screens": 15
+    },
+    "test_tags": "test_tag_new is the Modifier.testTag value of the element (UiTags in the app); null when the element is not tagged (system toasts). An element whose one slot holds several different controls (the Scan error dialog's next-step buttons) also lists test_tag_variants, one per control; test_tag_new then tags the area that holds them. Repeated items (rig card, breakdown row, history entry, offer card) share one tag and are found with onAllNodesWithTag."
   },
   "screens": [
     {
@@ -165,7 +166,7 @@
       "route": "Paywall (signed-in branch)",
       "purpose": "Buy Pro (Free account) or scan packs (Pro account); restore purchases.",
       "entered_from": "rig_picker/chooser chip; Scan Photo at 0 credits; Scan error 'Buy more Scans'; Results Get Pro; History Upgrade",
-      "leaves_to": "back (system Back; done after buying a pack)",
+      "leaves_to": "back (the Back control or system Back; done after buying a pack)",
       "states": [
         "offers loading",
         "offers load error",
@@ -219,6 +220,29 @@
         "credit used",
         "no credit used"
       ]
+    },
+    {
+      "id": "delete_rig_dialog",
+      "route": "dialog on rig_picker",
+      "purpose": "Asks before deleting a saved Rig from the Garage (#169).",
+      "entered_from": "the delete control on a saved Rig's card (signed-in accounts only)",
+      "leaves_to": "rig_picker",
+      "states": [
+        "question",
+        "deleting (buttons disabled)",
+        "delete failed (error shown, can try again)"
+      ]
+    },
+    {
+      "id": "crash_report_dialog",
+      "route": "dialog on any screen (MainActivity level)",
+      "purpose": "Offers to send details of a crash on the next launch (#184).",
+      "entered_from": "app launch after a crash",
+      "leaves_to": "email app; the screen the app opened on",
+      "states": [
+        "question",
+        "no email app on the phone"
+      ]
     }
   ],
   "elements": [
@@ -240,7 +264,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "picker_app_title",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "SystemBarsTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -273,7 +300,8 @@
       "test_tag_today": "open_history",
       "test_tag_new": "open_history",
       "tests_referencing": {
-        "HistoryNavigationTest.kt": 1
+        "HistoryNavigationTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -307,8 +335,9 @@
       "test_tag_today": null,
       "test_tag_new": "picker_credit_chip",
       "tests_referencing": {
-        "CreditBalanceChipTest.kt": 1,
-        "RigCheckNavHostTest.kt": 2
+        "CreditBalanceChipTest.kt": 6,
+        "RigPickerScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -341,7 +370,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "picker_header_divider",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -374,7 +405,8 @@
       "test_tag_today": null,
       "test_tag_new": "picker_heading",
       "tests_referencing": {
-        "ScanInFlightNavigationTest.kt": 2
+        "ScanInFlightNavigationTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -407,7 +439,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "picker_subheading",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -439,7 +473,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "picker_rig_card",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -471,7 +507,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "picker_rig_avatar",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -503,7 +541,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "picker_rig_nickname",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -535,7 +575,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "picker_rig_subtitle",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -567,7 +609,43 @@
       },
       "test_tag_today": null,
       "test_tag_new": "picker_rig_last_checked",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "picker.rig_delete_button",
+      "screen": "rig_picker",
+      "kind": "icon-button",
+      "name": "Delete rig button (repeats)",
+      "function": "Asks whether to delete this saved Rig from the Garage; does not start a check.",
+      "text": "(Delete icon)",
+      "visible_when": "signed in (Rigs can be deleted); one per saved rig",
+      "navigates_to": "delete_rig_dialog",
+      "today": {
+        "region": "body",
+        "order": 11,
+        "width": "48dp (M3 default)",
+        "height": "48dp",
+        "style": "M3 IconButton, Delete icon, content description 'Delete <nickname>'"
+      },
+      "test_tag_today": null,
+      "test_tag_new": "picker_rig_delete",
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -599,7 +677,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "picker_new_rig_label",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -634,10 +714,12 @@
       "tests_referencing": {
         "GarageNavigationTest.kt": 1,
         "HistoryNavigationTest.kt": 1,
-        "RigCheckNavHostTest.kt": 2,
+        "RigCheckNavHostTest.kt": 1,
         "ScanErrorNextStepNavigationTest.kt": 1,
         "ScanInFlightNavigationTest.kt": 1,
-        "RigPickerScreenTest.kt": 1
+        "SystemBarsTest.kt": 1,
+        "RigPickerScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -676,7 +758,80 @@
         "RigCheckNavHostTest.kt": 9,
         "ScanErrorNextStepNavigationTest.kt": 1,
         "ScanInFlightNavigationTest.kt": 1,
-        "RigPickerScreenTest.kt": 2
+        "SystemBarsTest.kt": 2,
+        "RigPickerScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "picker.feedback_link",
+      "screen": "rig_picker",
+      "kind": "text-button",
+      "name": "Send feedback link",
+      "function": "Opens a new email to the beta feedback address (#182).",
+      "text": "Send feedback",
+      "visible_when": "always",
+      "navigates_to": "email app",
+      "today": {
+        "region": "footer",
+        "order": 15,
+        "width": "wrap",
+        "height": "40dp (M3 default)",
+        "style": "M3 TextButton, primary (orange) text"
+      },
+      "test_tag_today": null,
+      "test_tag_new": "picker_feedback_link",
+      "tests_referencing": {
+        "FeedbackLinkTest.kt": 3,
+        "RigPickerScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 3
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "picker.feedback_no_mail",
+      "screen": "rig_picker",
+      "kind": "text",
+      "name": "No email app line",
+      "function": "Tells a phone with no email app where to write instead.",
+      "text": "This phone has no email app. Write to <feedback address> instead.",
+      "visible_when": "after Send feedback is tapped on a phone with no email app",
+      "navigates_to": null,
+      "today": {
+        "region": "footer",
+        "order": 16,
+        "width": "wrap",
+        "height": "wrap",
+        "style": "bodySmall"
+      },
+      "test_tag_today": "send_feedback_no_mail_app",
+      "test_tag_new": "send_feedback_no_mail_app",
+      "tests_referencing": {
+        "FeedbackLinkTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -710,7 +865,8 @@
       "test_tag_today": null,
       "test_tag_new": "chooser_title",
       "tests_referencing": {
-        "RigCheckNavHostTest.kt": 11
+        "RigCheckNavHostTest.kt": 11,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -744,8 +900,9 @@
       "test_tag_today": null,
       "test_tag_new": "chooser_credit_chip",
       "tests_referencing": {
-        "CreditBalanceChipTest.kt": 1,
-        "RigCheckNavHostTest.kt": 2
+        "RigCheckNavHostTest.kt": 1,
+        "ChooserScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -778,7 +935,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "chooser_step_bar",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -810,7 +969,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "chooser_prompt",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -843,8 +1004,9 @@
       "test_tag_today": null,
       "test_tag_new": "chooser_scan_card",
       "tests_referencing": {
-        "RigCheckNavHostTest.kt": 4,
-        "ChooserScreenTest.kt": 3
+        "RigCheckNavHostTest.kt": 3,
+        "ChooserScreenTest.kt": 3,
+        "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
         "status": null,
@@ -877,7 +1039,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "chooser_scan_badge",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -915,7 +1079,8 @@
         "RigCheckNavHostTest.kt": 16,
         "ScanErrorNextStepNavigationTest.kt": 3,
         "ScanInFlightNavigationTest.kt": 5,
-        "ChooserScreenTest.kt": 2
+        "ChooserScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -948,7 +1113,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "chooser_manual_badge",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -980,7 +1147,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "chooser_footer_note",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1012,7 +1181,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "chooser_loading_overlay",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1045,8 +1216,7 @@
       "test_tag_today": null,
       "test_tag_new": "photo_dialog_title",
       "tests_referencing": {
-        "RigCheckNavHostTest.kt": 4,
-        "ChooserScreenTest.kt": 3
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -1079,7 +1249,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "photo_dialog_body",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1113,7 +1285,8 @@
       "test_tag_new": "photo_dialog_gallery",
       "tests_referencing": {
         "ChooserScreenTest.kt": 2,
-        "TruckTagEntryScreenTest.kt": 2
+        "TruckTagEntryScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -1149,7 +1322,8 @@
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 1,
         "ChooserScreenTest.kt": 6,
-        "TruckTagEntryScreenTest.kt": 6
+        "TruckTagEntryScreenTest.kt": 6,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -1183,7 +1357,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_title",
       "tests_referencing": {
-        "RigCheckNavHostTest.kt": 6
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -1216,7 +1390,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_step_bar",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1250,7 +1426,8 @@
       "test_tag_new": "scan_notice",
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 6,
-        "ScanNoticeScreenTest.kt": 7
+        "ScanNoticeScreenTest.kt": 13,
+        "UiTagsDisplayedTest.kt": 3
       },
       "redesign": {
         "status": null,
@@ -1283,7 +1460,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_instructions",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1315,7 +1494,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_reference_image",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1347,7 +1528,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_reference_hint",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1381,7 +1564,8 @@
       "test_tag_new": "truck_description",
       "tests_referencing": {
         "ScanNoticeScreenTest.kt": 1,
-        "TruckTagEntryScreenTest.kt": 2
+        "TruckTagEntryScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -1414,7 +1598,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_name_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1446,7 +1632,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_gvwr_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1478,7 +1666,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_front_gawr_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1510,7 +1700,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_rear_gawr_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1543,7 +1735,8 @@
       "test_tag_today": "truck_gcwr",
       "test_tag_new": "truck_gcwr",
       "tests_referencing": {
-        "TruckTagEntryScreenTest.kt": 2
+        "TruckTagEntryScreenTest.kt": 3,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -1577,7 +1770,8 @@
       "test_tag_today": null,
       "test_tag_new": "truck_gcwr_help",
       "tests_referencing": {
-        "TruckTagEntryScreenTest.kt": 1
+        "TruckTagEntryScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -1611,7 +1805,8 @@
       "test_tag_today": "truck_gcwr_warning",
       "test_tag_new": "truck_gcwr_warning",
       "tests_referencing": {
-        "TruckTagEntryScreenTest.kt": 3
+        "TruckTagEntryScreenTest.kt": 3,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -1644,7 +1839,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_label",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1676,7 +1873,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_info",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 2
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1708,7 +1907,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_info_text",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1740,7 +1941,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1772,7 +1975,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_panel",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1804,7 +2009,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_panel_title",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1836,7 +2043,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_panel_body",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1869,9 +2078,9 @@
       "test_tag_today": "scan_standalone_ticket",
       "test_tag_new": "scan_standalone_ticket",
       "tests_referencing": {
-        "RigCheckNavHostTest.kt": 2,
-        "ScanErrorNextStepNavigationTest.kt": 1,
-        "TruckTagEntryScreenTest.kt": 9
+        "RigCheckNavHostTest.kt": 1,
+        "TruckTagEntryScreenTest.kt": 8,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -1904,7 +2113,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_pin_weight_label",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "TruckTagEntryScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1936,7 +2148,9 @@
       },
       "test_tag_today": "pin_weight_pct_slider",
       "test_tag_new": "pin_weight_pct_slider",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -1968,7 +2182,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "truck_pin_weight_caption",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2006,7 +2222,8 @@
         "RigCheckNavHostTest.kt": 9,
         "ScanErrorNextStepNavigationTest.kt": 2,
         "ScanInFlightNavigationTest.kt": 8,
-        "TruckTagEntryScreenTest.kt": 1
+        "TruckTagEntryScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -2040,7 +2257,7 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_title",
       "tests_referencing": {
-        "RigCheckNavHostTest.kt": 2
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -2073,7 +2290,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "trailer_step_bar",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2107,7 +2326,8 @@
       "test_tag_new": "scan_notice",
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 6,
-        "ScanNoticeScreenTest.kt": 7
+        "ScanNoticeScreenTest.kt": 13,
+        "UiTagsDisplayedTest.kt": 3
       },
       "redesign": {
         "status": null,
@@ -2140,7 +2360,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "trailer_instructions",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2172,7 +2394,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "trailer_reference_image",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2204,7 +2428,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "trailer_reference_hint",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2237,7 +2463,8 @@
       "test_tag_today": "trailer_description",
       "test_tag_new": "trailer_description",
       "tests_referencing": {
-        "TrailerTagEntryScreenTest.kt": 1
+        "TrailerTagEntryScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -2270,7 +2497,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "trailer_name_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2302,7 +2531,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "trailer_gvwr_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2334,7 +2565,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "trailer_gawr_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2366,7 +2599,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "trailer_axle_count_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2398,7 +2633,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "trailer_axle_count_help",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2430,7 +2667,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "trailer_uvw_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2466,7 +2705,8 @@
         "GarageNavigationTest.kt": 1,
         "HistoryNavigationTest.kt": 1,
         "RigCheckNavHostTest.kt": 5,
-        "TrailerTagEntryScreenTest.kt": 1
+        "TrailerTagEntryScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -2500,7 +2740,7 @@
       "test_tag_today": null,
       "test_tag_new": "scale_title",
       "tests_referencing": {
-        "RigCheckNavHostTest.kt": 3
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -2533,7 +2773,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "scale_step_bar",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2567,7 +2809,8 @@
       "test_tag_new": "scan_notice",
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 6,
-        "ScanNoticeScreenTest.kt": 7
+        "ScanNoticeScreenTest.kt": 13,
+        "UiTagsDisplayedTest.kt": 3
       },
       "redesign": {
         "status": null,
@@ -2600,7 +2843,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "scale_instructions",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2632,7 +2877,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "scale_reference_image",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2664,7 +2911,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "scale_legend",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2697,7 +2946,8 @@
       "test_tag_today": "scale_location",
       "test_tag_new": "scale_location",
       "tests_referencing": {
-        "ScaleTicketEntryScreenTest.kt": 1
+        "ScaleTicketEntryScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -2730,7 +2980,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "scale_steer_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2762,7 +3014,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "scale_drive_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2794,7 +3048,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "scale_trailer_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2826,7 +3082,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "scale_gross_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2862,7 +3120,8 @@
         "GarageNavigationTest.kt": 1,
         "HistoryNavigationTest.kt": 1,
         "RigCheckNavHostTest.kt": 4,
-        "ScaleTicketEntryScreenTest.kt": 1
+        "ScaleTicketEntryScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -2895,7 +3154,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "disclaimer_icon",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2927,7 +3188,11 @@
       },
       "test_tag_today": null,
       "test_tag_new": "disclaimer_title",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "RigCheckNavHostTest.kt": 1,
+        "DisclaimerScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2959,7 +3224,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "disclaimer_body_1",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -2991,7 +3258,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "disclaimer_body_2",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3027,7 +3296,8 @@
         "GarageNavigationTest.kt": 1,
         "HistoryNavigationTest.kt": 1,
         "RigCheckNavHostTest.kt": 2,
-        "DisclaimerScreenTest.kt": 1
+        "DisclaimerScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -3060,7 +3330,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "results_rig_name",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "ResultsScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3092,7 +3365,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "results_date",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3124,7 +3399,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "results_verdict",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "ResultsScreenTest.kt": 13,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3157,8 +3435,9 @@
       "test_tag_today": "garage_notice",
       "test_tag_new": "garage_notice",
       "tests_referencing": {
-        "GarageNavigationTest.kt": 1,
-        "ResultsScreenTest.kt": 3
+        "GarageNavigationTest.kt": 2,
+        "ResultsScreenTest.kt": 3,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -3192,7 +3471,8 @@
       "test_tag_today": "garage_notice_get_pro",
       "test_tag_new": "garage_notice_get_pro",
       "tests_referencing": {
-        "ResultsScreenTest.kt": 2
+        "ResultsScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -3226,8 +3506,9 @@
       "test_tag_today": "history_notice",
       "test_tag_new": "history_notice",
       "tests_referencing": {
-        "HistoryNavigationTest.kt": 1,
-        "ResultsScreenTest.kt": 3
+        "HistoryNavigationTest.kt": 2,
+        "ResultsScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -3260,7 +3541,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "results_estimated_notice",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "ResultsScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3292,7 +3576,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "results_breakdown_card",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3324,7 +3610,11 @@
       },
       "test_tag_today": null,
       "test_tag_new": "results_row",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "BreakdownRowTest.kt": 2,
+        "ResultsScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 2
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3356,7 +3646,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "results_row_icon",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3388,7 +3680,11 @@
       },
       "test_tag_today": null,
       "test_tag_new": "results_row_label",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "BreakdownRowTest.kt": 2,
+        "ResultsScreenTest.kt": 6,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3420,7 +3716,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "results_row_values",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3452,7 +3750,11 @@
       },
       "test_tag_today": null,
       "test_tag_new": "results_row_pct",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "BreakdownRowTest.kt": 1,
+        "ResultsScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3484,7 +3786,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "results_row_bar",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3516,7 +3820,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "results_row_note",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "BreakdownRowTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3548,7 +3855,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "results_footer_note",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3583,8 +3892,9 @@
       "tests_referencing": {
         "GarageNavigationTest.kt": 2,
         "HistoryNavigationTest.kt": 4,
-        "RigCheckNavHostTest.kt": 2,
-        "ResultsScreenTest.kt": 1
+        "RigCheckNavHostTest.kt": 1,
+        "ResultsScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -3618,7 +3928,8 @@
       "test_tag_today": null,
       "test_tag_new": "history_title",
       "tests_referencing": {
-        "HistoryNavigationTest.kt": 1
+        "HistoryNavigationTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -3651,7 +3962,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "history_subtitle",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3684,7 +3997,8 @@
       "test_tag_today": "history_limit_notice",
       "test_tag_new": "history_limit_notice",
       "tests_referencing": {
-        "HistoryScreenTest.kt": 2
+        "HistoryScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -3718,7 +4032,8 @@
       "test_tag_today": "history_upgrade",
       "test_tag_new": "history_upgrade",
       "tests_referencing": {
-        "HistoryScreenTest.kt": 1
+        "HistoryScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -3752,7 +4067,8 @@
       "test_tag_today": "history_empty",
       "test_tag_new": "history_empty",
       "tests_referencing": {
-        "HistoryScreenTest.kt": 1
+        "HistoryScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -3786,7 +4102,9 @@
       "test_tag_today": "history_entry",
       "test_tag_new": "history_entry",
       "tests_referencing": {
-        "HistoryScreenTest.kt": 1
+        "HistoryNavigationTest.kt": 1,
+        "HistoryScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -3819,7 +4137,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "history_entry_rig",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3851,7 +4171,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "history_entry_date",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3886,7 +4208,7 @@
       "tests_referencing": {
         "HistoryNavigationTest.kt": 3,
         "HistoryScreenTest.kt": 3,
-        "ResultsScreenTest.kt": 7
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -3921,7 +4243,8 @@
       "test_tag_new": "paywall_title",
       "tests_referencing": {
         "ScanErrorNextStepNavigationTest.kt": 3,
-        "PaywallScreenTest.kt": 2
+        "PaywallScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -3954,7 +4277,11 @@
       },
       "test_tag_today": null,
       "test_tag_new": "paywall_account_label",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "ScanErrorNextStepNavigationTest.kt": 1,
+        "PaywallScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -3987,7 +4314,8 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_sign_out_button",
       "tests_referencing": {
-        "PaywallScreenTest.kt": 2
+        "PaywallScreenTest.kt": 3,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -4021,7 +4349,8 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_plan_label",
       "tests_referencing": {
-        "PaywallScreenTest.kt": 8
+        "PaywallScreenTest.kt": 6,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -4054,7 +4383,45 @@
       },
       "test_tag_today": null,
       "test_tag_new": "paywall_explainer",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "PaywallScreenTest.kt": 4,
+        "UiTagsDisplayedTest.kt": 1
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "paywall.beta_label",
+      "screen": "paywall",
+      "kind": "text",
+      "name": "Beta label",
+      "function": "Says the offers are bought with test cards (beta build only, #182).",
+      "text": "Beta: test payments. Every purchase uses a test card; no real money moves.",
+      "visible_when": "beta build only (BuildConfig.IS_BETA)",
+      "navigates_to": null,
+      "today": {
+        "region": "body",
+        "order": 5,
+        "width": "fill",
+        "height": "wrap",
+        "style": "bodyMedium Bold"
+      },
+      "test_tag_today": null,
+      "test_tag_new": "paywall_beta_label",
+      "tests_referencing": {
+        "PaywallScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4086,7 +4453,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "paywall_loading",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4118,7 +4487,12 @@
       },
       "test_tag_today": null,
       "test_tag_new": "paywall_load_error",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "RevenueCatAndroidSdkExternalTest.kt": 2,
+        "PaywallScreenTest.kt": 1,
+        "PaywallScreenWeeklyTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4150,7 +4524,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "paywall_plan_unknown",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "PaywallScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4183,12 +4560,8 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_retry_button",
       "tests_referencing": {
-        "LateScanDialogTest.kt": 1,
-        "ScanInFlightNavigationTest.kt": 1,
-        "ChooserScreenTest.kt": 6,
         "PaywallScreenTest.kt": 2,
-        "ScanNoticeScreenTest.kt": 3,
-        "TruckTagEntryScreenTest.kt": 6
+        "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
         "status": null,
@@ -4221,7 +4594,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "paywall_offer_card",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "SystemBarsTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4253,7 +4629,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "paywall_offer_title",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "PaywallScreenTest.kt": 18,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4285,7 +4664,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "paywall_offer_description",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4317,7 +4698,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "paywall_buy_button",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "PaywallScreenTest.kt": 10,
+        "UiTagsDisplayedTest.kt": 3
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4350,7 +4734,8 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_no_packs",
       "tests_referencing": {
-        "PaywallScreenTest.kt": 1
+        "PaywallScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -4384,7 +4769,8 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_no_pro",
       "tests_referencing": {
-        "PaywallScreenTest.kt": 1
+        "PaywallScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -4417,7 +4803,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "paywall_pro_bought",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "PaywallScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4451,7 +4840,9 @@
       "test_tag_new": "paywall_restore_button",
       "tests_referencing": {
         "RevenueCatAndroidSdkExternalTest.kt": 1,
-        "PaywallScreenTest.kt": 9
+        "SystemBarsTest.kt": 3,
+        "PaywallScreenTest.kt": 13,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -4483,7 +4874,7 @@
         "style": "Android Toast (system styling)"
       },
       "test_tag_today": null,
-      "test_tag_new": "paywall_toast",
+      "test_tag_new": null,
       "tests_referencing": {},
       "redesign": {
         "status": null,
@@ -4501,22 +4892,27 @@
     {
       "id": "paywall.back",
       "screen": "paywall",
-      "kind": "missing",
-      "name": "Back control (MISSING today)",
-      "function": "No on-screen way back; system Back only. #186 adds one.",
-      "text": null,
-      "visible_when": "n/a",
-      "navigates_to": null,
+      "kind": "text-button",
+      "name": "Back",
+      "function": "Leaves the Paywall (back to the screen it was opened from). Off while a purchase or restore is out.",
+      "text": "Back",
+      "visible_when": "always",
+      "navigates_to": "back",
       "today": {
         "region": "header",
         "order": 19,
-        "width": "-",
-        "height": "-",
-        "style": "does not exist yet"
+        "width": "wrap",
+        "height": "40dp (M3 default)",
+        "style": "M3 TextButton with a 24dp ArrowBack icon, above the scrolling content (#186)"
       },
-      "test_tag_today": null,
+      "test_tag_today": "paywall_back",
       "test_tag_new": "paywall_back",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "ScanErrorNextStepNavigationTest.kt": 1,
+        "SystemBarsTest.kt": 1,
+        "PaywallScreenTest.kt": 4,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4549,11 +4945,8 @@
       "test_tag_today": null,
       "test_tag_new": "account_title",
       "tests_referencing": {
-        "LateScanDialogTest.kt": 1,
-        "ScanErrorNextStepNavigationTest.kt": 3,
         "AccountScreenTest.kt": 1,
-        "ChooserScreenTest.kt": 2,
-        "TruckTagEntryScreenTest.kt": 2
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -4586,7 +4979,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "account_reason",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "AccountScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4619,7 +5015,8 @@
       "test_tag_today": null,
       "test_tag_new": "account_email_field",
       "tests_referencing": {
-        "AccountScreenTest.kt": 4
+        "AccountScreenTest.kt": 4,
+        "UiTagsDisplayedTest.kt": 3
       },
       "redesign": {
         "status": null,
@@ -4652,7 +5049,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "account_password_field",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "AccountScreenTest.kt": 3,
+        "UiTagsDisplayedTest.kt": 2
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4684,7 +5084,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "account_error",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "AccountScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4716,7 +5119,10 @@
       },
       "test_tag_today": null,
       "test_tag_new": "account_info",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "AccountScreenTest.kt": 3,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4749,11 +5155,8 @@
       "test_tag_today": "account_submit",
       "test_tag_new": "account_submit",
       "tests_referencing": {
-        "LateScanDialogTest.kt": 1,
-        "ScanErrorNextStepNavigationTest.kt": 3,
         "AccountScreenTest.kt": 8,
-        "ChooserScreenTest.kt": 2,
-        "TruckTagEntryScreenTest.kt": 2
+        "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
         "status": null,
@@ -4787,7 +5190,8 @@
       "test_tag_today": null,
       "test_tag_new": "account_toggle_mode",
       "tests_referencing": {
-        "AccountScreenTest.kt": 2
+        "AccountScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -4821,7 +5225,8 @@
       "test_tag_today": null,
       "test_tag_new": "account_forgot_password",
       "tests_referencing": {
-        "AccountScreenTest.kt": 2
+        "AccountScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
         "status": null,
@@ -4854,7 +5259,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "account_divider",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -4889,7 +5296,8 @@
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 4,
         "ScanErrorNextStepNavigationTest.kt": 3,
-        "AccountScreenTest.kt": 9
+        "AccountScreenTest.kt": 9,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -4923,7 +5331,8 @@
       "test_tag_today": null,
       "test_tag_new": "account_apple_button",
       "tests_referencing": {
-        "AccountScreenTest.kt": 5
+        "AccountScreenTest.kt": 5,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -4957,8 +5366,79 @@
       "test_tag_today": null,
       "test_tag_new": "account_not_now_button",
       "tests_referencing": {
-        "RigCheckNavHostTest.kt": 4,
-        "AccountScreenTest.kt": 1
+        "RigCheckNavHostTest.kt": 2,
+        "AccountScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "account.feedback_link",
+      "screen": "account",
+      "kind": "text-button",
+      "name": "Send feedback link",
+      "function": "Opens a new email to the beta feedback address, for trouble signing in (#182).",
+      "text": "Send feedback",
+      "visible_when": "always",
+      "navigates_to": "email app",
+      "today": {
+        "region": "body",
+        "order": 14,
+        "width": "wrap",
+        "height": "40dp (M3 default)",
+        "style": "M3 TextButton, primary (orange) text"
+      },
+      "test_tag_today": null,
+      "test_tag_new": "account_feedback_link",
+      "tests_referencing": {
+        "AccountScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "account.feedback_no_mail",
+      "screen": "account",
+      "kind": "text",
+      "name": "No email app line",
+      "function": "Tells a phone with no email app where to write instead.",
+      "text": "This phone has no email app. Write to <feedback address> instead.",
+      "visible_when": "after Send feedback is tapped on a phone with no email app",
+      "navigates_to": null,
+      "today": {
+        "region": "body",
+        "order": 15,
+        "width": "wrap",
+        "height": "wrap",
+        "style": "bodySmall"
+      },
+      "test_tag_today": "send_feedback_no_mail_app",
+      "test_tag_new": "send_feedback_no_mail_app",
+      "tests_referencing": {
+        "FeedbackLinkTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -4995,7 +5475,8 @@
         "ScanErrorNextStepNavigationTest.kt": 2,
         "ScanInFlightNavigationTest.kt": 2,
         "ChooserScreenTest.kt": 1,
-        "TruckTagEntryScreenTest.kt": 2
+        "TruckTagEntryScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -5028,7 +5509,12 @@
       },
       "test_tag_today": null,
       "test_tag_new": "scan_error_message",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "ScanErrorNextStepNavigationTest.kt": 1,
+        "ChooserScreenTest.kt": 3,
+        "TruckTagEntryScreenTest.kt": 4,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -5060,14 +5546,21 @@
       },
       "test_tag_today": null,
       "test_tag_new": "scan_error_next_step_button",
+      "test_tag_variants": [
+        "scan_error_next_sign_in",
+        "scan_error_next_buy_scans",
+        "scan_error_next_try_again",
+        "scan_error_next_choose_photo",
+        "scan_error_next_type_it_in"
+      ],
       "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 6,
         "LateScanDialogTest.kt": 3,
-        "ScanErrorNextStepNavigationTest.kt": 5,
-        "ScanInFlightNavigationTest.kt": 1,
+        "ScanErrorNextStepNavigationTest.kt": 4,
         "ChooserScreenTest.kt": 20,
-        "PaywallScreenTest.kt": 2,
-        "ScanNoticeScreenTest.kt": 3,
-        "TruckTagEntryScreenTest.kt": 23
+        "TruckTagEntryScreenTest.kt": 23,
+        "ScanInFlightNavigationTest.kt": 1,
+        "ScanNoticeScreenTest.kt": 3
       },
       "redesign": {
         "status": null,
@@ -5101,11 +5594,10 @@
       "test_tag_today": null,
       "test_tag_new": "scan_error_ok_button",
       "tests_referencing": {
-        "LateScanDialogTest.kt": 2,
         "ScanErrorNextStepNavigationTest.kt": 2,
-        "ScanInFlightNavigationTest.kt": 1,
         "ChooserScreenTest.kt": 1,
-        "TruckTagEntryScreenTest.kt": 1
+        "TruckTagEntryScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,
@@ -5138,7 +5630,9 @@
       },
       "test_tag_today": null,
       "test_tag_new": "late_scan_title",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -5170,7 +5664,11 @@
       },
       "test_tag_today": null,
       "test_tag_new": "late_scan_message",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "LateScanDialogTest.kt": 1,
+        "ScanInFlightNavigationTest.kt": 7,
+        "UiTagsDisplayedTest.kt": 1
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -5204,10 +5702,392 @@
       "test_tag_new": "late_scan_ok_button",
       "tests_referencing": {
         "LateScanDialogTest.kt": 2,
-        "ScanErrorNextStepNavigationTest.kt": 2,
         "ScanInFlightNavigationTest.kt": 1,
-        "ChooserScreenTest.kt": 1,
-        "TruckTagEntryScreenTest.kt": 1
+        "UiTagsDisplayedTest.kt": 1
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "delete_rig.dialog",
+      "screen": "delete_rig_dialog",
+      "kind": "dialog",
+      "name": "Delete-rig dialog",
+      "function": "The dialog around the delete question (#169).",
+      "text": null,
+      "visible_when": "after the delete control of a saved Rig",
+      "navigates_to": null,
+      "today": {
+        "region": "overlay",
+        "order": 1,
+        "width": "M3 dialog",
+        "height": "wrap",
+        "style": "M3 AlertDialog"
+      },
+      "test_tag_today": "delete_rig_dialog",
+      "test_tag_new": "delete_rig_dialog",
+      "tests_referencing": {
+        "RigPickerScreenTest.kt": 7,
+        "UiTagsDisplayedTest.kt": 1
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "delete_rig.title",
+      "screen": "delete_rig_dialog",
+      "kind": "dialog-title",
+      "name": "Dialog title",
+      "function": "Names the Rig that would be deleted.",
+      "text": "Delete \"<nickname>\"?",
+      "visible_when": "always",
+      "navigates_to": null,
+      "today": {
+        "region": "overlay",
+        "order": 2,
+        "width": "M3 dialog",
+        "height": "wrap",
+        "style": "M3 AlertDialog"
+      },
+      "test_tag_today": null,
+      "test_tag_new": "delete_rig_title",
+      "tests_referencing": {
+        "RigPickerScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "delete_rig.body",
+      "screen": "delete_rig_dialog",
+      "kind": "text",
+      "name": "Dialog body",
+      "function": "Says what deleting does.",
+      "text": "This frees its spot in your Garage and can't be undone.",
+      "visible_when": "always",
+      "navigates_to": null,
+      "today": {
+        "region": "overlay",
+        "order": 3,
+        "width": "M3 dialog",
+        "height": "wrap",
+        "style": "bodyMedium"
+      },
+      "test_tag_today": null,
+      "test_tag_new": "delete_rig_body",
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "delete_rig.error",
+      "screen": "delete_rig_dialog",
+      "kind": "text",
+      "name": "Delete error",
+      "function": "Says the delete failed and the Rig is still in the Garage.",
+      "text": "We couldn't delete \"<nickname>\". It's still in your Garage; please try again.",
+      "visible_when": "after a failed delete",
+      "navigates_to": null,
+      "today": {
+        "region": "overlay",
+        "order": 4,
+        "width": "M3 dialog",
+        "height": "wrap",
+        "style": "bodyMedium, error colour"
+      },
+      "test_tag_today": "delete_rig_error",
+      "test_tag_new": "delete_rig_error",
+      "tests_referencing": {
+        "RigPickerScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 2
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "delete_rig.confirm_button",
+      "screen": "delete_rig_dialog",
+      "kind": "text-button",
+      "name": "Yes, delete",
+      "function": "Deletes the Rig; the dialog stays open with the error if that fails.",
+      "text": "Yes, delete | Deleting…",
+      "visible_when": "always (off while the delete runs)",
+      "navigates_to": "rig_picker",
+      "today": {
+        "region": "overlay",
+        "order": 5,
+        "width": "wrap",
+        "height": "40dp (M3 default)",
+        "style": "M3 TextButton"
+      },
+      "test_tag_today": "delete_rig_confirm",
+      "test_tag_new": "delete_rig_confirm",
+      "tests_referencing": {
+        "GarageNavigationTest.kt": 1,
+        "RigPickerScreenTest.kt": 4,
+        "UiTagsDisplayedTest.kt": 2
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "delete_rig.cancel_button",
+      "screen": "delete_rig_dialog",
+      "kind": "text-button",
+      "name": "Cancel",
+      "function": "Closes the dialog without deleting.",
+      "text": "Cancel",
+      "visible_when": "always (off while the delete runs)",
+      "navigates_to": null,
+      "today": {
+        "region": "overlay",
+        "order": 6,
+        "width": "wrap",
+        "height": "40dp (M3 default)",
+        "style": "M3 TextButton"
+      },
+      "test_tag_today": "delete_rig_cancel",
+      "test_tag_new": "delete_rig_cancel",
+      "tests_referencing": {
+        "RigPickerScreenTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "crash_prompt.question",
+      "screen": "crash_report_dialog",
+      "kind": "text",
+      "name": "Question",
+      "function": "Asks whether to send details of last time's crash (#184).",
+      "text": "RigCheck closed unexpectedly last time. Send details?",
+      "visible_when": "at launch, while a saved crash report is waiting (until answered)",
+      "navigates_to": null,
+      "today": {
+        "region": "overlay",
+        "order": 1,
+        "width": "M3 dialog",
+        "height": "wrap",
+        "style": "M3 AlertDialog body"
+      },
+      "test_tag_today": null,
+      "test_tag_new": "crash_prompt_question",
+      "tests_referencing": {
+        "CrashReportPromptTest.kt": 7,
+        "UiTagsDisplayedTest.kt": 1
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "crash_prompt.details",
+      "screen": "crash_report_dialog",
+      "kind": "text",
+      "name": "What the report holds",
+      "function": "Says what is in the report and that nothing is sent unless Send is tapped.",
+      "text": "It holds the error, the app version, your Android version and phone model. Nothing about your account or your rigs. Nothing is sent unless you tap Send.",
+      "visible_when": "same as the question",
+      "navigates_to": null,
+      "today": {
+        "region": "overlay",
+        "order": 2,
+        "width": "M3 dialog",
+        "height": "wrap",
+        "style": "bodySmall"
+      },
+      "test_tag_today": null,
+      "test_tag_new": "crash_prompt_details",
+      "tests_referencing": {
+        "UiTagsDisplayedTest.kt": 1
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "crash_prompt.no_mail_app",
+      "screen": "crash_report_dialog",
+      "kind": "text",
+      "name": "No email app line",
+      "function": "Replaces the question when Send finds no email app.",
+      "text": "This phone has no email app. Write to <feedback address> instead.",
+      "visible_when": "after Send is tapped on a phone with no email app",
+      "navigates_to": null,
+      "today": {
+        "region": "overlay",
+        "order": 3,
+        "width": "M3 dialog",
+        "height": "wrap",
+        "style": "M3 AlertDialog body"
+      },
+      "test_tag_today": null,
+      "test_tag_new": "crash_prompt_no_mail_app",
+      "tests_referencing": {
+        "CrashReportPromptTest.kt": 1,
+        "UiTagsDisplayedTest.kt": 1
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "crash_prompt.send_button",
+      "screen": "crash_report_dialog",
+      "kind": "text-button",
+      "name": "Send",
+      "function": "Opens an email to the feedback address with the report as its body and deletes the report.",
+      "text": "Send",
+      "visible_when": "while the question is shown (not after 'no email app')",
+      "navigates_to": "email app",
+      "today": {
+        "region": "overlay",
+        "order": 4,
+        "width": "wrap",
+        "height": "40dp (M3 default)",
+        "style": "M3 TextButton"
+      },
+      "test_tag_today": null,
+      "test_tag_new": "crash_prompt_send",
+      "tests_referencing": {
+        "CrashReportPromptTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 2
+      },
+      "redesign": {
+        "status": null,
+        "new_screen": null,
+        "new_region": null,
+        "new_order": null,
+        "new_width": null,
+        "new_height": null,
+        "new_style": null,
+        "new_text": null,
+        "new_test_tag": null,
+        "notes": null
+      }
+    },
+    {
+      "id": "crash_prompt.dismiss_button",
+      "screen": "crash_report_dialog",
+      "kind": "text-button",
+      "name": "Not now / OK",
+      "function": "Throws the report away and closes the dialog.",
+      "text": "Not now | OK (after 'no email app')",
+      "visible_when": "always",
+      "navigates_to": null,
+      "today": {
+        "region": "overlay",
+        "order": 5,
+        "width": "wrap",
+        "height": "40dp (M3 default)",
+        "style": "M3 TextButton"
+      },
+      "test_tag_today": null,
+      "test_tag_new": "crash_prompt_dismiss",
+      "tests_referencing": {
+        "CrashReportPromptTest.kt": 3,
+        "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
         "status": null,

@@ -220,8 +220,11 @@ fun RigCheckNavHost(
                 },
                 onDismissStandaloneScanError = { viewModel.clearScanError() },
                 creditBalance = viewModel.creditBalance,
+                signedOut = accountState is AccountState.SignedOut,
                 onNeedCredits = { navController.navigate(RigCheckRoute.Paywall) },
+                onOpenPaywall = { navController.navigate(RigCheckRoute.Paywall) },
                 onScanErrorNextStep = { step -> followScanNextStep(step, context.contentResolver) },
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -234,6 +237,7 @@ fun RigCheckNavHost(
                     navController.navigate(RigCheckRoute.Chooser(EntryModule.SCALE))
                 },
                 scanNotice = viewModel.scanNoticeState.notice,
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -246,6 +250,7 @@ fun RigCheckNavHost(
                     goToDisclaimerOrResults()
                 },
                 scanNotice = viewModel.scanNoticeState.notice,
+                onBack = { navController.popBackStack() },
             )
         }
 

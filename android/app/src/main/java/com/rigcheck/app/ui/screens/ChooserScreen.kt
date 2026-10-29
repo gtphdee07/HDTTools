@@ -38,12 +38,9 @@ import com.rigcheck.app.ui.ScanUiState
 import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.canStartScan
 import com.rigcheck.app.ui.components.CreditBalanceChip
+import com.rigcheck.app.ui.components.PhotoSourceDialog
 import com.rigcheck.app.ui.components.RigCheckBadge
 import com.rigcheck.app.ui.components.RigCheckBadgeKind
-import com.rigcheck.app.ui.components.RigCheckButton
-import com.rigcheck.app.ui.components.RigCheckButtonKind
-import com.rigcheck.app.ui.components.RigCheckButtonSize
-import com.rigcheck.app.ui.components.RigCheckDialog
 import com.rigcheck.app.ui.components.RigCheckNoticeCard
 import com.rigcheck.app.ui.components.RigCheckNoticeTone
 import com.rigcheck.app.ui.components.RigCheckOptionCard
@@ -220,39 +217,11 @@ fun ChooserScreen(
     }
 
     if (showSourceDialog) {
-        RigCheckDialog(
-            onDismissRequest = { showSourceDialog = false },
-            title = { Text("Scan Photo", style = RigCheckStyles.titleLg, color = Ink, modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_TITLE)) },
-            body = {
-                Text(
-                    "Take a new photo, or choose one you already have?",
-                    style = RigCheckStyles.body.copy(lineHeight = 24.sp),
-                    color = Ink,
-                    modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_BODY),
-                )
-            },
-        ) {
-            RigCheckButton(
-                text = "Take Photo",
-                onClick = {
-                    showSourceDialog = false
-                    launchCamera()
-                },
-                size = RigCheckButtonSize.Dialog,
-                icon = Icons.Filled.CameraAlt,
-                modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_CAMERA),
-            )
-            RigCheckButton(
-                text = "Choose from Gallery",
-                onClick = {
-                    showSourceDialog = false
-                    launchGallery()
-                },
-                kind = RigCheckButtonKind.Secondary,
-                size = RigCheckButtonSize.Dialog,
-                modifier = Modifier.testTag(UiTags.PHOTO_DIALOG_GALLERY),
-            )
-        }
+        PhotoSourceDialog(
+            onDismiss = { showSourceDialog = false },
+            onTakePhoto = ::launchCamera,
+            onChooseFromGallery = ::launchGallery,
+        )
     }
 
     if (scanState is ScanUiState.Error) {

@@ -4,13 +4,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.data.ScanResult
 import com.rigcheck.app.domain.model.TruckTag
@@ -449,6 +458,107 @@ class TruckTagEntryScreenTest {
         }
 
         composeRule.onNodeWithTag(UiTags.TRUCK_GCWR_WARNING).assertDoesNotExist()
+    }
+
+    // #193: the re-skin's top bar, balance chip, info control, slider and pinned reference card.
+
+    @Test
+    fun theTopBarsBackGoesBackAndIsOffWhileTheStandaloneScanIsReading() {
+        var backs = 0
+        var scanState by mutableStateOf<ScanUiState>(ScanUiState.Idle)
+        composeRule.setContent {
+            TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {}, scanState = scanState, onBack = { backs++ })
+        }
+
+        composeRule.onNodeWithTag(UiTags.TRUCK_BACK).assertContentDescriptionEquals("Back").performClick()
+        assertEquals(1, backs)
+
+        scanState = ScanUiState.Loading
+        composeRule.onNodeWithTag(UiTags.TRUCK_BACK).assertIsNotEnabled().performClick()
+        assertEquals("Back is off while a Scan is out", 1, backs)
+    }
+
+    @Test
+    fun theBalanceChipShowsTheBalanceAndOpensThePaywall() {
+        var opened = 0
+        composeRule.setContent {
+            TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {}, creditBalance = 12, onOpenPaywall = { opened++ })
+        }
+
+        composeRule.onNodeWithTagText(UiTags.TRUCK_CREDIT_CHIP, "12 scans").assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.TRUCK_CREDIT_CHIP).performClick()
+
+        assertEquals(1, opened)
+    }
+
+    // Signed out the balance is not known and nothing can be scanned: "0 scans", not "…" (copy-changes.md).
+    @Test
+    fun theBalanceChipSaysZeroScansWhenSignedOut() {
+        composeRule.setContent {
+            TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {}, creditBalance = null, signedOut = true)
+        }
+
+        composeRule.onNodeWithTagText(UiTags.TRUCK_CREDIT_CHIP, "0 scans").assertIsDisplayed()
+    }
+
+    // The stand-alone info control was a 24 dp icon with no name; it is a 48 dp target a screen reader can name.
+    @Test
+    fun theStandaloneInfoControlIsNamedIsAtLeast48DpAndShowsAndHidesItsText() {
+        composeRule.setContent {
+            TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {})
+        }
+        val info = composeRule.onNodeWithTag(UiTags.TRUCK_STANDALONE_INFO).scrollToIfScrollable()
+
+        info.assertContentDescriptionEquals("What is stand-alone weight?").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+        composeRule.onNodeWithTag(UiTags.TRUCK_STANDALONE_INFO_TEXT).assertDoesNotExist()
+
+        info.performClick()
+        composeRule.onNodeWithTag(UiTags.TRUCK_STANDALONE_INFO_TEXT).scrollToIfScrollable().assertIsDisplayed()
+
+        info.performClick()
+        composeRule.onNodeWithTag(UiTags.TRUCK_STANDALONE_INFO_TEXT).assertDoesNotExist()
+    }
+
+    @Test
+    fun draggingThePinWeightSliderReportsAPercentInTheRange() {
+        var pct by mutableStateOf(20)
+        composeRule.setContent {
+            TruckTagEntryScreen(
+                truck = TruckTag(), onTruckChange = {}, onContinue = {}, pinWeightPct = pct, onPinWeightPctChange = { pct = it },
+            )
+        }
+        val slider = composeRule.onNodeWithTag(UiTags.PIN_WEIGHT_PCT_SLIDER).scrollToIfScrollable()
+        slider.assertContentDescriptionEquals("Pin weight, percent of trailer weight")
+
+        slider.performTouchInput { swipeRight() }
+        composeRule.waitForIdle()
+
+        assertEquals("dragged to the end of the 15 to 25 range", 25, pct)
+        composeRule.onNodeWithTagText(UiTags.TRUCK_PIN_WEIGHT_LABEL, "25% of the trailer's weight", substring = true)
+            .scrollToIfScrollable().assertIsDisplayed()
+    }
+
+    // The pinned card replaces the old hover hint. Until #199 stores a crop per field, what a user can do with it is
+    // press and hold to zoom into a spot, which this drives; the card does not scroll away with the form.
+    @Test
+    fun holdingOnThePinnedReferenceImageZoomsIntoItAndReleasingPutsItBack() {
+        composeRule.setContent {
+            TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {})
+        }
+        val image = composeRule.onNodeWithTag(UiTags.TRUCK_REFERENCE_IMAGE)
+
+        image.onChildren().assertCountEquals(1)
+        image.performTouchInput {
+            down(center)
+            advanceEventTime(700)
+            moveTo(center + Offset(10f, 10f))
+        }
+        composeRule.waitForIdle()
+        image.onChildren().assertCountEquals(2)
+
+        image.performTouchInput { up() }
+        composeRule.waitForIdle()
+        image.onChildren().assertCountEquals(1)
     }
 
     // The error a failed Scan with this code shows, as the app builds it.

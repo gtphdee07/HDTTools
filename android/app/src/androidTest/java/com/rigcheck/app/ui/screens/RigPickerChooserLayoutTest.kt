@@ -2,26 +2,14 @@ package com.rigcheck.app.ui.screens
 
 import android.content.ActivityNotFoundException
 import android.content.ContextWrapper
-import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
 import android.os.Bundle
-import android.view.autofill.AutofillManager
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
-import androidx.compose.ui.test.onFirst
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.test.core.app.ActivityScenario
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.rigcheck.app.domain.model.RecentRig
@@ -31,13 +19,23 @@ import com.rigcheck.app.layoutcapture.CaptureScope
 import com.rigcheck.app.layoutcapture.DisplayFrame
 import com.rigcheck.app.layoutcapture.Frame
 import com.rigcheck.app.layoutcapture.TaggedBounds
-import com.rigcheck.app.layoutcapture.measureTaggedElements
-import com.rigcheck.app.testsupport.scrollToIfScrollable
+import com.rigcheck.app.testsupport.Dim
+import com.rigcheck.app.testsupport.LayoutStateRunner
+import com.rigcheck.app.testsupport.Probe
+import com.rigcheck.app.testsupport.Size
+import com.rigcheck.app.testsupport.about
+import com.rigcheck.app.testsupport.absent
+import com.rigcheck.app.testsupport.fixed
+import com.rigcheck.app.testsupport.noneWiderThanTheScreen
+import com.rigcheck.app.testsupport.order
+import com.rigcheck.app.testsupport.reach
+import com.rigcheck.app.testsupport.shown
+import com.rigcheck.app.testsupport.sizes
+import com.rigcheck.app.testsupport.square
+import com.rigcheck.app.testsupport.touchTargets
 import com.rigcheck.app.ui.ScanUiState
 import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.navigation.EntryModule
-import com.rigcheck.app.ui.navigation.RigCheckApp
-import java.io.File
 import java.time.Instant
 import kotlin.math.abs
 import org.junit.After
@@ -70,10 +68,10 @@ class RigPickerChooserLayoutTest {
 
     private val display = DisplayFrame(InstrumentationRegistry.getInstrumentation())
 
-    private var frameName = ""
+    private val runner = LayoutStateRunner(composeRule, screenshotFolder = "ticket-192-screenshots")
 
     private fun putOnTheDisplay(frame: Frame) {
-        frameName = frame.name
+        runner.frameName = frame.name
         display.apply(frame)
     }
 
@@ -222,124 +220,14 @@ class RigPickerChooserLayoutTest {
         assertTrue("${frame.name}:\n" + problems.joinToString("\n"), problems.isEmpty())
     }
 
-    // --- Putting a state on the screen ------------------------------------------------------------------
+    // --- Putting a state on the screen (testsupport/LayoutChecks.kt) -----------------------------------
 
-    private class Probe(
-        val rule: androidx.compose.ui.test.junit4.ComposeTestRule,
-        val widthDp: Double,
-        val heightDp: Double,
-        private val imePx: () -> Int,
-    ) {
-        fun bounds(): Map<String, TaggedBounds> = rule.measureTaggedElements(Frame.PX_PER_DP)
-        fun imeDp(): Double = imePx() / Frame.PX_PER_DP
-    }
-
-    // Launches the activity as the app does (edge to edge, the app's root around the screen), puts the state on the
-    // screen, lets it settle and hands it to `check`, which returns the problems it found (named by the state).
     private fun inState(
         name: String,
         content: @Composable () -> Unit,
         setUp: CaptureScope.() -> Unit = {},
         check: (Probe) -> List<String>,
-    ): List<String> {
-        ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
-            scenario.onActivity { activity ->
-                activity.enableEdgeToEdge()
-                activity.setContent { RigCheckApp { content() } }
-            }
-            lateinit var scope: CaptureScope
-            lateinit var probe: Probe
-            scenario.onActivity { activity ->
-                scope = CaptureScope(composeRule, activity)
-                val metrics = activity.resources.displayMetrics
-                probe = Probe(
-                    composeRule,
-                    widthDp = metrics.widthPixels / Frame.PX_PER_DP,
-                    heightDp = metrics.heightPixels / Frame.PX_PER_DP,
-                    imePx = {
-                        ViewCompat.getRootWindowInsets(activity.window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0
-                    },
-                )
-            }
-            try {
-                composeRule.waitForIdle()
-                scope.setUp()
-                composeRule.waitForIdle()
-                Thread.sleep(SETTLE_MS)
-                composeRule.waitForIdle()
-                saveScreenshotWhenAsked(name)
-                return try {
-                    check(probe).map { "$name: $it" }
-                } catch (e: Throwable) {
-                    listOf("$name: ${e.message ?: e}")
-                }
-            } finally {
-                // A filled-in form leaves an autofill session open, which holds the next test's keyboard back.
-                scenario.onActivity { it.getSystemService(AutofillManager::class.java)?.cancel() }
-            }
-        }
-    }
-
-    // With `-e layoutScreenshots true` each state's screenshot is kept (files/ticket-192-screenshots in the app's
-    // external files directory), for the owner to compare with the designer's frames on a phone. Not part of a normal run.
-    private fun saveScreenshotWhenAsked(name: String) {
-        if (InstrumentationRegistry.getArguments().getString("layoutScreenshots") != "true") return
-        val folder = File(
-            ApplicationProvider.getApplicationContext<Context>().getExternalFilesDir("ticket-192-screenshots"),
-            frameName,
-        ).also { it.mkdirs() }
-        val picture = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
-        File(folder, name.replace(": ", "__").replace(" ", "_").replace("(", "").replace(")", "") + ".png")
-            .outputStream().use { picture.compress(Bitmap.CompressFormat.PNG, 100, it) }
-    }
-
-    // --- The checks ----------------------------------------------------------------------------------
-
-    private fun shown(b: Map<String, TaggedBounds>, tags: List<String>): List<String> = tags.mapNotNull { tag ->
-        val found = b[tag]
-        when {
-            found == null -> "$tag is not on the screen"
-            !found.visible -> "$tag is on the screen but not on show"
-            else -> null
-        }
-    }
-
-    private fun absent(b: Map<String, TaggedBounds>, tags: List<String>): List<String> =
-        tags.filter { it in b }.map { "$it is on the screen but should not be" }
-
-    private sealed interface Dim {
-        // A size the map gives: `dp`, within `tolerance`.
-        data class Exact(val dp: Double, val tolerance: Double) : Dim
-
-        // The full width of the column the element is in: the screen less `inset` (the margins around the column).
-        data class Fill(val inset: Int, val tolerance: Double = 1.5) : Dim
-
-        // "wrap": nothing to check.
-        data object Any : Dim
-    }
-
-    private data class Size(val width: Dim, val height: Dim)
-
-    private fun fixed(dp: Int) = Dim.Exact(dp.toDouble(), 1.5)
-    private fun about(dp: Int, tolerance: Int = 4) = Dim.Exact(dp.toDouble(), tolerance.toDouble())
-    private fun square(dp: Int) = Size(fixed(dp), fixed(dp))
-
-    private fun sizes(b: Map<String, TaggedBounds>, screenWidth: Double, table: Map<String, Size>): List<String> =
-        table.flatMap { (tag, size) ->
-            val found = b[tag] ?: return@flatMap listOf("$tag is not on the screen, so its size is not checked")
-            listOfNotNull(
-                dimProblem(tag, "width", found.width, size.width, screenWidth),
-                dimProblem(tag, "height", found.height, size.height, screenWidth),
-            )
-        }
-
-    private fun dimProblem(tag: String, what: String, measured: Double, dim: Dim, screenWidth: Double): String? = when (dim) {
-        Dim.Any -> null
-        is Dim.Exact -> "$tag $what is $measured dp, the map says ${dim.dp} (tolerance ${dim.tolerance})"
-            .takeIf { abs(measured - dim.dp) > dim.tolerance }
-        is Dim.Fill -> "$tag $what is $measured dp, the map says fill: ${screenWidth - dim.inset} (tolerance ${dim.tolerance})"
-            .takeIf { abs(measured - (screenWidth - dim.inset)) > dim.tolerance }
-    }
+    ): List<String> = runner.inState(name, content, setUp, check)
 
     // The Rig card is tagged on its body (the part that starts a check); the bin beside it is the rest of the card.
     // Together, with the bin's 4 dp margin, they fill the column.
@@ -355,70 +243,6 @@ class RigPickerChooserLayoutTest {
         )
     }
 
-    // ORDER. The map numbers an element's `new_order` in the reading order of its frame, which counts left to right
-    // across a row (the avatar, then the text beside it, then the bin; the logo, the name, the tagline, the chip), so
-    // the numbers are not a sort of the elements' tops. The check is therefore: the bands, one per row or block, come
-    // one after the other (nothing in a band starts above the lowest start of the band before it), and the `stacks`,
-    // elements one above the other in a band (the nickname, the subtitle, the last-checked line), come in order by
-    // their tops.
-    private fun order(
-        b: Map<String, TaggedBounds>,
-        bands: List<List<String>>,
-        stacks: List<List<String>> = emptyList(),
-    ): List<String> {
-        val found = mutableListOf<String>()
-        stacks.forEach { stack ->
-            stack.zipWithNext().forEach { (above, below) ->
-                val a = b[above]
-                val c = b[below]
-                if (a != null && c != null && a.y > c.y + 0.5) found += "$above (top ${a.y}) is below $below (top ${c.y})"
-            }
-        }
-        bands.zipWithNext().forEach { (before, after) ->
-            val lowestTop = before.mapNotNull { b[it]?.y }.maxOrNull()
-            val firstTop = after.mapNotNull { b[it]?.y }.minOrNull()
-            if (lowestTop != null && firstTop != null && firstTop < lowestTop - 0.5) {
-                found += "$after starts at $firstTop dp, above $before at $lowestTop dp"
-            }
-        }
-        return found
-    }
-
-    // Every clickable element (found in the merged tree, so a card is one) has a touch area of at least 48 x 48 dp.
-    private fun touchTargets(p: Probe): List<String> {
-        val nodes = p.rule.onAllNodes(hasClickAction()).fetchSemanticsNodes()
-        if (nodes.isEmpty()) return listOf("no clickable element was found")
-        return nodes.mapNotNull { node ->
-            // A node scrolled out of sight has an empty touch area; its laid-out size is what a finger would find.
-            val touch = node.touchBoundsInRoot
-            val width = (if (touch.isEmpty) node.size.width.toFloat() else touch.width) / Frame.PX_PER_DP
-            val height = (if (touch.isEmpty) node.size.height.toFloat() else touch.height) / Frame.PX_PER_DP
-            "a clickable element is $width x $height dp, under 48 x 48: ${node.config}".takeIf { width < 47.5 || height < 47.5 }
-        }
-    }
-
-    // Scrolls to each tag (an element in a scroll column; a pinned one is left where it is) and checks it is wholly on
-    // the screen, above the keyboard if it is open.
-    private fun reach(p: Probe, vararg tags: String): List<String> = tags.mapNotNull { tag ->
-        val nodes = p.rule.onAllNodesWithTag(tag, useUnmergedTree = true)
-        if (nodes.fetchSemanticsNodes().isEmpty()) return@mapNotNull "$tag is not on the screen"
-        nodes.onFirst().scrollToIfScrollable()
-        p.rule.waitForIdle()
-        val b = p.bounds()[tag] ?: return@mapNotNull "$tag is not on the screen after scrolling to it"
-        val bottomOfScreen = p.heightDp - p.imeDp()
-        when {
-            !b.visible -> "$tag cannot be scrolled into view"
-            b.y < -0.5 || b.y + b.height > bottomOfScreen + 0.5 ->
-                "$tag is not wholly on show after scrolling: ${b.y} to ${b.y + b.height} dp of ${bottomOfScreen} dp"
-            else -> null
-        }
-    }
-
-    // By width alone: a tag's x is where its content starts (inside any padding it has), and its width is the whole
-    // element's, so x + width would count the padding twice.
-    private fun noneWiderThanTheScreen(p: Probe): List<String> = p.bounds().mapNotNull { (tag, b) ->
-        "$tag is ${b.width} dp wide on a ${p.widthDp} dp screen".takeIf { b.width > p.widthDp + 0.5 }
-    }
 
     // --- What the map says ------------------------------------------------------------------------------
 
@@ -607,7 +431,4 @@ class RigPickerChooserLayoutTest {
         CompositionLocalProvider(LocalContext provides noMailApp) { content() }
     }
 
-    private companion object {
-        const val SETTLE_MS = 400L
-    }
 }

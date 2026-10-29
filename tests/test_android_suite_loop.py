@@ -350,3 +350,112 @@ def test_every_tagged_class_is_left_out_without_a_hand_kept_list(tmp_path):
     excluded = excluded_by(run_instrument(tmp_path))
 
     assert set(excluded) == {asl.WEEKLY_CLASS, "com.example.one.AlphaExternalTest", "com.example.two.BetaExternalTest"}
+
+
+# --- hang detection (#200): the loop's runs go through the supervisor ---------------------------
+
+import json  # noqa: E402
+
+from tests._supervisor_fakes import FakeClock, FakeProc, healthy_adb, record  # noqa: E402
+
+rs = asl.rs
+CLS = "com.rigcheck.app.ui.FooTest"
+
+
+def fake_supervised(tmp_path, proc_factory, *, limits=None):
+    """asl.supervised_run against a scripted process; returns (output, code, parsed status lines)."""
+    clock = FakeClock()
+    writer = asl.run_status.StatusWriter("suite-loop-1", "loop", tmp_path, now=clock.wall, sleep=lambda _: None)
+    output, code = asl.supervised_run(
+        ["adb", "shell", "am", "instrument"], "test", writer=writer, spawn=lambda argv: proc_factory(clock),
+        limits=limits or rs.Limits(), adb=healthy_adb(), clock=clock, evidence_dir=tmp_path / "ev",
+    )
+    entries = [json.loads(ln) for ln in (tmp_path / "suite-loop-1.jsonl").read_text(encoding="utf-8").splitlines()]
+    return output, code, entries
+
+
+def test_a_hung_exit_code_is_an_infra_abort_even_when_the_output_says_nothing():
+    outcome = asl.classify_run("", returncode=rs.HUNG_EXIT_CODE)
+    assert outcome.kind == asl.INFRA_ABORT and "hung" in outcome.reason
+    assert asl.classify_run("some progress\nrun hung: no output for 121 s\n", returncode=1).kind == asl.INFRA_ABORT
+
+
+def test_a_run_that_hangs_is_stopped_and_counted_as_an_infra_abort_not_a_test_failure(tmp_path):
+    script = Script([])
+    calls = []
+
+    def run_once(number):
+        calls.append(number)
+        return fake_supervised(tmp_path, lambda clock: FakeProc(clock, [(1, record(1, CLS, "stuck", 1))], exit_at=None))[:2]
+
+    report = asl.run_loop(1, restart=script.restart, run_once=run_once, out=lambda _: None)
+    assert (report.infra_aborted, report.test_failed, report.passed) == (1, 0, 0) and report.exit_code == 2
+    assert "hung" in report.summary()
+    last = json.loads((tmp_path / "latest.json").read_text(encoding="utf-8"))
+    assert last["phase"] == "hung" and last["outcome"] == "infra-abort" and last["reason"] == "test too long"
+    assert (tmp_path / "ev" / "evidence.json").exists()
+
+
+def test_each_run_leaves_the_running_test_and_the_count_in_the_status_file(tmp_path):
+    script = [
+        (1, record(1, CLS, "a", 1, 2)), (2, record(0, CLS, "a", 1, 2)), (3, record(1, CLS, "b", 2, 2)), (4, record(0, CLS, "b", 2, 2)),
+        (5, b"INSTRUMENTATION_RESULT: stream=\n\nTime: 4.0\n\nOK (2 tests)\n\nINSTRUMENTATION_CODE: -1\n"),
+    ]
+    output, code, entries = fake_supervised(tmp_path, lambda clock: FakeProc(clock, script, exit_at=6))
+    assert asl.classify_run(output, code).kind == asl.PASSED and asl.classify_run(output, code).tests == 2
+    rows = [(e["test"], e["n"], e["of"]) for e in entries if e["phase"] == "test" and e["of"]]
+    assert rows.index((f"{CLS}.a", 0, 2)) < rows.index((None, 1, 2)) < rows.index((f"{CLS}.b", 1, 2)) < rows.index((None, 2, 2))
+    assert (entries[-1]["phase"], entries[-1]["n"], entries[-1]["of"]) == ("done", 2, 2)
+
+
+def test_an_infra_abort_is_retried_once_on_a_fresh_emulator_when_asked():
+    abort = ("INSTRUMENTATION_ABORTED: System has crashed.", 1)
+    script = Script([abort, (OK_OUTPUT, 0)])
+    report = asl.run_loop(1, restart=script.restart, run_once=script.run_once, retry_infra_abort=True, out=lambda _: None)
+    assert script.events == ["restart", "run", "restart", "run"]
+    assert report.passed == 1 and report.infra_aborted == 0
+
+
+def test_a_second_abort_is_reported_and_there_is_no_third_run():
+    abort = ("INSTRUMENTATION_ABORTED: System has crashed.", 1)
+    script = Script([abort, abort, (OK_OUTPUT, 0)])
+    report = asl.run_loop(1, restart=script.restart, run_once=script.run_once, retry_infra_abort=True, out=lambda _: None)
+    assert script.events == ["restart", "run", "restart", "run"]
+    assert report.infra_aborted == 1 and report.exit_code == 2
+
+
+def test_a_failing_test_is_never_retried():
+    script = Script([(FAIL_OUTPUT, 0), (OK_OUTPUT, 0)])
+    report = asl.run_loop(1, restart=script.restart, run_once=script.run_once, retry_infra_abort=True, out=lambda _: None)
+    assert script.events == ["restart", "run"] and report.test_failed == 1
+
+
+def test_without_the_retry_option_an_abort_is_not_run_again():
+    abort = ("INSTRUMENTATION_ABORTED: System has crashed.", 1)
+    script = Script([abort, (OK_OUTPUT, 0)])
+    asl.run_loop(1, restart=script.restart, run_once=script.run_once, out=lambda _: None)
+    assert script.events == ["restart", "run"]
+
+
+def test_the_suite_runs_raw_so_each_test_is_reported_and_goes_through_the_streamed_runner_when_given_one():
+    calls, phases, streamed = [], [], []
+
+    def adb(*args, timeout=None):
+        calls.append(args)
+        return (0, "Success\n")
+
+    text, code = asl.instrument_once(
+        adb, suite_timeout_s=60, run_streamed=lambda args: (streamed.append(args), ("OK (1 test)", 0))[1], on_phase=phases.append,
+    )
+    (arguments,) = streamed
+    assert arguments[:5] == ["shell", "am", "instrument", "-w", "-r"] and arguments[-1] == asl.RUNNER
+    assert (text, code) == ("OK (1 test)", 0) and phases == ["install"]
+    assert not [c for c in calls if c[:3] == ("shell", "am", "instrument")]  # not also run as a plain adb call
+
+
+def test_an_install_failure_never_reaches_the_streamed_runner():
+    streamed = []
+    text, code = asl.instrument_once(
+        lambda *args, timeout=None: (1, "INSTALL_FAILED_X"), suite_timeout_s=60, run_streamed=lambda args: streamed.append(args) or ("", 0),
+    )
+    assert streamed == [] and code == 1 and "install of app-debug.apk failed" in text

@@ -10,16 +10,23 @@ count (the "full suite N times in a row" criterion on Android tickets); the
 cause and the rules are in android/TESTING.md.
 
 Each run: cold-boot the emulator, wait until adb and the system services have
-answered several polls in a row, install both APKs, run `am instrument` for the
+answered several polls in a row, install both APKs, run `am instrument -w -r` for the
 Major suite (the weekly class and every `@ExternalSurface` class excluded, as
 the Gradle task excludes them), then label the output. `--driver gradle` runs
 the literal Gradle command instead, for comparing the two.
+
+The suite runs under the watchdog of scripts/run_supervisor.py (#200): the loop writes
+`android/build/run-status/` (read it with `uv run scripts/run_status.py`) with the running
+test and the count for every run, and a run that stalls (no output for --output-limit-s, one
+test longer than --test-limit-s, the device not answering) is stopped after its evidence is
+saved and counted as an infra-abort. `--retry-infra-abort` runs a run that infra-aborted once
+more on a freshly booted emulator; use it with `--runs 1` for the merge-time full suite.
 
 Needs the single emulator: no other Android ticket may be running. It builds
 the APKs once, up front (`gradlew assembleDebug assembleDebugAndroidTest`).
 
 Usage: uv run scripts/android_suite_loop.py [--runs N] [--driver instrument|gradle]
-       [--expected-tests N] [--log-dir DIR] [--emulator-arg ARG ...]
+       [--expected-tests N] [--log-dir DIR] [--emulator-arg ARG ...] [--retry-infra-abort]
 Exit code: 0 every run passed, 1 a real test failed, 2 only infrastructure aborts.
 """
 
@@ -34,37 +41,25 @@ import sys
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import run_external_android  # noqa: E402
+import run_status  # noqa: E402
+import run_supervisor as rs  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ANDROID_DIR = REPO_ROOT / "android"
 
-PASSED = "passed"
-TEST_FAILED = "test-failed"
-INFRA_ABORT = "infra-abort"
+PASSED, TEST_FAILED, INFRA_ABORT = rs.PASSED, rs.TEST_FAILED, rs.INFRA_ABORT
 
 # Patterns that mean the emulator, adb or the system server died, whatever
 # else the output says. The first one found is the reason quoted in the summary.
-ABORT_MARKERS = (
-    "INSTRUMENTATION_ABORTED",
-    "System has crashed",
-    "Test run failed to complete",
-    "Can't find service",
-    "device offline",
-    r"device '[^']*' not found",
-    "no devices/emulators found",
-    "No connected devices",
-    "ShellCommandUnresponsiveException",
-    "ReferenceQueueDaemon timed out",
-    "INSTRUMENTATION_FAILED",
-    "suite timed out",
-    r"Execution failed for task ':app:wakeEmulatorForInstrumentedTests'",
-)
+# The list is the supervisor's, so the loop and `run_supervisor.py` label a run alike.
+ABORT_MARKERS = rs.ABORT_MARKERS
 
 GRADLEW = str(ANDROID_DIR / ("gradlew.bat" if os.name == "nt" else "gradlew"))
 WIN_DETACHED_PROCESS = 0x00000008  # subprocess.DETACHED_PROCESS, which only exists on Windows
@@ -104,6 +99,8 @@ def classify_run(output: str, returncode: int, expected_tests: int | None = None
         if found:
             line = next(ln for ln in output.splitlines() if found.group(0) in ln)
             return Outcome(INFRA_ABORT, line.strip()[:200])
+    if returncode == rs.HUNG_EXIT_CODE:  # the supervisor's exit for a stalled run, whatever the output says
+        return Outcome(INFRA_ABORT, "run hung")
     ok = re.search(r"OK \((\d+) tests?\)", output) or re.search(r"Finished (\d+) tests?", output)
     ran = re.search(r"Tests run: (\d+)", output)
     failed = "FAILURES!!!" in output or "There were failing tests" in output
@@ -188,30 +185,41 @@ def run_loop(
     run_once: Callable[[int], tuple[str, int]],
     expected_tests: int | None = None,
     restart_every: int = 1,
+    retry_infra_abort: bool = False,
     out: Callable[[str], None] = print,
 ) -> Report:
     """`restart_every` is how many runs share one fresh emulator (1: restart
     before every run, the supported mode; 0: restart once, for measuring how
-    long a warm emulator lasts). A run that aborts always forces a restart."""
+    long a warm emulator lasts). A run that aborts always forces a restart.
+    `retry_infra_abort` runs a run that infra-aborted once more (#200), on the
+    fresh emulator that abort forces; a second abort is what is reported, and
+    a run that failed a test is never run again."""
     report = Report()
     needs_restart = True
     runs_on_this_emulator = 0
-    for number in range(1, runs + 1):
+
+    def attempt(number: int) -> Outcome:
+        nonlocal needs_restart, runs_on_this_emulator
         if needs_restart:
             out(f"== run {number} of {runs}: restarting the emulator")
             if not restart():
-                outcome = Outcome(INFRA_ABORT, "the emulator did not come up ready")
-            else:
-                needs_restart, runs_on_this_emulator = False, 0
+                return Outcome(INFRA_ABORT, "the emulator did not come up ready")
+            needs_restart, runs_on_this_emulator = False, 0
         else:
             out(f"== run {number} of {runs}: reusing the emulator")
-        if not needs_restart:
-            runs_on_this_emulator += 1
-            output, code = run_once(number)
-            outcome = classify_run(output, code, expected_tests)
-            needs_restart = outcome.kind == INFRA_ABORT or (
-                restart_every > 0 and runs_on_this_emulator >= restart_every
+        runs_on_this_emulator += 1
+        output, code = run_once(number)
+        outcome = classify_run(output, code, expected_tests)
+        needs_restart = outcome.kind == INFRA_ABORT or (restart_every > 0 and runs_on_this_emulator >= restart_every)
+        return outcome
+
+    for number in range(1, runs + 1):
+        if retry_infra_abort:
+            outcome, _ = rs.run_with_one_retry(
+                partial(attempt, number), is_infra_abort=lambda o: o.kind == INFRA_ABORT, fresh_emulator=lambda: True, out=out,
             )
+        else:
+            outcome = attempt(number)
         report.outcomes.append(outcome)
         detail = outcome.reason or (f"{outcome.tests} tests" if outcome.tests else "")
         out(f"== run {number}: {outcome.kind}" + (f" ({detail})" if detail else ""))
@@ -338,32 +346,56 @@ def excluded_classes(tests_dir: Path = run_external_android.TESTS_DIR) -> list[s
     return [WEEKLY_CLASS, *sorted(tagged)]
 
 
+def instrument_args(tests_dir: Path = run_external_android.TESTS_DIR) -> list[str]:
+    """The `adb` arguments of the Major suite. `-r` gives raw output: one record per test start and finish,
+    which is what lets scripts/run_supervisor.py report the running test and the count."""
+    return ["shell", "am", "instrument", "-w", "-r", "-e", "notClass", ",".join(excluded_classes(tests_dir)), RUNNER]
+
+
 def instrument_once(
-    adb: Adb, suite_timeout_s: float, tests_dir: Path = run_external_android.TESTS_DIR
+    adb: Adb,
+    suite_timeout_s: float,
+    tests_dir: Path = run_external_android.TESTS_DIR,
+    *,
+    run_streamed: Callable[[list[str]], tuple[str, int]] | None = None,
+    on_phase: Callable[[str], None] = lambda phase: None,
 ) -> tuple[str, int]:
-    """Install both APKs on the (fresh) emulator and run the Major suite."""
+    """Install both APKs on the (fresh) emulator and run the Major suite. With `run_streamed` the suite
+    runs through it (the supervised, streaming runner: it gets the `adb` arguments and returns the output
+    and exit code); without it, one blocking `adb` call with `suite_timeout_s`."""
+    on_phase("install")
     for apk in APKS:
         code, text = adb("install", "-r", str(apk), timeout=240)
         if code != 0 or "Success" not in text:
             return f"install of {apk.name} failed:\n{text}", code or 1
     adb("shell", "rm", "-f", WEEKLY_MARKER)
-    code, text = adb(
-        "shell", "am", "instrument", "-w", "-e", "notClass", ",".join(excluded_classes(tests_dir)), RUNNER,
-        timeout=suite_timeout_s,
-    )
+    args = instrument_args(tests_dir)
+    if run_streamed is not None:
+        return run_streamed(args)
+    code, text = adb(*args, timeout=suite_timeout_s)
     return text, code
 
 
-def gradle_once(suite_timeout_s: float) -> tuple[str, int]:
-    """The literal documented Gradle command, for comparison runs."""
-    try:
-        proc = subprocess.run(
-            [GRADLEW, "-p", "android", "connectedDebugAndroidTest"], cwd=REPO_ROOT, capture_output=True,
-            text=True, errors="replace", timeout=suite_timeout_s,
-        )
-    except subprocess.TimeoutExpired:
-        return f"suite timed out after {suite_timeout_s:.0f} s", 124
-    return (proc.stdout or "") + (proc.stderr or ""), proc.returncode
+def supervised_run(
+    command: list[str],
+    phase: str,
+    *,
+    writer: run_status.StatusWriter,
+    spawn: Callable[[list[str]], object],
+    limits: rs.Limits,
+    adb: rs.Adb | None,
+    on_stall: str = "stop",
+    evidence_dir: Path | None = None,
+    clock=rs.RealClock,
+) -> tuple[str, int]:
+    """One device command under the watchdog (#200): the output and exit code `run_loop` labels. A run that stalls
+    leaves its evidence beside the status file, is stopped, and comes back as exit code `rs.HUNG_EXIT_CODE` with
+    `run hung: <why>` in its output, which `classify_run` counts as an infra-abort."""
+    result = rs.supervise(
+        command, writer=writer, spawn=spawn, clock=clock, limits=limits, device=True, adb=adb, phase=phase,
+        on_stall=on_stall, evidence_dir=evidence_dir,
+    )
+    return result.output, result.exit_code
 
 
 def build_apks() -> None:
@@ -380,7 +412,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--gpu", default=GPU, help="emulator -gpu mode; 'host' reproduces the #127 aborts")
     parser.add_argument("--emulator-arg", action="append", default=[], help="extra emulator flag, e.g. -memory")
     parser.add_argument("--settle-s", type=float, default=20, help="pause after the emulator is steadily ready")
-    parser.add_argument("--suite-timeout-s", type=float, default=2400)
+    parser.add_argument("--suite-timeout-s", type=float, default=2400, help="wall cap of one run; the watchdog usually acts first")
+    parser.add_argument("--output-limit-s", type=float, default=rs.OUTPUT_LIMIT_S, help="a run with no output for this long is hung")
+    parser.add_argument("--test-limit-s", type=float, default=rs.TEST_LIMIT_S, help="one test running this long is hung")
+    parser.add_argument("--on-stall", choices=("stop", "flag"), default="stop", help="stop kills the run and the emulator (default)")
+    parser.add_argument("--retry-infra-abort", action="store_true", help="run an infra-aborted run once more on a fresh emulator")
+    parser.add_argument("--status-dir", type=Path, default=run_status.DEFAULT_DIR)
     parser.add_argument("--log-dir", type=Path, default=ANDROID_DIR / "build" / "suite-loop")
     args = parser.parse_args(argv)
     if args.runs < 1:
@@ -389,24 +426,50 @@ def main(argv: list[str] | None = None) -> int:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     log_dir = args.log_dir / stamp
     log_dir.mkdir(parents=True, exist_ok=True)
-    adb = make_adb(find_sdk_tool("platform-tools", "adb"))
+    adb_path = find_sdk_tool("platform-tools", "adb")
+    adb = make_adb(adb_path)
     emulator = find_sdk_tool("emulator", "emulator")
+    writer = run_status.StatusWriter(
+        f"suite-loop-{stamp}", f"android_suite_loop.py --runs {args.runs} --driver {args.driver}", args.status_dir,
+    )
+    limits = rs.Limits(args.output_limit_s, args.test_limit_s, rs.DEVICE_MISSES, args.suite_timeout_s)
+    supervisor_adb = rs.real_adb()
+    hangs = 0
+    cleared = {"test": None, "n": None, "of": None, "reason": None, "detail": None, "evidence": None, "outcome": None, "exit_code": None}
 
     if args.driver == "instrument":
         subprocess.run([GRADLEW, "--stop"], cwd=REPO_ROOT)
         build_apks()
 
     def restart() -> bool:
-        return restart_emulator(
+        writer.emit("boot", device="none", last_output_age_s=0.0, **cleared)
+        up = restart_emulator(
             adb, emulator, avd=args.avd, gpu=args.gpu, extra_args=args.emulator_arg, log_path=log_dir / "emulator.log",
             settle_s=args.settle_s,
         )
+        if not up:
+            writer.emit("failed", outcome=INFRA_ABORT, reason="the emulator did not come up ready")
+        return up
+
+    def supervised(command: list[str], phase: str) -> tuple[str, int]:
+        nonlocal hangs
+        output, code = supervised_run(
+            command, phase, writer=writer, spawn=lambda argv: rs.RealProc(argv, REPO_ROOT), limits=limits,
+            adb=supervisor_adb, on_stall=args.on_stall, evidence_dir=args.status_dir / f"{writer.run_id}-hung-{hangs + 1}",
+        )
+        hangs += code == rs.HUNG_EXIT_CODE
+        return output, code
 
     def run_once(number: int) -> tuple[str, int]:
         adb("logcat", "-c")
-        output, code = (
-            instrument_once(adb, args.suite_timeout_s) if args.driver == "instrument" else gradle_once(args.suite_timeout_s)
-        )
+        if args.driver == "instrument":
+            output, code = instrument_once(
+                adb, args.suite_timeout_s, run_streamed=lambda arguments: supervised([adb_path, *arguments], "test"),
+                on_phase=lambda phase: writer.emit(phase, run=number, last_output_age_s=0.0, **cleared),
+            )
+        else:
+            writer.emit("boot", run=number, last_output_age_s=0.0, **cleared)
+            output, code = supervised([GRADLEW, "-p", "android", "connectedDebugAndroidTest"], "boot")
         (log_dir / f"run-{number}.log").write_text(output, encoding="utf-8")
         # What the device said while it ran, kept for working out why a run
         # aborted; best effort, since a dead emulator answers nothing.
@@ -419,8 +482,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Logs: {log_dir}")
     report = run_loop(
         args.runs, restart=restart, run_once=run_once, expected_tests=args.expected_tests,
-        restart_every=args.restart_every,
+        restart_every=args.restart_every, retry_infra_abort=args.retry_infra_abort,
     )
+    print(f"Status: {args.status_dir} (uv run scripts/run_status.py)")
     (log_dir / "summary.txt").write_text(report.summary() + "\n", encoding="utf-8")
     return report.exit_code
 

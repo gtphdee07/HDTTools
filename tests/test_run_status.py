@@ -132,6 +132,14 @@ def test_a_running_or_aborted_run_with_a_count_and_no_test_finished_still_reads_
     assert "0 of 36 tests finished" in check(tmp_path, 5)[1]
 
 
+def test_a_finished_run_that_did_report_finished_tests_keeps_the_n_of_n_wording(tmp_path):
+    # Only a run with nothing finished reads "N tests"; per-test records (am instrument) keep "n of N tests finished".
+    for phase, n, extra in (("done", 8, {"outcome": "passed", "exit_code": 0}), ("failed", 5, {"outcome": "test-failed", "exit_code": 1})):
+        writer(tmp_path).emit(phase, n=n, of=8, **extra)
+        text = check(tmp_path, 5)[1]
+        assert f"{n} of 8 tests finished" in text, text
+
+
 def test_a_file_older_than_max_age_exits_1(tmp_path):
     writer(tmp_path).emit("test")
     assert check(tmp_path, 121)[0] == 1 and "STALE" in check(tmp_path, 121)[1]

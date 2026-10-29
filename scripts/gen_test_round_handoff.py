@@ -32,6 +32,10 @@ LIVE = (
     "Do not commit changes to `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch."
 )
 DECIDED = "The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again."
+# Tickets whose own Decisions section is still open: the build session asks it, so DECIDED must not be printed.
+ASKS = {
+    198: "The ticket's `## Decisions` section is still open: ask its three questions with AskUserQuestion before building (the DECISIONS comment on the ticket only records its place in the order), and post the answers as a `DECISIONS` comment.",
+}
 
 BLOCKS = {
     "A": [
@@ -62,6 +66,14 @@ BLOCKS = {
         "Never print, log or commit a key, token, image or email.",
         COMMON[1],
     ],
+    "S": [  # scripts and their tests only, no RevenueCat
+        "The end-of-session commands are `uv run scripts/static_checks.py core` and the offline tests that `uv run scripts/test_planner.py` lists. Do not start Gradle or the emulator.",
+        "Only `scripts/`, `tests/`, `docs/` and the testing documents change.",
+        COMMON[0],
+        "A new test file must be named in `tests/TESTING.md`, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.",
+        "Live runs: no live External suite and no paid call. Do not commit changes to `scripts/dashboard_data/external_status.json` or `dashboard.svg` from the branch.",
+        COMMON[1],
+    ],
     "R": [  # research only
         "Research only: write one file under `docs/research/` and change no production code.",
         "No live or paid runs.",
@@ -73,7 +85,9 @@ def prompt(n, block, extras):
     lines = ["Test-round additions:"]
     for item in BLOCKS[block] + extras:
         lines.append("- " + item)
-    if block != "R":
+    if n in ASKS:
+        lines.append("- " + ASKS[n])
+    elif block != "R":
         lines.append("- " + DECIDED)
     return f"/mattpocock-skills:implement #{n}\n\n{HANDOFF}\n\n" + "\n".join(lines)
 
@@ -104,7 +118,17 @@ def card(n, title, where, starts, block, extras, your_part, started=False, andro
 
 DEFER = ("Emulator runs are deferred (owner decision 2026-10-28, see the DECISIONS comment on this ticket): on the emulator run only the test classes this ticket's acceptance criteria name, and the screenshots for the owner's comparison; do not run the full `connectedDebugAndroidTest` suite, device mutation checks or the full layout capture (they run once, at #197). Name the classes you ran in the STATUS comment and say \"full suite deferred to #197\".")
 DEFER197 = ("This ticket owns the emulator runs deferred from #191 to #196 (owner decision 2026-10-28, see the DECISIONS comment and the three added acceptance criteria): the full instrumented suite 3 times in a row on a cold boot (`uv run scripts/android_suite_loop.py --runs 3`), the layout capture rerun with `--field after_measured`, and device mutation checks. Bisect any failure to the merge of #191 to #196 that caused it; the last full-suite pass is f8b4645.")
+DEFER197B = ("The headless-emulator failure of `RigPickerChooserLayoutTest.theDesignFrame412x892MatchesTheMap` (#202) is one of this ticket's acceptance criteria (owner decision 2026-10-29): re-run that class alone on a cold-booted headless emulator and once on a windowed one, say whether it is a flake, a headless-only limit or a real bug, and bring the suite count in `android/TESTING.md` up to the real size.")
+PROFILES = ("The three emulator profiles must be created inside `ANDROID_AVD_HOME` (`G:\\Android\\EmulatorHome\\avd`), never on C:. The Android 26 system image is a system-tool download: ask the owner with `AskUserQuestion`, with the exact path under `G:\\Android\\Sdk`, before downloading anything. One emulator at a time, and the device checks run against the re-skinned app. Every failure found becomes its own ticket, not a fix in this one.")
 TICKETS = []
+
+TICKETS.append(card(
+    203, "Hang detection follow-up: an emulator death is an infra-abort", "Lane B, first of everything (your decision 2026-10-29)",
+    "Start it before any other ticket; #193 to #196 wait for it. Its last check uses the emulator, alone: nothing else may be using the emulator or Gradle then.", "S",
+    ["Exception to the first line above, for the last acceptance criterion only: that one real run needs the single emulator. Start it with `uv run scripts/android_suite_loop.py --boot-only --emulator-arg=-no-window --emulator-arg=-no-audio`, use `adb -s emulator-5554` only (never the owner's phone), run the check under `uv run scripts/run_supervisor.py --device -- ...`, and kill the emulator with `adb -s emulator-5554 emu kill` when done.",
+     "Mutation-check the two watchdog tests as the ticket says, with a subprocess timeout on every run (a mutation that blinds the watchdog makes the tests wait for ever) and every edit restored; name the mutations in the STATUS comment."],
+    "nothing, except to leave the emulator and Gradle alone while its last check runs.", android=True,
+))
 
 for n, title, extras in [
     (193, "Re-skin the Truck Tag, Trailer Tag and Scale Ticket entry screens", ["The Truck and Trailer hint says \"Tap a field to see its spot on the tag\" but tapping a field does nothing yet: build the designer's focused-field behaviour if it can be built without the stored crops of #199, otherwise list the gap under Not done. See the DECISIONS comment on this ticket."]),
@@ -114,12 +138,16 @@ for n, title, extras in [
      ["Keep what #186 fixed: nothing under the system bars, Restore purchase reachable with 3-button navigation, and the Paywall's Back control."]),
 ]:
     TICKETS.append(card(
-        n, title, "Lane A", "Nothing blocks it now (#192 has merged). The four remaining re-skin tickets (#193 to #196) run in any order, one at a time.", "A", extras + [DEFER],
+        n, title, "Lane A", "Start it after **#203** has merged (your decision 2026-10-29); nothing else blocks it (#192 has merged). The four remaining re-skin tickets (#193 to #196) run in any order, one at a time.", "A", extras + [DEFER],
         "before Claude merges it, compare the running-app screenshot in the STATUS comment with the designer's picture for the same state, on your phone.", android=True,
     ))
 TICKETS.append(card(
-    197, "Final pass and sign-off", "Lane A", "Start after **#193 to #196** have all merged.", "A", [DEFER197],
-    "check every screen on your phone (3-button navigation, and a large font size once) and sign off. Then build the tester APK.", android=True,
+    197, "Final pass and sign-off", "Lane A", "Start after **#193 to #196** have all merged.", "A", [DEFER197, DEFER197B],
+    "check every screen on your phone (3-button navigation, and a large font size once) and sign off. Then #198 (emulator profiles) comes next, and after it the tester APK.", android=True,
+))
+TICKETS.append(card(
+    198, "Emulator profiles for four phone shapes", "Lane A", "Start after **#197** has merged and you have signed off (your decision 2026-10-29); it is done before the tester APK is built.", "A", [PROFILES],
+    "answer the ticket's three decisions when the session asks, including whether the Android 26 system image may be downloaded and to which path on G:.", android=True,
 ))
 TICKETS.append(card(
     132, "(optional) Is mutation testing worth running? Research", "Any lane", "Lowest priority; production code is not changed. Skip it if the round is running long.", "R", [],
@@ -130,10 +158,11 @@ HEADER = """# Alpha round: your run sheet
 
 Working notes for the Alpha round ([BETA_PLAN.md](../BETA_PLAN.md)). They are temporary: delete this file when the round ends. The general ticket flow is in [ticket-skills.md](ticket-skills.md). **Each ticket's card below is complete: the box on it is the whole first message for the build session (the `/mattpocock-skills:implement` line, the handoff text and the test-round additions), and the numbered steps give every command, in order.** Only work that is not finished is on this page; finished tickets are in their closing comments.
 
-## Where things stand (2026-10-28)
+## Where things stand (2026-10-29)
 
 - Checkpoint push done 2026-10-28 (c1f1786; Web is live with it; the Worker was deployed on 2026-10-27). Merged and pushed in it: #179, #174 with its #185 fix, #181, #186, #169, #180, #182, #183, #184, #188 (test tags, with a test-only fix on top), #189 (baseline screenshots and measured bounds), #190 (the Claude Design hand-back and its follow-up for 17 controls), #191 (theme, tokens, shared components and the hand-back validator; merged 2026-10-28, not yet pushed), #192 (Rig picker, Chooser and photo dialog re-skin; merged 2026-10-28, not yet pushed), and the redesign brief and plan edits. The next push is the final one, at the end (see "Pushes").
-- **Lane A:** nothing is running. #192 (Rig picker, Chooser, photo dialog) merged 2026-10-28; the re-skin tickets #193 to #196 are next, one at a time. The whole app already uses #191's new theme and text styles. **Emulator runs are lighter until the end** (your decision 2026-10-28): #191 to #196 are built and merged with only their own test classes run on the emulator; the full suite, device mutation checks and the full layout capture run once at #197. **Lane B:** has nothing left but the optional #132. **#200** (hang detection) is merged (2026-10-29): a supervised runner with a progress file and watchdog (`scripts/run_supervisor.py`, read with `uv run scripts/run_status.py`), a hook that puts a build session's device commands on it, a watcher (`uv run scripts/run_watch.py`, run it as a Monitor to get the balloon alert) and caps on the review suites. Restart open Claude sessions so the hook loads. The hook approves a lone device command and asks for any other line. **#203** (a run that ends because the emulator died is an infra-abort and gets retried; the watchdog tests should fail, not hang) is filed from the merge review and not yet placed; suggested before #197. **#201** (the test planner) is merged (2026-10-28): a ticket's session plan now covers the contexts its diff touches and what depends on them, not every context, so an Android ticket that also edits a script or a Python test no longer plans web, Scan Proxy, the slow set or their stale External surfaces; the full run stays for dependency and lock files, the planner, the ledger and ticket scripts, and `.claude/settings.json`. #193 to #196 and #197 get the narrower plan from `/ticket-finish` without a hand-narrowed set.
+- **Next, first of all (your decision 2026-10-29): #203** (a run that ends because the emulator died is an infra-abort and gets retried; the watchdog tests fail instead of hanging) runs before any other ticket. #193 to #196 start only after it has merged. Its last check uses the emulator alone.
+- **Lane A:** nothing is running. #192 (Rig picker, Chooser, photo dialog) merged 2026-10-28; after #203 the re-skin tickets #193 to #196 are next, one at a time. The whole app already uses #191's new theme and text styles. **Emulator runs are lighter until the end** (your decision 2026-10-28): #191 to #196 are built and merged with only their own test classes run on the emulator; the full suite, device mutation checks and the full layout capture run once at #197. **Lane B:** has nothing left but #203 (first) and the optional #132. **#200** (hang detection) is merged (2026-10-29): a supervised runner with a progress file and watchdog (`scripts/run_supervisor.py`, read with `uv run scripts/run_status.py`), a hook that puts a build session's device commands on it, a watcher (`uv run scripts/run_watch.py`, run it as a Monitor to get the balloon alert) and caps on the review suites. Restart open Claude sessions so the hook loads. The hook approves a lone device command and asks for any other line. **#203** (a run that ends because the emulator died is an infra-abort and gets retried; the watchdog tests should fail, not hang) is filed from the merge review and is now placed first (see above). **#201** (the test planner) is merged (2026-10-28): a ticket's session plan now covers the contexts its diff touches and what depends on them, not every context, so an Android ticket that also edits a script or a Python test no longer plans web, Scan Proxy, the slow set or their stale External surfaces; the full run stays for dependency and lock files, the planner, the ledger and ticket scripts, and `.claude/settings.json`. #193 to #196 and #197 get the narrower plan from `/ticket-finish` without a hand-narrowed set.
 - **The design round (#190) is done and merged**: light theme only, same flow and screens, a top app bar with Back. #189's baseline is merged: every inventory element now has a measured size in `ui-inventory.json` (`today_measured`; the estimates in `today` stay as the designer saw them). Only two estimates that were plain numbers differ from the measurement: the bin on the Rig card (48 dp estimated, 40 dp measured; the touch area may still be 48 dp, #197 checks) and the Results bar (6 dp estimated, 26 dp measured, because the tag sits on a larger box).
 - Your phone (SM-G996U, adb name `R3CR50G10ML`) has the beta build, versionCode 3. The emulator is `emulator-5554`. Name the one you mean in every adb command.
 - The Android re-skin (epic #187) happens before the Alpha: the tester APK is built only after #197 and your sign-off.
@@ -144,8 +173,10 @@ Two lanes, one build session each, a **new** session for every ticket. Lane A is
 
 | # | Ticket | Lane | Starts when | Your part |
 |---|---|---|---|---|
-| 1 to 4 | #193 to #196 re-skin: [entry screens](#193-re-skin-the-truck-tag-trailer-tag-and-scale-ticket-entry-screens), [Disclaimer and Results](#194-re-skin-the-disclaimer-and-results-screens), [History](#195-re-skin-the-history-screen), [Paywall, Account, dialogs](#196-re-skin-the-paywall-account-and-the-two-scan-dialogs) | A | nothing blocks it | look through the frames first; compare with the designer's picture on your phone |
-| 5 | [#197](#197-final-pass-and-sign-off) Final pass and sign-off | A | #193 to #196 merged | check every screen, sign off |
+| first | [#203](#203-hang-detection-follow-up-an-emulator-death-is-an-infra-abort) Hang detection follow-up | B (the emulator alone for its last check) | now, before any other ticket | none |
+| 1 to 4 | #193 to #196 re-skin: [entry screens](#193-re-skin-the-truck-tag-trailer-tag-and-scale-ticket-entry-screens), [Disclaimer and Results](#194-re-skin-the-disclaimer-and-results-screens), [History](#195-re-skin-the-history-screen), [Paywall, Account, dialogs](#196-re-skin-the-paywall-account-and-the-two-scan-dialogs) | A | #203 merged | look through the frames first; compare with the designer's picture on your phone |
+| 5 | [#197](#197-final-pass-and-sign-off) Final pass and sign-off (it also settles the #202 keyboard-test failure) | A | #193 to #196 merged | check every screen, sign off |
+| 6 | [#198](#198-emulator-profiles-for-four-phone-shapes) Emulator profiles on G: for four phone shapes | A | #197 merged and signed off | answer its three decisions, including the Android 26 image download to G: |
 | optional | [#132](#132-optional-is-mutation-testing-worth-running-research) Is mutation testing worth running? | any | any time | none |
 
 A ticket starts when the tickets it waits for have merged, not when the round ends. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.
@@ -180,7 +211,8 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - [ ] **#189's baseline frames** are in `docs/android-redesign/design-built-to-be-checked/` (untracked; Claude hid the folder locally through `.git/info/exclude` so the merge could run; delete it or move it when you are done). Decide whether the designer checks them: Claude's advice is to show the designer only the 412 x 892 frames of the bin on the Rig card and of the Results bar, and to say nothing else changes.
 - [ ] Before #193 starts, look through the frames in `docs/android-redesign/design-return/annotated/` (70 now; the 7 new and 20 re-issued ones are listed in `design-return/README.md`, "Follow-up round") and tell Claude any screen you want changed. Anything you do not mention is built as drawn.
 - [ ] On each re-skin ticket (#193 to #196): compare the screenshot in the STATUS comment with the designer's picture on your phone before Claude merges it. On #197, check every screen and sign off.
-- [ ] After #197: build the tester APK with a higher `-PappVersionCode` (4 or more; raise it for every APK you send), from `android`: `.\\gradlew.bat assembleBeta -PappVersionCode=<n>`. Confirm `keytool -printcert -jarfile app\\build\\outputs\\apk\\beta\\app-beta.apk` shows the SHA-1 in `G:\\Secrets\\rigcheck\\rigcheck-upload-keystore-NOTES.txt`.
+- [ ] After #197 and before the tester APK (decided 2026-10-29): #198 creates emulator profiles on G: for four phone shapes and runs the screen checks on each. Its build session asks you three things, among them whether it may download the Android 26 system image (about 1 to 2 GB, to a path under `G:\\Android\\Sdk`); close any other emulator session first.
+- [ ] After #197 and #198: build the tester APK with a higher `-PappVersionCode` (4 or more; raise it for every APK you send), from `android`: `.\\gradlew.bat assembleBeta -PappVersionCode=<n>`. Confirm `keytool -printcert -jarfile app\\build\\outputs\\apk\\beta\\app-beta.apk` shows the SHA-1 in `G:\\Secrets\\rigcheck\\rigcheck-upload-keystore-NOTES.txt`.
 - [ ] Before inviting: add each Alpha tester's Gmail as a Google test user (up to 5); send the APK and the guide.
 - [ ] Device checks still open from earlier tickets: add a Rig on Web and see it in the Android picker; finish a check with a full Garage and look at the notice; finish a check on Android and see it in Web's History, then the other way round; compare a History date on the phone with the same entry on Web; delete a Rig on the phone (the bin on its card) and check it is gone on Web, then delete one on Web and check the phone's picker drops it after a refresh (#169 never ran against the live project); on the phone buy Pro with the Test Store and confirm the starter scans arrive.
 - [ ] Confirm the Pro price is the same on both products (ADR-0006).

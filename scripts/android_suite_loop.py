@@ -34,6 +34,7 @@ Exit code: 0 every run passed, 1 a real test failed, 2 only infrastructure abort
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import re
 import shutil
@@ -457,10 +458,11 @@ def main(argv: list[str] | None = None) -> int:
 
     def restart() -> bool:
         writer.emit("boot", device="none", last_output_age_s=0.0, **cleared)
-        up = restart_emulator(
-            adb, emulator, avd=args.avd, gpu=args.gpu, extra_args=args.emulator_arg, log_path=log_dir / "emulator.log",
-            settle_s=args.settle_s,
-        )
+        with run_status.Heartbeat(writer):  # a cold boot takes minutes: keep the file fresh so it is not read as a dead wrapper
+            up = restart_emulator(
+                adb, emulator, avd=args.avd, gpu=args.gpu, extra_args=args.emulator_arg, log_path=log_dir / "emulator.log",
+                settle_s=args.settle_s,
+            )
         if not up:
             writer.emit("failed", outcome=INFRA_ABORT, reason="the emulator did not come up ready")
         return up
@@ -477,10 +479,18 @@ def main(argv: list[str] | None = None) -> int:
     def run_once(number: int) -> tuple[str, int]:
         adb("logcat", "-c")
         if args.driver == "instrument":
-            output, code = instrument_once(
-                adb, args.suite_timeout_s, run_streamed=lambda arguments: supervised([adb_path, *arguments], "test"),
-                on_phase=lambda phase: writer.emit(phase, run=number, last_output_age_s=0.0, **cleared),
-            )
+            installing = contextlib.ExitStack()  # a heartbeat while the APKs install (up to 4 minutes each), ended before the suite starts
+
+            def start_phase(phase: str) -> None:
+                writer.emit(phase, run=number, last_output_age_s=0.0, **cleared)
+                installing.enter_context(run_status.Heartbeat(writer))
+
+            def stream(arguments: list[str]) -> tuple[str, int]:
+                installing.close()
+                return supervised([adb_path, *arguments], "test")
+
+            with installing:
+                output, code = instrument_once(adb, args.suite_timeout_s, run_streamed=stream, on_phase=start_phase)
         else:
             writer.emit("boot", run=number, last_output_age_s=0.0, **cleared)
             output, code = supervised([GRADLEW, "-p", "android", "connectedDebugAndroidTest"], "boot")

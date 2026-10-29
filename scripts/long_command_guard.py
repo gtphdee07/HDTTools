@@ -41,6 +41,7 @@ SUPERVISOR = Path(__file__).resolve().with_name("run_supervisor.py")
 LOOP = "scripts/android_suite_loop.py"
 LOG_PATH = Path(tempfile.gettempdir()) / "hdttools-status" / "long_command_guard.log"
 GRADLE_OUTPUT_LIMIT_S = 300  # a Gradle device run prints nothing between "Starting N tests" and "Finished"
+WHOLE_SUITE_OUTPUT_LIMIT_S = 900  # ... and a whole suite takes minutes in that silence (about 8 min for 342 tests)
 
 CONNECTED_TASK = re.compile(r"^connected\w*AndroidTest$")
 AM_INSTRUMENT = re.compile(r"\bshell\b.*\bam\s+instrument\b")
@@ -154,11 +155,24 @@ def emulator_flags(tokens: list[str]) -> str:
     return "".join(f" {option}" for option in found)
 
 
+def silence_limit_s(finding: Finding) -> int | None:
+    """How long the run may print nothing before it is called hung; None keeps the runner's default (120 s). A Gradle
+    device run prints nothing between "Starting N tests" and "Finished", so a class-level run gets 300 s and a whole-suite
+    run 900 s; `adb ... am instrument` without `-r` prints no progress at all, so it gets the whole-suite limit."""
+    if finding.kind == "gradle":
+        class_level = any(w.startswith("-Pandroid.testInstrumentationRunnerArguments.") for w in finding.tokens)
+        return GRADLE_OUTPUT_LIMIT_S if class_level else WHOLE_SUITE_OUTPUT_LIMIT_S
+    if finding.kind == "adb" and "-r" not in finding.tokens:
+        return WHOLE_SUITE_OUTPUT_LIMIT_S
+    return None
+
+
 def supervised_form(finding: Finding) -> str:
     """The command to type instead (the same words, under the runner)."""
     if finding.kind == "emulator":
         return "uv run scripts/android_suite_loop.py --boot-only" + emulator_flags(finding.tokens)
-    limit = f" --output-limit-s {GRADLE_OUTPUT_LIMIT_S}" if finding.kind == "gradle" else ""
+    seconds = silence_limit_s(finding)
+    limit = f" --output-limit-s {seconds}" if seconds else ""
     runner = f"uv run --no-project {shlex.quote(SUPERVISOR.as_posix())} --device{limit} -- {finding.command_text}"
     return f"{finding.env_text} {runner}".strip()
 
@@ -226,7 +240,7 @@ def run_hook(
         answer = decide_fn(command)
         if answer is not None:
             out(json.dumps(answer))
-    except Exception as exc:  # noqa: BLE001 - fail open: a bug here must never lock a session out
+    except Exception as exc:  # fail open: a bug here must never lock a session out
         log_error(log_path, exc, now)
     return 0
 
@@ -238,7 +252,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     try:
         text = sys.stdin.read()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # stdin unreadable: let the command run
         log_error(LOG_PATH, exc)
         return 0
     return run_hook(text)

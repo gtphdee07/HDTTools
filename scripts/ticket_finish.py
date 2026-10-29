@@ -35,9 +35,10 @@ Scan Proxy, 106 s Android session end, 196 s static checks, 133 s slow Python) a
 stops when it prints nothing for five minutes (#200). A suite that stalls or hits
 its cap is reported `hung` (`"hung": true` in its entry; the command exits 124 when
 nothing else failed): it is not recorded as a pass and is not a failing test, so run
-`suites` again. A suite that fails a test is a failure and is never retried. It prints each suite as `skip` or `run` and
-can write the report's `suites` entries (`--json`); `post` refuses a suite
-reported as skipped that the ledger does not show as passed at the tree.
+`suites` again (`--cap-factor N` changes the multiple). A suite that fails a test is
+a failure and is never retried. It prints each suite as `skip` or `run` and can
+write the report's `suites` entries (`--json`); `post` refuses a suite reported as
+skipped that the ledger does not show as passed at the tree.
 
 REPORT.json: {"status", "criteria": [{"criterion", "proven_by"}],
 "suites": [{"command", "passed", "summary"}], "review", "not_done",
@@ -52,6 +53,7 @@ import re
 import shlex
 import sys
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path, PurePosixPath
 from typing import Callable
 
@@ -477,7 +479,10 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("preflight")
     sub.add_parser("criteria")
-    sub.add_parser("suites").add_argument("--json", type=Path, help="write the report's `suites` entries here")
+    suites = sub.add_parser("suites")
+    suites.add_argument("--json", type=Path, help="write the report's `suites` entries here")
+    suites.add_argument("--cap-factor", type=float, default=supervisor.CAP_FACTOR,
+                        help=f"wall cap of a suite = this times its measured run (default {supervisor.CAP_FACTOR}, never under 60 s)")
     p = sub.add_parser("post")
     p.add_argument("report", type=Path)
     p.add_argument("--dry-run", action="store_true")
@@ -493,7 +498,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "criteria":
         return print_criteria(real_shell, root)
     if args.command == "suites":
-        return suites_command(root, args.json)
+        return suites_command(root, args.json, run_command=partial(supervisor.supervised_run_command, factor=args.cap_factor))
     return post(args.report, shell=real_shell, root=root, dry_run=args.dry_run)
 
 

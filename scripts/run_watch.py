@@ -30,6 +30,7 @@ import run_status  # noqa: E402
 
 INTERVAL_S = 30.0
 DEVICE_MISSES = 2
+WINDOW_S = 3600.0  # a hung or stale record older than this is history: starting the watcher does not re-announce it
 
 Incident = tuple[str, str, str]  # (status directory, run id, kind: hung | stale | device)
 
@@ -42,14 +43,19 @@ def uses_device(record: dict) -> bool:
     return is_active(record) and record.get("device", "none") != "none"
 
 
-def find_incidents(records: dict[str, dict], now: datetime, max_age_s: float, device_down: bool) -> dict[Incident, str]:
-    """The incidents of the moment: status directory -> its newest record. Pure."""
+def find_incidents(
+    records: dict[str, dict], now: datetime, max_age_s: float, device_down: bool, window_s: float = WINDOW_S
+) -> dict[Incident, str]:
+    """The incidents of the moment, keyed (status directory, run id, kind) with the line to show; `records` is each status
+    directory's newest record. A hung or stale record older than `window_s` is history, not news. Pure."""
     found: dict[Incident, str] = {}
     for where, record in records.items():
+        age = run_status.age_seconds(record, now)
+        if age is not None and age > window_s:
+            continue
         if record.get("phase") == "hung":
             found[(where, record.get("run_id", "?"), "hung")] = run_status.describe(record, now)
         elif is_active(record):
-            age = run_status.age_seconds(record, now)
             if age is None or age > max_age_s:
                 found[(where, record.get("run_id", "?"), "stale")] = f"STALE (no update for more than {max_age_s:.0f} s; the wrapper may have died): " + run_status.describe(record, now)
             elif device_down and uses_device(record):
@@ -67,9 +73,10 @@ class Watcher:
         out: Callable[[str], None] = lambda text: print(text, flush=True),
         max_age_s: float = run_status.DEFAULT_MAX_AGE_S,
         device_misses: int = DEVICE_MISSES,
+        window_s: float = WINDOW_S,
     ):
         self.read, self.device_ok, self.alert, self.out = read, device_ok, alert, out
-        self.max_age_s, self.device_misses = max_age_s, device_misses
+        self.max_age_s, self.device_misses, self.window_s = max_age_s, device_misses, window_s
         self.open: dict[Incident, str] = {}
         self.misses = 0
 
@@ -79,7 +86,7 @@ class Watcher:
             self.misses = 0 if self.device_ok() else self.misses + 1
         else:
             self.misses = 0
-        incidents = find_incidents(records, now, self.max_age_s, self.misses >= self.device_misses)
+        incidents = find_incidents(records, now, self.max_age_s, self.misses >= self.device_misses, self.window_s)
         for key, text in incidents.items():
             if key not in self.open:
                 self.out(f"ALERT [{key[0]}] {text}")

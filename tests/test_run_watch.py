@@ -161,6 +161,25 @@ def test_a_hung_run_does_not_also_raise_a_device_incident(tmp_path):
     assert rig.tick(1) == 1 and rig.tick(2) == 1
 
 
+def test_an_old_hung_or_stale_record_is_history_and_does_not_alert_when_the_watcher_starts(tmp_path):
+    rig = Rig(tmp_path, dirs=("a", "b"))
+    rig.write("a", "hung", 0, reason="no output")
+    rig.write("b", "test", 0)
+    assert rig.tick(run_watch.WINDOW_S - 1) == 2  # inside the window: both are news
+    fresh = Rig(tmp_path / "later", dirs=("a", "b"))
+    fresh.write("a", "hung", 0, reason="no output")
+    fresh.write("b", "test", 0)
+    assert fresh.tick(run_watch.WINDOW_S + 1) == 0 and fresh.lines == []
+
+
+def test_a_cold_boot_whose_heartbeat_keeps_the_file_fresh_is_not_a_stale_run(tmp_path):
+    rig = Rig(tmp_path)
+    rig.write("a", "boot", 0)
+    for t in (10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130):
+        rig.write("a", "boot", t)  # what the loop's Heartbeat does every 10 s
+        assert rig.tick(t + 1) == 0
+
+
 def test_no_status_directory_at_all_is_quiet(tmp_path):
     rig = Rig(tmp_path)
     assert rig.tick(5) == 0 and rig.lines == []

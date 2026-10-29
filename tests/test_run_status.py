@@ -57,6 +57,51 @@ def test_the_replace_is_retried_when_a_reader_holds_the_file(tmp_path, monkeypat
     assert len(calls) == 3 and json.loads((tmp_path / "latest.json").read_text(encoding="utf-8"))["phase"] == "boot"
 
 
+class StepEvent:
+    """A stand-in for threading.Event: `wait` answers False (keep going) `beats` times, then True (stop)."""
+
+    def __init__(self, beats):
+        self.beats = beats
+        self.waited = []
+
+    def wait(self, timeout=None):
+        self.waited.append(timeout)
+        self.beats -= 1
+        return self.beats < 0
+
+    def set(self):
+        self.beats = -1
+
+
+def test_the_heartbeat_rewrites_the_current_state_every_interval_while_the_run_is_active(tmp_path):
+    clock = iter(range(0, 1000, 10))
+    w = rst.StatusWriter("r1", "boot", tmp_path, now=lambda: T0 + timedelta(seconds=next(clock)), sleep=lambda _: None)
+    w.emit("boot", device="none")
+    stop = StepEvent(beats=3)
+    rst.Heartbeat(w, interval_s=10, stop=stop).run()
+    lines = [json.loads(ln) for ln in (tmp_path / "r1.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert [e["phase"] for e in lines] == ["boot"] * 4 and stop.waited == [10, 10, 10, 10]
+    assert [e["t"][-3:-1] for e in lines] == ["00", "10", "20", "30"]  # each beat is a newer time, so the file never goes stale
+
+
+def test_a_beat_never_overwrites_a_line_that_ended_the_run(tmp_path):
+    w = writer(tmp_path)
+    w.emit("boot")
+    w.emit("failed", outcome="infra-abort")
+    assert w.refresh() is False
+    rst.Heartbeat(w, stop=StepEvent(beats=2)).run()
+    assert json.loads((tmp_path / "latest.json").read_text(encoding="utf-8"))["phase"] == "failed"
+
+
+def test_the_heartbeat_thread_starts_and_stops_with_the_block(tmp_path):
+    w = writer(tmp_path)
+    w.emit("boot")
+    stop = StepEvent(beats=0)
+    with rst.Heartbeat(w, stop=stop):
+        pass
+    assert stop.beats == -1
+
+
 def check(tmp_path, seconds_later=0, max_age=120):
     return rst.check(tmp_path, T0 + timedelta(seconds=seconds_later), max_age)
 

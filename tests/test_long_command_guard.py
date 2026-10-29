@@ -51,7 +51,7 @@ def refused(command):
 
 
 def test_a_bare_gradle_device_run_is_rewritten_to_the_supervised_form():
-    assert rewritten(GRADLE) == f"{RUNNER} --device --output-limit-s 300 -- {GRADLE}"
+    assert rewritten(GRADLE) == f"{RUNNER} --device --output-limit-s 900 -- {GRADLE}"
 
 
 @pytest.mark.parametrize(
@@ -66,19 +66,27 @@ def test_each_connected_task_spelling_is_rewritten(command):
     assert rewritten(command).endswith(f"-- {command}")
 
 
-def test_a_bare_adb_instrument_run_is_rewritten():
-    command = "adb shell am instrument -w com.rigcheck.app.test/com.rigcheck.app.CustomTestRunner"
-    assert rewritten(command) == f"{RUNNER} --device -- {command}"
+def test_a_class_level_gradle_run_gets_the_shorter_silence_limit_and_a_whole_suite_the_longer():
+    one_class = f"{GRADLE} -Pandroid.testInstrumentationRunnerArguments.class=com.rigcheck.app.ui.FooTest"
+    assert rewritten(one_class) == f"{RUNNER} --device --output-limit-s 300 -- {one_class}"
+    assert f"--output-limit-s {guard.WHOLE_SUITE_OUTPUT_LIMIT_S} " in rewritten(GRADLE)
+
+
+def test_a_bare_adb_instrument_run_is_rewritten_and_one_without_raw_output_gets_the_long_silence_limit():
+    raw = "adb shell am instrument -w -r com.rigcheck.app.test/com.rigcheck.app.CustomTestRunner"
+    assert rewritten(raw) == f"{RUNNER} --device -- {raw}"
+    plain = "adb shell am instrument -w com.rigcheck.app.test/com.rigcheck.app.CustomTestRunner"
+    assert rewritten(plain) == f"{RUNNER} --device --output-limit-s 900 -- {plain}"
 
 
 def test_adb_with_a_serial_and_a_quoted_shell_command_is_still_recognised():
     command = 'adb -s emulator-5554 shell "am instrument -w a/b"'
-    assert rewritten(command).endswith(f"--device -- {command}")
+    assert rewritten(command).endswith(f"--device --output-limit-s 900 -- {command}")  # no -r: no per-test output
 
 
 def test_a_compound_line_has_only_its_device_command_rewritten():
-    assert rewritten(f"cd android && {GRADLE}") == f"cd android && {RUNNER} --device --output-limit-s 300 -- {GRADLE}"
-    assert rewritten(f"{GRADLE} | tail -5") == f"{RUNNER} --device --output-limit-s 300 -- {GRADLE} | tail -5"
+    assert rewritten(f"cd android && {GRADLE}") == f"cd android && {RUNNER} --device --output-limit-s 900 -- {GRADLE}"
+    assert rewritten(f"{GRADLE} | tail -5") == f"{RUNNER} --device --output-limit-s 900 -- {GRADLE} | tail -5"
     assert rewritten(f"echo start; {GRADLE}; echo done").endswith(f"-- {GRADLE}; echo done")
 
 

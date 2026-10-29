@@ -212,6 +212,17 @@ def test_a_single_missed_device_check_is_not_a_stall(tmp_path):
     assert "slow" in {e["device"] for e in entries} and entries[-1]["device"] == "ok"
 
 
+def test_a_gradle_run_with_no_install_line_moves_to_test_at_its_count_line_so_a_lost_device_is_seen(tmp_path):
+    def factory(clock):
+        script = [(1, b"> Task :app:connectedDebugAndroidTest\n"), (2, b"Starting 36 tests on medium_phone(AVD) - 16\n")]
+        return FakeProc(clock, script + [(t, b"x\n") for t in range(60, 400, 60)], exit_at=450)
+
+    adb = FakeAdb(lambda args: (0, NO_DEVICE) if args == ["devices"] else (0, b"1\n"))
+    result, _, entries = run(tmp_path, factory, device=True, adb=adb, limits=rs.Limits(output_s=600, test_s=600))
+    assert result.reason == "device offline"
+    assert "test" in [e["phase"] for e in entries] and entries[-1]["of"] == 36
+
+
 def test_a_device_still_booting_cannot_make_a_stall(tmp_path):
     adb = FakeAdb(lambda args: (0, NO_DEVICE) if args == ["devices"] else (1, b""))
     result, _, entries = run(

@@ -24,6 +24,7 @@ import argparse
 import json
 import os
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -85,12 +86,26 @@ class StatusWriter:
         self.latest = self.directory / LATEST
         self._now = now
         self._sleep = sleep
+        self._lock = threading.Lock()  # a Heartbeat thread writes beside the run
         self.state: dict = {
             "t": None, "run_id": run_id, "phase": None, "command": command,
             "test": None, "n": None, "of": None, "last_output_age_s": 0.0, "device": "none",
         }
 
     def emit(self, phase: str, **fields) -> dict:
+        with self._lock:
+            return self._write(phase, fields)
+
+    def refresh(self) -> bool:
+        """Re-writes the current state with a new time, only while the run is still active (a done, failed or hung
+        line is never overwritten). Checked and written under one lock, so it cannot undo a line written meanwhile."""
+        with self._lock:
+            if self.state["phase"] not in ACTIVE_PHASES:
+                return False
+            self._write(self.state["phase"], {})
+            return True
+
+    def _write(self, phase: str, fields: dict) -> dict:
         self.state.update(fields)
         self.state["phase"] = phase
         self.state["t"] = iso(self._now())
@@ -101,6 +116,35 @@ class StatusWriter:
         temp.write_text(line + "\n", encoding="utf-8")
         replace_file(temp, self.latest, sleep=self._sleep)
         return dict(self.state)
+
+
+class Heartbeat:
+    """Re-writes the current state every `interval_s` while something blocks that cannot report itself (a cold
+    emulator boot, an APK install), so the file stays fresh and a watcher does not take a long, healthy wait for a dead
+    wrapper. Use as a context manager; `beat()` is one beat, `stop` is an Event so a test can drive the loop."""
+
+    def __init__(self, writer: StatusWriter, interval_s: float = 10.0, stop: threading.Event | None = None):
+        self.writer = writer
+        self.interval_s = interval_s
+        self.stop = stop or threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def beat(self) -> None:
+        self.writer.refresh()
+
+    def run(self) -> None:
+        while not self.stop.wait(self.interval_s):
+            self.beat()
+
+    def __enter__(self) -> "Heartbeat":
+        self._thread = threading.Thread(target=self.run, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=5)
 
 
 def _last_complete_line(path: Path) -> dict | None:

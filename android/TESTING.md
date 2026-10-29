@@ -239,53 +239,6 @@ means 5 consecutive).
 The label rules, restart logic and readiness check are tested with fakes in
 `tests/test_android_suite_loop.py`; no emulator is touched there.
 
-### Hang detection (#200)
-
-A run that stalls without failing (the system server killed by its own watchdog while a screen
-capture is blocked, `device offline`, a keyboard wait timing out at 30 s on a stale window like the
-autofill case in `UiTagsDisplayedTest`) used to be noticed only because nothing finished. Three
-pieces now make it visible within minutes; the problem they fix is detection, not run time.
-
-- **A supervised runner** (`scripts/run_supervisor.py`). `uv run scripts/run_supervisor.py --device
-  -- <command>` runs any command and appends one JSON line per event to
-  `android/build/run-status/<run-id>.jsonl`, and replaces `latest.json` (atomically) with the newest
-  line: `t`, `run_id`, `phase` (`boot`, `install`, `test`, `done`, `hung`, `failed`), `command`,
-  `test`, `n` and `of`, `last_output_age_s`, `device` (`ok`, `slow`, `offline`, `none`).
-  `uv run scripts/run_status.py [--max-age-s 120]` prints it in words and exits 0 (running or
-  finished and fresh), 1 (stale, or hung), 2 (no run found). For `am instrument -w -r` output the
-  running test and the count are exact (the suite loop uses this); for a Gradle run only the output
-  age, the device check and the `Starting N tests` line are known.
-- **A watchdog**, checking every 10 s. A run is **hung** after no output for 120 s
-  (`--output-limit-s`; the class-level Gradle form uses 300 s because Gradle prints nothing between
-  `Starting N tests` and `Finished`), one test running longer than 90 s (`--test-limit-s`), the run
-  over `--wall-limit-s`, or `adb shell getprop sys.boot_completed` unanswered within 5 s / the
-  device missing from `adb devices` on three checks in a row (one missed check is never a stall; a
-  device that is still booting is not checked). On a stall it writes `hung`, saves the evidence to
-  `android/build/run-status/<run-id>/` (`logcat -d`, the last 2000 lines; a `screencap` PNG; the head
-  of `dumpsys window windows`; `adb devices -l`; the last 200 output lines; the process list; each
-  call has its own 10 s limit, so a dead device cannot stall the wrapper, and `evidence.json` says
-  what was saved), then stops the command and the emulator (`--on-stall flag` leaves the run going)
-  and exits **124**. A hung run, and any run that ended because of the device or the system, is an
-  **infra-abort**, never a test failure; a failing test is never retried. `--retry-infra-abort`
-  runs an infra-aborted run once more on a freshly booted emulator.
-- **A hook and a watcher.** `.claude/settings.json` registers `scripts/long_command_guard.py` as a
-  PreToolUse hook on Bash: a bare `gradlew ... connectedDebugAndroidTest`, `connectedAndroidTest`
-  or `adb ... shell am instrument` is rewritten to the supervised form (this harness applies
-  `updatedInput`; its permission rules still see the rewritten command), a bare `emulator -avd` is
-  refused with the exact `android_suite_loop.py --boot-only` command to type (an emulator is quiet by
-  design, so the stall watch would kill it), and everything else, including the suite loop (itself a
-  runner client) and any command already under the runner, passes untouched. The hook fails open: a
-  bug in it is logged to `%TEMP%\hdttools-status\long_command_guard.log` and the command runs.
-  `uv run scripts/run_watch.py` (run it as a Monitor in a Claude session to have a stall wake that
-  session) reads every worktree's `latest.json` and the emulator every 30 s and raises one alert per
-  incident, a Windows balloon notification plus a stdout line, and a `cleared` line when the run
-  recovers or ends.
-
-Tested with fakes (a clock that moves when something waits, a scripted process, a scripted adb; no
-emulator, adb or real wait) in `tests/test_run_supervisor.py`, `tests/test_run_status.py`,
-`tests/test_long_command_guard.py`, `tests/test_run_watch.py` and the hang cases of
-`tests/test_android_suite_loop.py`. Real runs, 2026-10-28: see the ticket (#200).
-
 **Why the Gradle runs lost the device (#127).** It is the emulator's graphics
 backend, not Gradle, adb, the wake task or RAM. The AVD's default (`hw.gpu.mode=auto`)
 resolves to `gfxstream` on the host's Vulkan GPU (here an NVIDIA RTX 3070;
@@ -352,6 +305,57 @@ and 4 shared a second boot.)
   do not run suites back to back on one boot.
 - Read an aborted run before counting it: the label's reason line quotes
   the first matching text, and `run-N.log` has the rest.
+
+### Hang detection (#200)
+
+A run that stalls without failing (the system server killed by its own watchdog while a screen
+capture is blocked, `device offline`, a keyboard wait timing out at 30 s on a stale window like the
+autofill case in `UiTagsDisplayedTest`) used to be noticed only because nothing finished. Three
+pieces now make it visible within minutes; the problem they fix is detection, not run time.
+
+- **A supervised runner** (`scripts/run_supervisor.py`). `uv run scripts/run_supervisor.py --device
+  -- <command>` runs any command and appends one JSON line per event to
+  `android/build/run-status/<run-id>.jsonl`, and replaces `latest.json` (atomically) with the newest
+  line: `t`, `run_id`, `phase` (`boot`, `install`, `test`, `done`, `hung`, `failed`), `command`,
+  `test`, `n` and `of`, `last_output_age_s`, `device` (`ok`, `slow`, `offline`, `none`).
+  `uv run scripts/run_status.py [--max-age-s 120]` prints it in words and exits 0 (running or
+  finished and fresh), 1 (stale, or hung), 2 (no run found). For `am instrument -w -r` output the
+  running test and the count are exact (the suite loop uses this); for a Gradle run only the output
+  age, the device check and the `Starting N tests` line are known.
+- **A watchdog**, checking every 10 s. A run is **hung** after no output for 120 s
+  (`--output-limit-s`; the hook gives a class-level Gradle run 300 s and a whole-suite Gradle run, or
+  an `am instrument` without `-r`, 900 s, because they print nothing between `Starting N tests` and
+  `Finished`), one test running longer than 90 s (`--test-limit-s`), the run
+  over `--wall-limit-s`, or `adb shell getprop sys.boot_completed` unanswered within 5 s / the
+  device missing from `adb devices` on three checks in a row (one missed check is never a stall; a
+  device that is still booting is not checked: a run counts as started at its first install line,
+  its first test record, or Gradle's `Starting N tests`). While the suite loop boots the emulator or
+  installs the APKs it rewrites the status every 10 s (a cold boot takes minutes), so the file is
+  never read as a dead wrapper. On a stall it writes `hung`, saves the evidence to
+  `android/build/run-status/<run-id>/` (`logcat -d`, the last 2000 lines; a `screencap` PNG; the head
+  of `dumpsys window windows`; `adb devices -l`; the last 200 output lines; the process list; each
+  call has its own 10 s limit, so a dead device cannot stall the wrapper, and `evidence.json` says
+  what was saved), then stops the command and the emulator (`--on-stall flag` leaves the run going)
+  and exits **124**. A hung run, and any run that ended because of the device or the system, is an
+  **infra-abort**, never a test failure; a failing test is never retried. `--retry-infra-abort`
+  runs an infra-aborted run once more on a freshly booted emulator.
+- **A hook and a watcher.** `.claude/settings.json` registers `scripts/long_command_guard.py` as a
+  PreToolUse hook on Bash: a bare `gradlew ... connectedDebugAndroidTest`, `connectedAndroidTest`
+  or `adb ... shell am instrument` is rewritten to the supervised form (this harness applies
+  `updatedInput`; its permission rules still see the rewritten command), a bare `emulator -avd` is
+  refused with the exact `android_suite_loop.py --boot-only` command to type (an emulator is quiet by
+  design, so the stall watch would kill it), and everything else, including the suite loop (itself a
+  runner client) and any command already under the runner, passes untouched. The hook fails open: a
+  bug in it is logged to `%TEMP%\hdttools-status\long_command_guard.log` and the command runs.
+  `uv run scripts/run_watch.py` (run it as a Monitor in a Claude session to have a stall wake that
+  session) reads every worktree's `latest.json` and the emulator every 30 s and raises one alert per
+  incident, a Windows balloon notification plus a stdout line, and a `cleared` line when the run
+  recovers or ends.
+
+Tested with fakes (a clock that moves when something waits, a scripted process, a scripted adb; no
+emulator, adb or real wait) in `tests/test_run_supervisor.py`, `tests/test_run_status.py`,
+`tests/test_long_command_guard.py`, `tests/test_run_watch.py` and the hang cases of
+`tests/test_android_suite_loop.py`. Real runs, 2026-10-28: see the ticket (#200).
 
 ## Categories
 

@@ -492,8 +492,8 @@ def supervise(
         for event in progress.feed(line):
             if event.kind == "install" and phase == "boot":
                 beat(now, "install")
-            elif event.kind == "of":
-                beat(now)
+            elif event.kind == "of":  # the tests are starting (Gradle's "Starting N tests", or the first record): the device is up
+                beat(now, "test" if phase in ("boot", "install") else None)
             elif event.kind == "test_started":
                 watchdog.test_start(event.test or "?", now)
                 beat(now, "test", test=event.test)
@@ -522,7 +522,7 @@ def supervise(
                 handle_line(line, now)
         if now >= next_beat:
             if use_device:
-                watchdog.device_check(device_state(adb), counted=phase in ("install", "test"))  # type: ignore[arg-type]
+                watchdog.device_check(device_state(adb), counted=phase in ("install", "test"))
             beat(now)
             next_beat = now + check_interval_s
         if stall is None:
@@ -539,7 +539,7 @@ def supervise(
                     proc.kill()
                     if use_device:
                         try:
-                            adb(["emu", "kill"], EVIDENCE_CALL_TIMEOUT_S)  # type: ignore[misc]
+                            adb(["emu", "kill"], EVIDENCE_CALL_TIMEOUT_S)
                         except (subprocess.TimeoutExpired, OSError):
                             pass
                     return RunResult(
@@ -706,7 +706,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     result, _ = run_with_one_retry(attempt, is_infra_abort=lambda r: r.outcome == INFRA_ABORT, fresh_emulator=fresh_emulator)
-    return result.exit_code  # type: ignore[attr-defined]
+    return result.exit_code
 
 
 if __name__ == "__main__":

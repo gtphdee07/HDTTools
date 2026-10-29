@@ -351,6 +351,32 @@ class RigCheckNavHostTest {
         composeRule.runOnUiThread { assertNull(viewModel.scanNoticeState.notice) }
     }
 
+    // The re-skinned entry screens have a top-bar Back control. Each screen's own test gives it a fake onBack, so
+    // only this test, through the real RigCheckNavHost, shows that tapping it goes back to the Chooser it came from
+    // (merge review of #193: a NavHost whose Truck or Scale Back did nothing passed every test).
+    @Test
+    fun theBackControlOnEachEntryScreenReturnsToTheChooserItCameFrom() {
+        composeRule.setContent { RigCheckNavHost() }
+        enterNickname("Back Control")
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).performClick()
+
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRUCK_BACK).performClick()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Truck Tag").assertIsDisplayed()
+
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRUCK_NEXT_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRAILER_BACK).performClick()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Trailer Tag").assertIsDisplayed()
+
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.TRAILER_NEXT_BUTTON).performClick()
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).performClick()
+        composeRule.onNodeWithTag(UiTags.SCALE_BACK).performClick()
+        composeRule.onNodeWithTagText(UiTags.CHOOSER_TITLE, "Scale Ticket").assertIsDisplayed()
+    }
+
     @Test
     fun startingARigDropsTheNotice() {
         val viewModel = setContentWithViewModel()

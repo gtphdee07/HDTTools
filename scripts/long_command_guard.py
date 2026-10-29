@@ -207,7 +207,14 @@ def log_error(path: Path, exc: BaseException, now: Callable[[], datetime] = date
         pass  # a hook that cannot log still must not block the command
 
 
-def run_hook(stdin_text: str, *, out: Callable[[str], None] = print, log_path: Path = LOG_PATH, decide_fn=decide) -> int:
+def run_hook(
+    stdin_text: str,
+    *,
+    out: Callable[[str], None] = print,
+    log_path: Path = LOG_PATH,
+    decide_fn=decide,
+    now: Callable[[], datetime] = datetime.now,
+) -> int:
     """Always returns 0. Nothing printed means: let the command run as typed."""
     try:
         data = json.loads(stdin_text)
@@ -220,7 +227,7 @@ def run_hook(stdin_text: str, *, out: Callable[[str], None] = print, log_path: P
         if answer is not None:
             out(json.dumps(answer))
     except Exception as exc:  # noqa: BLE001 - fail open: a bug here must never lock a session out
-        log_error(log_path, exc)
+        log_error(log_path, exc, now)
     return 0
 
 

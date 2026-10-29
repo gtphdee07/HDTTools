@@ -5,6 +5,7 @@ fed the JSON the harness sends on stdin; nothing here runs a command, adb or an 
 import json
 import shlex
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -24,7 +25,9 @@ def hook(command, tool="Bash", log_path=None, decide_fn=None):
     out = []
     payload = json.dumps({"tool_name": tool, "tool_input": {"command": command}, "hook_event_name": "PreToolUse"})
     kwargs = {"decide_fn": decide_fn} if decide_fn else {}
-    code = guard.run_hook(payload, out=out.append, log_path=log_path or Path("unused.log"), **kwargs)
+    code = guard.run_hook(
+        payload, out=out.append, log_path=log_path or Path("unused.log"), now=lambda: datetime(2026, 10, 28, 12, 0, 0), **kwargs,
+    )
     return code, (json.loads(out[0]) if out else None)
 
 
@@ -175,7 +178,7 @@ def test_a_tool_other_than_bash_is_never_touched():
 @pytest.mark.parametrize("text", ["", "not json", "[]", "null", '{"tool_name": "Bash"}', '{"tool_name": "Bash", "tool_input": {"command": 7}}'])
 def test_unreadable_or_incomplete_input_passes_unchanged(text, tmp_path):
     out = []
-    assert guard.run_hook(text, out=out.append, log_path=tmp_path / "g.log") == 0
+    assert guard.run_hook(text, out=out.append, log_path=tmp_path / "g.log", now=lambda: datetime(2026, 10, 28)) == 0
     assert out == []
 
 
@@ -189,7 +192,7 @@ def test_an_exception_inside_the_hook_lets_the_command_run_and_is_logged(tmp_pat
     log = tmp_path / "sub" / "guard.log"
     assert hook(GRADLE, log_path=log, decide_fn=broken) == (0, None)
     text = log.read_text(encoding="utf-8")
-    assert "RuntimeError: bug in the hook" in text and "Traceback" in text
+    assert "RuntimeError: bug in the hook" in text and "Traceback" in text and text.startswith("2026-10-28T12:00:00")
 
 
 def test_a_hook_that_cannot_even_write_its_log_still_lets_the_command_run(tmp_path):

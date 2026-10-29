@@ -138,7 +138,12 @@ def read_all(directories: Callable[[], list[Path]]) -> dict[str, dict]:
     return records
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    now: Callable[[], datetime] = run_status.utc_now,
+    sleep: Callable[[float], None] = time.sleep,
+) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--interval-s", type=float, default=INTERVAL_S)
     parser.add_argument("--max-age-s", type=float, default=run_status.DEFAULT_MAX_AGE_S)
@@ -156,10 +161,10 @@ def main(argv: list[str] | None = None) -> int:
         max_age_s=args.max_age_s,
     )
     while True:
-        watcher.tick(run_status.utc_now())
+        watcher.tick(now())
         if args.once:
             return 0
-        time.sleep(args.interval_s)
+        sleep(args.interval_s)
 
 
 if __name__ == "__main__":

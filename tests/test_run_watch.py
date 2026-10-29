@@ -175,4 +175,18 @@ def test_the_balloon_text_is_quoted_so_a_test_name_cannot_break_the_script():
 def test_once_looks_one_time_and_exits(tmp_path):
     sink = tmp_path / "s"
     run_status.StatusWriter("r1", "x", sink, now=lambda: at(0), sleep=lambda _: None).emit("hung", reason="no output")
-    assert run_watch.main(["--once", "--no-balloon", "--dir", str(sink), "--max-age-s", "120"]) == 0
+    assert run_watch.main(["--once", "--no-balloon", "--dir", str(sink), "--max-age-s", "120"], now=lambda: at(5)) == 0
+    ticks = []
+    clock_values = iter([at(0), at(30)])
+
+    class Stop(Exception):
+        pass
+
+    def sleeper(seconds):
+        ticks.append(seconds)
+        if len(ticks) == 2:
+            raise Stop
+
+    with pytest.raises(Stop):
+        run_watch.main(["--no-balloon", "--dir", str(sink), "--interval-s", "30"], now=lambda: next(clock_values), sleep=sleeper)
+    assert ticks == [30, 30]

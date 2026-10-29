@@ -80,10 +80,24 @@ The hook is committed in the shared `.claude/settings.json` (the owner approved 
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project \"$CLAUDE_PROJECT_DIR/scripts/long_command_guard.py\" --hook",
+            "timeout": 20
+          }
+        ]
+      }
     ]
   }
 }
 ```
+
+The `PreToolUse` entry is not part of this report: it is the hang-detection guard (#200) that puts a session's direct device or emulator command on the supervised runner (`docs/agents/session-handoff.md`, "Long commands run supervised"). It sits in the same file, so the snippet shows the whole file.
 
 `--no-project` keeps `uv run` from creating or syncing a project environment, so the hook is quick even in a fresh ticket worktree with no `.venv`; the script uses only the standard library.
 

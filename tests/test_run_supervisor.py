@@ -329,6 +329,13 @@ def test_failures_in_an_instrument_run_that_exits_zero_are_a_test_failure(tmp_pa
     assert result.outcome == rs.TEST_FAILED and result.exit_code == 1
 
 
+def test_a_character_split_across_two_reads_stays_whole_in_the_saved_output(tmp_path):
+    word = "température".encode()
+    split = word.index("é".encode()) + 1  # between the two bytes of é
+    result, _, _ = run(tmp_path, lambda c: FakeProc(c, [(1, word[:split]), (2, word[split:] + b"\n")], exit_at=3))
+    assert "température" in result.output and "�" not in result.output
+
+
 def test_the_command_output_still_reaches_the_caller(tmp_path):
     echoed = []
     run(tmp_path, lambda c: FakeProc(c, [(1, b"one\n"), (2, b"two")], exit_at=3), echo=echoed.append)

@@ -36,6 +36,7 @@ freshly booted emulator (--device only).
 from __future__ import annotations
 
 import argparse
+import codecs
 import json
 import os
 import queue
@@ -475,6 +476,7 @@ def supervise(
     kept: deque[str] = deque()
     kept_chars = 0
     pending = ""
+    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")  # a character split across two reads stays whole
     stall: Stall | None = None
     next_beat = start
 
@@ -509,7 +511,7 @@ def supervise(
             if echo is not None:
                 echo(chunk)
             watchdog.output(now)
-            text = chunk.decode("utf-8", errors="replace")
+            text = decoder.decode(chunk)
             kept.append(text)
             kept_chars += len(text)
             while kept_chars > KEPT_OUTPUT_CHARS and len(kept) > 1:

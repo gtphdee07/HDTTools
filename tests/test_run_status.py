@@ -125,8 +125,10 @@ def test_a_finished_run_with_a_count_but_no_per_test_records_reads_as_n_tests_no
         assert ", 8 tests" in text and "0 of" not in text and "tests finished" not in text, text
 
 
-def test_a_running_run_with_a_count_and_no_test_finished_yet_still_reads_0_of_n(tmp_path):
+def test_a_running_or_aborted_run_with_a_count_and_no_test_finished_still_reads_0_of_n(tmp_path):
     writer(tmp_path).emit("test", n=0, of=36, device="ok")
+    assert "0 of 36 tests finished" in check(tmp_path, 5)[1]
+    writer(tmp_path).emit("failed", n=0, of=36, outcome="infra-abort", exit_code=255)  # nothing ran: do not hide it
     assert "0 of 36 tests finished" in check(tmp_path, 5)[1]
 
 

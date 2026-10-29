@@ -339,7 +339,7 @@ pieces now make it visible within minutes; the problem they fix is detection, no
   and exits **124**. A hung run, and any run that ended because of the device or the system, is an
   **infra-abort**, never a test failure; a failing test is never retried. `--retry-infra-abort`
   runs an infra-aborted run once more on a freshly booted emulator. A `--device` command that
-  ends non-zero (or an `am instrument -r` run whose output stops before `INSTRUMENTATION_CODE`)
+  ends non-zero (or an `am instrument -r` run whose output stops before `INSTRUMENTATION_CODE` or `OK (`)
   with no abort marker in its output gets one device check (`adb devices` and `getprop`, 5 s): if
   the device is gone the run is an **infra-abort**, reason `device lost after the command ended`,
   with the output tail and the process list saved (logcat went with the device) and `failed` in the

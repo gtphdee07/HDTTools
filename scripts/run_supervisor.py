@@ -450,9 +450,12 @@ def _abort_line(output: str) -> str | None:
     return None
 
 
-def _instrument_cut_short(progress: Progress, output: str) -> bool:
-    """An `am instrument -r` run (it printed per-test records) whose output never reached the closing `INSTRUMENTATION_CODE`."""
-    return progress.started and not re.search(r"^INSTRUMENTATION_CODE: ", output, re.M)
+def _instrument_cut_short(command: list[str], progress: Progress, output: str) -> bool:
+    """An `am instrument` run (named `instrument`, or it printed per-test records) whose output never reached its
+    closing `INSTRUMENTATION_CODE` (with -r) or `OK (` line."""
+    if not (progress.started or "instrument" in command):
+        return False
+    return not re.search(r"^(INSTRUMENTATION_CODE: |OK \()", output, re.M)
 
 
 def supervise(
@@ -568,7 +571,7 @@ def supervise(
                          output, progress.n, progress.of)
     marker = _abort_line(output) if device else None
     lost = ""  # the device state ("offline" or "miss") when the command ended and the device was gone
-    if use_device and marker is None and (code != 0 or _instrument_cut_short(progress, output)):
+    if use_device and marker is None and (code != 0 or _instrument_cut_short(command, progress, output)):
         state = device_state(adb)  # its own 5 s limit; a healthy device changes nothing
         lost = "" if state == "ok" else state
     detail = ""

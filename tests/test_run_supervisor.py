@@ -1,7 +1,7 @@
 """Function tests for scripts/run_supervisor.py (#200): the status file a supervised command leaves, the
 `am instrument -r` reader, each stall rule (output, one test, the device), the evidence step, the stop
 decision (flag and stop, or flag only), the exit code and label of a hung run, the suite caps, and the
-retry-once rule for a device run. Fakes only: a clock that moves when something waits, a scripted
+retry-once rule for a device run, and a device run that ends with the device gone (#203). Fakes only: a clock that moves when something waits, a scripted
 process and a scripted adb - no emulator, adb, process or real wait is touched."""
 
 import importlib.util
@@ -33,12 +33,12 @@ def ok(cls, test, current, total=3):
     return record(1, cls, test, current, total) + record(0, cls, test, current, total)
 
 
-def run(tmp_path, proc_factory, *, device=False, adb=None, limits=None, on_stall="stop", phase=None, echo=None):
+def run(tmp_path, proc_factory, *, device=False, adb=None, limits=None, on_stall="stop", phase=None, echo=None, command=None):
     clock = FakeClock()
     proc = proc_factory(clock)
     writer = run_status.StatusWriter("r1", "fake command", tmp_path, now=clock.wall, sleep=lambda _: None)
     result = rs.supervise(
-        ["fake"], writer=writer, spawn=lambda argv: proc, clock=clock, limits=limits or rs.Limits(), device=device, adb=adb,
+        command or ["fake"], writer=writer, spawn=lambda argv: proc, clock=clock, limits=limits or rs.Limits(), device=device, adb=adb,
         tool=lambda argv, timeout: (0, b"tasklist"), on_stall=on_stall, phase=phase, echo=echo,
     )
     return result, proc, lines(tmp_path)
@@ -398,7 +398,15 @@ def test_an_instrument_run_whose_records_stop_mid_test_with_no_device_is_an_infr
     result, _, entries = run(tmp_path, factory, device=True, adb=adb)
     assert (result.outcome, result.reason, result.exit_code) == (rs.INFRA_ABORT, rs.DEVICE_LOST, 1)
     assert (entries[-1]["phase"], entries[-1]["outcome"]) == ("failed", "infra-abort") and (result.n, result.of) == (1, 3)
-    assert f"{CLS}" in (Path(entries[-1]["evidence"]) / "output-tail.txt").read_text(encoding="utf-8")
+    assert CLS in (Path(entries[-1]["evidence"]) / "output-tail.txt").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("code", [1, 0])
+def test_an_am_instrument_command_that_dies_before_its_first_record_with_no_device_is_an_infra_abort(tmp_path, code):
+    # No record was printed, so only the command line says this is an instrument run.
+    factory, adb = device_dies(code=code)
+    result, _, _ = run(tmp_path, factory, device=True, adb=adb, command=INSTRUMENT)
+    assert (result.outcome, result.reason) == (rs.INFRA_ABORT, rs.DEVICE_LOST)
 
 
 def test_a_device_that_does_not_answer_after_the_command_ended_counts_as_lost_too(tmp_path):
@@ -407,20 +415,32 @@ def test_a_device_that_does_not_answer_after_the_command_ended_counts_as_lost_to
     assert (result.outcome, result.reason) == (rs.INFRA_ABORT, rs.DEVICE_LOST) and "did not answer" in result.detail
 
 
-def test_a_nonzero_exit_with_a_healthy_device_stays_a_test_failure(tmp_path):
-    for script in ([], [(1, ok(CLS, "a", 1)), (2, record(1, CLS, "b", 2)), (3, record(-2, CLS, "b", 2))]):
-        factory, adb = device_dies(script, code=1, after=lambda args: (0, DEVICE_LISTED) if args == ["devices"] else (0, b"1\n"))
-        result, _, entries = run(tmp_path, factory, device=True, adb=adb)
-        assert (result.outcome, result.phase, result.reason) == (rs.TEST_FAILED, "failed", "exit code 1")
-        assert entries[-1]["outcome"] == "test-failed" and not (tmp_path / "r1").exists()
+HEALTHY = healthy_adb().answer
 
 
-def test_a_passing_run_does_not_call_adb_after_the_command_ends(tmp_path):
-    closing = b"INSTRUMENTATION_RESULT: stream=\n\nOK (2 tests)\n\nINSTRUMENTATION_CODE: -1\n"
-    for script in ([(1, b"done\n")], [(1, ok(CLS, "a", 1, 2)), (2, ok(CLS, "b", 2, 2)), (3, closing)]):
-        factory, adb = device_dies(script, code=0, after=lambda args: pytest.fail(f"adb {args} called after the command ended"))
-        result, _, _ = run(tmp_path, factory, device=True, adb=adb)
-        assert result.outcome == rs.PASSED and result.exit_code == 0
+@pytest.mark.parametrize("script", [[], [(1, ok(CLS, "a", 1)), (2, record(1, CLS, "b", 2)), (3, record(-2, CLS, "b", 2))]])
+def test_a_nonzero_exit_with_a_healthy_device_stays_a_test_failure(tmp_path, script):
+    factory, adb = device_dies(script, code=1, after=HEALTHY)
+    result, _, entries = run(tmp_path, factory, device=True, adb=adb)
+    assert (result.outcome, result.phase, result.reason) == (rs.TEST_FAILED, "failed", "exit code 1")
+    assert entries[-1]["outcome"] == "test-failed" and not (tmp_path / "r1").exists()
+
+
+INSTRUMENT = ["adb", "shell", "am", "instrument", "-w"]
+
+
+@pytest.mark.parametrize(
+    ("script", "command"),
+    [
+        ([(1, b"done\n")], None),
+        ([(1, ok(CLS, "a", 1, 2)), (2, ok(CLS, "b", 2, 2)), (3, b"INSTRUMENTATION_RESULT: stream=\n\nOK (2 tests)\n\nINSTRUMENTATION_CODE: -1\n")], INSTRUMENT),
+        ([(1, b"Time: 0.5\n\nOK (2 tests)\n\n")], INSTRUMENT),  # am instrument without -r
+    ],
+)
+def test_a_passing_run_does_not_call_adb_after_the_command_ends(tmp_path, script, command):
+    factory, adb = device_dies(script, code=0, after=lambda args: pytest.fail(f"adb {args} called after the command ended"))
+    result, _, _ = run(tmp_path, factory, device=True, adb=adb, command=command)
+    assert result.outcome == rs.PASSED and result.exit_code == 0
 
 
 def test_a_command_that_is_not_a_device_run_never_asks_adb_after_it_ends(tmp_path):
@@ -437,7 +457,7 @@ def test_a_device_lost_run_is_retried_once_on_a_fresh_emulator(tmp_path):
         if number == 1:
             factory, adb = device_dies()
         else:
-            factory, adb = device_dies(code=0, after=lambda args: (0, DEVICE_LISTED) if args == ["devices"] else (0, b"1\n"))
+            factory, adb = device_dies(code=0, after=HEALTHY)
         result, _, _ = run(tmp_path / f"attempt{number}", factory, device=True, adb=adb)
         runs.append(result)
         return result

@@ -33,9 +33,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DIR = REPO_ROOT / "android" / "build" / "run-status"
 LATEST = "latest.json"
 
-PHASES = ("boot", "install", "test", "done", "hung", "failed")
-ACTIVE_PHASES = ("boot", "install", "test")
-DEVICE_STATES = ("ok", "slow", "offline", "none")
+ACTIVE_PHASES = ("boot", "install", "test")  # the others are done, hung and failed
 
 DEFAULT_MAX_AGE_S = 120.0
 

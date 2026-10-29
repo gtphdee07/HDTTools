@@ -361,7 +361,7 @@ def test_the_cap_factor_can_be_changed():
 def supervised(tmp_path, proc_factory, command):
     clock = FakeClock()
     return rs.supervised_run_command(
-        command, status_dir=tmp_path, spawn=lambda argv: proc_factory(clock), clock=clock, echo=lambda chunk: None, now=clock.wall,
+        command, status_dir=tmp_path, spawn=lambda argv: proc_factory(clock), clock=clock, echo=lambda _: None, now=clock.wall,
     )
 
 

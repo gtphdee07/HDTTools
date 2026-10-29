@@ -133,11 +133,31 @@ def find_device_commands(command: str) -> list[Finding]:
     return found
 
 
+LOOP_BOOT_FLAGS = ("-no-snapshot", "-no-snapshot-save", "-no-boot-anim")  # the loop's cold boot already passes these
+
+
+def emulator_flags(tokens: list[str]) -> str:
+    """An emulator command line as the loop's `--boot-only` options: the AVD and GPU become `--avd` and `--gpu`, the
+    flags the loop always passes are dropped, and any other word is forwarded as `--emulator-arg=<word>`, in order."""
+    words, found, i = tokens[1:], [], 0
+    while i < len(words):
+        word = words[i]
+        if word in ("-avd", "-gpu") and i + 1 < len(words):
+            found.append(f"--{word[1:]} {shlex.quote(words[i + 1])}")
+            i += 2
+            continue
+        if word.startswith("@"):
+            found.append(f"--avd {shlex.quote(word[1:])}")
+        elif word not in LOOP_BOOT_FLAGS:
+            found.append(f"--emulator-arg={shlex.quote(word)}")
+        i += 1
+    return "".join(f" {option}" for option in found)
+
+
 def supervised_form(finding: Finding) -> str:
     """The command to type instead (the same words, under the runner)."""
     if finding.kind == "emulator":
-        avd = next((finding.tokens[i + 1] for i, w in enumerate(finding.tokens) if w == "-avd" and i + 1 < len(finding.tokens)), None)
-        return "uv run scripts/android_suite_loop.py --boot-only" + (f" --avd {shlex.quote(avd)}" if avd else "")
+        return "uv run scripts/android_suite_loop.py --boot-only" + emulator_flags(finding.tokens)
     limit = f" --output-limit-s {GRADLE_OUTPUT_LIMIT_S}" if finding.kind == "gradle" else ""
     runner = f"uv run --no-project {shlex.quote(SUPERVISOR.as_posix())} --device{limit} -- {finding.command_text}"
     return f"{finding.env_text} {runner}".strip()

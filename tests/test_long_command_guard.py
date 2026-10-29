@@ -112,6 +112,17 @@ def test_a_bare_emulator_start_is_refused_and_pointed_at_the_boot_only_run():
     assert "android_suite_loop.py --boot-only --avd medium_phone" in refused("C:/Android/emulator/emulator.exe -avd medium_phone")
 
 
+def test_the_emulator_flags_become_options_of_the_boot_only_run():
+    command = r"G:\Android\Sdk\emulator\emulator.exe -avd medium_phone -no-snapshot-save -gpu swangle_indirect -no-audio -no-window"
+    reason = refused(command.replace("\\", "/"))
+    assert "--boot-only --avd medium_phone --gpu swangle_indirect --emulator-arg=-no-audio --emulator-arg=-no-window" in reason
+    assert "-no-snapshot" not in reason
+
+
+def test_an_at_avd_name_and_a_flag_with_a_value_are_forwarded_in_order():
+    assert guard.emulator_flags(["emulator", "@Pixel_7", "-memory", "4096"]) == " --avd Pixel_7 --emulator-arg=-memory --emulator-arg=4096"
+
+
 def test_a_line_with_an_emulator_start_is_refused_as_a_whole_and_names_every_supervised_command():
     reason = refused(f"{GRADLE}; emulator -avd x")
     assert "--boot-only --avd x" in reason and "run_supervisor.py' --device" in reason

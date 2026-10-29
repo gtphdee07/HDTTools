@@ -9,10 +9,16 @@ from datetime import datetime, timedelta, timezone
 
 
 class FakeClock:
-    def __init__(self, start: float = 1000.0):
+    """Moves only when something waits. A test that runs it more than `limit_s` past its start fails (#203): every
+    scripted run ends or is stopped within that time, so running past it means the code under test never stopped
+    a process that never ends, and without this guard the test would wait for ever."""
+
+    def __init__(self, start: float = 1000.0, limit_s: float = 1000.0):
         self.t = start
+        self.deadline = start + limit_s
 
     def now(self) -> float:
+        assert self.t <= self.deadline, f"the fake clock ran {self.t - self.deadline:.0f} s past its limit: nothing stopped the run"
         return self.t
 
     def wall(self) -> datetime:

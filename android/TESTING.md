@@ -338,7 +338,12 @@ pieces now make it visible within minutes; the problem they fix is detection, no
   what was saved), then stops the command and the emulator (`--on-stall flag` leaves the run going)
   and exits **124**. A hung run, and any run that ended because of the device or the system, is an
   **infra-abort**, never a test failure; a failing test is never retried. `--retry-infra-abort`
-  runs an infra-aborted run once more on a freshly booted emulator.
+  runs an infra-aborted run once more on a freshly booted emulator. A `--device` command that
+  ends non-zero (or an `am instrument -r` run whose output stops before `INSTRUMENTATION_CODE`)
+  with no abort marker in its output gets one device check (`adb devices` and `getprop`, 5 s): if
+  the device is gone the run is an **infra-abort**, reason `device lost after the command ended`,
+  with the output tail and the process list saved (logcat went with the device) and `failed` in the
+  status file (#203). With a healthy device nothing changes, and a passing run makes no such call.
 - **A hook and a watcher.** `.claude/settings.json` registers `scripts/long_command_guard.py` as a
   PreToolUse hook on Bash: a bare `gradlew ... connectedDebugAndroidTest`, `connectedAndroidTest`
   or `adb ... shell am instrument` is rewritten to the supervised form (this harness applies

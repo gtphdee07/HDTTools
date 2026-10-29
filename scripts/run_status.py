@@ -200,6 +200,9 @@ def describe(record: dict, now: datetime) -> str:
     progress = ""
     if record.get("n") is not None:
         progress = f", {record['n']} of {record['of']} tests finished" if record.get("of") else f", {record['n']} tests finished"
+        if record.get("of") and not record["n"] and phase in ("done", "failed"):
+            # A Gradle run gives only Gradle's "Starting N tests", never a record per test: n stays 0.
+            progress = f", {record['of']} tests"
     test = f" ({record['test']})" if record.get("test") and phase == "test" else ""
     if phase == "hung":
         why = record.get("reason") or "no reason recorded"

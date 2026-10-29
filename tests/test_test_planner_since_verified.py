@@ -138,7 +138,9 @@ def test_session_end_follows_a_context_dependency_to_the_dependent_context():
 
 
 def test_an_application_run_already_covers_the_downstream_contexts():
-    plan = plan_for(["src/database.py", "web/app.ts"], "session")
+    # #201: a diff over core and web no longer makes the application run; a dependency file still does, and the
+    # golden interface file queues android and web, which the application run already covers.
+    plan = plan_for(["src/breakdown.py", "pyproject.toml"], "session")
 
     assert plan.scope == "application"
     assert not [s for s in plan.selections if s.kind == "downstream"]

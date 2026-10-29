@@ -162,10 +162,11 @@ def test_main_prints_the_planned_commands(capsys):
 
 ALL = {
     "dependency_files": ["pyproject.toml", "uv.lock"],
+    "application_triggers": ["scripts/test_planner.py", ".claude/settings.json"],
     "scope": {"file_max_files": 2},
     "contexts": {
         "core": {
-            "marker": "core", "paths": ["src/hdttools/", "scripts/"],
+            "marker": "core", "paths": ["src/hdttools/", "scripts/"], "session_paths": ["tests/*"],
             "live_globs": ["tests/test_*_external.py"],
             "file": "uv run pytest {file}", "test_for": ["tests/test_{stem}.py"],
             "context": "uv run pytest -m core", "application": "uv run pytest",
@@ -335,10 +336,11 @@ def test_session_end_larger_single_context_diff_runs_the_context():
     assert commands(plan) == ["web-test"]
 
 
-def test_session_end_diff_across_contexts_runs_the_application():
+def test_session_end_diff_across_contexts_runs_each_touched_context_not_the_application():
+    # #201: two contexts used to mean the application run (every context's suite); now each touched context runs its own.
     plan = plan_all(["web/src/api.ts", "streamlit_app/app.py"], "session")
-    assert plan.scope == "application"
-    assert commands(plan) == ["uv run pytest", "web-test", "proxy-test", "android-session-end"]
+    assert plan.scope == "context"
+    assert commands(plan) == ["uv run pytest -m streamlit", "web-test"]
 
 
 def test_session_end_dependency_change_is_at_least_a_context_run():
@@ -348,6 +350,79 @@ def test_session_end_dependency_change_is_at_least_a_context_run():
 
 def test_session_end_changed_python_test_file_is_run_even_alone():
     assert commands(plan_all(["tests/test_database.py"], "session")) == ["uv run pytest tests/test_database.py"]
+
+
+# Session end follows what a change affects, not how many contexts it touches (#201)
+
+NOT_PLANNED = "not planned: no file under"
+
+
+def _left_out(plan):
+    return {n.split(":", 1)[0] for n in plan.notes if f": {NOT_PLANNED}" in n}
+
+
+def test_session_end_android_plus_a_script_plans_core_and_android_only_and_says_why_for_the_rest():
+    plan = plan_all([MAIN + "domain/Breakdown.kt", "scripts/tool.py"], "session")
+
+    assert commands(plan) == ["uv run pytest -m core", SESSION_END]
+    assert _left_out(plan) == {"streamlit", "web", "scan-proxy"}
+    assert "web: not planned: no file under web/ and nothing it depends on changed" in plan.notes
+
+
+def test_session_end_android_plus_a_python_test_plans_the_test_file_then_core_and_android():
+    plan = plan_all([MAIN + "domain/Breakdown.kt", "tests/test_database.py"], "session")
+
+    assert commands(plan) == ["uv run pytest tests/test_database.py", "uv run pytest -m core", SESSION_END]
+    assert _left_out(plan) == {"streamlit", "web", "scan-proxy"}
+
+
+def test_session_end_web_plus_android_plans_exactly_those_two_contexts():
+    plan = plan_all(["web/src/api.ts", MAIN + "domain/Breakdown.kt"], "session")
+
+    assert (plan.scope, commands(plan)) == ("context", ["web-test", SESSION_END])
+    assert _left_out(plan) == {"core", "streamlit", "scan-proxy"}
+
+
+def test_session_end_a_context_sharing_an_interface_with_a_touched_one_is_still_planned():
+    plan = plan_all(["src/hdttools/breakdown.py", "workers/scan-proxy/src/scan.ts"], "session")
+
+    assert commands(plan) == ["uv run pytest -m core", "proxy-test", "web-test", SESSION_END]  # golden-vectors shares web and android
+    assert _left_out(plan) == {"streamlit"}
+
+
+def test_session_end_a_single_context_diff_says_why_the_others_are_not_planned():
+    plan = plan_all(["web/src/api.ts"], "session")
+
+    assert _left_out(plan) == {"core", "streamlit", "scan-proxy", "android"}
+
+
+@pytest.mark.parametrize("changed", ["uv.lock", "pyproject.toml", "scripts/test_planner.py", ".claude/settings.json"])
+def test_session_end_a_change_that_can_affect_the_whole_tree_keeps_the_application_run(changed):
+    plan = plan_all([changed], "session")
+
+    assert plan.scope == "application"
+    assert commands(plan) == ["uv run pytest", "web-test", "proxy-test", SESSION_END]
+    assert _left_out(plan) == set()
+
+
+def test_session_end_a_per_context_dependency_file_stays_with_its_context_even_beside_another_context():
+    plan = plan_all(["web/package.json", MAIN + "domain/Breakdown.kt"], "session")
+
+    assert commands(plan) == ["web-test", SESSION_END]
+
+
+def test_session_end_surfaces_are_those_of_the_planned_platforms_only():
+    surfaces = [
+        {"name": "pages-site", "state": "stale", "platforms": ["web"], "paid": False},
+        {"name": "scan-proxy-worker", "state": "stale", "platforms": ["scan-proxy"], "paid": True},
+        {"name": "revenuecat-android-sdk", "state": "stale", "platforms": ["android"], "paid": False},
+    ]
+    config = {**ALL, "contexts": {**ALL["contexts"], "android": {**ALL["contexts"]["android"], "external": "android-external"}}}
+
+    plan = tp.plan([MAIN + "domain/Breakdown.kt", "scripts/tool.py"], config, MARKERS, level="session", surfaces=surfaces,
+                   file_exists=lambda p: p in EXISTING_TESTS)
+
+    assert [s.command for s in plan.selections if s.kind == "surface"] == ["android-external"]
 
 
 # Android instrumented tests
@@ -385,13 +460,14 @@ def test_android_session_end_for_a_jvm_only_diff_is_the_session_end_command_and_
         assert commands(plan) == [SESSION_END], changed
 
 
-def test_android_session_end_command_replaces_the_file_context_and_application_runs():
+def test_android_session_end_command_replaces_the_file_context_and_multi_context_runs():
     one_file = plan_all([MAIN + "domain/Breakdown.kt"], "session")
     several = plan_all([MAIN + "domain/A.kt", MAIN + "domain/B.kt", MAIN + "domain/C.kt"], "session")
     spanning = plan_all([MAIN + "domain/Breakdown.kt", "web/src/api.ts"], "session")
     assert (one_file.scope, commands(one_file)) == ("file", [SESSION_END])
     assert (several.scope, commands(several)) == ("context", [SESSION_END])
-    assert spanning.scope == "application" and SESSION_END in commands(spanning)
+    # #201: a diff across two contexts is no longer the application; Android's session end sits beside Web's suite.
+    assert (spanning.scope, commands(spanning)) == ("context", ["web-test", SESSION_END])
     assert "gradle-jvm" not in commands(spanning)
 
 
@@ -763,7 +839,7 @@ def test_main_marks_every_suite_run_when_the_ledger_cannot_be_read(capsys):
 
 
 def test_a_session_plan_records_which_contexts_each_suite_depends_on():
-    plan = plan_all(["web/src/api.ts", "src/hdttools/database.py"], level="session")
+    plan = plan_all(["web/src/api.ts", "uv.lock"], level="session")  # uv.lock keeps the application run (#201)
 
     by_command = {s.command: s.contexts for s in plan.selections}
 
@@ -1082,3 +1158,77 @@ BILLING_CONTRACT_CHECK = "node --test workers/scan-proxy/src/billingContract.tes
 )
 def test_real_config_a_billing_file_change_plans_the_cross_surface_billing_contract_test(changed):
     assert BILLING_CONTRACT_CHECK in commands(_real_plan([changed], "issue"))
+
+
+# #201: the session plan against the real config, for the shapes the re-skin tickets produce.
+
+REAL_ANDROID_END = "uv run scripts/android_session_end.py"
+REAL_CORE_CONTEXT = 'uv run pytest -n auto -m "core and not slow"'
+REAL_STREAMLIT_CONTEXT = 'uv run pytest -m "streamlit and not slow"'
+REAL_PAGES_SURFACES = [
+    {"name": "pages-site", "state": "stale", "platforms": ["web"], "paid": False},
+    {"name": "revenuecat-android-sdk", "state": "stale", "platforms": ["android"], "paid": False},
+    {"name": "scan-proxy-worker", "state": "stale", "platforms": ["scan-proxy"], "paid": True},
+]
+WEB_SUITE_COMMAND = "npm --prefix web test"
+PROXY_SUITE_COMMAND = "npm --prefix workers/scan-proxy test"
+
+
+def _planned_suites(plan):
+    """The test suites a plan lists (not the static checks, slow set, surfaces or device lines)."""
+    return [s.command for s in plan.selections if s.kind in ("file", "context", "downstream", "application", "targeted")]
+
+
+@pytest.mark.parametrize("second", ["scripts/ui_inventory.py", "tests/test_ui_inventory.py"])
+def test_real_config_android_plus_a_script_or_a_python_test_plans_no_web_proxy_or_streamlit_suite(second):
+    plan = tp.plan([REAL_MAIN + "ui/screens/RigPickerScreen.kt", second], tp.load_config(), tp.load_markers(),
+                   level="session", surfaces=REAL_PAGES_SURFACES, file_exists=lambda p: True)
+
+    suites = _planned_suites(plan)
+    assert REAL_ANDROID_END in suites and REAL_CORE_CONTEXT in suites
+    assert not {WEB_SUITE_COMMAND, PROXY_SUITE_COMMAND, REAL_STREAMLIT_CONTEXT} & set(suites)
+    assert [s.command for s in plan.selections if s.kind == "surface"] == ["powershell android/test-external.ps1"]
+    assert _static(plan) == ([f"{STATIC} core --coverage"] if second.startswith("scripts/") else [f"{STATIC} core"])
+    assert [c for c in commands(plan) if "connectedDebugAndroidTest" in c]  # the device line is as before
+    assert "web: not planned: no file under web/ and nothing it depends on changed" in plan.notes
+    assert "scan-proxy: not planned: no file under workers/scan-proxy/ and nothing it depends on changed" in plan.notes
+
+
+def test_real_config_web_plus_android_plans_those_two_and_what_depends_on_them():
+    plan = _real_plan(["web/src/api.ts", REAL_MAIN + "domain/Breakdown.kt"])
+
+    assert _planned_suites(plan) == [WEB_SUITE_COMMAND, REAL_ANDROID_END]
+
+
+def test_real_config_src_hdttools_still_plans_streamlit_through_depends_on():
+    plan = _real_plan(["src/hdttools/database.py", REAL_MAIN + "domain/Breakdown.kt"])
+
+    assert _planned_suites(plan) == [REAL_CORE_CONTEXT, REAL_ANDROID_END, REAL_STREAMLIT_CONTEXT]
+
+
+def test_real_config_a_shared_interface_file_plans_every_sharing_context():
+    plan = _real_plan(["test-vectors/breakdown_cases.json", "workers/scan-proxy/src/scan.ts"])
+
+    assert _planned_suites(plan) == [REAL_CORE_CONTEXT, PROXY_SUITE_COMMAND, WEB_SUITE_COMMAND, REAL_ANDROID_END]
+
+
+@pytest.mark.parametrize("changed", [
+    "uv.lock", "pyproject.toml", "scripts/test_planner.py", "scripts/test_planner_config.json",
+    "scripts/verification_ledger.py", "scripts/ticket_finish.py", "scripts/ticket_merge.py", ".claude/settings.json",
+])
+def test_real_config_a_change_that_can_affect_the_whole_tree_keeps_the_full_application_run(changed):
+    plan = _real_plan([changed, REAL_MAIN + "domain/Breakdown.kt"])
+
+    assert plan.scope == "application"
+    assert {'uv run pytest -n auto -m "not slow and not external"', WEB_SUITE_COMMAND, PROXY_SUITE_COMMAND,
+            REAL_ANDROID_END} <= set(commands(plan))
+    assert not [n for n in plan.notes if ": not planned: no file under" in n]
+
+
+def test_real_config_a_release_still_plans_every_releasable_context_whatever_the_diff():
+    bare = _real_plan([], "release")
+    with_diff = _real_plan(["scripts/ui_inventory.py", REAL_MAIN + "domain/Breakdown.kt"], "release")
+
+    assert commands(with_diff) == commands(bare) and bare.scope is None
+    assert {PROXY_SUITE_COMMAND, "android/gradlew -p android testDebugUnitTest",
+            "uv run scripts/external_freshness.py --platform web"} <= set(commands(bare))

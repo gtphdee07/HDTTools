@@ -152,7 +152,7 @@ def suite_verdicts(
     and a suite is `skip` only when the ledger shows it passed at the branch tip's tree. Anything the
     ledger cannot vouch for, or cannot be read, is `rerun`. Returns (verdict, command, reason) rows."""
     branch = branch_name(n)
-    files = [f for f in git(shell, root, "diff", "--name-only", f"{BASE_BRANCH}...{branch}").out.splitlines() if f]
+    files = [f for f in git(shell, root, "diff", "--name-only", "--no-renames", f"{BASE_BRANCH}...{branch}").out.splitlines() if f]
     plan = planner.plan(files, config, markers, level="session",
                         file_exists=lambda p: git(shell, root, "cat-file", "-e", f"{branch}:{p}").ok)
     commit = git(shell, root, "rev-parse", branch)

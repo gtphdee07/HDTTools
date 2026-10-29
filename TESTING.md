@@ -260,11 +260,21 @@ uv run scripts/test_planner.py --level release
 
 **The scope ladder.** File, then context (a `CONTEXT-MAP.md` context: Core,
 Streamlit, Web, Android, Scan Proxy), then application. The size of the diff picks
-the level (session end): a diff in more than one context is the application; one
-context with more than two changed files, or a changed dependency file, is that
-context; anything smaller is the file. A change to an interface's provider side also
-queues the contexts that share it, and a change to a context queues the contexts that
-depend on it (`scripts/test_planner_config.json`, #66).
+the level (session end): one context with more than two changed files, or a changed
+dependency file, is that context; anything smaller is the file. A diff in more than
+one context plans each touched context's own session run, not the application. A
+change to an interface's provider side also queues the contexts that share it, and a
+change to a context queues the contexts that depend on it
+(`scripts/test_planner_config.json`, #66). The plan follows what the change can
+affect, not how many contexts it touches (#201): a context the diff does not reach, and
+nothing it depends on reaches, is left out with a one-line note saying why, and the
+stale External surfaces planned are those of the planned contexts' platforms only (the
+end-of-round bundle and the pre-push gate cover the rest). A changed Python test file
+beside another context adds Core's session run (`session_paths` in the config). The
+application run, every context's suite, stays for a change that can affect the whole
+tree: a dependency or lock file (`pyproject.toml`, `uv.lock`), the planner, its config
+or the ledger and ticket scripts, or `.claude/settings.json`
+(`application_triggers` in the config); the release level is unchanged.
 
 Each context's testing document has the exact commands; the ladder at a glance:
 

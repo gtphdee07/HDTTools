@@ -82,8 +82,9 @@ def _ledger():
 
 def session_files(shell: Shell, root: Path) -> list[str]:
     """What the branch changes against the commit it was cut from (merge-base, so a moved MPSkills
-    does not change the plan between /ticket-finish and /ticket-merge)."""
-    return [f for f in git_out(shell, root, "diff", "--name-only", f"{BASE_BRANCH}...HEAD").splitlines() if f]
+    does not change the plan between /ticket-finish and /ticket-merge). `--no-renames` lists both paths of a moved
+    file, so the context it left is planned too (#201: a diff no longer plans every context)."""
+    return [f for f in git_out(shell, root, "diff", "--name-only", "--no-renames", f"{BASE_BRANCH}...HEAD").splitlines() if f]
 
 
 def decide_suite(selection, revision, *, shell: Shell, root: Path, config: dict, ledger, git_state) -> Decision:

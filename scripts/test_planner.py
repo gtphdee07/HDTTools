@@ -11,8 +11,13 @@ release, the External surface manifest, then prints the plan for a level
               context changed, or a dependency file changed;
            4. the interface tests of each changed interface, including the
               sharing contexts' side where the config names one.
-  session  the whole file, context or application, by the size of the diff
-           (scope ladder); stale surfaces of the touched contexts.
+  session  the whole file or context by the size of the diff (scope ladder);
+           a diff over several contexts plans each touched context's own run
+           and what depends on it, each context left out with a note saying why
+           (#201); the application (every context) only when a dependency or
+           lock file, the planner or its ledger scripts, or another
+           `application_triggers` file changed; stale surfaces of the planned
+           contexts' platforms.
   release  everything for each releasable context (Android, Scan Proxy),
            the Web freshness gate, and every surface of those contexts.
 
@@ -510,22 +515,31 @@ def _plan_session(result, files, config, markers, touched, python_dependency_cha
 
 def _plan_session_suites(result, files, config, markers, touched, python_dependency_changed,
                          context_dependency_changed, file_exists, surfaces, downstream, allowed) -> None:
-    """Scope ladder: one small context -> file, one context -> context, several -> application.
-    Downstream contexts (#66) add their context run on top; the ladder counts only the contexts the diff touches."""
+    """Scope ladder (#201): one small context -> file, one larger context -> context, several touched contexts ->
+    each one's own context run, and the application (every context) only for a change that can affect the whole
+    tree (`_application_trigger`). Downstream contexts (#66) add their context run on top; a context left out of
+    the plan gets a note saying why."""
     contexts = config["contexts"]
     python_names = tuple(n for n, c in contexts.items() if _is_python(c))
     for f in files:
         if (_is_python_test(f) and set(python_names) & allowed(f) and file_exists(f)
                 and not any(_matches(f, c.get("live_globs", [])) for c in contexts.values())):
             result.add(Selection("file", f"uv run pytest {f}", "changed test file", contexts=python_names))
-    if not touched and not downstream:
+    trigger = _application_trigger(files, config, allowed)
+    if not touched and not downstream and trigger is None:
         return
     file_max = config.get("scope", {}).get("file_max_files", DEFAULT_FILE_MAX_FILES)
     dependency = bool(python_dependency_changed) or bool(context_dependency_changed)
-    if not touched:
-        result.scope = "context"
-    elif len(touched) > 1:
+    # A context whose `session_paths` hold a changed file (core: tests/, which no context owns) joins a diff that
+    # touches another context with its own run; a diff of only such files plans just the changed files above.
+    joined = {n for n, c in contexts.items() if touched and any(n in allowed(f) and _matches(f, c.get("session_paths", [])) for f in files)}
+    runs = touched | joined
+    if trigger is not None:
         result.scope = "application"
+    elif not touched:
+        result.scope = "context"
+    elif len(runs) > 1:
+        result.scope = "context"
     elif dependency or sum(1 for f in files if _owners(f, contexts) & allowed(f)) > file_max:
         result.scope = "context"
     else:
@@ -534,10 +548,15 @@ def _plan_session_suites(result, files, config, markers, touched, python_depende
     if result.scope == "application":
         for name, ctx in contexts.items():
             command = ctx["session_end"] if _session_end_replaces_suite(ctx) else ctx.get("application", ctx["context"])
-            result.add(Selection("application", command, f"application run ({name}; diff spans {', '.join(sorted(touched))})",
+            result.add(Selection("application", command, f"application run ({name}; {trigger} can affect the whole tree)",
                                  contexts=(name,)))
     elif not touched:
         pass  # only downstream contexts, planned below
+    elif len(runs) > 1:
+        for name in contexts:  # config order keeps the output stable
+            if name in runs:
+                result.add(Selection("context", _session_context_command(contexts[name]),
+                                     f"{name} context run (diff spans {', '.join(sorted(runs))})", contexts=(name,)))
     elif result.scope == "context":
         (name,) = touched
         result.add(Selection("context", _session_context_command(contexts[name]),
@@ -566,13 +585,26 @@ def _plan_session_suites(result, files, config, markers, touched, python_depende
             planned_any = True
         if not planned_any:
             result.add(Selection("context", ctx["context"], f"{name} context run", contexts=(name,)))
+    planned = set(contexts)
     if result.scope != "application":  # an application run already covers every context
         for name in contexts:
-            if name in downstream:
+            if name in downstream and name not in runs:
                 result.add(Selection("downstream", _session_context_command(contexts[name]),
                                      f"{name} context run ({downstream[name]})", contexts=(name,)))
-    _plan_surfaces(result, config, surfaces, {contexts[n].get("platform") for n in
-                   (contexts if result.scope == "application" else touched | set(downstream))})
+        planned = runs | set(downstream)
+        for name, ctx in contexts.items():
+            if name not in planned:
+                result.notes.append(f"{name}: not planned: no file under {' or '.join(ctx['paths'])} and nothing it depends on changed")
+    _plan_surfaces(result, config, surfaces, {contexts[n].get("platform") for n in planned})
+
+
+def _application_trigger(files: list[str], config: dict, allowed) -> str | None:
+    """The first changed file that can affect the whole tree, or None (#201): a dependency or lock file
+    (`dependency_files`), the planner and the ledger and ticket scripts that run its plans, or anything else
+    the config lists under `application_triggers` (such as `.claude/settings.json`). Such a change keeps the
+    application run, every context's suite; any other diff plans what it touches and what depends on it."""
+    triggers = [*config["dependency_files"], *config.get("application_triggers", [])]
+    return next((f for f in files if allowed(f) and _matches(f, triggers)), None)
 
 
 def _plan_surfaces(result: Plan, config: dict, surfaces: list[dict] | None, platforms: set) -> None:

@@ -769,7 +769,8 @@ def test_after_a_review_fix_only_the_suites_whose_files_changed_run_again(suite_
     assert any(line.startswith("run: web-suite") and "changed since" in line for line in lines)
 
 
-def test_a_file_moved_from_one_context_to_another_reruns_both_contexts_suites(suite_repo, tmp_path):
+def test_a_file_new_on_the_branch_and_moved_to_another_context_leaves_the_first_context_unplanned(suite_repo, tmp_path):
+    # #201: web/src/a.ts was added on this branch, so once it is moved nothing under web/ differs from MPSkills.
     _suites(suite_repo, tmp_path, Runner())
     _git(suite_repo, "mv", "web/src/a.ts", "workers/scan-proxy/src/moved.ts")
     _git(suite_repo, "commit", "-q", "-m", "move it")
@@ -777,7 +778,29 @@ def test_a_file_moved_from_one_context_to_another_reruns_both_contexts_suites(su
 
     _suites(suite_repo, tmp_path, runner)
 
-    assert {"web-suite", "proxy-suite"} <= set(runner.calls)
+    assert "proxy-suite" in runner.calls and "web-suite" not in runner.calls
+
+
+def test_a_file_moved_out_of_a_context_it_had_on_mpskills_plans_both_contexts_suites(tmp_path):
+    """The diff lists both paths of a move (`--no-renames`), so the context the file left is planned too."""
+    root = tmp_path / "moved"
+    (root / "web" / "src").mkdir(parents=True)
+    _git(root, "init", "-q", "-b", "MPSkills")
+    _git(root, "config", "user.email", "t@example.com")
+    _git(root, "config", "user.name", "t")
+    (root / "web" / "src" / "old.ts").write_text("export const answer = 42\n" * 20)
+    _git(root, "add", ".")
+    _git(root, "commit", "-q", "-m", "base")
+    _git(root, "checkout", "-q", "-b", "ticket-9")
+    (root / "workers" / "scan-proxy" / "src").mkdir(parents=True)
+    _git(root, "mv", "web/src/old.ts", "workers/scan-proxy/src/old.ts")
+    _git(root, "commit", "-q", "-m", "move it")
+
+    files = finish.session_files(common.real_shell, root)
+    plan = planner.plan(files, SUITE_CONFIG, {"core", "minor"}, level="session")
+
+    assert set(files) == {"web/src/old.ts", "workers/scan-proxy/src/old.ts"}
+    assert {s.command for s in plan.selections} == {"web-suite", "proxy-suite"}
 
 
 def test_a_docs_only_review_fix_reruns_the_python_suite_and_leaves_the_others_alone(suite_repo, tmp_path):

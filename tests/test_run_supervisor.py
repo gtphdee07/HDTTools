@@ -1,7 +1,7 @@
 """Function tests for scripts/run_supervisor.py (#200): the status file a supervised command leaves, the
 `am instrument -r` reader, each stall rule (output, one test, the device), the evidence step, the stop
 decision (flag and stop, or flag only), the exit code and label of a hung run, the suite caps, and the
-retry-once rule for a device run. Fakes only: a clock that moves when something waits, a scripted
+retry-once rule for a device run, and a device run that ends with the device gone (#203). Fakes only: a clock that moves when something waits, a scripted
 process and a scripted adb - no emulator, adb, process or real wait is touched."""
 
 import importlib.util
@@ -33,12 +33,12 @@ def ok(cls, test, current, total=3):
     return record(1, cls, test, current, total) + record(0, cls, test, current, total)
 
 
-def run(tmp_path, proc_factory, *, device=False, adb=None, limits=None, on_stall="stop", phase=None, echo=None):
+def run(tmp_path, proc_factory, *, device=False, adb=None, limits=None, on_stall="stop", phase=None, echo=None, command=None):
     clock = FakeClock()
     proc = proc_factory(clock)
     writer = run_status.StatusWriter("r1", "fake command", tmp_path, now=clock.wall, sleep=lambda _: None)
     result = rs.supervise(
-        ["fake"], writer=writer, spawn=lambda argv: proc, clock=clock, limits=limits or rs.Limits(), device=device, adb=adb,
+        command or ["fake"], writer=writer, spawn=lambda argv: proc, clock=clock, limits=limits or rs.Limits(), device=device, adb=adb,
         tool=lambda argv, timeout: (0, b"tasklist"), on_stall=on_stall, phase=phase, echo=echo,
     )
     return result, proc, lines(tmp_path)
@@ -347,6 +347,127 @@ def test_failures_in_an_instrument_run_that_exits_zero_are_a_test_failure(tmp_pa
     script = [(1, record(1, CLS, "a", 1, 1)), (2, record(-2, CLS, "a", 1, 1))]
     result, _, _ = run(tmp_path, lambda c: FakeProc(c, script, exit_at=3, code=0))
     assert result.outcome == rs.TEST_FAILED and result.exit_code == 1
+
+
+def test_a_gradle_run_that_gave_only_a_count_is_described_as_n_tests_not_0_of_n_finished(tmp_path):
+    script = [(1, b"> Task :app:connectedDebugAndroidTest\n"), (2, b"Starting 8 tests on medium_phone(AVD) - 16\n")]
+    result, _, entries = run(tmp_path, lambda c: FakeProc(c, script, exit_at=5), device=True, adb=healthy_adb())
+    assert (entries[-1]["phase"], entries[-1]["n"], entries[-1]["of"]) == ("done", 0, 8)
+    text = run_status.describe(entries[-1], run_status.parse_time(entries[-1]["t"]))
+    assert "8 tests" in text and "0 of" not in text and result.outcome == rs.PASSED
+
+
+# --- a device that is gone when the command ends (#203) ----------------------------------------------
+
+
+def device_dies(script=(), *, code=255, exit_at=5, after=None):
+    """A process that ends at `exit_at`, and an adb that lists the emulator until then and answers `after(args)` once the
+    process has ended (default: `adb devices` lists nothing, as when the emulator was killed). Returns (factory, adb)."""
+    box = {}
+
+    def factory(clock):
+        box["proc"] = FakeProc(clock, script, exit_at=exit_at, code=code)
+        return box["proc"]
+
+    def answer(args):
+        if not box["proc"].ended:
+            return (0, DEVICE_LISTED) if args == ["devices"] else (0, b"1\n")
+        replaced = after(args) if after else None
+        return replaced or ((0, NO_DEVICE) if args == ["devices"] else (0, b"1\n"))
+
+    return factory, FakeAdb(answer)
+
+
+def test_a_command_that_exits_255_with_no_output_and_no_device_is_an_infra_abort_with_evidence(tmp_path):
+    factory, adb = device_dies()
+    result, _, entries = run(tmp_path, factory, device=True, adb=adb)
+    assert (result.phase, result.outcome, result.reason, result.exit_code) == ("failed", rs.INFRA_ABORT, rs.DEVICE_LOST, 255)
+    assert (entries[-1]["phase"], entries[-1]["outcome"], entries[-1]["reason"]) == ("failed", "infra-abort", "device lost after the command ended")
+    evidence = Path(entries[-1]["evidence"])
+    assert result.evidence_dir == evidence and {"output-tail.txt", "processes.txt", "evidence.json"} <= {p.name for p in evidence.iterdir()}
+    assert json.loads((evidence / "evidence.json").read_text(encoding="utf-8")) == {"output-tail": "saved", "process-list": "saved"}
+    assert "device lost after the command ended" in result.output  # the suite loop's classifier reads this
+    assert adb.calls[-1] == (["devices"], rs.DEVICE_CALL_TIMEOUT_S)  # the one check after the end has its own 5 s limit
+
+
+@pytest.mark.parametrize("code", [1, 0])
+def test_an_instrument_run_whose_records_stop_mid_test_with_no_device_is_an_infra_abort(tmp_path, code):
+    # Exit 1 is adb dropping; exit 0 is the connection ending quietly: no closing INSTRUMENTATION_CODE either way.
+    script = [(1, ok(CLS, "a", 1)), (2, record(1, CLS, "b", 2))]
+    factory, adb = device_dies(script, code=code)
+    result, _, entries = run(tmp_path, factory, device=True, adb=adb)
+    assert (result.outcome, result.reason, result.exit_code) == (rs.INFRA_ABORT, rs.DEVICE_LOST, 1)
+    assert (entries[-1]["phase"], entries[-1]["outcome"]) == ("failed", "infra-abort") and (result.n, result.of) == (1, 3)
+    assert CLS in (Path(entries[-1]["evidence"]) / "output-tail.txt").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("code", [1, 0])
+def test_an_am_instrument_command_that_dies_before_its_first_record_with_no_device_is_an_infra_abort(tmp_path, code):
+    # No record was printed, so only the command line says this is an instrument run.
+    factory, adb = device_dies(code=code)
+    result, _, _ = run(tmp_path, factory, device=True, adb=adb, command=INSTRUMENT)
+    assert (result.outcome, result.reason) == (rs.INFRA_ABORT, rs.DEVICE_LOST)
+
+
+def test_a_device_that_does_not_answer_after_the_command_ended_counts_as_lost_too(tmp_path):
+    factory, adb = device_dies(after=lambda args: timeout_error())
+    result, _, _ = run(tmp_path, factory, device=True, adb=adb)
+    assert (result.outcome, result.reason) == (rs.INFRA_ABORT, rs.DEVICE_LOST) and "did not answer" in result.detail
+
+
+HEALTHY = healthy_adb().answer
+
+
+@pytest.mark.parametrize("script", [[], [(1, ok(CLS, "a", 1)), (2, record(1, CLS, "b", 2)), (3, record(-2, CLS, "b", 2))]])
+def test_a_nonzero_exit_with_a_healthy_device_stays_a_test_failure(tmp_path, script):
+    factory, adb = device_dies(script, code=1, after=HEALTHY)
+    result, _, entries = run(tmp_path, factory, device=True, adb=adb)
+    assert (result.outcome, result.phase, result.reason) == (rs.TEST_FAILED, "failed", "exit code 1")
+    assert entries[-1]["outcome"] == "test-failed" and not (tmp_path / "r1").exists()
+
+
+INSTRUMENT = ["adb", "shell", "am", "instrument", "-w"]
+
+
+@pytest.mark.parametrize(
+    ("script", "command"),
+    [
+        ([(1, b"done\n")], None),
+        ([(1, ok(CLS, "a", 1, 2)), (2, ok(CLS, "b", 2, 2)), (3, b"INSTRUMENTATION_RESULT: stream=\n\nOK (2 tests)\n\nINSTRUMENTATION_CODE: -1\n")], INSTRUMENT),
+        ([(1, b"Time: 0.5\n\nOK (2 tests)\n\n")], INSTRUMENT),  # am instrument without -r
+    ],
+)
+def test_a_passing_run_does_not_call_adb_after_the_command_ends(tmp_path, script, command):
+    factory, adb = device_dies(script, code=0, after=lambda args: pytest.fail(f"adb {args} called after the command ended"))
+    result, _, _ = run(tmp_path, factory, device=True, adb=adb, command=command)
+    assert result.outcome == rs.PASSED and result.exit_code == 0
+
+
+def test_a_command_that_is_not_a_device_run_never_asks_adb_after_it_ends(tmp_path):
+    adb = FakeAdb(lambda args: pytest.fail("adb was called"))
+    result, _, _ = run(tmp_path, lambda c: FakeProc(c, [(1, b"x\n")], exit_at=2, code=255), adb=adb)
+    assert result.outcome == rs.TEST_FAILED
+
+
+def test_a_device_lost_run_is_retried_once_on_a_fresh_emulator(tmp_path):
+    runs = []
+
+    def attempt():
+        number = len(runs) + 1
+        if number == 1:
+            factory, adb = device_dies()
+        else:
+            factory, adb = device_dies(code=0, after=HEALTHY)
+        result, _, _ = run(tmp_path / f"attempt{number}", factory, device=True, adb=adb)
+        runs.append(result)
+        return result
+
+    boots = []
+    result, attempts = rs.run_with_one_retry(
+        attempt, is_infra_abort=lambda r: r.outcome == rs.INFRA_ABORT, fresh_emulator=lambda: boots.append(1) or True, out=lambda _: None,
+    )
+    assert attempts == 2 and len(boots) == 1 and result.outcome == rs.PASSED
+    assert [r.reason for r in runs] == [rs.DEVICE_LOST, ""]
 
 
 def test_a_character_split_across_two_reads_stays_whole_in_the_saved_output(tmp_path):

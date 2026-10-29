@@ -62,9 +62,15 @@ PASSED = "passed"
 TEST_FAILED = "test-failed"
 INFRA_ABORT = "infra-abort"
 
+# The reason of a run whose command ended (non-zero, or an instrument run cut short) with no abort marker in the
+# output, and whose device did not answer afterwards (#203). It is also added to the output, so the suite loop's
+# classifier reads it as a marker.
+DEVICE_LOST = "device lost after the command ended"
+
 # Patterns that mean the emulator, adb or the system server died, whatever else the output says.
 # The first one found is the reason quoted in a summary. (android_suite_loop.py labels runs with these too.)
 ABORT_MARKERS = (
+    DEVICE_LOST,
     "INSTRUMENTATION_ABORTED",
     "System has crashed",
     "Test run failed to complete",
@@ -137,6 +143,7 @@ class Progress:
         self.n = 0  # tests finished
         self.of: int | None = None
         self.failures = 0
+        self.started = False  # a per-test record was seen, so the run is an `am instrument -r` run
         self._fields: dict[str, str] = {}
         self._key: str | None = None
 
@@ -174,6 +181,7 @@ class Progress:
             return events  # the runner's own status block, not a test
         name = f"{fields.get('class', '?').strip()}.{fields['test'].strip()}"
         if code == 1:
+            self.started = True
             events.append(Event("test_started", test=name))
         else:
             self.n += 1
@@ -442,6 +450,14 @@ def _abort_line(output: str) -> str | None:
     return None
 
 
+def _instrument_cut_short(command: list[str], progress: Progress, output: str) -> bool:
+    """An `am instrument` run (named `instrument`, or it printed per-test records) whose output never reached its
+    closing `INSTRUMENTATION_CODE` (with -r) or `OK (` line."""
+    if not (progress.started or "instrument" in command):
+        return False
+    return not re.search(r"^(INSTRUMENTATION_CODE: |OK \()", output, re.M)
+
+
 def supervise(
     command: list[str],
     *,
@@ -553,8 +569,27 @@ def supervise(
     if stall is not None:  # on_stall == "flag": the run went on, but it stays hung
         return RunResult(HUNG_EXIT_CODE, "hung", INFRA_ABORT, stall.reason, stall.detail, evidence_dir or writer.directory / writer.run_id,
                          output, progress.n, progress.of)
-    if device and (marker := _abort_line(output)):
+    marker = _abort_line(output) if device else None
+    lost = ""  # the device state ("offline" or "miss") when the command ended and the device was gone
+    if use_device and marker is None and (code != 0 or _instrument_cut_short(command, progress, output)):
+        state = device_state(adb)  # its own 5 s limit; a healthy device changes nothing
+        lost = "" if state == "ok" else state
+    detail = ""
+    evidence: Path | None = None
+    fields: dict = {}
+    if marker:
         outcome, reason = INFRA_ABORT, marker
+    elif lost:
+        # The emulator died under the command: adb ended it with an exit code and nothing in the output. logcat is
+        # gone with the device, so the evidence is the output tail and the process list.
+        outcome, reason = INFRA_ABORT, DEVICE_LOST
+        detail = f"exit code {code}; " + ("no device in `adb devices`" if lost == "offline" else "adb did not answer")
+        evidence = evidence_dir or writer.directory / writer.run_id
+        manifest = collect_evidence(
+            evidence, output_tail=list(tail) + ([pending] if pending else []), device=False, adb=adb, tool=tool,
+        )
+        fields = {"detail": detail, "evidence": str(evidence), "evidence_items": manifest}
+        output += f"\n{DEVICE_LOST}: {detail}"
     elif code != 0 or progress.failures or "FAILURES!!!" in output:
         outcome, reason = TEST_FAILED, f"exit code {code}" if code else "tests failed"
     else:
@@ -562,8 +597,8 @@ def supervise(
     if outcome != PASSED and code == 0:
         code = 1
     final = "done" if outcome == PASSED else "failed"
-    beat(now, final, test=None, exit_code=code, outcome=outcome, reason=reason or None)
-    return RunResult(code, final, outcome, reason, "", None, output, progress.n, progress.of)
+    beat(now, final, test=None, exit_code=code, outcome=outcome, reason=reason or None, **fields)
+    return RunResult(code, final, outcome, reason, detail, evidence, output, progress.n, progress.of)
 
 
 # --- suites started by /ticket-finish ----------------------------------------------------------

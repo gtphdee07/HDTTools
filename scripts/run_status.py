@@ -199,7 +199,13 @@ def describe(record: dict, now: datetime) -> str:
     when = f"last update {seen:.0f} s ago" if seen is not None else "last update time unknown"
     progress = ""
     if record.get("n") is not None:
-        progress = f", {record['n']} of {record['of']} tests finished" if record.get("of") else f", {record['n']} tests finished"
+        # A Gradle run gives only Gradle's "Starting N tests", never a record per test: n stays 0. Once it has
+        # ended normally say "N tests"; an aborted run with nothing finished still reads "0 of N" (#203).
+        count_only = record.get("of") and not record["n"] and (phase == "done" or (phase == "failed" and record.get("outcome") != "infra-abort"))
+        if count_only:
+            progress = f", {record['of']} tests"
+        else:
+            progress = f", {record['n']} of {record['of']} tests finished" if record.get("of") else f", {record['n']} tests finished"
     test = f" ({record['test']})" if record.get("test") and phase == "test" else ""
     if phase == "hung":
         why = record.get("reason") or "no reason recorded"

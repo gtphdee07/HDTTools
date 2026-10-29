@@ -647,6 +647,20 @@ def test_the_plan_does_not_depend_on_which_commit_mpskills_has_moved_to(ticket):
     assert verdicts == {"core-suite": "skip", "web-suite": "skip"}
 
 
+def test_finish_and_merge_list_the_same_suites_and_neither_plans_the_context_the_diff_does_not_reach(ticket):
+    """#201: a web and a Python file plan those two contexts' suites in both steps; the scan-proxy suite is in neither."""
+    repo, wt, ledger = ticket
+    config = suite_config()  # core, web and scan-proxy
+    ran = finish.run_suites(shell=common.real_shell, root=wt, config=config, markers={"core", "minor"}, ledger=ledger,
+                            git_state=vl.RealGit(wt), run_command=Runner(), out=lambda _: None)
+
+    rows = merge.suite_verdicts(9, shell=common.real_shell, root=repo, config=config, markers={"core", "minor"},
+                                ledger=ledger, git_state=vl.RealGit(repo), out=lambda _: None)
+
+    assert [r["command"] for r in ran] == [command for _, command, _ in rows] == ["core-suite", "web-suite"]
+    assert [verdict for verdict, _, _ in rows] == ["skip", "skip"]
+
+
 def test_device_suites_are_left_for_the_owner_not_given_a_skip_or_rerun(ticket):
     repo, wt, ledger = ticket
     config = {**SUITE_CONFIG, "contexts": {**SUITE_CONFIG["contexts"], "web": {

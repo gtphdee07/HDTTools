@@ -23,15 +23,19 @@ def suite_config(*names: str) -> dict:
 
 
 class Runner:
-    """A suite runner that records what it ran; `failing` names the commands that exit 1."""
+    """A suite runner that records what it ran; `failing` names the commands that exit 1 and `hung` the ones the
+    supervisor would stop (exit 124, with the reason it gives)."""
 
-    def __init__(self, failing=()):
+    def __init__(self, failing=(), hung=()):
         self.failing = set(failing)
+        self.hung = set(hung)
         self.calls: list[str] = []
 
     def __call__(self, command, cwd=None):
         text = " ".join(command)
         self.calls.append(text)
+        if text in self.hung:
+            return SimpleNamespace(returncode=124, hung_reason="no output: no output for 301 s (limit 300 s)")
         return SimpleNamespace(returncode=1 if text in self.failing else 0)
 
 

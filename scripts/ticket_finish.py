@@ -28,9 +28,17 @@ does not show as passed at the current tree, recording each pass. After a review
 fix a suite whose last pass was at an earlier tree is skipped when no file it
 depends on differs between the two trees (a Python suite counts any change), and
 its pass is carried forward. Stale External surfaces, device tests and paid
-suites are listed, never run here. It prints each suite as `skip` or `run` and
-can write the report's `suites` entries (`--json`); `post` refuses a suite
-reported as skipped that the ledger does not show as passed at the tree.
+suites are listed, never run here. Each suite runs under the watchdog of
+scripts/run_supervisor.py with a wall cap of about ten times its measured run
+(`run_supervisor.SUITE_MEASURED_S`: 61 s for the fast Python suite, 30 s Web, 2 s
+Scan Proxy, 106 s Android session end, 196 s static checks, 133 s slow Python) and
+stops when it prints nothing for five minutes (#200). A suite that stalls or hits
+its cap is reported `hung` (`"hung": true` in its entry; the command exits 124 when
+nothing else failed): it is not recorded as a pass and is not a failing test, so run
+`suites` again (`--cap-factor N` changes the multiple). A suite that fails a test is
+a failure and is never retried. It prints each suite as `skip` or `run` and can
+write the report's `suites` entries (`--json`); `post` refuses a suite reported as
+skipped that the ledger does not show as passed at the tree.
 
 REPORT.json: {"status", "criteria": [{"criterion", "proven_by"}],
 "suites": [{"command", "passed", "summary"}], "review", "not_done",
@@ -45,11 +53,13 @@ import re
 import shlex
 import sys
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path, PurePosixPath
 from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import run_supervisor as supervisor  # noqa: E402
 import test_planner as planner  # noqa: E402
 from ticket_common import (  # noqa: E402
     BASE_BRANCH, Shell, gh_issue, git_out, real_shell, runs_here, scratch_path, ticket_from_branch, trusted_comments,
@@ -64,6 +74,7 @@ class SuiteResult:
     passed: bool
     summary: str = ""
     skipped: bool = False  # not run here: the ledger shows it already passed at this tree (#128)
+    hung: bool = False  # stalled or over its wall cap (#200): neither a pass nor a failing test, and never recorded
 
 
 @dataclass(frozen=True)
@@ -133,12 +144,24 @@ def run_suites(
             results.append({"command": sel.command, "passed": True, "skipped": True, "summary": decision.reason})
             continue
         out(f"run: {sel.command}    # {decision.reason}")
+        seen: dict = {}
+
+        def watched(command, cwd=None):
+            seen["result"] = run_command(command, cwd=cwd)
+            return seen["result"]
+
         try:
-            code = ledger.run_suite_and_record(shlex.split(sel.command), git=git_state, run_command=run_command, out=out,
+            code = ledger.run_suite_and_record(shlex.split(sel.command), git=git_state, run_command=watched, out=out,
                                                key=sel.command)
         except (ledger.LedgerError, ledger.GitError) as exc:  # an unreadable ledger means run it, just unrecorded
             out(f"{exc}; running {sel.command} without recording it.")
-            code = run_command(shlex.split(sel.command), cwd=root).returncode
+            code = watched(shlex.split(sel.command), cwd=root).returncode
+        if code == supervisor.HUNG_EXIT_CODE:  # the supervisor's exit for a stall or a hit cap: not a pass, not a test failure
+            why = getattr(seen.get("result"), "hung_reason", "") or "no reason recorded"
+            out(f"HUNG: {sel.command}: {why}. Not recorded as a pass; not a failing test. Status: uv run scripts/run_status.py")
+            results.append({"command": sel.command, "passed": False, "skipped": False, "hung": True,
+                            "summary": f"hung ({why}); not a test failure, not recorded"})
+            continue
         recorded = ledger.suite_verdict(sel.command, revision, git=git_state).skip
         results.append({
             "command": sel.command, "passed": code == 0, "skipped": False,
@@ -232,7 +255,13 @@ def refusals(
         reasons.append("The working tree is dirty (uncommitted changes); commit or discard them first.")
     if not suites:
         reasons.append("No suite results were recorded; run the required suites.")
-    reasons.extend(f"Required suite failed: `{s.command}`" + (f" ({s.summary})" if s.summary else "") for s in suites if not s.passed)
+    reasons.extend(f"Required suite failed: `{s.command}`" + (f" ({s.summary})" if s.summary else "")
+                   for s in suites if not s.passed and not s.hung)
+    reasons.extend(
+        f"Required suite hung (stalled or over its cap; not a failing test and not recorded as a pass): `{s.command}`"
+        + (f" ({s.summary})" if s.summary else "") + "; run `ticket_finish.py suites` again"
+        for s in suites if s.hung
+    )
     if not criteria:
         reasons.append("The ticket lists no acceptance criteria, so nothing can be proven.")
     proven = _proven(rows)
@@ -253,7 +282,7 @@ def render_comment(*, status, branch, sha, worktree, pushed, criteria, rows, sui
     proven = _proven(rows)
     table = [f"| {_cell(c)} | {_cell(proven.get(c.strip()) or 'NOT PROVEN')} |" for c in criteria]
     ran = "; ".join(
-        f"`{s.command}`: {'SKIPPED (already passed at this tree)' if s.skipped else 'PASS' if s.passed else 'FAIL'}"
+        f"`{s.command}`: {'SKIPPED (already passed at this tree)' if s.skipped else 'HUNG' if s.hung else 'PASS' if s.passed else 'FAIL'}"
         + (f" - {s.summary}" if s.summary else "")
         for s in suites
     ) or "none"
@@ -337,7 +366,12 @@ def post(
     if unclear:
         out(f"REFUSED: `skipped` must be true or false for: {', '.join(unclear)}. Nothing was posted.")
         return 1
-    suites = [SuiteResult(s["command"], s["passed"], s.get("summary", ""), s.get("skipped", False)) for s in raw_suites]
+    unclear = [s["command"] for s in raw_suites if "hung" in s and not isinstance(s["hung"], bool)]
+    if unclear:
+        out(f"REFUSED: `hung` must be true or false for: {', '.join(unclear)}. Nothing was posted.")
+        return 1
+    suites = [SuiteResult(s["command"], s["passed"], s.get("summary", ""), s.get("skipped", False), s.get("hung", False))
+              for s in raw_suites]
     tree_clean = not git_out(shell, root, "status", "--porcelain")
     skipped = [s.command for s in suites if s.skipped]
     if skipped:
@@ -403,22 +437,30 @@ def _ledger_shows_pass(root: Path) -> Callable[[str], bool]:
     return lambda command: ledger.suite_verdict(command, revision, git=git_state).skip
 
 
-def suites_command(root: Path, json_path: Path | None, out: Callable[[str], None] = print) -> int:
-    """`suites`: runs what the session-level plan lists and the ledger cannot vouch for, recording passes."""
-    from release_steps import default_run_command
+def suites_exit_code(results: list[dict]) -> int:
+    """1 if a suite failed a test, else the supervisor's hung code (124) if one stalled or hit its cap, else 0."""
+    if any(not r["passed"] and not r.get("hung") for r in results):
+        return 1
+    return supervisor.HUNG_EXIT_CODE if any(r.get("hung") for r in results) else 0
 
+
+def suites_command(
+    root: Path, json_path: Path | None, out: Callable[[str], None] = print, run_command=supervisor.supervised_run_command
+) -> int:
+    """`suites`: runs what the session-level plan lists and the ledger cannot vouch for, recording passes.
+    Every suite runs under the supervisor's watchdog and wall cap (#200)."""
     if git_out(real_shell, root, "status", "--porcelain"):
         out("The working tree has uncommitted changes; commit first so a pass can be recorded against the tree.")
         return 1
     ledger = _ledger()
     results = run_suites(
         shell=real_shell, root=root, config=planner.load_config(), markers=planner.load_markers(),
-        ledger=ledger, git_state=ledger.RealGit(root), run_command=default_run_command, out=out,
+        ledger=ledger, git_state=ledger.RealGit(root), run_command=run_command, out=out,
     )
     if json_path is not None:
         json_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
         out(f"Wrote the report's `suites` entries to {json_path}.")
-    return 1 if any(not r["passed"] for r in results) else 0
+    return suites_exit_code(results)
 
 
 def print_criteria(shell: Shell, root: Path, out: Callable[[str], None] = print) -> int:
@@ -437,7 +479,10 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("preflight")
     sub.add_parser("criteria")
-    sub.add_parser("suites").add_argument("--json", type=Path, help="write the report's `suites` entries here")
+    suites = sub.add_parser("suites")
+    suites.add_argument("--json", type=Path, help="write the report's `suites` entries here")
+    suites.add_argument("--cap-factor", type=float, default=supervisor.CAP_FACTOR,
+                        help=f"wall cap of a suite = this times its measured run (default {supervisor.CAP_FACTOR}, never under 60 s)")
     p = sub.add_parser("post")
     p.add_argument("report", type=Path)
     p.add_argument("--dry-run", action="store_true")
@@ -453,7 +498,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "criteria":
         return print_criteria(real_shell, root)
     if args.command == "suites":
-        return suites_command(root, args.json)
+        return suites_command(root, args.json, run_command=partial(supervisor.supervised_run_command, factor=args.cap_factor))
     return post(args.report, shell=real_shell, root=root, dry_run=args.dry_run)
 
 

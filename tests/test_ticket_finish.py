@@ -985,3 +985,79 @@ def test_a_review_fix_reruns_the_static_checks_because_they_name_no_context_to_c
     _static_suites(suite_repo, tmp_path, runner)
 
     assert STATIC_WEB in runner.calls
+
+
+# --- Suites run under the supervisor's watchdog (#200): a stalled suite is hung, not failed, not a pass ---
+
+
+def test_a_suite_that_stalls_is_reported_hung_not_failed_and_not_recorded(suite_repo, tmp_path):
+    results, lines = _suites(suite_repo, tmp_path, Runner(hung={"web-suite"}))
+
+    web = results["web-suite"]
+    assert web["hung"] is True and web["passed"] is False and web["skipped"] is False
+    assert "no output for 301 s" in web["summary"] and "not a test failure" in web["summary"]
+    assert any(line.startswith("HUNG: web-suite") for line in lines)
+    revision = vl.current_revision(vl.RealGit(suite_repo))
+    ledger = LedgerAt(tmp_path / "ledger.json")
+    assert not ledger.suite_verdict("web-suite", revision).skip
+    assert ledger.suite_verdict("core-suite", revision).skip and ledger.suite_verdict("proxy-suite", revision).skip
+
+
+def test_a_hung_suite_runs_again_next_time_while_the_others_stay_skipped(suite_repo, tmp_path):
+    _suites(suite_repo, tmp_path, Runner(hung={"web-suite"}))
+    runner = Runner()
+
+    results, _ = _suites(suite_repo, tmp_path, runner)
+
+    assert runner.calls == ["web-suite"] and results["web-suite"]["passed"] and "hung" not in results["web-suite"]
+
+
+def test_a_failing_test_is_reported_as_a_failure_never_hung_and_never_run_twice(suite_repo, tmp_path):
+    runner = Runner(failing={"web-suite"})
+
+    results, _ = _suites(suite_repo, tmp_path, runner)
+
+    assert runner.calls.count("web-suite") == 1
+    assert results["web-suite"]["passed"] is False and "hung" not in results["web-suite"]
+
+
+def test_the_exit_code_tells_a_failed_test_from_a_hang():
+    ok = {"passed": True}
+    failed = {"passed": False}
+    hung = {"passed": False, "hung": True}
+    assert finish.suites_exit_code([ok, ok]) == 0
+    assert finish.suites_exit_code([ok, hung]) == finish.supervisor.HUNG_EXIT_CODE == 124
+    assert finish.suites_exit_code([failed, hung]) == 1
+    assert finish.suites_exit_code([ok, failed]) == 1
+
+
+def test_the_suites_command_runs_every_suite_through_the_supervisor_by_default():
+    import inspect
+
+    default = inspect.signature(finish.suites_command).parameters["run_command"].default
+    assert default is finish.supervisor.supervised_run_command
+
+
+def test_post_ready_is_refused_for_a_hung_suite_with_its_own_wording(worktree, tmp_path):
+    suites = [{"command": "web-suite", "passed": False, "hung": True, "summary": "hung (no output: no output for 301 s)"}]
+    gh = Gh()
+
+    code, out = _post(worktree, gh, _report(tmp_path, suites=suites), tmp_path)
+
+    assert code == 1 and "Required suite hung" in out and "Required suite failed" not in out
+    assert gh.comments == []
+
+
+def test_a_partial_comment_shows_a_hung_suite_as_hung(worktree, tmp_path):
+    suites = [{"command": "web-suite", "passed": False, "hung": True, "summary": "hung (no output)"}]
+    gh = Gh()
+
+    code, _ = _post(worktree, gh, _report(tmp_path, status="PARTIAL", not_done="web-suite hung twice", suites=suites), tmp_path)
+
+    assert code == 0 and "`web-suite`: HUNG" in gh.comments[0]
+
+
+def test_a_hung_flag_written_as_text_is_refused(worktree, tmp_path):
+    suites = [{"command": "web-suite", "passed": False, "hung": "yes"}]
+    code, out = _post(worktree, Gh(), _report(tmp_path, suites=suites), tmp_path)
+    assert code == 1 and "`hung` must be true or false" in out

@@ -37,3 +37,6 @@ size
 pressure_psi
 weight_lb
 company
+# tests/_supervisor_fakes.py: the process object scripts/run_supervisor.py drives (read, wait, kill).
+wait
+kill

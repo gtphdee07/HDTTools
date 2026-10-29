@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from tests._supervisor_fakes import (
-    NO_DEVICE, FakeAdb, FakeClock, FakeProc, healthy_adb, record, timeout_error,
+    DEVICE_LISTED, NO_DEVICE, FakeAdb, FakeClock, FakeProc, healthy_adb, record, timeout_error,
 )
 
 pytestmark = [pytest.mark.core, pytest.mark.minor]
@@ -210,6 +210,15 @@ def test_a_single_missed_device_check_is_not_a_stall(tmp_path):
     result, _, entries = run(tmp_path, device_phase_proc, device=True, adb=adb, limits=rs.Limits(output_s=600, test_s=600))
     assert result.phase == "done"
     assert "slow" in {e["device"] for e in entries} and entries[-1]["device"] == "ok"
+
+
+def test_a_device_missing_from_adb_devices_once_or_twice_is_not_a_stall(tmp_path):
+    # Two checks in a row without the device (a blip while adb reconnects) stay under the three that make a stall.
+    listings = iter([False, False] + [True] * 100)
+    adb = FakeAdb(lambda args: ((0, DEVICE_LISTED) if next(listings) else (0, NO_DEVICE)) if args == ["devices"] else (0, b"1\n"))
+    result, _, entries = run(tmp_path, device_phase_proc, device=True, adb=adb, limits=rs.Limits(output_s=600, test_s=600))
+    assert result.phase == "done"
+    assert "offline" in {e["device"] for e in entries} and entries[-1]["device"] == "ok"
 
 
 def test_a_gradle_run_with_no_install_line_moves_to_test_at_its_count_line_so_a_lost_device_is_seen(tmp_path):

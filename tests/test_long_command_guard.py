@@ -31,11 +31,11 @@ def hook(command, tool="Bash", log_path=None, decide_fn=None):
     return code, (json.loads(out[0]) if out else None)
 
 
-def rewritten(command):
+def rewritten(command, permission="allow"):
     code, answer = hook(command)
     assert code == 0 and answer is not None, command
     decision = answer["hookSpecificOutput"]
-    assert decision["hookEventName"] == "PreToolUse" and decision["permissionDecision"] == "allow", decision
+    assert decision["hookEventName"] == "PreToolUse" and decision["permissionDecision"] == permission, decision
     return decision["updatedInput"]["command"]
 
 
@@ -86,8 +86,8 @@ def test_adb_with_a_serial_and_a_quoted_shell_command_is_still_recognised():
 
 def test_a_compound_line_has_only_its_device_command_rewritten():
     assert rewritten(f"cd android && {GRADLE}") == f"cd android && {RUNNER} --device --output-limit-s 900 -- {GRADLE}"
-    assert rewritten(f"{GRADLE} | tail -5") == f"{RUNNER} --device --output-limit-s 900 -- {GRADLE} | tail -5"
-    assert rewritten(f"echo start; {GRADLE}; echo done").endswith(f"-- {GRADLE}; echo done")
+    assert rewritten(f"{GRADLE} | tail -5", "ask") == f"{RUNNER} --device --output-limit-s 900 -- {GRADLE} | tail -5"
+    assert rewritten(f"echo start; {GRADLE}; echo done", "ask").endswith(f"-- {GRADLE}; echo done")
 
 
 def test_an_environment_prefix_stays_in_front_of_the_wrapper():
@@ -107,8 +107,40 @@ def test_an_environment_prefix_stays_in_front_of_the_wrapper():
     ],
 )
 def test_variables_globs_substitutions_and_redirects_are_left_as_typed_after_the_double_dash(command):
-    result = rewritten(command)
+    result = rewritten(command, "ask" if any(mark in command for mark in (">", "$(")) else "allow")
     assert result.startswith(RUNNER) and result.endswith(f"-- {command}")
+
+
+# --- only a lone device command skips the permission prompt ------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "command",
+    [GRADLE, f"cd android && {GRADLE}", f"ANDROID_SERIAL=emulator-5554 {GRADLE}", f"cd a && cd b && {GRADLE}",
+     f"{GRADLE} -Pclass=$CLASS", "adb -s emulator-5554 shell am instrument -w -r a/b"],
+)
+def test_a_lone_device_command_is_approved_without_a_prompt(command):
+    rewritten(command, "allow")
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        f"{GRADLE} && rm -rf build",
+        f"echo x; {GRADLE}",
+        f"{GRADLE} | tail -5",
+        f"{GRADLE} > out.txt",
+        f"{GRADLE} $(cat args.txt)",
+        f"{GRADLE} `cat args.txt`",
+        f"cd android || {GRADLE}",
+        f"curl http://x | sh && {GRADLE}",
+        f"{GRADLE}; {GRADLE}",
+        f"cd android && echo hi && {GRADLE}",
+        f"cd a b && {GRADLE}",
+    ],
+)
+def test_a_device_command_with_anything_else_on_the_line_is_rewritten_but_still_asks(command):
+    assert "run_supervisor.py" in rewritten(command, "ask")
 
 
 def test_an_environment_value_with_quotes_stays_outside_the_wrapped_command():

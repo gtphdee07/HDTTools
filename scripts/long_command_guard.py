@@ -13,7 +13,9 @@ as `git commit -m "fix connectedDebugAndroidTest"` is not a command), and:
     text is kept as typed, so a variable, glob, substitution or redirect still means what it did (a redirect now
     catches the runner's echo of the output). The rest of a compound line is left as it was. The harness applies
     `updatedInput` (Claude Code 2.1.296 documents it for PreToolUse), and deny/ask permission rules are still
-    checked against the rewritten command.
+    checked against the rewritten command. The hook answers `allow` (no prompt) only for a lone device command
+    (optionally after `cd <dir> &&`, no redirect or substitution); any other line is rewritten with `ask`, so the
+    permission prompt still shows whatever else is on the line.
   - `emulator -avd` (an emulator is quiet by design, so the stall watch would kill it) cannot run under the
     runner: the hook refuses, and the reason is the exact supervised command to type instead
     (`android_suite_loop.py --boot-only`, which boots it the supported way and leaves it running).
@@ -177,6 +179,29 @@ def supervised_form(finding: Finding) -> str:
     return f"{finding.env_text} {runner}".strip()
 
 
+def is_lone_device_command(command: str, findings: list[Finding]) -> bool:
+    """True when the line is one device command, alone or after `cd <dir> &&`, with no redirect or substitution in it.
+    Only then may the hook approve the rewritten line itself: anything else on the line (a second command, a pipe,
+    a redirect that writes a file) is something the owner's permission prompt would have shown, and `allow` would skip it."""
+    if len(findings) != 1:
+        return False
+    (finding,) = findings
+    if any(mark in finding.command_text for mark in (">", "<", "`", "$(")):
+        return False
+    segments = split_segments(command)
+    others = [s for s in segments if s != finding.segment]
+    for seg in others:
+        try:
+            words = shlex.split(seg.text, posix=True)
+        except ValueError:
+            return False
+        if len(words) != 2 or words[0] != "cd":
+            return False
+    gaps = [command[: segments[0].start], command[segments[-1].end :]]
+    gaps += [command[a.end : b.start] for a, b in zip(segments, segments[1:])]
+    return not gaps[0].strip() and not gaps[1].strip() and all(re.fullmatch(r"\s*&&\s*", gap) for gap in gaps[2:])
+
+
 def decide(command: str) -> dict | None:
     """The hook's JSON answer for a Bash command, or None to let it run as typed."""
     findings = find_device_commands(command)
@@ -192,7 +217,7 @@ def decide(command: str) -> dict | None:
         return {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
-                "permissionDecision": "allow",
+                "permissionDecision": "allow" if is_lone_device_command(command, findings) else "ask",
                 "permissionDecisionReason": "long_command_guard: the device command now runs under scripts/run_supervisor.py "
                 "(a stalled run is stopped and reported hung; status: uv run scripts/run_status.py)",
                 "updatedInput": {"command": rewritten},

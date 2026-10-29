@@ -443,7 +443,8 @@ def main(argv: list[str] | None = None) -> int:
     adb = make_adb(adb_path)
     emulator = find_sdk_tool("emulator", "emulator")
     writer = run_status.StatusWriter(
-        f"suite-loop-{stamp}", f"android_suite_loop.py --runs {args.runs} --driver {args.driver}", args.status_dir,
+        f"suite-loop-{stamp}", "android_suite_loop.py --boot-only" if args.boot_only else f"android_suite_loop.py --runs {args.runs} --driver {args.driver}",
+        args.status_dir,
     )
     limits = rs.Limits(args.output_limit_s, args.test_limit_s, rs.DEVICE_MISSES, args.suite_timeout_s)
     supervisor_adb = rs.real_adb()

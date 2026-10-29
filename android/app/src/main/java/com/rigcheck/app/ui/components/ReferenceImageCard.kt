@@ -1,5 +1,6 @@
 package com.rigcheck.app.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -144,7 +145,7 @@ fun PinnedReferenceCard(
         color = SurfaceWhite,
         shape = RoundedCornerShape(Radii.Panel),
         shadowElevation = Elevations.Md,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+        border = BorderStroke(1.dp, Border),
         modifier = modifier.fillMaxWidth(),
     ) {
         // 12 dp of padding inside the 1 dp border: the card is 170 dp high, as drawn.

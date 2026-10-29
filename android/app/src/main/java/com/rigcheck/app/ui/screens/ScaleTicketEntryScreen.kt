@@ -211,7 +211,7 @@ private fun Legend(modifier: Modifier = Modifier) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.padding(start = 4.dp, top = 4.dp, end = 14.dp, bottom = 4.dp),
                 ) {
-                    RigCheckNumberBadge(index + 1, size = 24.dp)
+                    RigCheckNumberBadge(index + 1, size = PHOTO_BADGE_SIZE)
                     Text(label, style = RigCheckStyles.body, color = Ink)
                 }
             }

@@ -38,8 +38,8 @@ import com.rigcheck.app.ui.ScanUiState
 import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.canStartScan
 import com.rigcheck.app.ui.components.CreditBalanceChip
-import com.rigcheck.app.ui.components.RigCheckBadge
 import com.rigcheck.app.ui.components.PhotoSourceDialog
+import com.rigcheck.app.ui.components.RigCheckBadge
 import com.rigcheck.app.ui.components.RigCheckBadgeKind
 import com.rigcheck.app.ui.components.RigCheckNoticeCard
 import com.rigcheck.app.ui.components.RigCheckNoticeTone

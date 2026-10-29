@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,6 +47,7 @@ fun RigCheckSlider(
 ) {
     val source = remember { MutableInteractionSource() }
     val dragged by source.collectIsDraggedAsState()
+    val pressed by source.collectIsPressedAsState()
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier.fillMaxWidth().height(Sizes.TouchTargetMin).semantics(mergeDescendants = true) {
@@ -61,7 +63,7 @@ fun RigCheckSlider(
             thumb = {
                 Box(
                     modifier = Modifier
-                        .size(if (dragged) PRESSED_THUMB else Sizes.SliderThumb)
+                        .size(if (dragged || pressed) PRESSED_THUMB else Sizes.SliderThumb)
                         .background(SurfaceWhite, CircleShape)
                         .border(3.dp, TealDeep, CircleShape),
                 )

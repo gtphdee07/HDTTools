@@ -1151,6 +1151,33 @@ network involved:
   picker, each screen's primary action (Create, the two Chooser cards, the dialog's two buttons) scrolls wholly
   on show and nothing is wider than the screen. It changes the display size, density and font scale and puts
   them back, as `LayoutCaptureTest` does; it needs the single emulator and sends no Scan.
+- `EntryScreensLayoutTest` (#193) — the Truck Tag, Trailer Tag and Scale Ticket screens against the designer's
+  map, on the emulator, built the way `RigPickerChooserLayoutTest` is (its checks and the way a state is put on
+  the screen are shared in `testsupport/LayoutChecks.kt`, which also sets the window to resize for the keyboard
+  as `MainActivity` declares it; left unspecified, the test activity is panned instead). In each state the frames
+  draw (`truck_tag_entry__blank`, `__filled`, `__scan_notice`, `__gcwr_warning`, `__standalone_blank`,
+  `__standalone_pin_weight`, `__standalone_info`, `__standalone_filled`, `__standalone_scan_in_flight`,
+  `__keyboard_open`; the same four for the Trailer and Scale screens) every element of the frame is on show by
+  its tag after a scroll to it, the reading order is the frame's (bands compared by their tops, measured before
+  any scroll), and the measured width and height are the map's: 1.5 dp where the map gives a fixed size, 4 dp (2 dp
+  for one line of text) on a "~" height, 10 dp on a notice. The reference card and the footer are held to the
+  region instead: they do not move when the form scrolls, and the test checks the form really scrolled. The
+  keyboard-open states drop the step indicator, keep the card pinned and keep the field being typed in and the
+  primary action above the keyboard. The Scale photo's five numbered badges are each wholly on the photo, 24 dp,
+  and the four weights' badges do not overlap. At 360 x 640 dp and at font scale 2.0, with and without the keyboard,
+  every field, the stand-alone controls and the primary action of each screen scroll wholly on show, nothing is
+  wider than the screen and every clickable is at least 48 x 48 dp. It changes the display size, density and font
+  scale and puts them back; it needs the single emulator and sends no Scan. With
+  `-Pandroid.testInstrumentationRunnerArguments.layoutScreenshots=true` it keeps each state's screenshot in
+  `/data/local/tmp/ticket-193-screenshots/<frame>/` on the device, to `adb pull` for the owner's comparison.
+  The screen tests added with it: `TruckTagEntryScreenTest` (Back goes back and is off while the stand-alone Scan
+  is out; the balance chip shows the balance, says "0 scans" signed out and opens the Paywall; the stand-alone
+  info control has a name, is at least 48 dp and shows and hides its text; dragging the pin-weight slider reports
+  a percent in 15 to 25; press and hold on the pinned reference photo zooms and release puts it back),
+  `TrailerTagEntryScreenTest` (Back; the same zoom), `ScaleTicketEntryScreenTest` (Back; the legend names the
+  five numbers and the photo carries them), `ReferenceImageCardTest` (the pinned card's photo is 116 dp, or a 44 dp
+  strip when compact, under the approved hint) and `RigCheckNumberBadgeTest` (the badge shows its number at 22 dp
+  and at the size it is given, and its digit meets AA on the orange).
 - `LateScanDialogTest` (#118) — the dialog for a Scan that answered after its
   check ended shows its message with OK only (no Try again, Sign in or photo
   step), and OK dismisses.

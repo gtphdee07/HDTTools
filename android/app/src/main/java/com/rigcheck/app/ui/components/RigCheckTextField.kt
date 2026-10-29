@@ -88,6 +88,10 @@ fun RigCheckTextField(
     // For the tag and the other semantics of the input itself (focus, typing); `modifier` is for the whole field,
     // label and message included.
     inputModifier: Modifier = Modifier,
+    // In front of the label (the Scale screen's numbered badge: the same number is on the ticket photo).
+    labelBadge: (@Composable () -> Unit)? = null,
+    // For the tag of the help line (a screen measures it).
+    helpModifier: Modifier = Modifier,
 ) {
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
@@ -102,7 +106,16 @@ fun RigCheckTextField(
     val valueStyle = RigCheckStyles.body.copy(fontSize = 17.sp, color = colors.value)
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier.fillMaxWidth()) {
-        if (label != null) Text(label, style = RigCheckStyles.label, color = Ink)
+        if (label != null) {
+            if (labelBadge == null) {
+                Text(label, style = RigCheckStyles.label, color = Ink)
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    labelBadge()
+                    Text(label, style = RigCheckStyles.label, color = Ink)
+                }
+            }
+        }
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
@@ -149,7 +162,7 @@ fun RigCheckTextField(
         if (error != null) {
             Text(error, style = RigCheckStyles.bodySm.copy(fontWeight = FontWeight.Medium), color = DangerText)
         } else if (help != null) {
-            Text(help, style = RigCheckStyles.caption, color = InkMuted)
+            Text(help, style = RigCheckStyles.caption, color = InkMuted, modifier = Modifier.fillMaxWidth().then(helpModifier))
         }
     }
 }

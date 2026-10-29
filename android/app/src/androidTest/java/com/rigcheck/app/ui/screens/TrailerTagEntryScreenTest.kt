@@ -1,10 +1,15 @@
 package com.rigcheck.app.ui.screens
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.domain.model.TrailerTag
 import com.rigcheck.app.ui.UiTags
@@ -42,5 +47,39 @@ class TrailerTagEntryScreenTest {
         composeRule.onNodeWithTag(UiTags.TRAILER_NEXT_BUTTON).assertIsDisplayed().performClick()
 
         assert(continued) { "onContinue should have fired" }
+    }
+
+    // #193: the top bar's Back, and the pinned reference card that replaced the hover hint.
+    @Test
+    fun theTopBarsBackGoesBack() {
+        var backs = 0
+        composeRule.setContent {
+            TrailerTagEntryScreen(trailer = TrailerTag(), onTrailerChange = {}, onContinue = {}, onBack = { backs++ })
+        }
+
+        composeRule.onNodeWithTag(UiTags.TRAILER_BACK).assertContentDescriptionEquals("Back").performClick()
+
+        assertEquals(1, backs)
+    }
+
+    @Test
+    fun holdingOnThePinnedReferenceImageZoomsIntoItAndReleasingPutsItBack() {
+        composeRule.setContent {
+            TrailerTagEntryScreen(trailer = TrailerTag(), onTrailerChange = {}, onContinue = {})
+        }
+        val image = composeRule.onNodeWithTag(UiTags.TRAILER_REFERENCE_IMAGE)
+
+        image.onChildren().assertCountEquals(1)
+        image.performTouchInput {
+            down(center)
+            advanceEventTime(700)
+            moveTo(center + Offset(10f, 10f))
+        }
+        composeRule.waitForIdle()
+        image.onChildren().assertCountEquals(2)
+
+        image.performTouchInput { up() }
+        composeRule.waitForIdle()
+        image.onChildren().assertCountEquals(1)
     }
 }

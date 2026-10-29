@@ -1,21 +1,11 @@
 package com.rigcheck.app.ui.components
 
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 
-// Matches the mockup's filled-text-field style exactly (RigCheck Android
-// Design.dc.html): 8dp top corners, no bottom radius, underline border.
-private val fieldShape = androidx.compose.foundation.shape.RoundedCornerShape(
-    topStart = 8.dp, topEnd = 8.dp, bottomStart = 0.dp, bottomEnd = 0.dp,
-)
+// The entry screens' fields, in the one field style (RigCheckTextField). `modifier` goes on the input itself (the
+// tag, so a test can type into it and the map's 56 dp box is what is measured); the label is above it, with "— optional"
+// after it for an optional one; `unit` is the hint at the right of the box ("lb"); `help` is the line under it.
 
 @Composable
 fun LabeledTextField(
@@ -24,37 +14,41 @@ fun LabeledTextField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     placeholder: String? = null,
+    labelBadge: (@Composable () -> Unit)? = null,
 ) {
-    Text(label, style = MaterialTheme.typography.labelLarge)
-    TextField(
+    RigCheckTextField(
+        label = label,
         value = value,
         onValueChange = onValueChange,
-        placeholder = placeholder?.let { { Text(it) } },
-        modifier = modifier.fillMaxWidth(),
-        shape = fieldShape,
-        colors = TextFieldDefaults.colors(),
+        inputModifier = modifier,
+        placeholder = placeholder,
+        labelBadge = labelBadge,
     )
 }
 
 @Composable
 fun LabeledNumberField(
-    label: String,
+    // null: no label above the box, for a field a text of its own already labels (the stand-alone weight).
+    label: String?,
     value: Double?,
     onValueChange: (Double?) -> Unit,
     modifier: Modifier = Modifier,
     optionalHint: String? = null,
+    unit: String? = null,
+    help: String? = null,
+    helpModifier: Modifier = Modifier,
+    labelBadge: (@Composable () -> Unit)? = null,
 ) {
-    Text(
-        text = if (optionalHint != null) "$label — $optionalHint" else label,
-        style = MaterialTheme.typography.labelLarge,
-    )
-    TextField(
+    RigCheckTextField(
+        label = if (label != null && optionalHint != null) "$label — $optionalHint" else label,
         value = value?.let { if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString() } ?: "",
         onValueChange = { raw -> onValueChange(raw.toDoubleOrNull()) },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        modifier = modifier.fillMaxWidth(),
-        shape = fieldShape,
-        colors = TextFieldDefaults.colors(),
+        inputModifier = modifier,
+        numeric = true,
+        unit = unit,
+        help = help,
+        helpModifier = helpModifier,
+        labelBadge = labelBadge,
     )
 }
 
@@ -65,17 +59,16 @@ fun LabeledIntField(
     onValueChange: (Int?) -> Unit,
     modifier: Modifier = Modifier,
     optionalHint: String? = null,
+    help: String? = null,
+    helpModifier: Modifier = Modifier,
 ) {
-    Text(
-        text = if (optionalHint != null) "$label — $optionalHint" else label,
-        style = MaterialTheme.typography.labelLarge,
-    )
-    TextField(
+    RigCheckTextField(
+        label = if (optionalHint != null) "$label — $optionalHint" else label,
         value = value?.toString() ?: "",
         onValueChange = { raw -> onValueChange(raw.toIntOrNull()) },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        modifier = modifier.fillMaxWidth(),
-        shape = fieldShape,
-        colors = TextFieldDefaults.colors(),
+        inputModifier = modifier,
+        numeric = true,
+        help = help,
+        helpModifier = helpModifier,
     )
 }

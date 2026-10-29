@@ -1,14 +1,22 @@
 package com.rigcheck.app.ui.components
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.R
+import com.rigcheck.app.testsupport.setRigCheckContent
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -115,5 +123,28 @@ class ReferenceImageCardTest {
         node.performTouchInput { cancel() }
         composeRule.waitForIdle()
         node.onChildren().assertCountEquals(1)
+    }
+
+    // #193: the card the Truck and Trailer screens pin under the top bar. Its photo is 116 dp high, or a 44 dp strip of
+    // it on a short screen or at a large font, and the hint above it is the approved words (no hover).
+    @Test
+    fun thePinnedCardShowsTheHintAndAPhotoThatIs116DpHighOr44DpWhenCompact() {
+        var compact by mutableStateOf(false)
+        composeRule.setRigCheckContent {
+            PinnedReferenceCard(
+                imageRes = R.drawable.ref_truck_tag,
+                imageDescription = "Truck compliance label",
+                hint = "Tap a field to see its spot on the tag",
+                compact = compact,
+                imageModifier = Modifier.testTag(tag),
+            )
+        }
+
+        composeRule.onNodeWithText("Tap a field to see its spot on the tag").assertIsDisplayed()
+        composeRule.onNodeWithTag(tag).assertHeightIsEqualTo(116.dp)
+
+        compact = true
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(tag).assertHeightIsEqualTo(44.dp)
     }
 }

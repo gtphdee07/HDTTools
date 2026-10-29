@@ -532,8 +532,9 @@ def _plan_session_suites(result, files, config, markers, touched, python_depende
     dependency = bool(python_dependency_changed) or bool(context_dependency_changed)
     # A context whose `session_paths` hold a changed file (core: tests/, which no context owns) joins a diff that
     # touches another context with its own run; a diff of only such files plans just the changed files above.
-    joined = {n for n, c in contexts.items() if touched and any(n in allowed(f) and _matches(f, c.get("session_paths", [])) for f in files)}
-    runs = touched | joined
+    session_path_contexts = {n for n, c in contexts.items()
+                             if touched and any(n in allowed(f) and _matches(f, c.get("session_paths", [])) for f in files)}
+    runs = touched | session_path_contexts
     if trigger is not None:
         result.scope = "application"
     elif not touched:
@@ -585,8 +586,9 @@ def _plan_session_suites(result, files, config, markers, touched, python_depende
             planned_any = True
         if not planned_any:
             result.add(Selection("context", ctx["context"], f"{name} context run", contexts=(name,)))
-    planned = set(contexts)
-    if result.scope != "application":  # an application run already covers every context
+    if result.scope == "application":  # an application run already covers every context
+        planned = set(contexts)
+    else:
         for name in contexts:
             if name in downstream and name not in runs:
                 result.add(Selection("downstream", _session_context_command(contexts[name]),

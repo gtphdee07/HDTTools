@@ -459,3 +459,11 @@ def test_an_install_failure_never_reaches_the_streamed_runner():
         lambda *args, timeout=None: (1, "INSTALL_FAILED_X"), suite_timeout_s=60, run_streamed=lambda args: streamed.append(args) or ("", 0),
     )
     assert streamed == [] and code == 1 and "install of app-debug.apk failed" in text
+
+
+def test_boot_only_starts_the_emulator_and_records_done_or_failed(tmp_path):
+    writer = asl.run_status.StatusWriter("boot", "loop --boot-only", tmp_path, sleep=lambda _: None)
+    lines = []
+    assert asl.boot_only(lambda: True, writer, out=lines.append) == 0
+    assert json.loads((tmp_path / "latest.json").read_text(encoding="utf-8"))["phase"] == "done" and "stays running" in lines[0]
+    assert asl.boot_only(lambda: False, writer, out=lines.append) == 2

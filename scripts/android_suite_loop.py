@@ -27,6 +27,7 @@ the APKs once, up front (`gradlew assembleDebug assembleDebugAndroidTest`).
 
 Usage: uv run scripts/android_suite_loop.py [--runs N] [--driver instrument|gradle]
        [--expected-tests N] [--log-dir DIR] [--emulator-arg ARG ...] [--retry-infra-abort]
+       uv run scripts/android_suite_loop.py --boot-only [--avd NAME]   # start the emulator, run nothing
 Exit code: 0 every run passed, 1 a real test failed, 2 only infrastructure aborts.
 """
 
@@ -398,6 +399,17 @@ def supervised_run(
     return result.output, result.exit_code
 
 
+def boot_only(restart: Callable[[], bool], writer: run_status.StatusWriter, out: Callable[[str], None] = print) -> int:
+    """`--boot-only` (#200): the supervised way to start the emulator by hand. Boots it exactly as a run does, with the
+    status file saying `boot` and then `done` (or `failed`), and leaves it running. 0 if it came up ready, else 2."""
+    if restart():
+        writer.emit("done", outcome=PASSED, exit_code=0, reason=None)
+        out("The emulator is up and steadily ready; it stays running.")
+        return 0
+    out("The emulator did not come up ready.")
+    return 2
+
+
 def build_apks() -> None:
     subprocess.run([GRADLEW, "-p", "android", "assembleDebug", "assembleDebugAndroidTest"], cwd=REPO_ROOT, check=True)
 
@@ -416,6 +428,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-limit-s", type=float, default=rs.OUTPUT_LIMIT_S, help="a run with no output for this long is hung")
     parser.add_argument("--test-limit-s", type=float, default=rs.TEST_LIMIT_S, help="one test running this long is hung")
     parser.add_argument("--on-stall", choices=("stop", "flag"), default="stop", help="stop kills the run and the emulator (default)")
+    parser.add_argument("--boot-only", action="store_true", help="cold-boot the emulator as a run would, wait until it is steadily ready, leave it running")
     parser.add_argument("--retry-infra-abort", action="store_true", help="run an infra-aborted run once more on a fresh emulator")
     parser.add_argument("--status-dir", type=Path, default=run_status.DEFAULT_DIR)
     parser.add_argument("--log-dir", type=Path, default=ANDROID_DIR / "build" / "suite-loop")
@@ -437,7 +450,7 @@ def main(argv: list[str] | None = None) -> int:
     hangs = 0
     cleared = {"test": None, "n": None, "of": None, "reason": None, "detail": None, "evidence": None, "outcome": None, "exit_code": None}
 
-    if args.driver == "instrument":
+    if args.driver == "instrument" and not args.boot_only:
         subprocess.run([GRADLEW, "--stop"], cwd=REPO_ROOT)
         build_apks()
 
@@ -480,6 +493,8 @@ def main(argv: list[str] | None = None) -> int:
         return output, code
 
     print(f"Logs: {log_dir}")
+    if args.boot_only:
+        return boot_only(restart, writer)
     report = run_loop(
         args.runs, restart=restart, run_once=run_once, expected_tests=args.expected_tests,
         restart_every=args.restart_every, retry_infra_abort=args.retry_infra_abort,

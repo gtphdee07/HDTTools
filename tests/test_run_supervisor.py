@@ -6,7 +6,6 @@ process and a scripted adb - no emulator, adb, process or real wait is touched."
 
 import importlib.util
 import json
-import subprocess
 import sys
 from pathlib import Path
 

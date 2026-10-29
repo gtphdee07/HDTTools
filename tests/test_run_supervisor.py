@@ -438,5 +438,27 @@ def test_retrying_needs_a_device():
         rs.main(["--retry-infra-abort", "--", "echo", "hi"])
 
 
+def parsed(*flags):
+    import argparse
+
+    ns = argparse.Namespace(suite=False, output_limit_s=None, test_limit_s=rs.TEST_LIMIT_S, wall_limit_s=None)
+    for name, value in flags:
+        setattr(ns, name, value)
+    return ns
+
+
+def test_the_default_limits_are_120_s_of_silence_and_90_s_for_a_test_with_no_wall_cap():
+    limits = rs.resolve_limits(parsed(), ["x"])
+    assert (limits.output_s, limits.test_s, limits.wall_s, limits.device_misses) == (120, 90, None, 3)
+
+
+def test_suite_mode_takes_the_per_suite_cap_and_a_longer_silence_unless_told_otherwise():
+    command = ["npm", "--prefix", "web", "test"]
+    limits = rs.resolve_limits(parsed(("suite", True)), command)
+    assert (limits.output_s, limits.wall_s) == (rs.SUITE_OUTPUT_LIMIT_S, 300)
+    explicit = rs.resolve_limits(parsed(("suite", True), ("output_limit_s", 45.0), ("wall_limit_s", 99.0)), command)
+    assert (explicit.output_s, explicit.wall_s) == (45, 99)
+
+
 def test_the_command_is_everything_after_the_double_dash():
     assert rs._split_command(["--device", "--", "gradlew", "-p", "android", "--", "x"]) == (["--device"], ["gradlew", "-p", "android", "--", "x"])

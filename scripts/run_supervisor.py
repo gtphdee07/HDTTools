@@ -650,11 +650,19 @@ def _split_command(argv: list[str]) -> tuple[list[str], list[str]]:
     return argv[:index], argv[index + 1:]
 
 
+def resolve_limits(args: argparse.Namespace, command: list[str]) -> Limits:
+    """The limits a command line asks for: what was given, else the suite defaults with --suite, else the plain ones."""
+    output = args.output_limit_s if args.output_limit_s is not None else (SUITE_OUTPUT_LIMIT_S if args.suite else OUTPUT_LIMIT_S)
+    wall = args.wall_limit_s if args.wall_limit_s is not None else (suite_cap_s(command) if args.suite else None)
+    return Limits(output, args.test_limit_s, DEVICE_MISSES, wall)
+
+
 def main(argv: list[str] | None = None) -> int:
     own, command = _split_command(list(sys.argv[1:] if argv is None else argv))
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--device", action="store_true", help="the command uses the emulator: also check adb every 10 s")
-    parser.add_argument("--output-limit-s", type=float, default=OUTPUT_LIMIT_S)
+    parser.add_argument("--suite", action="store_true", help="a session-level suite: the wall cap is about ten times its measured run and the output limit 300 s")
+    parser.add_argument("--output-limit-s", type=float, default=None, help=f"default {OUTPUT_LIMIT_S:.0f} s ({SUITE_OUTPUT_LIMIT_S:.0f} s with --suite)")
     parser.add_argument("--test-limit-s", type=float, default=TEST_LIMIT_S)
     parser.add_argument("--wall-limit-s", type=float, default=None, help="end the run if it takes longer than this")
     parser.add_argument("--on-stall", choices=("stop", "flag"), default="stop")
@@ -670,7 +678,7 @@ def main(argv: list[str] | None = None) -> int:
     adb = real_adb() if args.device else None
     if args.device and adb is None:
         print("run_supervisor: no Android SDK found (ANDROID_SDK_ROOT / ANDROID_HOME); the device is not checked.", file=sys.stderr)
-    limits = Limits(args.output_limit_s, args.test_limit_s, DEVICE_MISSES, args.wall_limit_s)
+    limits = resolve_limits(args, command)
 
     def attempt() -> RunResult:
         moment = run_status.utc_now()

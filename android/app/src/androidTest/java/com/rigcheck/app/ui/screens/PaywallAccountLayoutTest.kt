@@ -239,7 +239,8 @@ class PaywallAccountLayoutTest {
             sizes(b, p.widthDp, accountSizes.only(tags)) +
                 absent(b, listOf(UiTags.ACCOUNT_FORGOT_PASSWORD)) +
                 order(b, formBands + createRest.map { listOf(it) }) +
-                says(p, "Create your account", "At least 6 characters", "Create account") +
+                says(p, UiTags.ACCOUNT_TITLE to "Create your account", UiTags.ACCOUNT_SUBMIT to "Create account") +
+                helpUnderThePassword(p, "At least 6 characters") +
                 reach(p, *tags.toTypedArray()) + pinnedFooter(p, UiTags.ACCOUNT_NOT_NOW_BUTTON) + touchTargets(p)
         }
         // account__error: a sign-in the server refused, in words under the password field.
@@ -255,7 +256,7 @@ class PaywallAccountLayoutTest {
             val b = p.bounds()
             sizes(b, p.widthDp, accountSizes.only(signInTags + UiTags.ACCOUNT_ERROR)) +
                 order(b, formBands + listOf(listOf(UiTags.ACCOUNT_ERROR), listOf(UiTags.ACCOUNT_SUBMIT), listOf(UiTags.ACCOUNT_TOGGLE_MODE))) +
-                says(p, "Invalid login credentials") +
+                says(p, UiTags.ACCOUNT_ERROR to "Invalid login credentials") +
                 reach(p, *(signInTags + UiTags.ACCOUNT_ERROR).toTypedArray()) + pinnedFooter(p, UiTags.ACCOUNT_NOT_NOW_BUTTON)
         }
         // account__info_reset_sent: the answer to Forgot password, in the notice.
@@ -270,7 +271,7 @@ class PaywallAccountLayoutTest {
             val b = p.bounds()
             sizes(b, p.widthDp, accountSizes.only(signInTags + UiTags.ACCOUNT_INFO)) +
                 order(b, formBands + listOf(listOf(UiTags.ACCOUNT_INFO), listOf(UiTags.ACCOUNT_SUBMIT), listOf(UiTags.ACCOUNT_TOGGLE_MODE))) +
-                says(p, "If that email has an account, a reset link is on its way.") +
+                says(p, UiTags.ACCOUNT_INFO to "If that email has an account, a reset link is on its way.") +
                 reach(p, *(signInTags + UiTags.ACCOUNT_INFO).toTypedArray()) + pinnedFooter(p, UiTags.ACCOUNT_NOT_NOW_BUTTON)
         }
         // account__busy: a Google sign-in is out; every control of the form is off, Send feedback and Not now are not.
@@ -487,10 +488,19 @@ class PaywallAccountLayoutTest {
         }
     }
 
-    private fun says(p: Probe, vararg words: String): List<String> = words.mapNotNull { text ->
-        val found = p.rule.onAllNodes(hasText(text, substring = true), useUnmergedTree = true).fetchSemanticsNodes()
-        "\"$text\" is not on the screen".takeIf { found.isEmpty() }
+    // The element with the tag says the words (found by tag, as the rest of the suite does; a re-skin may move the words
+    // to another element, but not away from the one the tag is on).
+    private fun says(p: Probe, vararg words: Pair<String, String>): List<String> = words.mapNotNull { (tag, text) ->
+        "$tag does not say \"$text\"".takeIf { p.rule.nodesWithTagShowing(tag, text) == 0 }
     }
+
+    // The password field's help line is not an inventory element, so it has no tag of its own: it is found by its words.
+    private fun helpUnderThePassword(p: Probe, text: String): List<String> =
+        listOfNotNull(
+            "the password field's help \"$text\" is not on the screen".takeIf {
+                p.rule.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()
+            },
+        )
 
     // A text in lines of `lineDp` each (the 16/24 of the dialog's body): its height is a whole number of lines to within
     // 4 dp (Compose trims the extra space of the first and last line, 3.2 dp in all, so the box is a little under the

@@ -60,6 +60,9 @@ import com.rigcheck.app.ui.theme.TintPurple
 import com.rigcheck.app.ui.theme.Surface as SurfaceWhite
 import kotlinx.coroutines.launch
 
+// The Paywall's running copy (the explainer and the lines about the plan): DM Sans 400 15/22, as the map gives it.
+private val PaywallCopyStyle = RigCheckStyles.bodyMd.copy(lineHeight = 22.sp)
+
 // Custom Compose layout per ANDROID_DESIGN_BRIEF.md - not RevenueCat's
 // prebuilt Paywall UI, since the mockup is bespoke/brand-matched. Prices
 // always come from StoreProduct.price.formatted (Test Store while
@@ -197,7 +200,7 @@ fun PaywallScreen(
                         true -> "Buy more scans any time. "
                         null -> ""
                     } + whatItIsFor,
-                    style = RigCheckStyles.bodyMd.copy(lineHeight = 22.sp),
+                    style = PaywallCopyStyle,
                     color = Ink,
                     modifier = Modifier.fillMaxWidth().testTag(UiTags.PAYWALL_EXPLAINER),
                 )
@@ -237,7 +240,7 @@ fun PaywallScreen(
                     isPro == null -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
                             "Checking your plan before showing what you can buy.",
-                            style = RigCheckStyles.bodyMd.copy(lineHeight = 22.sp),
+                            style = PaywallCopyStyle,
                             color = Ink,
                             modifier = Modifier.fillMaxWidth().testTag(UiTags.PAYWALL_PLAN_UNKNOWN),
                         )
@@ -263,7 +266,7 @@ fun PaywallScreen(
                             if (proBought) {
                                 Text(
                                     "Pro is yours. Updating your plan to show scan packs.",
-                                    style = RigCheckStyles.bodyMd.copy(lineHeight = 22.sp),
+                                    style = PaywallCopyStyle,
                                     color = Ink,
                                     modifier = Modifier.fillMaxWidth().testTag(UiTags.PAYWALL_PRO_BOUGHT),
                                 )

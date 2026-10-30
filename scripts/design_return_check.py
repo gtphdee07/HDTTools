@@ -58,11 +58,6 @@ KNOWN_DRIFT: dict[str, tuple[tuple[str, ...], str]] = {
         ("kind", "name", "function", "text", "visible_when", "navigates_to", "test_tag_today"),
         "#186 added the Back control after the first map (the follow-up map's drift_notes)",
     ),
-    "paywall.toast": (
-        ("test_tag_new",),
-        "the Snackbar's tag paywall_toast is added to the inventory and UiTags by #196 (decided on #191); "
-        "#196 then removes this entry",
-    ),
     "scan_error.next_step_button": (
         ("test_tag_variants",),
         "#188 tagged each of the five next-step controls after the first map",

@@ -160,7 +160,6 @@ class HistoryNavigationTest {
         composeRule.onNodeWithTagText(UiTags.HISTORY_ENTRY_VERDICT, "Over Limit").assertIsDisplayed()
     }
 
-    // The app has been open a while: the check from the other device was made after sign-in read the History.
     // #195: the Back control in the History's top bar goes where the system Back button goes, to the Rig picker the
     // History was opened from.
     @Test
@@ -174,6 +173,7 @@ class HistoryNavigationTest {
         assertEquals(0, composeRule.nodesWithTag(UiTags.HISTORY_TITLE))
     }
 
+    // The app has been open a while: the check from the other device was made after sign-in read the History.
     @Test
     fun aCheckMadeOnAnotherDeviceWhileTheAppIsOpenIsListedWhenHistoryIsOpened() {
         val history = PretendHistory()

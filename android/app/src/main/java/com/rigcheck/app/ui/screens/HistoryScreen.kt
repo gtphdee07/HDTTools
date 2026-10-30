@@ -18,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.data.HistoryEntry
 import com.rigcheck.app.ui.UiTags
@@ -125,8 +124,6 @@ private fun HistoryEntryCard(entry: HistoryEntry) {
             entry.rigNickname,
             style = RigCheckStyles.title,
             color = Ink,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.testTag(UiTags.HISTORY_ENTRY_RIG),
         )
         Text(

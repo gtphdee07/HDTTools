@@ -26,13 +26,14 @@ class HistoryDisplayTest {
     // at all; the three outcomes also differ in icon (the verdict band's), so none rests on colour.
     @Test
     fun `each verdict has its own pill, and pass, fail and unsure differ in icon as well`() {
-        val kinds = VerdictStatus.entries.map(::historyBadgeKind)
+        val kinds = listOf(VerdictStatus.PASS, VerdictStatus.FAIL, VerdictStatus.PARTIAL, VerdictStatus.INSUFFICIENT)
+            .map(::historyBadgeKind)
         assertEquals(
             listOf(
                 RigCheckBadgeKind.WithinLimit, RigCheckBadgeKind.OverLimit,
                 RigCheckBadgeKind.PartiallyChecked, RigCheckBadgeKind.NotChecked,
             ),
-            listOf(VerdictStatus.PASS, VerdictStatus.FAIL, VerdictStatus.PARTIAL, VerdictStatus.INSUFFICIENT).map(::historyBadgeKind),
+            kinds,
         )
         assertEquals(VerdictStatus.entries.size, kinds.toSet().size)
         val icons = listOf(VerdictStatus.PASS, VerdictStatus.FAIL, VerdictStatus.PARTIAL).map { rigCheckVerdictLook(it).icon }

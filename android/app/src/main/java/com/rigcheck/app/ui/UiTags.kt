@@ -83,10 +83,11 @@ object UiTags {
     const val PIN_WEIGHT_PCT_SLIDER = "pin_weight_pct_slider"
     const val TRUCK_PIN_WEIGHT_CAPTION = "truck_pin_weight_caption"
     const val TRUCK_NEXT_BUTTON = "truck_next_button"
-    // elements the design added to the entry screens (#193; the maps' `added_elements`). The two reference focus
-    // badges are not here: they need the stored crop rectangles of #199.
+    // elements the design added to the entry screens (#193; the maps' `added_elements`), and the two reference focus
+    // badges (#199, the stored crop rectangles)
     const val TRUCK_BACK = "truck_back"
     const val TRUCK_CREDIT_CHIP = "truck_credit_chip"
+    const val TRUCK_REFERENCE_FOCUS_BADGE = "truck_reference_focus_badge"
 
     // trailer_tag_entry
     const val TRAILER_TITLE = "trailer_title"
@@ -103,6 +104,7 @@ object UiTags {
     const val TRAILER_UVW_FIELD = "trailer_uvw_field"
     const val TRAILER_NEXT_BUTTON = "trailer_next_button"
     const val TRAILER_BACK = "trailer_back"
+    const val TRAILER_REFERENCE_FOCUS_BADGE = "trailer_reference_focus_badge"
 
     // scale_ticket_entry
     const val SCALE_TITLE = "scale_title"

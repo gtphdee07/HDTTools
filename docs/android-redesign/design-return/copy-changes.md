@@ -25,6 +25,8 @@ These belong to `added_elements[]` in the map. None of them replaces an existing
 | `results.row_badge` | Within limit / Over limit / Not checked | Says the row status in words, so a fail does not rely on colour. |
 | `chooser.loading_text` | Reading… | Reuses the existing "Reading…" string. |
 | `splash.branding` | RigCheck / Weight safety, before you roll | Optional. |
+| `truck.reference_focus_badge` | GVWR / Front GAWR / Rear GAWR | The name of the field the pinned card shows (#199). Named in `interaction-notes.md`, "Reference image on Truck and Trailer"; "Rear GAWR" is the label's own wording, as in the Truck field's name. |
+| `trailer.reference_focus_badge` | GVWR / GAWR per axle / UVW | Same, for the Trailer card (#199). |
 
 ## Content descriptions (accessibility labels)
 
@@ -35,6 +37,7 @@ Icon-only controls need these. They are not visible text.
 | Back buttons (`*.back`, `paywall.back`) | Back |
 | `truck.standalone_info` | What is stand-alone weight? |
 | `truck.pin_weight_slider` | Pin weight, percent of trailer weight |
+| `truck.reference_image`, `trailer.reference_image` | "Truck compliance label" / "Trailer compliance label"; with a field focused, "Truck compliance label, Front GAWR line outlined" (the badge's name), so a screen reader is told which field the card shows (#199). The badge is also a polite live region. |
 | `results.row_chevron` | Show note / Hide note |
 | `picker.credit_chip` and the other chips | Scan balance: N scans. Opens the Paywall |
 | `picker.account_status` | Account: signed in as `<email>`. Opens account menu / Not signed in. Sign in |

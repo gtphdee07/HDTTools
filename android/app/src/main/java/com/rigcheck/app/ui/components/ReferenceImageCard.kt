@@ -1,15 +1,11 @@
 package com.rigcheck.app.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,24 +17,32 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.rigcheck.app.ui.PhotoRect
+import com.rigcheck.app.ui.ReferenceLabel
+import com.rigcheck.app.ui.referenceDescription
+import com.rigcheck.app.ui.spotWindow
 import com.rigcheck.app.ui.theme.Border
 import com.rigcheck.app.ui.theme.Elevations
 import com.rigcheck.app.ui.theme.InkMuted
@@ -47,100 +51,98 @@ import com.rigcheck.app.ui.theme.Radii
 import com.rigcheck.app.ui.theme.RigCheckStyles
 import com.rigcheck.app.ui.theme.SurfaceSunken
 import com.rigcheck.app.ui.theme.TealDeep
+import com.rigcheck.app.ui.theme.TintOrange
 import com.rigcheck.app.ui.theme.Surface as SurfaceWhite
+import kotlin.math.roundToInt
 
-// Tap-and-hold zoom, replacing the mockup's hover-to-zoom pattern (no
-// direct mobile equivalent - see ANDROID_DESIGN_BRIEF.md). Press and drag
-// anywhere on the reference photo to zoom into that exact spot; release to
-// return to normal. Border color (#f0942f) matches the mockup's own
-// highlight-ring color exactly (confirmed from the .dc.html source).
-//
-// With a `height` the photo sits whole in a box of that height (the pinned card's 116 dp); without one it is as wide
-// as the column and as tall as the photo.
-private const val ZOOM_FACTOR = 2.5f
 private val cardShape = RoundedCornerShape(14.dp)
 
+// The line outlined in the crop: 2.5 dp in orange on tint-orange (components.md). The tint is see-through so the printed
+// words show through it.
+private val lineOutline = 2.5.dp
+private val lineCorner = 6.dp
+private const val LINE_TINT_ALPHA = 0.35f
+
+/**
+ * What the card is showing, for a test and for assistive tech: the rectangle of the photo it centres on (the focused
+ * field's crop, or its line on the one-line strip; the label's first lines when no field with a spot has focus).
+ */
+val ReferenceCropKey = SemanticsPropertyKey<PhotoRect>("ReferenceCrop")
+private var SemanticsPropertyReceiver.referenceCrop by ReferenceCropKey
+
+// The photo's part around the focused field, drawn so that `target` fills the box (`spotWindow`), with `line` outlined.
+// There is no gesture on it: the press-and-hold zoom it had until #199 is gone (interaction-notes.md, "no gesture is
+// needed anywhere").
 @Composable
 fun ReferenceImageCard(
     imageRes: Int,
     contentDescription: String,
+    target: PhotoRect,
+    line: PhotoRect?,
+    height: Dp,
     modifier: Modifier = Modifier,
-    height: Dp? = null,
-    // A strip of the top of the photo, as wide as the box, instead of the whole photo.
-    strip: Boolean = false,
 ) {
-    var pressPosition by remember { mutableStateOf<Offset?>(null) }
-    var containerSize by remember { mutableStateOf(IntSize.Zero) }
-    val fitted = height != null
-    val scale = when {
-        strip -> ContentScale.Crop
-        fitted -> ContentScale.Fit
-        else -> ContentScale.FillWidth
-    }
-    val sizing = if (fitted) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
-    val alignment = if (strip) Alignment.TopCenter else Alignment.Center
+    val photo: ImageBitmap = ImageBitmap.imageResource(imageRes)
+    val photoAspect = photo.width.toFloat() / photo.height
 
-    Box(
+    Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (height != null) Modifier.height(height).background(SurfaceSunken) else Modifier)
+            .height(height)
+            .background(SurfaceSunken)
             .clip(cardShape)
-            .onSizeChanged { containerSize = it }
-            .pointerInput(Unit) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { offset -> pressPosition = offset },
-                    onDrag = { change, _ -> pressPosition = change.position },
-                    onDragEnd = { pressPosition = null },
-                    onDragCancel = { pressPosition = null },
-                )
+            .semantics {
+                this.contentDescription = contentDescription
+                referenceCrop = target
             },
     ) {
-        Image(
-            painter = painterResource(imageRes),
-            contentDescription = contentDescription,
-            contentScale = scale,
-            alignment = alignment,
-            modifier = sizing,
+        val window = spotWindow(target, line, size.width / size.height, photoAspect)
+        drawImage(
+            image = photo,
+            srcOffset = IntOffset((window.visible.left * photo.width).roundToInt(), (window.visible.top * photo.height).roundToInt()),
+            srcSize = IntSize((window.visible.width * photo.width).roundToInt(), (window.visible.height * photo.height).roundToInt()),
+            dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
+            filterQuality = FilterQuality.High,
         )
-
-        val pos = pressPosition
-        if (pos != null && containerSize.width > 0 && containerSize.height > 0) {
-            val fracX = (pos.x / containerSize.width).coerceIn(0f, 1f)
-            val fracY = (pos.y / containerSize.height).coerceIn(0f, 1f)
-            Image(
-                painter = painterResource(imageRes),
-                contentDescription = null,
-                contentScale = scale,
-                alignment = alignment,
-                modifier = Modifier
-                    .matchParentSize()
-                    .graphicsLayer {
-                        scaleX = ZOOM_FACTOR
-                        scaleY = ZOOM_FACTOR
-                        transformOrigin = TransformOrigin(fracX, fracY)
-                    }
-                    .border(3.dp, Orange, cardShape),
-            )
+        window.lineInBox?.let { box ->
+            val stroke = lineOutline.toPx()
+            // Inset by half the stroke so the outline of a line as wide as the box is not cut at its edge.
+            val topLeft = Offset(box.left * size.width + stroke / 2, box.top * size.height + stroke / 2)
+            val outlined = Size(box.width * size.width - stroke, box.height * size.height - stroke)
+            val corner = CornerRadius(lineCorner.toPx())
+            drawRoundRect(TintOrange.copy(alpha = LINE_TINT_ALPHA), topLeft, outlined, corner)
+            drawRoundRect(Orange, topLeft, outlined, corner, style = Stroke(stroke))
         }
     }
 }
 
+// Reports a field's focus to the card: `onFocused(field)` when it takes focus, and `onFocused(null)` when it loses it
+// unless another field has already taken over (the order in which the two events arrive is not promised).
+fun <F> Modifier.reportsFocusAs(field: F, current: () -> F?, onFocused: (F?) -> Unit): Modifier = onFocusChanged { state ->
+    if (state.isFocused) onFocused(field) else if (current() == field) onFocused(null)
+}
+
 // components.md, "Reference card (pinned crop) and reference image": under the top bar on the Truck and Trailer
 // screens, a white card (24 dp radius, shadow md, 12 dp padding) that does not scroll away: a caption row (a search
-// icon and the hint) over the photo. The design's focused-field crop and its field badge need a stored crop rectangle
-// per field (#199); until then the card shows the whole label with no highlight, and the press-and-hold zoom that was
-// there before is what lets a user read a spot on it. `compact` (a short screen or a large font) keeps the caption
-// to two lines and shows a strip of the label instead of all of it.
+// icon, the hint, and a badge naming the focused field) over a crop of the label showing three lines, the focused
+// field's line outlined. With no field focused, or one with no line on the label, it shows the label's first lines and
+// no badge. `compact` (a short screen or a large font) keeps the caption to two lines and the crop to one label line.
 @Composable
-fun PinnedReferenceCard(
+fun <F : Enum<F>> PinnedReferenceCard(
     imageRes: Int,
     imageDescription: String,
     hint: String,
+    label: ReferenceLabel<F>,
+    focused: F?,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
     hintModifier: Modifier = Modifier,
     imageModifier: Modifier = Modifier,
+    badgeModifier: Modifier = Modifier,
 ) {
+    val spot = label.spotFor(focused)
+    // What the photo is centred on: the focused line alone on the one-line strip, else three lines around it.
+    val target = if (compact) spot?.line ?: label.defaultLine else spot?.crop ?: label.defaultCrop
     Surface(
         color = SurfaceWhite,
         shape = RoundedCornerShape(Radii.Panel),
@@ -164,12 +166,21 @@ fun PinnedReferenceCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = hintModifier.weight(1f),
                 )
+                if (spot != null) {
+                    // Read out when it appears, so a screen reader user hears which field the card now shows.
+                    RigCheckBadge(
+                        text = spot.badge,
+                        kind = RigCheckBadgeKind.Plan,
+                        modifier = badgeModifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
             }
             ReferenceImageCard(
                 imageRes = imageRes,
-                contentDescription = imageDescription,
+                contentDescription = referenceDescription(imageDescription, spot),
+                target = target,
+                line = spot?.line,
                 height = if (compact) 44.dp else 116.dp,
-                strip = compact,
                 modifier = imageModifier,
             )
         }

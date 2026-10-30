@@ -70,6 +70,12 @@ allow = [
   "com.rigcheck.app.ui.GarageNotice",
   "com.rigcheck.app.ui.GarageNoticeKt",
   "com.rigcheck.app.ui.HistoryDisplayKt",
+  # ui: the reference photos' stored crop rectangles and the window the pinned card draws from one (no Compose)
+  "com.rigcheck.app.ui.PhotoRect",
+  "com.rigcheck.app.ui.ReferenceLabel",
+  "com.rigcheck.app.ui.ReferenceSpot",
+  "com.rigcheck.app.ui.ReferenceSpots",
+  "com.rigcheck.app.ui.ReferenceSpotsKt",
   "com.rigcheck.app.ui.ScanApplied",
   "com.rigcheck.app.ui.ScanFailureKt",
   "com.rigcheck.app.ui.ScanMessages",
@@ -81,6 +87,9 @@ allow = [
   "com.rigcheck.app.ui.ScanScreen.Chooser",
   "com.rigcheck.app.ui.ScanSession",
   "com.rigcheck.app.ui.ScanSessionKt",
+  "com.rigcheck.app.ui.SpotWindow",
+  "com.rigcheck.app.ui.TrailerField",
+  "com.rigcheck.app.ui.TruckField",
   "com.rigcheck.app.ui.ScanUiState.Error",
   "com.rigcheck.app.ui.VerdictBadge",
 ]

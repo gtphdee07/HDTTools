@@ -34,6 +34,8 @@ import com.rigcheck.app.domain.model.TruckTag
 import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanNotice
 import com.rigcheck.app.ui.ScanUiState
+import com.rigcheck.app.ui.ReferenceSpots
+import com.rigcheck.app.ui.TruckField
 import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.canStartScan
 import com.rigcheck.app.ui.components.CreditBalanceChip
@@ -48,6 +50,7 @@ import com.rigcheck.app.ui.components.RigCheckIconButton
 import com.rigcheck.app.ui.components.RigCheckNoticeCard
 import com.rigcheck.app.ui.components.RigCheckNoticeTone
 import com.rigcheck.app.ui.components.RigCheckSlider
+import com.rigcheck.app.ui.components.reportsFocusAs
 import com.rigcheck.app.ui.components.ScanErrorDialog
 import com.rigcheck.app.ui.theme.Ink
 import com.rigcheck.app.ui.theme.InkMuted
@@ -80,6 +83,8 @@ fun TruckTagEntryScreen(
     onBack: () -> Unit = {},
 ) {
     var showStandaloneInfo by remember { mutableStateOf(false) }
+    // The field being typed in, which the pinned card shows the spot of.
+    var focusedField by remember { mutableStateOf<TruckField?>(null) }
     var showStandaloneSourceDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     var pendingPhotoUri by remember { mutableStateOf<Uri?>(null) }
@@ -95,6 +100,7 @@ fun TruckTagEntryScreen(
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) onScanStandaloneTicket(uri)
     }
+    fun Modifier.focusing(field: TruckField) = reportsFocusAs(field, { focusedField }) { focusedField = it }
 
     EntryScreenFrame(
         title = "Truck Tag",
@@ -117,9 +123,12 @@ fun TruckTagEntryScreen(
                 imageRes = R.drawable.ref_truck_tag,
                 imageDescription = "Truck compliance label",
                 hint = "Tap a field to see its spot on the tag",
+                label = ReferenceSpots.truck,
+                focused = focusedField,
                 compact = compact,
                 hintModifier = Modifier.testTag(UiTags.TRUCK_REFERENCE_HINT),
                 imageModifier = Modifier.testTag(UiTags.TRUCK_REFERENCE_IMAGE),
+                badgeModifier = Modifier.testTag(UiTags.TRUCK_REFERENCE_FOCUS_BADGE),
             )
         },
         footer = {
@@ -147,34 +156,34 @@ fun TruckTagEntryScreen(
             value = truck.description ?: "",
             onValueChange = { onTruckChange(truck.copy(description = it.ifBlank { null })) },
             placeholder = "e.g. Ford F-450",
-            modifier = Modifier.testTag(UiTags.TRUCK_DESCRIPTION),
+            modifier = Modifier.testTag(UiTags.TRUCK_DESCRIPTION).focusing(TruckField.Description),
         )
         LabeledTextField(
             label = "Name",
             value = truck.name ?: "",
             onValueChange = { onTruckChange(truck.copy(name = it.ifBlank { null })) },
-            modifier = Modifier.testTag(UiTags.TRUCK_NAME_FIELD),
+            modifier = Modifier.testTag(UiTags.TRUCK_NAME_FIELD).focusing(TruckField.Name),
         )
         LabeledNumberField(
             label = "GVWR, lb",
             value = truck.gvwrLb,
             onValueChange = { onTruckChange(truck.copy(gvwrLb = it)) },
             unit = "lb",
-            modifier = Modifier.testTag(UiTags.TRUCK_GVWR_FIELD),
+            modifier = Modifier.testTag(UiTags.TRUCK_GVWR_FIELD).focusing(TruckField.Gvwr),
         )
         LabeledNumberField(
             label = "Front GAWR, lb",
             value = truck.frontGawrLb,
             onValueChange = { onTruckChange(truck.copy(frontGawrLb = it)) },
             unit = "lb",
-            modifier = Modifier.testTag(UiTags.TRUCK_FRONT_GAWR_FIELD),
+            modifier = Modifier.testTag(UiTags.TRUCK_FRONT_GAWR_FIELD).focusing(TruckField.FrontGawr),
         )
         LabeledNumberField(
             label = "Rear GAWR, lb",
             value = truck.rearGawrLb,
             onValueChange = { onTruckChange(truck.copy(rearGawrLb = it)) },
             unit = "lb",
-            modifier = Modifier.testTag(UiTags.TRUCK_REAR_GAWR_FIELD),
+            modifier = Modifier.testTag(UiTags.TRUCK_REAR_GAWR_FIELD).focusing(TruckField.RearGawr),
         )
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             LabeledNumberField(
@@ -185,7 +194,7 @@ fun TruckTagEntryScreen(
                 unit = "lb",
                 help = "From your owner's manual. Leave blank if you can't find it.",
                 helpModifier = Modifier.testTag(UiTags.TRUCK_GCWR_HELP),
-                modifier = Modifier.testTag(UiTags.TRUCK_GCWR),
+                modifier = Modifier.testTag(UiTags.TRUCK_GCWR).focusing(TruckField.Gcwr),
             )
             if (gcwrBelowGvwr(truck)) {
                 // A warning, not a block: the value is kept. In words and in orange-deep, so not colour alone.
@@ -270,7 +279,7 @@ fun TruckTagEntryScreen(
                     value = truck.standaloneWeightLb,
                     onValueChange = { onTruckChange(truck.copy(standaloneWeightLb = it)) },
                     unit = "lb",
-                    modifier = Modifier.testTag(UiTags.TRUCK_STANDALONE_FIELD),
+                    modifier = Modifier.testTag(UiTags.TRUCK_STANDALONE_FIELD).focusing(TruckField.StandaloneWeight),
                 )
             }
 

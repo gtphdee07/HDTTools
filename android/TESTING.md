@@ -929,6 +929,13 @@ root `TESTING.md`'s "Dashboard" section.
   balance read and a fake balance set, to pin that after `insufficient_credits`
   the balance is set to 0 with no read, and after every other failure it is read
   again and never set.
+- `ReferenceSpotsTest.kt` (#199) — the stored crop rectangles of the Truck and Trailer reference photos: one
+  assertion per form field says whether it has a rectangle (the fields with a printed line on the label do, the
+  others have none), that the crop and the printed line lie inside the photo (0 to 1 on both axes, positive size)
+  and that the line is inside its crop, and the badge's name; the rectangles sit where the lines are printed
+  (a swapped pair is still inside the photo); a screen reader is told which line is outlined; `spotWindow` gives a
+  window inside the photo, of the box's shape, that holds the crop (or the line, on the compact strip), centred
+  on it where the photo has room, and puts the outlined line inside the box.
 - `ScanRetryTest.kt` (#117) — "Try again" sends the last Scan's photo again
   through the same entry point (a document's Scan or the stand-alone
   ticket's), over a fake Scan client and a real `ScanAttempts`: after a lost
@@ -1173,11 +1180,17 @@ network involved:
   The screen tests added with it: `TruckTagEntryScreenTest` (Back goes back and is off while the stand-alone Scan
   is out; the balance chip shows the balance, says "0 scans" signed out and opens the Paywall; the stand-alone
   info control has a name, is at least 48 dp and shows and hides its text; dragging the pin-weight slider reports
-  a percent in 15 to 25; press and hold on the pinned reference photo zooms and release puts it back),
-  `TrailerTagEntryScreenTest` (Back; the same zoom), `ScaleTicketEntryScreenTest` (Back; the legend names the
+  a percent in 15 to 25; since #199 the pinned card follows the focused field and holding on the photo does nothing),
+  `TrailerTagEntryScreenTest` (Back; the same card), `ScaleTicketEntryScreenTest` (Back; the legend names the
   five numbers and the photo carries them), `ReferenceImageCardTest` (the pinned card's photo is 116 dp, or a 44 dp
   strip when compact, under the approved hint) and `RigCheckNumberBadgeTest` (the badge shows its number at 22 dp
   and at the size it is given, and its digit meets AA on the orange).
+  #199 added the focused-field states to `EntryScreensLayoutTest`: "gvwr focused" on the Truck and Trailer
+  screens is the designer's `__filled` frame (the field has focus, the keyboard is closed) with the field's badge
+  (61 dp wide for GVWR, 22 dp high), the keyboard-open states show the badge too, and the two small-phone runs
+  (360 x 640, and at font scale 2.0) focus the longest badges, Front GAWR and GAWR per axle, on the collapsed
+  44 dp card: the badge is at the right of the hint on the hint's row and its text is laid out whole, not cut off
+  or wrapped.
 - `LateScanDialogTest` (#118) — the dialog for a Scan that answered after its
   check ended shows its message with OK only (no Try again, Sign in or photo
   step), and OK dismisses.
@@ -1267,14 +1280,13 @@ network involved:
   fill (4.5:1, 3:1 for large text and for graphics). The disabled colours are held to 3:1 only: the design's own
   disabled pair is 4.35:1, and WCAG exempts inactive controls. None of the components is on a screen yet (the re-skin
   tickets #192 to #196 adopt them), so these tests are their only user for now.
-- `ReferenceImageCardTest` (added 2026-09-09, this component's first
-  dedicated test file) — idle state shows only the base image (1 child);
-  a long-press-and-hold followed by a move shows the zoom overlay (2
-  children), a further move updates it, and release removes it; an
-  interrupted gesture (`cancel()`) also removes it. Drives
-  `detectDragGesturesAfterLongPress`'s `onDragStart`/`onDrag`/
-  `onDragEnd`/`onDragCancel` for real via `performTouchInput`, since the
-  component has no callback outputs to assert on directly.
+- `ReferenceImageCardTest` (added 2026-09-09, rewritten in #199) — the pinned card with no field
+  focused shows the label's first lines, the hint and no badge or outline; with a field focused it shows that
+  field's crop (read from the card's `ReferenceCropKey` semantics), its badge (a polite live region), the hint
+  and an orange outline (pixels of the captured image, as the photo has none), and all of it goes when the
+  focus does; a field with no line on the label is the default view; holding and dragging on the card does
+  nothing (the press-and-hold zoom was removed in #199, so no second image is composed and the crop stays);
+  the photo is 116 dp high, or a 44 dp strip centred on the focused line when compact.
 - `PaywallScreenTest` — the credit-balance header text (singular/plural,
   including a `null` balance's `?: 0` fallback, added 2026-09-09), the
   offline "Couldn't load offers" error state (see the `Purchases` note

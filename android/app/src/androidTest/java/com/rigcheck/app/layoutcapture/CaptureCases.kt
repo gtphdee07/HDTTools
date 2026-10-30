@@ -7,9 +7,7 @@ import android.os.Bundle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.test.performTouchInput
 import androidx.test.platform.app.InstrumentationRegistry
 import com.revenuecat.purchases.Package
 import com.revenuecat.purchases.PackageType
@@ -143,15 +141,6 @@ private fun trailer(trailer: TrailerTag = TrailerTag(), notice: ScanNotice? = nu
 
 private fun scale(scale: ScaleTicket = ScaleTicket(), notice: ScanNotice? = null): @Composable () -> Unit = {
     ScaleTicketEntryScreen(scale = scale, onScaleChange = {}, onContinue = {}, scanNotice = notice)
-}
-
-private fun CaptureScope.holdOn(tag: String) {
-    node(tag).performTouchInput {
-        down(center)
-        advanceEventTime(700)
-        moveTo(center + Offset(10f, 10f))
-    }
-    rule.waitForIdle()
 }
 
 private fun row(label: String, tone: Tone, pct: Int, note: String? = null, estimated: Boolean = false) = BreakdownItem(
@@ -427,8 +416,13 @@ val captureCases: List<CaptureCase> = listOf(
         content = truck(),
     ),
     CaptureCase(
-        "truck_tag_entry", "image_zoom_active",
-        setUp = { holdOn(UiTags.TRUCK_REFERENCE_IMAGE) },
+        // The pinned card follows the focused field (#199): its crop and badge, the keyboard closed.
+        "truck_tag_entry", "gvwr_focused",
+        setUp = {
+            tap(UiTags.TRUCK_GVWR_FIELD)
+            awaitKeyboardShown()
+            hideKeyboard()
+        },
         content = truck(),
     ),
 
@@ -457,8 +451,12 @@ val captureCases: List<CaptureCase> = listOf(
         content = trailer(),
     ),
     CaptureCase(
-        "trailer_tag_entry", "image_zoom_active",
-        setUp = { holdOn(UiTags.TRAILER_REFERENCE_IMAGE) },
+        "trailer_tag_entry", "gvwr_focused",
+        setUp = {
+            tap(UiTags.TRAILER_GVWR_FIELD)
+            awaitKeyboardShown()
+            hideKeyboard()
+        },
         content = trailer(),
     ),
 

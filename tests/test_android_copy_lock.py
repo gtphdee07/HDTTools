@@ -140,6 +140,18 @@ def test_the_changed_hints_are_on_the_truck_and_trailer_screens_themselves():
         assert "Hover a field" not in text, name
 
 
+def test_the_focus_badge_names_are_in_copy_changes_and_are_the_only_words_the_stored_spots_add():
+    """#199: the badge naming the field the pinned card shows. The names are in copy-changes.md (new strings) and are
+    the literals ReferenceSpots.kt builds its badges from; a badge with other words in it fails here."""
+    copy_changes = (_ROOT / "docs" / "android-redesign" / "design-return" / "copy-changes.md").read_text(encoding="utf-8")
+    assert "| `truck.reference_focus_badge` | GVWR / Front GAWR / Rear GAWR |" in copy_changes
+    assert "| `trailer.reference_focus_badge` | GVWR / GAWR per axle / UVW |" in copy_changes
+
+    spots = (ANDROID_MAIN / "java" / "com" / "rigcheck" / "app" / "ui" / "ReferenceSpots.kt").read_text(encoding="utf-8")
+    badges = re.findall(r'ReferenceSpot\("([^"]+)"', spots)
+    assert badges == ["GVWR", "Front GAWR", "Rear GAWR", "GVWR", "GAWR per axle", "UVW"]
+
+
 def test_the_chip_says_zero_scans_signed_out_in_the_shared_function():
     chip = (ANDROID_MAIN / "java" / "com" / "rigcheck" / "app" / "ui" / "CreditChipLabel.kt").read_text(encoding="utf-8")
     assert re.search(r"signedOut\s*->\s*scansText\(0\)", chip)

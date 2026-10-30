@@ -5,11 +5,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import com.rigcheck.app.R
 import com.rigcheck.app.domain.model.TrailerTag
+import com.rigcheck.app.ui.ReferenceSpots
 import com.rigcheck.app.ui.ScanNotice
+import com.rigcheck.app.ui.TrailerField
 import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.components.LabeledIntField
 import com.rigcheck.app.ui.components.LabeledNumberField
@@ -18,6 +24,7 @@ import com.rigcheck.app.ui.components.PinnedReferenceCard
 import com.rigcheck.app.ui.components.RigCheckButton
 import com.rigcheck.app.ui.components.RigCheckNoticeCard
 import com.rigcheck.app.ui.components.RigCheckNoticeTone
+import com.rigcheck.app.ui.components.reportsFocusAs
 import com.rigcheck.app.ui.theme.InkMuted
 import com.rigcheck.app.ui.theme.RigCheckStyles
 
@@ -29,6 +36,10 @@ fun TrailerTagEntryScreen(
     scanNotice: ScanNotice? = null,
     onBack: () -> Unit = {},
 ) {
+    // The field being typed in, which the pinned card shows the spot of.
+    var focusedField by remember { mutableStateOf<TrailerField?>(null) }
+    fun Modifier.focusing(field: TrailerField) = reportsFocusAs(field, { focusedField }) { focusedField = it }
+
     EntryScreenFrame(
         title = "Trailer Tag",
         step = 2,
@@ -41,9 +52,12 @@ fun TrailerTagEntryScreen(
                 imageRes = R.drawable.ref_trailer_tag,
                 imageDescription = "Trailer compliance label",
                 hint = "Tap a field to see its spot on the tag",
+                label = ReferenceSpots.trailer,
+                focused = focusedField,
                 compact = compact,
                 hintModifier = Modifier.testTag(UiTags.TRAILER_REFERENCE_HINT),
                 imageModifier = Modifier.testTag(UiTags.TRAILER_REFERENCE_IMAGE),
+                badgeModifier = Modifier.testTag(UiTags.TRAILER_REFERENCE_FOCUS_BADGE),
             )
         },
         footer = {
@@ -71,27 +85,27 @@ fun TrailerTagEntryScreen(
             value = trailer.description ?: "",
             onValueChange = { onTrailerChange(trailer.copy(description = it.ifBlank { null })) },
             placeholder = "e.g. Brinkley RV",
-            modifier = Modifier.testTag(UiTags.TRAILER_DESCRIPTION),
+            modifier = Modifier.testTag(UiTags.TRAILER_DESCRIPTION).focusing(TrailerField.Description),
         )
         LabeledTextField(
             label = "Name",
             value = trailer.name ?: "",
             onValueChange = { onTrailerChange(trailer.copy(name = it.ifBlank { null })) },
-            modifier = Modifier.testTag(UiTags.TRAILER_NAME_FIELD),
+            modifier = Modifier.testTag(UiTags.TRAILER_NAME_FIELD).focusing(TrailerField.Name),
         )
         LabeledNumberField(
             label = "GVWR, lb",
             value = trailer.gvwrLb,
             onValueChange = { onTrailerChange(trailer.copy(gvwrLb = it)) },
             unit = "lb",
-            modifier = Modifier.testTag(UiTags.TRAILER_GVWR_FIELD),
+            modifier = Modifier.testTag(UiTags.TRAILER_GVWR_FIELD).focusing(TrailerField.Gvwr),
         )
         LabeledNumberField(
             label = "GAWR per axle, lb",
             value = trailer.gawrPerAxleLb,
             onValueChange = { onTrailerChange(trailer.copy(gawrPerAxleLb = it)) },
             unit = "lb",
-            modifier = Modifier.testTag(UiTags.TRAILER_GAWR_FIELD),
+            modifier = Modifier.testTag(UiTags.TRAILER_GAWR_FIELD).focusing(TrailerField.GawrPerAxle),
         )
         LabeledIntField(
             label = "Axle count",
@@ -100,14 +114,14 @@ fun TrailerTagEntryScreen(
             onValueChange = { onTrailerChange(trailer.copy(axleCount = it)) },
             help = "Defaults to 2 if left blank.",
             helpModifier = Modifier.testTag(UiTags.TRAILER_AXLE_COUNT_HELP),
-            modifier = Modifier.testTag(UiTags.TRAILER_AXLE_COUNT_FIELD),
+            modifier = Modifier.testTag(UiTags.TRAILER_AXLE_COUNT_FIELD).focusing(TrailerField.AxleCount),
         )
         LabeledNumberField(
             label = "Unloaded weight (UVW), lb",
             value = trailer.uvwLb,
             onValueChange = { onTrailerChange(trailer.copy(uvwLb = it)) },
             unit = "lb",
-            modifier = Modifier.testTag(UiTags.TRAILER_UVW_FIELD),
+            modifier = Modifier.testTag(UiTags.TRAILER_UVW_FIELD).focusing(TrailerField.Uvw),
         )
     }
 }

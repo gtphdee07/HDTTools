@@ -7,7 +7,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
@@ -129,9 +128,9 @@ class SystemBarsTest {
         assertEquals("Big Blue", created)
     }
 
-    // Enough scan packs that the Paywall is taller than any phone, so "Restore purchase",
-    // its last control, is reached by scrolling to the end and rests at the bottom edge of
-    // the screen's usable area: the position where the navigation bar used to cover it.
+    // Enough scan packs that the Paywall is taller than any phone. "Restore purchase" is pinned
+    // in the footer (#196), so it rests at the bottom edge of the screen's usable area whatever the
+    // packs do: the position where the navigation bar used to cover it.
     @Test
     fun thePaywallsRestorePurchaseLiesAboveTheNavigationBarAndCanBeTapped() {
         var restored = false
@@ -151,8 +150,6 @@ class SystemBarsTest {
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.nodesWithTag(UiTags.PAYWALL_OFFER_CARD) > 0
         }
-
-        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).performScrollTo()
 
         assertClearOfTheSystemBars(
             "Restore purchase" to composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON),

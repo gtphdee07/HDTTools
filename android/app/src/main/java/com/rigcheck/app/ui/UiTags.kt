@@ -181,9 +181,11 @@ object UiTags {
     const val PAYWALL_NO_PRO = "paywall_no_pro"
     const val PAYWALL_PRO_BOUGHT = "paywall_pro_bought"
     const val PAYWALL_RESTORE_BUTTON = "paywall_restore_button"
+    const val PAYWALL_TOAST = "paywall_toast"
     const val PAYWALL_BACK = "paywall_back"
 
     // account
+    const val ACCOUNT_BACK = "account_back"
     const val ACCOUNT_TITLE = "account_title"
     const val ACCOUNT_REASON = "account_reason"
     const val ACCOUNT_EMAIL_FIELD = "account_email_field"

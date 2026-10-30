@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,6 +85,10 @@ fun RigCheckTextField(
     error: String? = null,
     enabled: Boolean = true,
     numeric: Boolean = false,
+    // For a field that is neither text nor numbers (the Account screen's email and password); wins over `numeric`.
+    keyboardType: KeyboardType? = null,
+    // Hides what is typed (a password).
+    visualTransformation: VisualTransformation = VisualTransformation.None,
     singleLine: Boolean = true,
     // For the tag and the other semantics of the input itself (focus, typing); `modifier` is for the whole field,
     // label and message included.
@@ -123,7 +128,10 @@ fun RigCheckTextField(
             singleLine = singleLine,
             textStyle = valueStyle,
             cursorBrush = SolidColor(TealDeep),
-            keyboardOptions = KeyboardOptions(keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text),
+            visualTransformation = visualTransformation,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = keyboardType ?: if (numeric) KeyboardType.Number else KeyboardType.Text,
+            ),
             interactionSource = source,
             modifier = inputModifier
                 .fillMaxWidth()

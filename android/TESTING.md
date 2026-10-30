@@ -1260,7 +1260,8 @@ network involved:
   no icon (the estimate).
 - `LateScanDialogTest` (#118) — the dialog for a Scan that answered after its
   check ended shows its message with OK only (no Try again, Sign in or photo
-  step), and OK dismisses.
+  step), and OK dismisses. (#196) Not changed by the re-skin: the dialog is now the shared
+  `RigCheckDialog` with a ghost OK button, and the test still finds it by its tags and reads the same words.
 - `FeedbackLinkTest` (#182) — "Send feedback" fires one `ACTION_SENDTO` intent whose data is
   `mailto:WTIAppDev@gmail.com?subject=RigCheck%20feedback`, and a phone with no mail app
   (`startActivity` throws `ActivityNotFoundException`) gets "This phone has no email app. Write to
@@ -1384,12 +1385,22 @@ network involved:
   close it, and an Offering without a lifetime package (Free) or without packs
   (Pro) shows a plain message.
 - `PaywallScreenTest` also covers (#186) scrolling and Back. A large font (`fontScale` 2) in a window
-  too short for the content puts "Restore purchase" out of view; it scrolls into view with Back still
-  shown. Restore purchase sits right after the offers, not at the bottom of the screen. Back leaves the
+  too short for the content keeps Back and "Restore purchase" in view and scrolls the offers (#196 changed
+  this: Restore purchase moved from the end of the scroll into the pinned footer, so the old test, which
+  expected it to start out of view and scroll in, now holds that it is always in view and that the last
+  offer scrolls to; and the test that held it "right after the offers" now holds that it rests at the
+  foot of the screen under them). Back leaves the
   screen (`onDone`) for a Free account, a Pro account and a plan not known, shows beside Sign out and
   Restore purchase, and is disabled while a restore is out (leaving then would let the result act on
   another screen). That Back returns to the right screen is `ScanErrorNextStepNavigationTest`'s; that
   the Paywall clears the system bars is `SystemBarsTest`'s.
+- `PaywallScreenTest` also covers (#196) the Snackbar: a restore is answered with "Purchases restored."
+  in a Snackbar (tagged `paywall_toast`) that goes away by itself, a failed restore shows the store's
+  error in it, buying Pro (which stays on the screen) says "Pro unlocked!" in it, and a bought pack
+  leaves the screen at once without raising one (the owner's decision: that one confirmation stays a
+  system Toast, which a test cannot see, because a Snackbar would close with the screen).
+- `AccountScreenTest` also covers (#196) the top bar's Back, which leaves the screen like Not now, and
+  that the password field is a password field (its text hidden) and the email field is not.
 - `PaywallOffersTest.kt` (#101, JVM, 5 tests) — the split of an Offering into Pro and scan
   packs: the lifetime package is Pro and the other one-time packages are packs whatever their
   ids, Pro is never also a pack, no lifetime package means no Pro offer, a subscription is

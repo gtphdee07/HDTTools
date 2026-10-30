@@ -8,7 +8,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -22,6 +21,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.revenuecat.purchases.Package
 import com.revenuecat.purchases.PackageType
 import com.rigcheck.app.testsupport.fakePackage
+import com.rigcheck.app.testsupport.nodesWithTag
 import com.rigcheck.app.testsupport.nodesWithTagShowing
 import com.rigcheck.app.testsupport.onNodeWithTagText
 import com.rigcheck.app.ui.UiTags
@@ -469,10 +469,10 @@ class PaywallScreenTest {
     // --- Scrolling and Back (#186) ---
 
     // A large font in a window too short for the content, as on a small phone or in split
-    // screen: "Restore purchase" starts out of view and has to be reachable by scrolling,
-    // while Back stays where it is.
+    // screen: Back and "Restore purchase" are pinned (#196: Restore moved into the footer) and
+    // stay in view whatever the offers do, and the offers above it are reachable by scrolling.
     @Test
-    fun aPaywallTallerThanTheWindowScrollsToRestorePurchaseAndKeepsBackInView() {
+    fun aPaywallTallerThanTheWindowKeepsRestorePurchaseAndBackInViewAndScrollsToTheOffers() {
         composeRule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)) {
                 Box(modifier = Modifier.height(360.dp)) {
@@ -489,16 +489,20 @@ class PaywallScreenTest {
             }
         }
         waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "10 scans")
-        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).assertIsNotDisplayed()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_BACK).assertIsDisplayed()
 
-        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$9.99").performScrollTo().assertIsDisplayed()
 
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).assertIsDisplayed()
         composeRule.onNodeWithTag(UiTags.PAYWALL_BACK).assertIsDisplayed()
     }
 
-    // Restore purchase follows the offers instead of waiting at the bottom of the screen.
+    // Restore purchase is pinned at the foot of the screen, under everything that scrolls (the design's footer),
+    // so the navigation bar can no longer cover it and it is never scrolled away (#186, #196). It used to follow the
+    // offers; with one pack that put it high on the screen.
     @Test
-    fun restorePurchaseComesRightAfterTheOffersNotAtTheBottomOfTheScreen() {
+    fun restorePurchaseIsPinnedAtTheFootOfTheScreenUnderTheOffers() {
         composeRule.setContent {
             PaywallScreen(
                 creditBalance = 3,
@@ -512,12 +516,12 @@ class PaywallScreenTest {
         waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "10 scans")
 
         val offerBottom = composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$2.99").fetchSemanticsNode().boundsInRoot.bottom
-        val restoreTop = composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).fetchSemanticsNode().boundsInRoot.top
+        val restore = composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).fetchSemanticsNode().boundsInRoot
         val windowHeight = composeRule.onRoot().fetchSemanticsNode().boundsInRoot.height
+        assertTrue("Restore purchase starts at ${restore.top}, above the offer that ends at $offerBottom", restore.top > offerBottom)
         assertTrue(
-            "Restore purchase should sit near the offers, not at the bottom: " +
-                "offer ends at $offerBottom, Restore starts at $restoreTop of $windowHeight",
-            restoreTop - offerBottom < windowHeight / 4,
+            "Restore purchase should rest at the foot of the screen: it ends at ${restore.bottom} of $windowHeight",
+            restore.bottom > windowHeight * 0.9,
         )
     }
 
@@ -597,5 +601,93 @@ class PaywallScreenTest {
 
         isBeta.value = false
         composeRule.onNodeWithTagText(UiTags.PAYWALL_BETA_LABEL, "Beta: test payments", substring = true).assertDoesNotExist()
+    }
+
+    // --- The Snackbar (#196) ---
+
+    private fun waitForToast(text: String) {
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.nodesWithTagShowing(UiTags.PAYWALL_TOAST, text) > 0
+        }
+    }
+
+    // What the screen answers to a restore is a Snackbar with the same words the Toast had, and it goes away by itself.
+    @Test
+    fun aRestoreAnswersInASnackbarThatThenGoesAway() {
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 3,
+                onPurchase = { _, _ -> },
+                onRestore = { report -> report(true, null) },
+                onDone = { },
+                isPro = true,
+                loadPackages = { listOf(smallPack) },
+            )
+        }
+        waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "10 scans")
+
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).performClick()
+
+        waitForToast("Purchases restored.")
+        composeRule.waitUntil(timeoutMillis = 15_000) { composeRule.nodesWithTag(UiTags.PAYWALL_TOAST) == 0 }
+    }
+
+    @Test
+    fun aFailedRestoreShowsTheStoresErrorInTheSnackbar() {
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 3,
+                onPurchase = { _, _ -> },
+                onRestore = { report -> report(false, "Network error") },
+                onDone = { },
+            )
+        }
+
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).performClick()
+
+        waitForToast("Network error")
+    }
+
+    // Buying Pro stays on the Paywall, so its confirmation is a Snackbar there.
+    @Test
+    fun buyingProConfirmsInASnackbarOnThePaywall() {
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 0,
+                onPurchase = { _, report -> report(true, null) },
+                onRestore = { },
+                onDone = { },
+                isPro = false,
+                loadPackages = { listOf(proPackage) },
+            )
+        }
+        waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "Pro (lifetime)")
+
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$14.99").performClick()
+
+        waitForToast("Pro unlocked!")
+    }
+
+    // A bought pack leaves the screen at once and a Snackbar would go with it, so that one confirmation is a system
+    // Toast (owner's decision on #196): no Snackbar is raised for it.
+    @Test
+    fun aBoughtPackLeavesWithoutRaisingASnackbar() {
+        var done = false
+        composeRule.setContent {
+            PaywallScreen(
+                creditBalance = 3,
+                onPurchase = { _, report -> report(true, null) },
+                onRestore = { },
+                onDone = { done = true },
+                isPro = true,
+                loadPackages = { listOf(smallPack) },
+            )
+        }
+        waitForTagText(UiTags.PAYWALL_OFFER_TITLE, "10 scans")
+
+        composeRule.onNodeWithTagText(UiTags.PAYWALL_BUY_BUTTON, "\$2.99").performClick()
+
+        assertTrue("buying a pack ends the visit", done)
+        assertEquals(0, composeRule.nodesWithTag(UiTags.PAYWALL_TOAST))
     }
 }

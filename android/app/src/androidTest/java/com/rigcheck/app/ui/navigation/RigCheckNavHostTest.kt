@@ -113,6 +113,23 @@ class RigCheckNavHostTest {
         assertOnResults()
     }
 
+    // The re-skinned Results screen has a top-bar Back control. ResultsScreenTest gives it a fake onBack, so only this
+    // test, through the real RigCheckNavHost, shows that tapping it leaves Results for the Rig picker, like the system
+    // Back button (merge review of #194: a NavHost whose Results Back did nothing passed every test).
+    @Test
+    fun theBackControlOnResultsReturnsToTheRigPicker() {
+        composeRule.setContent { RigCheckNavHost() }
+
+        goThroughManualEntryFlow("Back From Results")
+        composeRule.onNodeWithTag(UiTags.DISCLAIMER_ACCEPT_BUTTON).performClick()
+        assertOnResults()
+
+        composeRule.onNodeWithTag(UiTags.RESULTS_BACK).performClick()
+
+        composeRule.onNodeWithTag(UiTags.PICKER_CREATE_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.RESULTS_START_ANOTHER_BUTTON).assertDoesNotExist()
+    }
+
     // Regression test for a real bug found during 2026-08-18 manual
     // testing: selecting an existing rig from RigPickerScreen used to
     // navigate straight to ScaleTicketEntryScreen, skipping the

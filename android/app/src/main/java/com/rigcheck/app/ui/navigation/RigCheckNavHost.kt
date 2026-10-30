@@ -274,6 +274,8 @@ fun RigCheckNavHost(
                 garageNotice = viewModel.garageNotice,
                 historyNotice = viewModel.historyNotice,
                 onGetPro = { navController.navigate(RigCheckRoute.Paywall) },
+                // The same as the system Back button (interaction-notes.md).
+                onBack = { navController.popBackStack() },
                 onStartAnother = {
                     navController.navigate(RigCheckRoute.RigPicker) {
                         popUpTo(RigCheckRoute.RigPicker) { inclusive = true }

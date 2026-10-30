@@ -1,12 +1,16 @@
 package com.rigcheck.app.ui.components
 
+import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.testsupport.assertAa
 import com.rigcheck.app.testsupport.assertEveryClickableIsAtLeast48dp
 import com.rigcheck.app.testsupport.setRigCheckContent
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -46,4 +50,23 @@ class RigCheckNoticeCardTest {
 
     @Test
     fun noticeWithATitle() = showAndAssert(RigCheckNoticeTone.Scan, title = "A Scan was used")
+
+    // The estimated-figures notice holds a list of its own and draws no icon (its frozen title carries an emoji).
+    @Test
+    fun noticeAroundItsOwnContentWithNoIcon() {
+        composeRule.setRigCheckContent {
+            RigCheckNoticeCard(tone = RigCheckNoticeTone.Warn, title = "A title", icon = null) {
+                Text("First line")
+                Text("Second line")
+            }
+        }
+        composeRule.onNodeWithText("A title").assertIsDisplayed()
+        composeRule.onNodeWithText("First line").assertIsDisplayed()
+        composeRule.onNodeWithText("Second line").assertIsDisplayed()
+        // With no icon the words start at the card's own padding (14 dp), not 10 dp further in after a 22 dp icon.
+        val card = composeRule.onNodeWithText("A title").getBoundsInRoot().left
+        val padding = 14.dp + 16.dp
+        assertEquals(padding.value, card.value, 1f)
+        assertReadable(RigCheckNoticeTone.Warn)
+    }
 }

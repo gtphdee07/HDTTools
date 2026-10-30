@@ -289,6 +289,7 @@
       "test_tag_new": "picker_app_title",
       "tests_referencing": {
         "SystemBarsTest.kt": 1,
+        "RigPickerChooserLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -346,6 +347,8 @@
       "test_tag_new": "open_history",
       "tests_referencing": {
         "HistoryNavigationTest.kt": 1,
+        "RigPickerChooserLayoutTest.kt": 4,
+        "RigPickerScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -402,8 +405,10 @@
       "test_tag_today": null,
       "test_tag_new": "picker_credit_chip",
       "tests_referencing": {
-        "CreditBalanceChipTest.kt": 6,
-        "RigPickerScreenTest.kt": 1,
+        "CreditBalanceChipTest.kt": 11,
+        "RigCheckNavHostTest.kt": 1,
+        "RigPickerChooserLayoutTest.kt": 3,
+        "RigPickerScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -459,9 +464,7 @@
       },
       "test_tag_today": null,
       "test_tag_new": "picker_header_divider",
-      "tests_referencing": {
-        "UiTagsDisplayedTest.kt": 1
-      },
+      "tests_referencing": {},
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -517,6 +520,7 @@
       "test_tag_new": "picker_heading",
       "tests_referencing": {
         "ScanInFlightNavigationTest.kt": 2,
+        "RigPickerChooserLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -573,6 +577,7 @@
       "test_tag_today": null,
       "test_tag_new": "picker_subheading",
       "tests_referencing": {
+        "RigPickerChooserLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -629,6 +634,8 @@
       "test_tag_today": null,
       "test_tag_new": "picker_rig_card",
       "tests_referencing": {
+        "RigPickerChooserLayoutTest.kt": 6,
+        "RigPickerScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -685,6 +692,7 @@
       "test_tag_today": null,
       "test_tag_new": "picker_rig_avatar",
       "tests_referencing": {
+        "RigPickerChooserLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -741,6 +749,7 @@
       "test_tag_today": null,
       "test_tag_new": "picker_rig_nickname",
       "tests_referencing": {
+        "RigPickerChooserLayoutTest.kt": 5,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -797,6 +806,7 @@
       "test_tag_today": null,
       "test_tag_new": "picker_rig_subtitle",
       "tests_referencing": {
+        "RigPickerChooserLayoutTest.kt": 5,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -853,6 +863,7 @@
       "test_tag_today": null,
       "test_tag_new": "picker_rig_last_checked",
       "tests_referencing": {
+        "RigPickerChooserLayoutTest.kt": 5,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -909,6 +920,7 @@
       "test_tag_today": null,
       "test_tag_new": "picker_rig_delete",
       "tests_referencing": {
+        "RigPickerChooserLayoutTest.kt": 6,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -965,6 +977,7 @@
       "test_tag_today": null,
       "test_tag_new": "picker_new_rig_label",
       "tests_referencing": {
+        "RigPickerChooserLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1027,7 +1040,8 @@
         "ScanErrorNextStepNavigationTest.kt": 1,
         "ScanInFlightNavigationTest.kt": 1,
         "SystemBarsTest.kt": 1,
-        "RigPickerScreenTest.kt": 1,
+        "RigPickerChooserLayoutTest.kt": 7,
+        "RigPickerScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1086,11 +1100,12 @@
       "tests_referencing": {
         "GarageNavigationTest.kt": 1,
         "HistoryNavigationTest.kt": 1,
-        "RigCheckNavHostTest.kt": 9,
+        "RigCheckNavHostTest.kt": 10,
         "ScanErrorNextStepNavigationTest.kt": 1,
         "ScanInFlightNavigationTest.kt": 1,
         "SystemBarsTest.kt": 2,
-        "RigPickerScreenTest.kt": 2,
+        "RigPickerChooserLayoutTest.kt": 7,
+        "RigPickerScreenTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1148,6 +1163,7 @@
       "test_tag_new": "picker_feedback_link",
       "tests_referencing": {
         "FeedbackLinkTest.kt": 3,
+        "RigPickerChooserLayoutTest.kt": 7,
         "RigPickerScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 3
       },
@@ -1206,6 +1222,7 @@
       "test_tag_new": "send_feedback_no_mail_app",
       "tests_referencing": {
         "FeedbackLinkTest.kt": 2,
+        "RigPickerChooserLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1262,7 +1279,9 @@
       "test_tag_today": null,
       "test_tag_new": "chooser_title",
       "tests_referencing": {
-        "RigCheckNavHostTest.kt": 11,
+        "RigCheckNavHostTest.kt": 14,
+        "ChooserScreenTest.kt": 1,
+        "RigPickerChooserLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1320,7 +1339,8 @@
       "test_tag_new": "chooser_credit_chip",
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 1,
-        "ChooserScreenTest.kt": 1,
+        "ChooserScreenTest.kt": 3,
+        "RigPickerChooserLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1377,6 +1397,8 @@
       "test_tag_today": null,
       "test_tag_new": "chooser_step_bar",
       "tests_referencing": {
+        "ChooserScreenTest.kt": 1,
+        "RigPickerChooserLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1433,6 +1455,8 @@
       "test_tag_today": null,
       "test_tag_new": "chooser_prompt",
       "tests_referencing": {
+        "ChooserScreenTest.kt": 1,
+        "RigPickerChooserLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1490,7 +1514,8 @@
       "test_tag_new": "chooser_scan_card",
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 3,
-        "ChooserScreenTest.kt": 3,
+        "ChooserScreenTest.kt": 6,
+        "RigPickerChooserLayoutTest.kt": 7,
         "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
@@ -1547,6 +1572,8 @@
       "test_tag_today": null,
       "test_tag_new": "chooser_scan_badge",
       "tests_referencing": {
+        "ChooserScreenTest.kt": 1,
+        "RigPickerChooserLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1605,10 +1632,11 @@
       "tests_referencing": {
         "GarageNavigationTest.kt": 3,
         "HistoryNavigationTest.kt": 3,
-        "RigCheckNavHostTest.kt": 16,
+        "RigCheckNavHostTest.kt": 21,
         "ScanErrorNextStepNavigationTest.kt": 3,
         "ScanInFlightNavigationTest.kt": 5,
-        "ChooserScreenTest.kt": 2,
+        "ChooserScreenTest.kt": 3,
+        "RigPickerChooserLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1665,6 +1693,8 @@
       "test_tag_today": null,
       "test_tag_new": "chooser_manual_badge",
       "tests_referencing": {
+        "ChooserScreenTest.kt": 1,
+        "RigPickerChooserLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1721,6 +1751,7 @@
       "test_tag_today": null,
       "test_tag_new": "chooser_footer_note",
       "tests_referencing": {
+        "RigPickerChooserLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1777,6 +1808,8 @@
       "test_tag_today": null,
       "test_tag_new": "chooser_loading_overlay",
       "tests_referencing": {
+        "ChooserScreenTest.kt": 1,
+        "RigPickerChooserLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1833,6 +1866,8 @@
       "test_tag_today": null,
       "test_tag_new": "photo_dialog_title",
       "tests_referencing": {
+        "ChooserScreenTest.kt": 2,
+        "RigPickerChooserLayoutTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1889,6 +1924,8 @@
       "test_tag_today": null,
       "test_tag_new": "photo_dialog_body",
       "tests_referencing": {
+        "ChooserScreenTest.kt": 1,
+        "RigPickerChooserLayoutTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -1945,7 +1982,8 @@
       "test_tag_today": null,
       "test_tag_new": "photo_dialog_gallery",
       "tests_referencing": {
-        "ChooserScreenTest.kt": 2,
+        "ChooserScreenTest.kt": 4,
+        "RigPickerChooserLayoutTest.kt": 3,
         "TruckTagEntryScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -2004,7 +2042,8 @@
       "test_tag_new": "photo_dialog_camera",
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 1,
-        "ChooserScreenTest.kt": 6,
+        "ChooserScreenTest.kt": 7,
+        "RigPickerChooserLayoutTest.kt": 3,
         "TruckTagEntryScreenTest.kt": 6,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -2062,6 +2101,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_title",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -2118,6 +2158,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_step_bar",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -2175,6 +2216,7 @@
       "test_tag_new": "scan_notice",
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 6,
+        "EntryScreensLayoutTest.kt": 6,
         "ScanNoticeScreenTest.kt": 13,
         "UiTagsDisplayedTest.kt": 3
       },
@@ -2232,6 +2274,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_instructions",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -2288,7 +2331,9 @@
       "test_tag_today": null,
       "test_tag_new": "truck_reference_image",
       "tests_referencing": {
-        "UiTagsDisplayedTest.kt": 1
+        "EntryScreensLayoutTest.kt": 13,
+        "TruckTagEntryScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
         "status": null,
@@ -2344,7 +2389,9 @@
       "test_tag_today": null,
       "test_tag_new": "truck_reference_hint",
       "tests_referencing": {
-        "UiTagsDisplayedTest.kt": 1
+        "EntryScreensLayoutTest.kt": 13,
+        "TruckTagEntryScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
         "status": null,
@@ -2400,8 +2447,9 @@
       "test_tag_today": "truck_description",
       "test_tag_new": "truck_description",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 5,
         "ScanNoticeScreenTest.kt": 1,
-        "TruckTagEntryScreenTest.kt": 2,
+        "TruckTagEntryScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -2458,6 +2506,8 @@
       "test_tag_today": null,
       "test_tag_new": "truck_name_field",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 5,
+        "TruckTagEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -2514,7 +2564,9 @@
       "test_tag_today": null,
       "test_tag_new": "truck_gvwr_field",
       "tests_referencing": {
-        "UiTagsDisplayedTest.kt": 1
+        "EntryScreensLayoutTest.kt": 10,
+        "TruckTagEntryScreenTest.kt": 3,
+        "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
         "status": null,
@@ -2570,6 +2622,8 @@
       "test_tag_today": null,
       "test_tag_new": "truck_front_gawr_field",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 7,
+        "TruckTagEntryScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -2626,6 +2680,8 @@
       "test_tag_today": null,
       "test_tag_new": "truck_rear_gawr_field",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 5,
+        "TruckTagEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -2682,7 +2738,8 @@
       "test_tag_today": "truck_gcwr",
       "test_tag_new": "truck_gcwr",
       "tests_referencing": {
-        "TruckTagEntryScreenTest.kt": 3,
+        "EntryScreensLayoutTest.kt": 9,
+        "TruckTagEntryScreenTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -2739,6 +2796,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_gcwr_help",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 5,
         "TruckTagEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -2796,6 +2854,7 @@
       "test_tag_today": "truck_gcwr_warning",
       "test_tag_new": "truck_gcwr_warning",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 2,
         "TruckTagEntryScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -2853,6 +2912,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_label",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 5,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -2909,6 +2969,8 @@
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_info",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 7,
+        "TruckTagEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
@@ -2965,6 +3027,8 @@
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_info_text",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 3,
+        "TruckTagEntryScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3021,6 +3085,8 @@
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_field",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 6,
+        "TruckTagEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3077,6 +3143,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_panel",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 10,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3133,6 +3200,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_panel_title",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3189,6 +3257,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_panel_body",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3246,6 +3315,7 @@
       "test_tag_new": "scan_standalone_ticket",
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 1,
+        "EntryScreensLayoutTest.kt": 9,
         "TruckTagEntryScreenTest.kt": 8,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -3303,7 +3373,8 @@
       "test_tag_today": null,
       "test_tag_new": "truck_pin_weight_label",
       "tests_referencing": {
-        "TruckTagEntryScreenTest.kt": 2,
+        "EntryScreensLayoutTest.kt": 3,
+        "TruckTagEntryScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3360,6 +3431,8 @@
       "test_tag_today": "pin_weight_pct_slider",
       "test_tag_new": "pin_weight_pct_slider",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
+        "TruckTagEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3416,6 +3489,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_pin_weight_caption",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3474,9 +3548,10 @@
       "tests_referencing": {
         "GarageNavigationTest.kt": 1,
         "HistoryNavigationTest.kt": 1,
-        "RigCheckNavHostTest.kt": 9,
+        "RigCheckNavHostTest.kt": 10,
         "ScanErrorNextStepNavigationTest.kt": 2,
         "ScanInFlightNavigationTest.kt": 8,
+        "EntryScreensLayoutTest.kt": 18,
         "TruckTagEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -3534,6 +3609,7 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_title",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3590,6 +3666,7 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_step_bar",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3647,6 +3724,7 @@
       "test_tag_new": "scan_notice",
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 6,
+        "EntryScreensLayoutTest.kt": 6,
         "ScanNoticeScreenTest.kt": 13,
         "UiTagsDisplayedTest.kt": 3
       },
@@ -3704,6 +3782,7 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_instructions",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3760,7 +3839,9 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_reference_image",
       "tests_referencing": {
-        "UiTagsDisplayedTest.kt": 1
+        "EntryScreensLayoutTest.kt": 12,
+        "TrailerTagEntryScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
         "status": null,
@@ -3816,7 +3897,9 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_reference_hint",
       "tests_referencing": {
-        "UiTagsDisplayedTest.kt": 1
+        "EntryScreensLayoutTest.kt": 12,
+        "TrailerTagEntryScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
         "status": null,
@@ -3872,7 +3955,8 @@
       "test_tag_today": "trailer_description",
       "test_tag_new": "trailer_description",
       "tests_referencing": {
-        "TrailerTagEntryScreenTest.kt": 1,
+        "EntryScreensLayoutTest.kt": 5,
+        "TrailerTagEntryScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3929,6 +4013,8 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_name_field",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 5,
+        "TrailerTagEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3985,7 +4071,9 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_gvwr_field",
       "tests_referencing": {
-        "UiTagsDisplayedTest.kt": 1
+        "EntryScreensLayoutTest.kt": 11,
+        "TrailerTagEntryScreenTest.kt": 2,
+        "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
         "status": null,
@@ -4041,6 +4129,8 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_gawr_field",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 5,
+        "TrailerTagEntryScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -4097,6 +4187,8 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_axle_count_field",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 5,
+        "TrailerTagEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -4153,6 +4245,7 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_axle_count_help",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -4209,6 +4302,8 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_uvw_field",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 8,
+        "TrailerTagEntryScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -4267,7 +4362,8 @@
       "tests_referencing": {
         "GarageNavigationTest.kt": 1,
         "HistoryNavigationTest.kt": 1,
-        "RigCheckNavHostTest.kt": 5,
+        "RigCheckNavHostTest.kt": 6,
+        "EntryScreensLayoutTest.kt": 11,
         "TrailerTagEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -4325,6 +4421,7 @@
       "test_tag_today": null,
       "test_tag_new": "scale_title",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -4381,6 +4478,7 @@
       "test_tag_today": null,
       "test_tag_new": "scale_step_bar",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -4438,6 +4536,7 @@
       "test_tag_new": "scan_notice",
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 6,
+        "EntryScreensLayoutTest.kt": 6,
         "ScanNoticeScreenTest.kt": 13,
         "UiTagsDisplayedTest.kt": 3
       },
@@ -4495,6 +4594,7 @@
       "test_tag_today": null,
       "test_tag_new": "scale_instructions",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -4551,6 +4651,8 @@
       "test_tag_today": null,
       "test_tag_new": "scale_reference_image",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 6,
+        "ScaleTicketEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -4607,6 +4709,8 @@
       "test_tag_today": null,
       "test_tag_new": "scale_legend",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 7,
+        "ScaleTicketEntryScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -4663,6 +4767,7 @@
       "test_tag_today": "scale_location",
       "test_tag_new": "scale_location",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 6,
         "ScaleTicketEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -4720,6 +4825,7 @@
       "test_tag_today": null,
       "test_tag_new": "scale_steer_field",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 10,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -4776,6 +4882,7 @@
       "test_tag_today": null,
       "test_tag_new": "scale_drive_field",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 6,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -4832,6 +4939,7 @@
       "test_tag_today": null,
       "test_tag_new": "scale_trailer_field",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -4888,6 +4996,7 @@
       "test_tag_today": null,
       "test_tag_new": "scale_gross_field",
       "tests_referencing": {
+        "EntryScreensLayoutTest.kt": 6,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -4947,6 +5056,7 @@
         "GarageNavigationTest.kt": 1,
         "HistoryNavigationTest.kt": 1,
         "RigCheckNavHostTest.kt": 4,
+        "EntryScreensLayoutTest.kt": 9,
         "ScaleTicketEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -5024,6 +5134,7 @@
       "test_tag_today": null,
       "test_tag_new": "disclaimer_icon",
       "tests_referencing": {
+        "DisclaimerResultsLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -5101,7 +5212,8 @@
       "test_tag_new": "disclaimer_title",
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 1,
-        "DisclaimerScreenTest.kt": 1,
+        "DisclaimerResultsLayoutTest.kt": 5,
+        "DisclaimerScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -5178,6 +5290,8 @@
       "test_tag_today": null,
       "test_tag_new": "disclaimer_body_1",
       "tests_referencing": {
+        "DisclaimerResultsLayoutTest.kt": 3,
+        "DisclaimerScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -5254,6 +5368,8 @@
       "test_tag_today": null,
       "test_tag_new": "disclaimer_body_2",
       "tests_referencing": {
+        "DisclaimerResultsLayoutTest.kt": 4,
+        "DisclaimerScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -5333,7 +5449,8 @@
         "GarageNavigationTest.kt": 1,
         "HistoryNavigationTest.kt": 1,
         "RigCheckNavHostTest.kt": 2,
-        "DisclaimerScreenTest.kt": 1,
+        "DisclaimerResultsLayoutTest.kt": 6,
+        "DisclaimerScreenTest.kt": 5,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -5410,6 +5527,7 @@
       "test_tag_today": null,
       "test_tag_new": "results_rig_name",
       "tests_referencing": {
+        "DisclaimerResultsLayoutTest.kt": 6,
         "ResultsScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -5487,6 +5605,7 @@
       "test_tag_today": null,
       "test_tag_new": "results_date",
       "tests_referencing": {
+        "DisclaimerResultsLayoutTest.kt": 5,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -5563,7 +5682,8 @@
       "test_tag_today": null,
       "test_tag_new": "results_verdict",
       "tests_referencing": {
-        "ResultsScreenTest.kt": 13,
+        "DisclaimerResultsLayoutTest.kt": 14,
+        "ResultsScreenTest.kt": 15,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -5641,7 +5761,8 @@
       "test_tag_new": "garage_notice",
       "tests_referencing": {
         "GarageNavigationTest.kt": 2,
-        "ResultsScreenTest.kt": 3,
+        "DisclaimerResultsLayoutTest.kt": 3,
+        "ResultsScreenTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -5718,7 +5839,8 @@
       "test_tag_today": "garage_notice_get_pro",
       "test_tag_new": "garage_notice_get_pro",
       "tests_referencing": {
-        "ResultsScreenTest.kt": 2,
+        "DisclaimerResultsLayoutTest.kt": 4,
+        "ResultsScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -5796,7 +5918,8 @@
       "test_tag_new": "history_notice",
       "tests_referencing": {
         "HistoryNavigationTest.kt": 2,
-        "ResultsScreenTest.kt": 2,
+        "DisclaimerResultsLayoutTest.kt": 7,
+        "ResultsScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -5873,7 +5996,8 @@
       "test_tag_today": null,
       "test_tag_new": "results_estimated_notice",
       "tests_referencing": {
-        "ResultsScreenTest.kt": 2,
+        "DisclaimerResultsLayoutTest.kt": 3,
+        "ResultsScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -5950,6 +6074,8 @@
       "test_tag_today": null,
       "test_tag_new": "results_breakdown_card",
       "tests_referencing": {
+        "DisclaimerResultsLayoutTest.kt": 16,
+        "ResultsScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -6026,8 +6152,8 @@
       "test_tag_today": null,
       "test_tag_new": "results_row",
       "tests_referencing": {
-        "BreakdownRowTest.kt": 2,
-        "ResultsScreenTest.kt": 1,
+        "RigCheckBreakdownRowTest.kt": 5,
+        "DisclaimerResultsLayoutTest.kt": 6,
         "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
@@ -6104,6 +6230,7 @@
       "test_tag_today": null,
       "test_tag_new": "results_row_icon",
       "tests_referencing": {
+        "DisclaimerResultsLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -6180,7 +6307,8 @@
       "test_tag_today": null,
       "test_tag_new": "results_row_label",
       "tests_referencing": {
-        "BreakdownRowTest.kt": 2,
+        "RigCheckBreakdownRowTest.kt": 1,
+        "DisclaimerResultsLayoutTest.kt": 4,
         "ResultsScreenTest.kt": 6,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -6258,6 +6386,7 @@
       "test_tag_today": null,
       "test_tag_new": "results_row_values",
       "tests_referencing": {
+        "DisclaimerResultsLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -6334,7 +6463,8 @@
       "test_tag_today": null,
       "test_tag_new": "results_row_pct",
       "tests_referencing": {
-        "BreakdownRowTest.kt": 1,
+        "RigCheckBreakdownRowTest.kt": 1,
+        "DisclaimerResultsLayoutTest.kt": 3,
         "ResultsScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -6412,6 +6542,7 @@
       "test_tag_today": null,
       "test_tag_new": "results_row_bar",
       "tests_referencing": {
+        "DisclaimerResultsLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -6488,7 +6619,8 @@
       "test_tag_today": null,
       "test_tag_new": "results_row_note",
       "tests_referencing": {
-        "BreakdownRowTest.kt": 2,
+        "RigCheckBreakdownRowTest.kt": 8,
+        "DisclaimerResultsLayoutTest.kt": 5,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -6565,6 +6697,8 @@
       "test_tag_today": null,
       "test_tag_new": "results_footer_note",
       "tests_referencing": {
+        "DisclaimerResultsLayoutTest.kt": 11,
+        "ResultsScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -6644,6 +6778,7 @@
         "GarageNavigationTest.kt": 2,
         "HistoryNavigationTest.kt": 4,
         "RigCheckNavHostTest.kt": 1,
+        "DisclaimerResultsLayoutTest.kt": 16,
         "ResultsScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -9136,6 +9271,7 @@
       "test_tag_new": "send_feedback_no_mail_app",
       "tests_referencing": {
         "FeedbackLinkTest.kt": 2,
+        "RigPickerChooserLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {

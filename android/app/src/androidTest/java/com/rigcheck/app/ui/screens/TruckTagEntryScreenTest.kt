@@ -4,7 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
@@ -23,11 +25,14 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.data.ScanResult
 import com.rigcheck.app.domain.model.TruckTag
+import com.rigcheck.app.testsupport.assertShowsCrop
 import com.rigcheck.app.testsupport.onNodeWithTagText
 import com.rigcheck.app.testsupport.scrollToIfScrollable
 import com.rigcheck.app.ui.NO_WEIGHT_ERROR
+import com.rigcheck.app.ui.ReferenceSpots
 import com.rigcheck.app.ui.ScanNextStep
 import com.rigcheck.app.ui.ScanUiState
+import com.rigcheck.app.ui.TruckField
 import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.scanErrorFor
 import org.junit.Assert.assertEquals
@@ -538,27 +543,80 @@ class TruckTagEntryScreenTest {
             .scrollToIfScrollable().assertIsDisplayed()
     }
 
-    // The pinned card replaces the old hover hint. Until #199 stores a crop per field, what a user can do with it is
-    // press and hold to zoom into a spot, which this drives; the card does not scroll away with the form.
+    // #199: the pinned card follows the focused field: its crop moves to that field's rectangle and a badge names the
+    // field; a field with no line on the label, or no field at all, is the default view with the hint and no badge.
     @Test
-    fun holdingOnThePinnedReferenceImageZoomsIntoItAndReleasingPutsItBack() {
+    fun focusingEachFieldMovesThePinnedCardsCropAndBadgeAndLeavingTheFieldsReturnsToTheDefaultView() {
+        lateinit var focusManager: FocusManager
         composeRule.setContent {
+            focusManager = LocalFocusManager.current
             TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {})
         }
         val image = composeRule.onNodeWithTag(UiTags.TRUCK_REFERENCE_IMAGE)
+        val label = ReferenceSpots.truck
+        val hint = "Tap a field to see its spot on the tag"
 
-        image.onChildren().assertCountEquals(1)
+        fun showsTheDefaultView() {
+            image.assertShowsCrop(label.defaultCrop).assertContentDescriptionEquals("Truck compliance label")
+            composeRule.onNodeWithTag(UiTags.TRUCK_REFERENCE_FOCUS_BADGE).assertDoesNotExist()
+            composeRule.onNodeWithTagText(UiTags.TRUCK_REFERENCE_HINT, hint).assertExists()
+        }
+        showsTheDefaultView()
+
+        // Each field with a line, in turn and out of the form's order, so that every move of the crop is seen.
+        listOf(
+            Triple(UiTags.TRUCK_GVWR_FIELD, TruckField.Gvwr, "GVWR"),
+            Triple(UiTags.TRUCK_REAR_GAWR_FIELD, TruckField.RearGawr, "Rear GAWR"),
+            Triple(UiTags.TRUCK_FRONT_GAWR_FIELD, TruckField.FrontGawr, "Front GAWR"),
+            Triple(UiTags.TRUCK_GVWR_FIELD, TruckField.Gvwr, "GVWR"),
+        ).forEach { (tag, field, badge) ->
+            composeRule.onNodeWithTag(tag).scrollToIfScrollable().performClick()
+            // (Not `assertIsDisplayed`: the test activity pans for the keyboard, which moves the pinned card off the window.)
+            composeRule.onNodeWithTagText(UiTags.TRUCK_REFERENCE_FOCUS_BADGE, badge).assertExists()
+            image.assertShowsCrop(label.spotFor(field)!!.crop)
+                .assertContentDescriptionEquals("Truck compliance label, $badge line outlined")
+            // The hint stays: the badge is beside it, not instead of it.
+            composeRule.onNodeWithTagText(UiTags.TRUCK_REFERENCE_HINT, hint).assertExists()
+        }
+
+        // A field with no line on the label (the description, the name, the GCWR, the stand-alone weight).
+        listOf(UiTags.TRUCK_DESCRIPTION, UiTags.TRUCK_NAME_FIELD, UiTags.TRUCK_GCWR, UiTags.TRUCK_STANDALONE_FIELD).forEach { tag ->
+            composeRule.onNodeWithTag(tag).scrollToIfScrollable().performClick()
+            showsTheDefaultView()
+            composeRule.onNodeWithTag(UiTags.TRUCK_FRONT_GAWR_FIELD).scrollToIfScrollable().performClick()
+            composeRule.onNodeWithTagText(UiTags.TRUCK_REFERENCE_FOCUS_BADGE, "Front GAWR").assertExists()
+        }
+
+        // No field focused at all.
+        composeRule.runOnIdle { focusManager.clearFocus() }
+        showsTheDefaultView()
+    }
+
+    // The decision of #199 (owner, 2026-10-29): the press-and-hold zoom the pinned photo had is gone. Holding and
+    // dragging on it changes nothing: the crop stays on the focused field and nothing is drawn over it.
+    @Test
+    fun holdingOnThePinnedReferenceImageDoesNothing() {
+        composeRule.setContent {
+            TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {})
+        }
+        // The GVWR is the field nearest the top, so the keyboard does not pan the card off the test window.
+        composeRule.onNodeWithTag(UiTags.TRUCK_GVWR_FIELD).scrollToIfScrollable().performClick()
+        val image = composeRule.onNodeWithTag(UiTags.TRUCK_REFERENCE_IMAGE)
+        val crop = ReferenceSpots.truck.spotFor(TruckField.Gvwr)!!.crop
+        image.assertShowsCrop(crop)
+
         image.performTouchInput {
             down(center)
             advanceEventTime(700)
             moveTo(center + Offset(10f, 10f))
         }
         composeRule.waitForIdle()
-        image.onChildren().assertCountEquals(2)
+        image.assertShowsCrop(crop).onChildren().assertCountEquals(0)
 
         image.performTouchInput { up() }
         composeRule.waitForIdle()
-        image.onChildren().assertCountEquals(1)
+        image.assertShowsCrop(crop).onChildren().assertCountEquals(0)
+        composeRule.onNodeWithTagText(UiTags.TRUCK_REFERENCE_FOCUS_BADGE, "GVWR").assertExists()
     }
 
     // The error a failed Scan with this code shows, as the app builds it.

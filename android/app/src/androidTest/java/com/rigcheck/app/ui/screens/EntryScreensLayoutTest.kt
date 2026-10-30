@@ -1,11 +1,17 @@
 package com.rigcheck.app.ui.screens
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.rigcheck.app.domain.model.ScaleTicket
@@ -62,8 +68,10 @@ import org.junit.runner.RunWith
 // It changes the display's size, density and font scale for the run and puts them back (as LayoutCaptureTest does),
 // and no state sends a Scan or calls the network.
 //
-// The map's two `reference_focus_badge` elements (needs_new_function) are not built; the pinned card shows the whole
-// label with no highlight until #199.
+// #199: with a field that has a line on the label focused, the pinned card also shows the map's `reference_focus_badge`
+// (its name, at the right of the caption row beside the hint, above the photo); the "gvwr focused" states below are the
+// designer's `filled` frames (the field has focus, the keyboard is closed) and the keyboard states show it with the
+// keyboard open. The badge's text is never cut off, also on a small phone at font scale 2.0.
 @RunWith(AndroidJUnit4::class)
 class EntryScreensLayoutTest {
 
@@ -180,6 +188,29 @@ class EntryScreensLayoutTest {
             p.rule.onNodeWithTag(UiTags.SCAN_STANDALONE_TICKET, useUnmergedTree = true).scrollToIfScrollable().assertIsNotEnabled()
             reach(p, UiTags.SCAN_STANDALONE_TICKET, UiTags.TRUCK_NEXT_BUTTON)
         }
+        // truck_tag_entry__filled: the GVWR has focus (the keyboard is closed), so the card is cropped to its line, with its badge.
+        problems += inState(
+            "truck_tag_entry: gvwr focused", truck(filledTruck),
+            setUp = {
+                tap(UiTags.TRUCK_GVWR_FIELD)
+                awaitKeyboardShown()
+                hideKeyboard()
+            },
+        ) { p ->
+            val b = p.bounds()
+            val form = listOf(UiTags.TRUCK_GVWR_FIELD, UiTags.TRUCK_FRONT_GAWR_FIELD, UiTags.TRUCK_REAR_GAWR_FIELD, UiTags.TRUCK_GCWR)
+            val card = listOf(UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_IMAGE)
+            sizes(b, p.widthDp, truckSizes.only(card + form)) +
+                order(
+                    b,
+                    truckHeaderBands.take(2) + listOf(listOf(UiTags.TRUCK_REFERENCE_HINT, UiTags.TRUCK_REFERENCE_FOCUS_BADGE), listOf(UiTags.TRUCK_REFERENCE_IMAGE)) +
+                        form.map { listOf(it) },
+                ) +
+                badgeBesideTheHint(b, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_HINT) +
+                badgeTextIsNotCutOff(p, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, "GVWR") +
+                pinned(p, UiTags.TRUCK_GCWR, UiTags.TRUCK_REFERENCE_HINT, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_IMAGE, UiTags.TRUCK_NEXT_BUTTON) +
+                reach(p, *form.toTypedArray(), UiTags.TRUCK_NEXT_BUTTON) + touchTargets(p)
+        }
         problems += inState(
             "truck_tag_entry: keyboard_open", truck(filledTruck),
             setUp = {
@@ -188,11 +219,14 @@ class EntryScreensLayoutTest {
             },
         ) { p ->
             val b = p.bounds()
-            // The bar is compact and drops the step indicator; the card stays pinned; the field being typed in and the
-            // footer are above the keyboard.
+            // The bar is compact and drops the step indicator; the card stays pinned, cropped to the field being typed
+            // in, with its badge; the field and the footer are above the keyboard.
             absent(b, listOf(UiTags.TRUCK_STEP_BAR)) +
-                shown(b, listOf(UiTags.TRUCK_BACK, UiTags.TRUCK_TITLE, UiTags.TRUCK_CREDIT_CHIP, UiTags.TRUCK_REFERENCE_HINT, UiTags.TRUCK_REFERENCE_IMAGE)) +
-                pinned(p, UiTags.TRUCK_GCWR, UiTags.TRUCK_REFERENCE_HINT, UiTags.TRUCK_REFERENCE_IMAGE, UiTags.TRUCK_NEXT_BUTTON) +
+                shown(b, listOf(UiTags.TRUCK_BACK, UiTags.TRUCK_TITLE, UiTags.TRUCK_CREDIT_CHIP, UiTags.TRUCK_REFERENCE_HINT, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_IMAGE)) +
+                sizes(b, p.widthDp, truckSizes.only(listOf(UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_IMAGE))) +
+                badgeBesideTheHint(b, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_HINT) +
+                badgeTextIsNotCutOff(p, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, "Front GAWR") +
+                pinned(p, UiTags.TRUCK_GCWR, UiTags.TRUCK_REFERENCE_HINT, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_IMAGE, UiTags.TRUCK_NEXT_BUTTON) +
                 reach(p, UiTags.TRUCK_FRONT_GAWR_FIELD, UiTags.TRUCK_REAR_GAWR_FIELD, UiTags.TRUCK_NEXT_BUTTON)
         }
 
@@ -228,17 +262,43 @@ class EntryScreensLayoutTest {
                 order(b, trailerHeaderBands + tags.map { listOf(it) }) +
                 reach(p, *tags.toTypedArray(), UiTags.TRAILER_NEXT_BUTTON) + touchTargets(p)
         }
+        // trailer_tag_entry__filled: the GVWR has focus (the keyboard is closed), so the card is cropped to its line, with its badge.
+        problems += inState(
+            "trailer_tag_entry: gvwr focused", trailer(filledTrailer),
+            setUp = {
+                tap(UiTags.TRAILER_GVWR_FIELD)
+                awaitKeyboardShown()
+                hideKeyboard()
+            },
+        ) { p ->
+            val b = p.bounds()
+            val form = listOf(UiTags.TRAILER_GVWR_FIELD, UiTags.TRAILER_GAWR_FIELD, UiTags.TRAILER_AXLE_COUNT_FIELD, UiTags.TRAILER_UVW_FIELD)
+            val card = listOf(UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_IMAGE)
+            sizes(b, p.widthDp, trailerSizes.only(card + form)) +
+                order(
+                    b,
+                    trailerHeaderBands.take(2) + listOf(listOf(UiTags.TRAILER_REFERENCE_HINT, UiTags.TRAILER_REFERENCE_FOCUS_BADGE), listOf(UiTags.TRAILER_REFERENCE_IMAGE)) +
+                        form.map { listOf(it) },
+                ) +
+                badgeBesideTheHint(b, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_HINT) +
+                badgeTextIsNotCutOff(p, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, "GVWR") +
+                pinned(p, UiTags.TRAILER_UVW_FIELD, UiTags.TRAILER_REFERENCE_HINT, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_IMAGE, UiTags.TRAILER_NEXT_BUTTON) +
+                reach(p, *form.toTypedArray(), UiTags.TRAILER_NEXT_BUTTON) + touchTargets(p)
+        }
         problems += inState(
             "trailer_tag_entry: keyboard_open", trailer(filledTrailer),
             setUp = {
-                tap(UiTags.TRAILER_AXLE_COUNT_FIELD)
+                tap(UiTags.TRAILER_UVW_FIELD)
                 awaitKeyboardShown()
             },
         ) { p ->
             val b = p.bounds()
             absent(b, listOf(UiTags.TRAILER_STEP_BAR)) +
-                shown(b, listOf(UiTags.TRAILER_BACK, UiTags.TRAILER_TITLE, UiTags.TRAILER_REFERENCE_HINT, UiTags.TRAILER_REFERENCE_IMAGE)) +
-                pinned(p, UiTags.TRAILER_UVW_FIELD, UiTags.TRAILER_REFERENCE_HINT, UiTags.TRAILER_REFERENCE_IMAGE, UiTags.TRAILER_NEXT_BUTTON) +
+                shown(b, listOf(UiTags.TRAILER_BACK, UiTags.TRAILER_TITLE, UiTags.TRAILER_REFERENCE_HINT, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_IMAGE)) +
+                sizes(b, p.widthDp, trailerSizes.only(listOf(UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_IMAGE))) +
+                badgeBesideTheHint(b, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_HINT) +
+                badgeTextIsNotCutOff(p, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, "UVW") +
+                pinned(p, UiTags.TRAILER_GVWR_FIELD, UiTags.TRAILER_REFERENCE_HINT, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_IMAGE, UiTags.TRAILER_NEXT_BUTTON) +
                 reach(p, UiTags.TRAILER_AXLE_COUNT_FIELD, UiTags.TRAILER_AXLE_COUNT_HELP, UiTags.TRAILER_UVW_FIELD, UiTags.TRAILER_NEXT_BUTTON)
         }
 
@@ -326,6 +386,35 @@ class EntryScreensLayoutTest {
         ) { p ->
             reach(p, UiTags.TRUCK_GVWR_FIELD, UiTags.TRUCK_NEXT_BUTTON) + noneWiderThanTheScreen(p)
         }
+        // The longest badges on the smallest room: Front GAWR (Truck) and GAWR per axle (Trailer), the keyboard closed.
+        problems += inState(
+            "truck_tag_entry: front gawr focused", truck(),
+            setUp = {
+                tap(UiTags.TRUCK_FRONT_GAWR_FIELD)
+                awaitKeyboardShown()
+                hideKeyboard()
+            },
+        ) { p ->
+            val b = p.bounds()
+            shown(b, listOf(UiTags.TRUCK_REFERENCE_HINT, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_IMAGE)) +
+                badgeBesideTheHint(b, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_HINT) +
+                badgeTextIsNotCutOff(p, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, "Front GAWR") +
+                noneWiderThanTheScreen(p)
+        }
+        problems += inState(
+            "trailer_tag_entry: gawr focused", trailer(),
+            setUp = {
+                tap(UiTags.TRAILER_GAWR_FIELD)
+                awaitKeyboardShown()
+                hideKeyboard()
+            },
+        ) { p ->
+            val b = p.bounds()
+            shown(b, listOf(UiTags.TRAILER_REFERENCE_HINT, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_IMAGE)) +
+                badgeBesideTheHint(b, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_HINT) +
+                badgeTextIsNotCutOff(p, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, "GAWR per axle") +
+                noneWiderThanTheScreen(p)
+        }
         problems += inState("trailer_tag_entry: blank", trailer()) { p ->
             reach(
                 p, UiTags.TRAILER_DESCRIPTION, UiTags.TRAILER_NAME_FIELD, UiTags.TRAILER_GVWR_FIELD, UiTags.TRAILER_GAWR_FIELD,
@@ -384,6 +473,37 @@ class EntryScreensLayoutTest {
                     else -> null
                 }
             }
+    }
+
+    // truck.reference_focus_badge, trailer.reference_focus_badge: in the caption row, at the right of the hint, on the
+    // same row as it (the map's region "header", the badge after the hint in the reading order).
+    private fun badgeBesideTheHint(b: Map<String, TaggedBounds>, badge: String, hint: String): List<String> {
+        val badgeBounds = b[badge] ?: return listOf("$badge is not on the screen")
+        val hintBounds = b[hint] ?: return listOf("$hint is not on the screen")
+        return listOfNotNull(
+            "$badge (x ${badgeBounds.x}) is not at the right of $hint (right edge ${hintBounds.x + hintBounds.width})"
+                .takeIf { badgeBounds.x < hintBounds.x + hintBounds.width - 0.5 },
+            "$badge starts at ${badgeBounds.y} dp, not on the row of $hint (${hintBounds.y} dp)"
+                .takeIf { badgeBounds.y > hintBounds.y + hintBounds.height || badgeBounds.y + badgeBounds.height < hintBounds.y },
+        )
+    }
+
+    // The badge names the field in full: its text is one line, not ellipsised, and the line's right edge and its
+    // bottom are inside the box the text is laid out in. (`hasVisualOverflow` is not used: it compares the box with the
+    // width the text was offered, so it is true for any text that does not fill its row.)
+    private fun badgeTextIsNotCutOff(p: Probe, badge: String, text: String): List<String> {
+        val node = p.rule.onNode(hasText(text) and hasAnyAncestor(hasTestTag(badge)), useUnmergedTree = true)
+        val results = mutableListOf<TextLayoutResult>()
+        val read = node.fetchSemanticsNode().config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(results)
+        val layout = results.firstOrNull()
+        if (read != true || layout == null) return listOf("$badge: the text layout of \"$text\" cannot be read")
+        val whole = layout.lineCount == 1 && !layout.isLineEllipsized(0) && layout.getLineEnd(0) == text.length
+        val inside = layout.getLineRight(0) <= layout.size.width + 0.5f && layout.getLineBottom(0) <= layout.size.height + 0.5f
+        if (whole && inside) return emptyList()
+        return listOf(
+            "$badge: the text \"$text\" is cut off or wrapped (${layout.lineCount} lines, the line ends at ${layout.getLineRight(0)} px " +
+                "and ${layout.getLineBottom(0)} px in a ${layout.size.width} x ${layout.size.height} px box)",
+        )
     }
 
     // scale.reference_image: numbered badges 1 to 5 drawn on the ticket photo, each wholly on it, in the size of the
@@ -453,6 +573,9 @@ class EntryScreensLayoutTest {
     private val primaryButton = Size(Dim.Fill(32), fixed(56))
     private val notice = Size(Dim.Fill(32), about(84, 10))
 
+    // The map gives 22 dp high and as wide as the field's name ("wrap": 61 dp for GVWR, 114 dp for GAWR per axle).
+    private val referenceFocusBadge = Size(Dim.Any, about(22, 2))
+
     private val truckSizes: Map<String, Size> = mapOf(
         UiTags.TRUCK_BACK to topBar.getValue("back"),
         UiTags.TRUCK_TITLE to topBar.getValue("title"),
@@ -461,6 +584,7 @@ class EntryScreensLayoutTest {
         UiTags.TRUCK_REFERENCE_HINT to Size(Dim.Any, about(20, 2)),
         // 58 dp: the card's 16 dp margin, its 1 dp border and its 12 dp padding, on each side.
         UiTags.TRUCK_REFERENCE_IMAGE to Size(Dim.Fill(58), fixed(116)),
+        UiTags.TRUCK_REFERENCE_FOCUS_BADGE to referenceFocusBadge,
         UiTags.SCAN_NOTICE to notice,
         UiTags.TRUCK_INSTRUCTIONS to Size(Dim.Fill(32), about(44)),
         UiTags.TRUCK_DESCRIPTION to field,
@@ -491,6 +615,7 @@ class EntryScreensLayoutTest {
         UiTags.TRAILER_STEP_BAR to topBar.getValue("step"),
         UiTags.TRAILER_REFERENCE_HINT to Size(Dim.Any, about(20, 2)),
         UiTags.TRAILER_REFERENCE_IMAGE to Size(Dim.Fill(58), fixed(116)),
+        UiTags.TRAILER_REFERENCE_FOCUS_BADGE to referenceFocusBadge,
         UiTags.SCAN_NOTICE to notice,
         UiTags.TRAILER_INSTRUCTIONS to Size(Dim.Fill(32), about(44)),
         UiTags.TRAILER_DESCRIPTION to field,

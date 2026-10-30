@@ -6,6 +6,9 @@ import android.view.autofill.AutofillManager
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -71,6 +74,10 @@ class UiTagsDisplayedTest {
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     private lateinit var crashFolder: File
+
+    private companion object {
+        const val KEYBOARD_MS = 20_000L
+    }
 
     @Before
     fun emptyCrashStore() {
@@ -281,6 +288,39 @@ class UiTagsDisplayedTest {
             UiTags.TRAILER_AXLE_COUNT_FIELD, UiTags.TRAILER_AXLE_COUNT_HELP, UiTags.TRAILER_UVW_FIELD,
             UiTags.TRAILER_NEXT_BUTTON,
         )
+    }
+
+    // Taps a field and then closes the keyboard it opened, leaving the field focused: with the keyboard up the test
+    // activity pans, which moves the pinned card off the window.
+    private fun focusWithTheKeyboardClosed(tag: String) {
+        composeRule.onNodeWithTag(tag, useUnmergedTree = true).scrollToIfScrollable().performClick()
+        val window = composeRule.activity.window
+        val keyboardUp = { ViewCompat.getRootWindowInsets(window.decorView)?.isVisible(WindowInsetsCompat.Type.ime()) == true }
+        composeRule.waitUntil(KEYBOARD_MS) { keyboardUp() }
+        composeRule.runOnUiThread { WindowCompat.getInsetsController(window, window.decorView).hide(WindowInsetsCompat.Type.ime()) }
+        composeRule.waitUntil(KEYBOARD_MS) { !keyboardUp() }
+        composeRule.waitForIdle()
+    }
+
+    // The pinned card's badge shows once a field with a line on the label has focus (#199).
+    @Test
+    fun truckTagEntryWithAFieldFocused() {
+        composeRule.setContent {
+            TruckTagEntryScreen(truck = TruckTag(), onTruckChange = {}, onContinue = {})
+        }
+        focusWithTheKeyboardClosed(UiTags.TRUCK_GVWR_FIELD)
+
+        assertShown(UiTags.TRUCK_REFERENCE_IMAGE, UiTags.TRUCK_REFERENCE_HINT, UiTags.TRUCK_REFERENCE_FOCUS_BADGE)
+    }
+
+    @Test
+    fun trailerTagEntryWithAFieldFocused() {
+        composeRule.setContent {
+            TrailerTagEntryScreen(trailer = TrailerTag(), onTrailerChange = {}, onContinue = {})
+        }
+        focusWithTheKeyboardClosed(UiTags.TRAILER_GVWR_FIELD)
+
+        assertShown(UiTags.TRAILER_REFERENCE_IMAGE, UiTags.TRAILER_REFERENCE_HINT, UiTags.TRAILER_REFERENCE_FOCUS_BADGE)
     }
 
     @Test

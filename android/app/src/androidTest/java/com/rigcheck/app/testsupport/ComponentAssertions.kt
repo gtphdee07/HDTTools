@@ -7,9 +7,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.unit.dp
+import com.rigcheck.app.ui.PhotoRect
+import com.rigcheck.app.ui.components.ReferenceCropKey
 import com.rigcheck.app.ui.theme.AA_LARGE_TEXT
 import com.rigcheck.app.ui.theme.AA_NORMAL_TEXT
 import com.rigcheck.app.ui.theme.RigCheckTheme
@@ -52,6 +57,10 @@ fun ComposeContentTestRule.assertEveryClickableIsAtLeast48dp(expectAtLeast: Int 
         }
     }
 }
+
+/** The pinned reference card is centred on [crop] of its photo (#199): what it shows, read from its semantics. */
+fun SemanticsNodeInteraction.assertShowsCrop(crop: PhotoRect): SemanticsNodeInteraction =
+    assert(SemanticsMatcher.expectValue(ReferenceCropKey, crop))
 
 /** [foreground] on [background] meets AA: 4.5:1, or 3:1 when [largeText]. [behind] is what a translucent fill sits on. */
 fun assertAa(what: String, foreground: Color, background: Color, largeText: Boolean = false, behind: Color = Surface) {

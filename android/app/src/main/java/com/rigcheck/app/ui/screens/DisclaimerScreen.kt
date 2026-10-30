@@ -43,6 +43,9 @@ private const val BODY_2 = "Do not use this tool to decide whether your rig is s
     "documentation, and consult a qualified professional if you're unsure. You use this tool, and " +
     "any decisions you make based on it, entirely at your own risk and responsibility."
 
+// "DM Sans 400 16/24 ink" (the map): the body style with the 24 dp line the design gives these paragraphs.
+private val PARAGRAPH = RigCheckStyles.body.copy(lineHeight = 24.sp)
+
 // The design's page (resize-rules.md, "What scrolls and what is pinned"): the icon, the title and both paragraphs scroll
 // as one page, and "I Understand, Continue" is pinned in the footer, so a large font or a small phone can no longer
 // push it off the screen. The page has no top bar (components.md: not on the Disclaimer).
@@ -96,6 +99,3 @@ fun DisclaimerScreen(onAcknowledge: () -> Unit) {
         }
     }
 }
-
-// "DM Sans 400 16/24 ink" (the map): the body style with the 24 dp line the design gives these paragraphs.
-private val PARAGRAPH = RigCheckStyles.body.copy(lineHeight = 24.sp)

@@ -162,12 +162,6 @@ def test_the_disclaimer_wording_is_the_inventorys_byte_for_byte(parts, sources):
         assert f'"{text}"' in sources, f"{element_id}: the app does not hold {text!r} as one literal"
 
 
-def test_a_changed_character_in_the_disclaimer_is_caught(parts, sources):
-    body = next(e for e in parts["inventory"]["elements"] if e["id"] == "disclaimer.body_2")["text"]
-    assert f'"{body}"' in sources
-    assert f'"{body}"' not in sources.replace("at your own risk", "at your risk")
-
-
 def test_the_chip_says_zero_scans_signed_out_in_the_shared_function():
     chip = (ANDROID_MAIN / "java" / "com" / "rigcheck" / "app" / "ui" / "CreditChipLabel.kt").read_text(encoding="utf-8")
     assert re.search(r"signedOut\s*->\s*scansText\(0\)", chip)

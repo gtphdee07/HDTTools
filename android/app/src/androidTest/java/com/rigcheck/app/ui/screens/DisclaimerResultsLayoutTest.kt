@@ -23,6 +23,7 @@ import com.rigcheck.app.testsupport.LayoutStateRunner
 import com.rigcheck.app.testsupport.Probe
 import com.rigcheck.app.testsupport.Size
 import com.rigcheck.app.testsupport.about
+import com.rigcheck.app.testsupport.absent
 import com.rigcheck.app.testsupport.fixed
 import com.rigcheck.app.testsupport.noneWiderThanTheScreen
 import com.rigcheck.app.testsupport.nodesWithTagShowing
@@ -173,7 +174,7 @@ class DisclaimerResultsLayoutTest {
         }
         // results__notices and results__notices_scrolled: the estimate, then the Garage notice with Get Pro under it, then the
         // History notice, and the breakdown under all of them.
-        problems += inState("results: notices", results(safeRows.map { it.copy(estimated = true) }, withNotices = true)) { p ->
+        problems += inState("results: notices", results(safeRows.map { it.copy(estimated = true) }, garage = fullGarage, history = historyText)) { p ->
             val b = p.bounds()
             sizes(b, p.widthDp, resultsSizes.only(resultsHeader + noticeTags + UiTags.RESULTS_BREAKDOWN_CARD)) +
                 order(
@@ -185,13 +186,30 @@ class DisclaimerResultsLayoutTest {
         // results__notices_scrolled: the page is scrolled to the first row, so the History notice is above it, Get Pro above
         // that (cut by the bar), and the breakdown card starts under the History notice.
         problems += inState(
-            "results: notices_scrolled", results(safeRows.map { it.copy(estimated = true) }, withNotices = true),
+            "results: notices_scrolled", results(safeRows.map { it.copy(estimated = true) }, garage = fullGarage, history = historyText),
             setUp = { node(UiTags.RESULTS_ROW) },
         ) { p ->
             val b = p.bounds()
             shown(b, listOf(UiTags.RESULTS_BACK, UiTags.HISTORY_NOTICE, UiTags.RESULTS_BREAKDOWN_CARD, UiTags.RESULTS_START_ANOTHER_BUTTON)) +
                 order(b, listOf(UiTags.GARAGE_NOTICE_GET_PRO, UiTags.HISTORY_NOTICE, UiTags.RESULTS_BREAKDOWN_CARD).map { listOf(it) }) +
                 reach(p, UiTags.HISTORY_NOTICE, UiTags.RESULTS_START_ANOTHER_BUTTON)
+        }
+        // The map's other notice states, which no frame draws on their own: on a Pro or unknown account the Garage notice has
+        // no Get Pro under it ("Pro/unknown: without"), and the History notice can show alone. Same cards, same place under
+        // the verdict, and nothing else of the notices on the page.
+        problems += inState("results: garage_notice_without_get_pro", results(safeRows, garage = fullGarageProOrUnknown)) { p ->
+            val b = p.bounds()
+            sizes(b, p.widthDp, resultsSizes.only(listOf(UiTags.GARAGE_NOTICE))) +
+                absent(b, listOf(UiTags.GARAGE_NOTICE_GET_PRO, UiTags.HISTORY_NOTICE, UiTags.RESULTS_ESTIMATED_NOTICE)) +
+                order(b, resultsHeaderBands + listOf(UiTags.GARAGE_NOTICE, UiTags.RESULTS_BREAKDOWN_CARD).map { listOf(it) }, resultsStacks) +
+                reach(p, UiTags.GARAGE_NOTICE, UiTags.RESULTS_START_ANOTHER_BUTTON) + touchTargets(p)
+        }
+        problems += inState("results: history_notice_alone", results(safeRows, history = historyText)) { p ->
+            val b = p.bounds()
+            sizes(b, p.widthDp, resultsSizes.only(listOf(UiTags.HISTORY_NOTICE))) +
+                absent(b, listOf(UiTags.GARAGE_NOTICE, UiTags.GARAGE_NOTICE_GET_PRO, UiTags.RESULTS_ESTIMATED_NOTICE)) +
+                order(b, resultsHeaderBands + listOf(UiTags.HISTORY_NOTICE, UiTags.RESULTS_BREAKDOWN_CARD).map { listOf(it) }, resultsStacks) +
+                reach(p, UiTags.HISTORY_NOTICE, UiTags.RESULTS_START_ANOTHER_BUTTON) + touchTargets(p)
         }
         // results__safe_scrolled_to_end: the page is scrolled to its footer note; the card ends above it.
         problems += inState("results: safe_scrolled_to_end", results(safeRows), setUp = { node(UiTags.RESULTS_FOOTER_NOTE) }) { p ->
@@ -228,7 +246,7 @@ class DisclaimerResultsLayoutTest {
                 reach(p, *(disclaimerTags - tall).toTypedArray()) + reachSome(p, *tall.toTypedArray()) +
                 noneWiderThanTheScreen(p) + touchTargets(p)
         }
-        problems += inState("results: all the notices ${frame.name}", results(safeRows.map { it.copy(estimated = true) }, withNotices = true)) { p ->
+        problems += inState("results: all the notices ${frame.name}", results(safeRows.map { it.copy(estimated = true) }, garage = fullGarage, history = historyText)) { p ->
             // The estimate and the card are taller than the room the page has on a phone this small.
             val tallOnes = listOf(UiTags.RESULTS_ESTIMATED_NOTICE, UiTags.RESULTS_BREAKDOWN_CARD)
             val everything = resultsHeader + resultsRowParts + noticeTags + listOf(
@@ -486,18 +504,20 @@ class DisclaimerResultsLayoutTest {
 
     private fun disclaimer(): @Composable () -> Unit = { DisclaimerScreen(onAcknowledge = {}) }
 
-    private fun results(rows: List<BreakdownItem>, withNotices: Boolean = false): @Composable () -> Unit = {
+    // A full Garage on a Free account (with Get Pro), the same on a Pro or unknown account (without), and a History
+    // that did not save: the map's states for the three notices.
+    private val fullGarage = GarageNotice("Your Garage is full (3 of 3), so \"Lakeside\" wasn't saved to it. Your check is not affected.", offerPro = true)
+    private val fullGarageProOrUnknown = fullGarage.copy(offerPro = false)
+    private val historyText = "We couldn't save this check to your History. Your check is not affected."
+
+    private fun results(rows: List<BreakdownItem>, garage: GarageNotice? = null, history: String? = null): @Composable () -> Unit = {
         ResultsScreen(
             rigNickname = "Summer rig",
             breakdown = rows,
             verdict = verdictFor(rows),
             onStartAnother = {},
-            garageNotice = if (withNotices) {
-                GarageNotice("Your Garage is full (3 of 3), so \"Lakeside\" wasn't saved to it. Your check is not affected.", offerPro = true)
-            } else {
-                null
-            },
-            historyNotice = if (withNotices) "We couldn't save this check to your History. Your check is not affected." else null,
+            garageNotice = garage,
+            historyNotice = history,
         )
     }
 }

@@ -1077,7 +1077,13 @@ network involved:
   failing row and a failing verdict say "Over limit" and "Not Safe to Tow" (a passing one "Within limit" and
   "Safe to Tow") and use another icon, not just another colour (`StatusLooksTest` holds the shapes on the JVM).
   Changed in #194, and why: the sixth-row test no longer scrolls "the card's own lazy list" with
-  `performScrollToNode` (there is no list now); it scrolls the page to the row.
+  `performScrollToNode` (there is no list now); it scrolls the page to the row, and the "no Combined row"
+  test scrolls to the third row (the taller verdict band and the pinned bars leave it below the fold). In
+  `RigCheckBreakdownRowTest` the note's contrast is held against the sunken fill the note now always has (it was
+  tone-dependent; the frames draw the failing row's note the same). The notice card (also shown by the Chooser and the
+  entry screens) and the verdict band changed their code but not what the other screens draw; the classes at risk,
+  `ChooserScreenTest`, the three entry-screen tests, `ScanNoticeScreenTest`, `RigPickerChooserLayoutTest` and
+  `EntryScreensLayoutTest`, were not all run (only `ScanNoticeScreenTest` was); the full pass is #197's.
 - `BreakdownRowTest` — removed in #194 with the row it tested (`BreakdownRow`, replaced by `RigCheckBreakdownRow`
   from #191). Its three tests live on in `RigCheckBreakdownRowTest`: a row's note is hidden until tapped and then
   appears (the chevron, and a tap on the row itself), a row without a note ignores a tap, and a row at 0% renders.
@@ -1202,7 +1208,8 @@ network involved:
   emulator, built the way `EntryScreensLayoutTest` is (the checks and the way a state is put on the screen are
   `testsupport/LayoutChecks.kt`). In each state the frames draw (`disclaimer__default` and `__large_font`;
   `results__safe`, `__not_safe_row_expanded`, `__partially_checked`, `__not_enough_information`, `__notices`,
-  `__notices_scrolled` and `__safe_scrolled_to_end`) every element is on show by its tag after a scroll to it, the
+  `__notices_scrolled` and `__safe_scrolled_to_end`, and the two notice states the map lists that no frame draws alone:
+  a Garage notice without Get Pro, the Pro or unknown account's, and a History notice by itself) every element is on show by its tag after a scroll to it, the
   reading order is the frame's (bands compared by their tops: the notices come in the frames' order, the estimate,
   the Garage notice, Get Pro, the History notice, not the map's `new_order` numbers, which count a different frame
   for each), and the measured width and height are the map's: 1.5 dp where the map gives a fixed size, 4 dp (2 dp

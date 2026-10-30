@@ -59,7 +59,7 @@ fun RigCheckNoticeCard(
     textModifier: Modifier = Modifier,
 ) {
     val colors = rigCheckNoticeColors(tone)
-    RigCheckNoticeCard(tone = tone, modifier = modifier, title = title, icon = icon, gap = 2.dp) {
+    RigCheckNoticeCard(tone = tone, modifier = modifier, title = title, icon = icon, contentSpacing = 2.dp) {
         Text(text, style = RigCheckStyles.bodySm, color = colors.text, modifier = textModifier)
     }
 }
@@ -72,7 +72,8 @@ fun RigCheckNoticeCard(
     modifier: Modifier = Modifier,
     title: String? = null,
     icon: ImageVector? = defaultNoticeIcon(tone),
-    gap: Dp = 6.dp,
+    // Between the title and the content, and between the content's own lines.
+    contentSpacing: Dp = 6.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = rigCheckNoticeColors(tone)
@@ -87,7 +88,7 @@ fun RigCheckNoticeCard(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
             if (icon != null) Icon(icon, contentDescription = null, tint = colors.icon, modifier = Modifier.size(22.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(gap), modifier = Modifier.weight(1f)) {
+            Column(verticalArrangement = Arrangement.spacedBy(contentSpacing), modifier = Modifier.weight(1f)) {
                 if (title != null) Text(title, style = RigCheckStyles.titleSm, color = colors.text)
                 content()
             }

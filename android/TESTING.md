@@ -1158,10 +1158,7 @@ network involved:
   picker, each screen's primary action (Create, the two Chooser cards, the dialog's two buttons) scrolls wholly
   on show and nothing is wider than the screen. It changes the display size, density and font scale and puts
   them back, as `LayoutCaptureTest` does; it needs the single emulator and sends no Scan.
-- `EntryScreensLayoutTest` (#193, with the focused-field states added by #199: "gvwr focused" on the Truck and
-  Trailer screens is the designer's `__filled` frame with the field's badge, the keyboard-open states show the
-  badge too, and the two small-phone runs focus the longest badge, Front GAWR and GAWR per axle: the badge is at
-  the right of the hint on the hint's row, 22 dp high, and its text is laid out whole, not cut off or wrapped) — the Truck Tag, Trailer Tag and Scale Ticket screens against the designer's
+- `EntryScreensLayoutTest` (#193) — the Truck Tag, Trailer Tag and Scale Ticket screens against the designer's
   map, on the emulator, built the way `RigPickerChooserLayoutTest` is (its checks and the way a state is put on
   the screen are shared in `testsupport/LayoutChecks.kt`, which also sets the window to resize for the keyboard
   as `MainActivity` declares it; left unspecified, the test activity is panned instead). In each state the frames
@@ -1188,6 +1185,12 @@ network involved:
   five numbers and the photo carries them), `ReferenceImageCardTest` (the pinned card's photo is 116 dp, or a 44 dp
   strip when compact, under the approved hint) and `RigCheckNumberBadgeTest` (the badge shows its number at 22 dp
   and at the size it is given, and its digit meets AA on the orange).
+  #199 added the focused-field states to `EntryScreensLayoutTest`: "gvwr focused" on the Truck and Trailer
+  screens is the designer's `__filled` frame (the field has focus, the keyboard is closed) with the field's badge
+  (61 dp wide for GVWR, 22 dp high), the keyboard-open states show the badge too, and the two small-phone runs
+  (360 x 640, and at font scale 2.0) focus the longest badges, Front GAWR and GAWR per axle, on the collapsed
+  44 dp card: the badge is at the right of the hint on the hint's row and its text is laid out whole, not cut off
+  or wrapped.
 - `LateScanDialogTest` (#118) — the dialog for a Scan that answered after its
   check ended shows its message with OK only (no Try again, Sign in or photo
   step), and OK dismisses.

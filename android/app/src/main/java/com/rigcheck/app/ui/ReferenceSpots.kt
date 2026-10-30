@@ -5,9 +5,9 @@ import kotlin.math.min
 
 // The pinned reference card on the Truck and Trailer screens (components.md, "Reference card (pinned crop) and
 // reference image"; interaction-notes.md): when a field takes focus the card shows three lines of the label centred on
-// that field's printed line, with the line outlined, and a badge naming the field. This is the data that needs (a crop
-// rectangle per field, as fractions of the photo) and the arithmetic that turns one into what the card draws; the
-// Compose side is ReferenceImageCard.
+// that field's printed line, with the line outlined, and a badge naming the field. This file holds the data that needs
+// (a crop rectangle per field, as fractions of the photo) and the arithmetic that turns one into what the card draws;
+// the Compose side is ReferenceImageCard.
 
 /** A rectangle of a photo as fractions of it: 0 is the left or top edge, 1 the right or bottom edge. */
 data class PhotoRect(val left: Float, val top: Float, val right: Float, val bottom: Float) {
@@ -65,7 +65,7 @@ object ReferenceSpots {
         defaultCrop = rect(312, 104, 712, 198),
         defaultLine = rect(312, 108, 712, 140),
         spots = mapOf(
-            TruckField.Gvwr to ReferenceSpot("GVWR", crop = rect(780, 100, 1230, 195), line = rect(900, 108, 1218, 140)),
+            TruckField.Gvwr to ReferenceSpot("GVWR", crop = rect(715, 100, 1230, 195), line = rect(900, 108, 1218, 140)),
             TruckField.FrontGawr to ReferenceSpot("Front GAWR", crop = rect(312, 105, 712, 200), line = rect(322, 140, 700, 170)),
             TruckField.RearGawr to ReferenceSpot("Rear GAWR", crop = rect(782, 107, 1192, 200), line = rect(792, 141, 1180, 170)),
         ),

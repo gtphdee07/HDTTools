@@ -200,7 +200,7 @@ class EntryScreensLayoutTest {
             val b = p.bounds()
             val form = listOf(UiTags.TRUCK_GVWR_FIELD, UiTags.TRUCK_FRONT_GAWR_FIELD, UiTags.TRUCK_REAR_GAWR_FIELD, UiTags.TRUCK_GCWR)
             val card = listOf(UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_IMAGE)
-            sizes(b, p.widthDp, truckSizes.only(card + form)) +
+            sizes(b, p.widthDp, truckSizes.only(card + form) + (UiTags.TRUCK_REFERENCE_FOCUS_BADGE to gvwrBadge)) +
                 order(
                     b,
                     truckHeaderBands.take(2) + listOf(listOf(UiTags.TRUCK_REFERENCE_HINT, UiTags.TRUCK_REFERENCE_FOCUS_BADGE), listOf(UiTags.TRUCK_REFERENCE_IMAGE)) +
@@ -274,7 +274,7 @@ class EntryScreensLayoutTest {
             val b = p.bounds()
             val form = listOf(UiTags.TRAILER_GVWR_FIELD, UiTags.TRAILER_GAWR_FIELD, UiTags.TRAILER_AXLE_COUNT_FIELD, UiTags.TRAILER_UVW_FIELD)
             val card = listOf(UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_IMAGE)
-            sizes(b, p.widthDp, trailerSizes.only(card + form)) +
+            sizes(b, p.widthDp, trailerSizes.only(card + form) + (UiTags.TRAILER_REFERENCE_FOCUS_BADGE to gvwrBadge)) +
                 order(
                     b,
                     trailerHeaderBands.take(2) + listOf(listOf(UiTags.TRAILER_REFERENCE_HINT, UiTags.TRAILER_REFERENCE_FOCUS_BADGE), listOf(UiTags.TRAILER_REFERENCE_IMAGE)) +
@@ -397,6 +397,7 @@ class EntryScreensLayoutTest {
         ) { p ->
             val b = p.bounds()
             shown(b, listOf(UiTags.TRUCK_REFERENCE_HINT, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_IMAGE)) +
+                sizes(b, p.widthDp, mapOf(UiTags.TRUCK_REFERENCE_IMAGE to Size(Dim.Any, fixed(44)))) +
                 badgeBesideTheHint(b, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_HINT) +
                 badgeTextIsNotCutOff(p, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, "Front GAWR") +
                 noneWiderThanTheScreen(p)
@@ -411,6 +412,7 @@ class EntryScreensLayoutTest {
         ) { p ->
             val b = p.bounds()
             shown(b, listOf(UiTags.TRAILER_REFERENCE_HINT, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_IMAGE)) +
+                sizes(b, p.widthDp, mapOf(UiTags.TRAILER_REFERENCE_IMAGE to Size(Dim.Any, fixed(44)))) +
                 badgeBesideTheHint(b, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_HINT) +
                 badgeTextIsNotCutOff(p, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, "GAWR per axle") +
                 noneWiderThanTheScreen(p)
@@ -575,6 +577,7 @@ class EntryScreensLayoutTest {
 
     // The map gives 22 dp high and as wide as the field's name ("wrap": 61 dp for GVWR, 114 dp for GAWR per axle).
     private val referenceFocusBadge = Size(Dim.Any, about(22, 2))
+    private val gvwrBadge = Size(about(61, 6), about(22, 2))
 
     private val truckSizes: Map<String, Size> = mapOf(
         UiTags.TRUCK_BACK to topBar.getValue("back"),

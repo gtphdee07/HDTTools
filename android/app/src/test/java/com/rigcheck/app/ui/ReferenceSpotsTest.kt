@@ -106,15 +106,17 @@ class ReferenceSpotsTest {
     private val tallBox = 354f / 116f
     private val strip = 354f / 44f
 
-    private fun every(): List<Pair<String, ReferenceSpot?>> =
-        listOf("no field" to null) +
-            TruckField.entries.mapNotNull { f -> ReferenceSpots.truck.spotFor(f)?.let { "truck $f" to it } } +
-            TrailerField.entries.mapNotNull { f -> ReferenceSpots.trailer.spotFor(f)?.let { "trailer $f" to it } }
+    // Every view the card can show, with the label (photo) it is of: the default view and one per field with a line.
+    private data class View(val name: String, val label: ReferenceLabel<*>, val spot: ReferenceSpot?)
+
+    private fun every(): List<View> =
+        listOf(View("truck, no field", ReferenceSpots.truck, null), View("trailer, no field", ReferenceSpots.trailer, null)) +
+            TruckField.entries.mapNotNull { f -> ReferenceSpots.truck.spotFor(f)?.let { View("truck $f", ReferenceSpots.truck, it) } } +
+            TrailerField.entries.mapNotNull { f -> ReferenceSpots.trailer.spotFor(f)?.let { View("trailer $f", ReferenceSpots.trailer, it) } }
 
     @Test
     fun theWindowOfEveryViewIsInsideThePhotoHasTheBoxsShapeAndHoldsTheWholeCrop() {
-        for ((name, spot) in every()) {
-            val label = if (name.startsWith("trailer")) ReferenceSpots.trailer else ReferenceSpots.truck
+        for ((name, label, spot) in every()) {
             val crop = spot?.crop ?: label.defaultCrop
             val window = spotWindow(crop, spot?.line, tallBox, photoAspect)
 
@@ -127,8 +129,7 @@ class ReferenceSpotsTest {
 
     @Test
     fun theCompactWindowHoldsTheWholeOfTheFocusedLine() {
-        for ((name, spot) in every()) {
-            val label = if (name.startsWith("trailer")) ReferenceSpots.trailer else ReferenceSpots.truck
+        for ((name, label, spot) in every()) {
             val line = spot?.line ?: label.defaultLine
             val window = spotWindow(line, spot?.line, strip, photoAspect)
 
@@ -139,8 +140,7 @@ class ReferenceSpotsTest {
 
     @Test
     fun theOutlinedLineLandsInsideTheBoxAndTheDefaultViewOutlinesNothing() {
-        for ((name, spot) in every()) {
-            val label = if (name.startsWith("trailer")) ReferenceSpots.trailer else ReferenceSpots.truck
+        for ((name, label, spot) in every()) {
             val window = spotWindow(spot?.crop ?: label.defaultCrop, spot?.line, tallBox, photoAspect)
             val outline = window.lineInBox
             if (spot == null) {

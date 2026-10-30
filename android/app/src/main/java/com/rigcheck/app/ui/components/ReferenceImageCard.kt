@@ -141,6 +141,8 @@ fun <F : Enum<F>> PinnedReferenceCard(
     badgeModifier: Modifier = Modifier,
 ) {
     val spot = label.spotFor(focused)
+    // What the photo is centred on: the focused line alone on the one-line strip, else three lines around it.
+    val target = if (compact) spot?.line ?: label.defaultLine else spot?.crop ?: label.defaultCrop
     Surface(
         color = SurfaceWhite,
         shape = RoundedCornerShape(Radii.Panel),
@@ -176,7 +178,7 @@ fun <F : Enum<F>> PinnedReferenceCard(
             ReferenceImageCard(
                 imageRes = imageRes,
                 contentDescription = referenceDescription(imageDescription, spot),
-                target = if (compact) spot?.line ?: label.defaultLine else spot?.crop ?: label.defaultCrop,
+                target = target,
                 line = spot?.line,
                 height = if (compact) 44.dp else 116.dp,
                 modifier = imageModifier,

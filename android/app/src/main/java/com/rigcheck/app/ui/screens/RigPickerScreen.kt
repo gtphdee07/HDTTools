@@ -18,10 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,10 +29,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rigcheck.app.domain.model.RecentRig
+import com.rigcheck.app.ui.ScanMessages
 import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.components.CreditBalanceChip
 import com.rigcheck.app.ui.components.FeedbackLink
@@ -45,12 +44,14 @@ import com.rigcheck.app.ui.components.RigCheckAccountStatus
 import com.rigcheck.app.ui.components.RigCheckButton
 import com.rigcheck.app.ui.components.RigCheckButtonKind
 import com.rigcheck.app.ui.components.RigCheckButtonSize
+import com.rigcheck.app.ui.components.RigCheckDialog
 import com.rigcheck.app.ui.components.RigCheckEmptyState
 import com.rigcheck.app.ui.components.RigCheckLogo
 import com.rigcheck.app.ui.components.RigCheckRigCard
 import com.rigcheck.app.ui.components.RigCheckTextField
 import com.rigcheck.app.ui.components.RigCheckTopBar
 import com.rigcheck.app.ui.components.chipBelowTitle
+import com.rigcheck.app.ui.theme.DangerText
 import com.rigcheck.app.ui.theme.Ink
 import com.rigcheck.app.ui.theme.InkMuted
 import com.rigcheck.app.ui.theme.PurpleDeep
@@ -84,6 +85,9 @@ fun RigPickerScreen(
     // Deletes a Rig from the Garage: true once it is gone, false if it could not be deleted and is still
     // there. Passed only when Rigs can be deleted (a signed-in account); with null no Rig has a delete control.
     onDeleteRig: (suspend (RecentRig) -> Boolean)? = null,
+    // A paid Scan is out, from the Chooser the user backed out of or otherwise: the sheet offers no Sign out until it
+    // answers (#197).
+    scanIsOut: Boolean = false,
 ) {
     var newRigNickname by remember { mutableStateOf("") }
     // The Rig the user has asked to delete and has not yet confirmed or cancelled.
@@ -225,6 +229,7 @@ fun RigPickerScreen(
             emailModifier = Modifier.testTag(UiTags.PICKER_ACCOUNT_MENU_EMAIL),
             signOutModifier = Modifier.testTag(UiTags.PICKER_SIGN_OUT_BUTTON),
             cancelModifier = Modifier.testTag(UiTags.PICKER_ACCOUNT_MENU_CANCEL),
+            signOutUnavailableReason = ScanMessages.SIGN_OUT_UNAVAILABLE.takeIf { scanIsOut },
         )
     }
 }
@@ -314,47 +319,65 @@ private fun DeleteRigDialog(rig: RecentRig, onDelete: suspend (RecentRig) -> Boo
     var failed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    AlertDialog(
+    // The design's dialog (components.md, "Dialog"; frames delete_rig_dialog__question, __deleting and __delete_failed):
+    // the question as its heading, the body, and after a failed delete the error in danger-text above the buttons;
+    // "Yes, delete" in the destructive button, then Cancel as a ghost, stacked full width.
+    RigCheckDialog(
         // Back and a tap outside cancel, but not while the delete runs.
         onDismissRequest = { if (!deleting) onClose() },
         modifier = Modifier.testTag(UiTags.DELETE_RIG_DIALOG),
-        title = { Text("Delete \"${rig.nickname}\"?", modifier = Modifier.testTag(UiTags.DELETE_RIG_TITLE)) },
-        text = {
+        title = {
+            Text(
+                "Delete \"${rig.nickname}\"?",
+                style = RigCheckStyles.titleLg,
+                color = Ink,
+                modifier = Modifier.testTag(UiTags.DELETE_RIG_TITLE),
+            )
+        },
+        body = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     "This frees its spot in your Garage and can't be undone.",
+                    style = RigCheckStyles.body.copy(lineHeight = 24.sp),
+                    color = Ink,
                     modifier = Modifier.testTag(UiTags.DELETE_RIG_BODY),
                 )
                 if (failed) {
                     Text(
                         "We couldn't delete \"${rig.nickname}\". It's still in your Garage; please try again.",
-                        color = MaterialTheme.colorScheme.error,
+                        style = RigCheckStyles.bodySm.copy(fontWeight = FontWeight.Medium),
+                        color = DangerText,
                         modifier = Modifier.testTag(UiTags.DELETE_RIG_ERROR),
                     )
                 }
             }
         },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    deleting = true
-                    failed = false
-                    scope.launch {
-                        val deleted = onDelete(rig)
-                        deleting = false
-                        if (deleted) onClose() else failed = true
-                    }
-                },
-                enabled = !deleting,
-                modifier = Modifier.testTag(UiTags.DELETE_RIG_CONFIRM),
-            ) { Text(if (deleting) "Deleting…" else "Yes, delete") }
-        },
-        dismissButton = {
-            TextButton(onClick = onClose, enabled = !deleting, modifier = Modifier.testTag(UiTags.DELETE_RIG_CANCEL)) {
-                Text("Cancel")
-            }
-        },
-    )
+    ) {
+        RigCheckButton(
+            text = if (deleting) "Deleting…" else "Yes, delete",
+            onClick = {
+                deleting = true
+                failed = false
+                scope.launch {
+                    val deleted = onDelete(rig)
+                    deleting = false
+                    if (deleted) onClose() else failed = true
+                }
+            },
+            kind = RigCheckButtonKind.Destructive,
+            size = RigCheckButtonSize.Dialog,
+            enabled = !deleting,
+            modifier = Modifier.fillMaxWidth().testTag(UiTags.DELETE_RIG_CONFIRM),
+        )
+        RigCheckButton(
+            text = "Cancel",
+            onClick = onClose,
+            kind = RigCheckButtonKind.Ghost,
+            size = RigCheckButtonSize.Dialog,
+            enabled = !deleting,
+            modifier = Modifier.fillMaxWidth().testTag(UiTags.DELETE_RIG_CANCEL),
+        )
+    }
 }
 
 @Composable

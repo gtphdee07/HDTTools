@@ -52,6 +52,10 @@ internal object ScanMessages {
     const val RESULT_NOT_USED =
         "A Scan finished after you left that check, so its result wasn't used. It used a Scan Credit."
 
+    // Shown beside a disabled Sign out while a paid Scan is out, whichever screen the user is on (#197): the account
+    // that paid for the Scan stays signed in until it answers.
+    const val SIGN_OUT_UNAVAILABLE = "Sign out is unavailable while a Scan is being read. It comes back when the Scan answers."
+
     fun someNotRead(labels: List<String>): String {
         val names = if (labels.size < 2) labels.joinToString() else labels.dropLast(1).joinToString() + " and " + labels.last()
         val them = if (labels.size == 1) "it" else "them"

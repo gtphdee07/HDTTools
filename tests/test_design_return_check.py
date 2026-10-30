@@ -117,6 +117,13 @@ def test_a_stale_known_drift_entry_is_reported(parts):
     assert _problems_with(parts, "KNOWN_DRIFT for scan_error.next_step_button lists test_tag_variants")
 
 
+def test_the_paywall_toast_is_excused_from_nothing(real):
+    # #197: the Paywall's toast has its tag in the inventory and in the follow-up map (a Snackbar since #196), so the
+    # drift list holds only the two ids it was written for.
+    assert set(check.KNOWN_DRIFT) == {"paywall.back", "scan_error.next_step_button"}
+    assert not _problems_with(real, "paywall.toast")
+
+
 def test_drift_outside_the_known_fields_is_still_reported(parts):
     _first_map_entry(parts, "paywall.back")["screen"] = "account"
     assert _problems_with(parts, "paywall.back is not the same element as the inventory's (differs in screen)")

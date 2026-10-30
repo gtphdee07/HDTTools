@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -174,6 +175,10 @@ fun RigCheckAccountSheet(
     emailModifier: Modifier = Modifier,
     signOutModifier: Modifier = Modifier,
     cancelModifier: Modifier = Modifier,
+    // Why Sign out is not offered right now (a paid Scan is out, #197); null when it is. The button is disabled and the
+    // words are shown under it, so the reason is not left to colour alone.
+    signOutUnavailableReason: String? = null,
+    signOutReasonModifier: Modifier = Modifier,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -183,19 +188,23 @@ fun RigCheckAccountSheet(
         shape = RoundedCornerShape(topStart = Radii.SheetTop, topEnd = Radii.SheetTop),
         containerColor = SurfaceWhite,
         scrimColor = Ink.copy(alpha = Opacity.Scrim),
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(top = 12.dp)
-                    .width(40.dp)
-                    .height(4.dp)
-                    .background(Border, RoundedCornerShape(2.dp)),
-            )
-        },
+        // The design's handle is a picture, drawn at the top of the content below. Material's own handle slot is a
+        // clickable that expands and collapses the sheet, which this one never does (it has no half-open state), and
+        // it gave a screen reader an unlabelled 40 x 16 dp target (the accessibility checks of #197 found it).
+        dragHandle = null,
         modifier = modifier,
     ) {
         // 288 dp in all (the map's new_height): the handle (12 + 4), 16 dp, the avatar row (48), 20 dp, Sign out (56),
         // 12 dp, Cancel (56) and the 64 dp that clears the 3-button bar.
+        Box(
+            modifier = Modifier
+                .padding(top = 12.dp)
+                .align(Alignment.CenterHorizontally)
+                .width(40.dp)
+                .height(4.dp)
+                .background(Border, RoundedCornerShape(2.dp))
+                .clearAndSetSemantics {},
+        )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -220,9 +229,14 @@ fun RigCheckAccountSheet(
                 text = "Sign out",
                 onClick = onSignOut,
                 kind = RigCheckButtonKind.Destructive,
+                enabled = signOutUnavailableReason == null,
                 icon = Icons.AutoMirrored.Filled.Logout,
                 modifier = signOutModifier,
             )
+            if (signOutUnavailableReason != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(signOutUnavailableReason, style = RigCheckStyles.bodySm, color = InkMuted, modifier = signOutReasonModifier)
+            }
             Spacer(Modifier.height(12.dp))
             RigCheckButton(
                 text = "Cancel",

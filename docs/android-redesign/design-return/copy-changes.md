@@ -10,6 +10,7 @@ Default is no change. Every string in `ui-inventory.json` is kept exactly as wri
 | `chooser.credit_chip` | same | same rule | Same chip, same rule. |
 | `truck.reference_hint` | "Hover a field to zoom in on its spot on the tag" | "Tap a field to see its spot on the tag" | A phone has no hover. |
 | `trailer.reference_hint` | "Hover a field to zoom in on its spot on the tag" | "Tap a field to see its spot on the tag" | Same. |
+| `truck.standalone_panel_body` | "Scan a CAT Scale ticket weighing just your tow vehicle (no trailer attached) and we'll fill in the field above for you." | "Scan a CAT Scale ticket weighing just your tow vehicle (no trailer attached) and we'll fill in the field below for you." | The design draws the stand-alone field below the Scan button, inside the panel (owner decision 2026-10-29, #197). |
 
 ## New strings (new elements, no existing text changes)
 
@@ -21,6 +22,7 @@ These belong to `added_elements[]` in the map. None of them replaces an existing
 | `picker.account_status` | Signed in as `<email>` / Not signed in / Sign in | Owner feedback item 3. |
 | `picker.sign_out_button` | Sign out | The word already exists on the Paywall. |
 | `picker.account_menu_cancel` | Cancel | |
+| `picker.sign_out_unavailable` | Sign out is unavailable while a Scan is being read. It comes back when the Scan answers. | Not in the designer's frames (owner decision 2026-10-28, #197): shown under a disabled Sign out in the account sheet, and under the Paywall's Sign out, while a paid Scan is out. |
 | `picker.empty_state` | No saved rigs yet / Finish a check and your rig shows up here. Manual entry is free. | New. Replace with the owner's wording if preferred. |
 | `results.row_badge` | Within limit / Over limit / Not checked | Says the row status in words, so a fail does not rely on colour. |
 | `chooser.loading_text` | Reading… | Reuses the existing "Reading…" string. |

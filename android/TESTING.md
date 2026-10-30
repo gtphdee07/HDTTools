@@ -1630,6 +1630,43 @@ ends at 63px", and the same for the title and Create (the 3-button bar is 126 px
 emulator's own default, gesture navigation, is what had hidden the problem. A new screen that is a full-bleed camera preview would have to opt out of the padding
 on purpose; production capture uses the system camera, so none does today.
 
+**Final-pass tests** (#197) — the checks over the whole finished app, after the re-skin (#191 to #196, #199). They
+open the states of the layout capture (`layoutcapture/CaptureCases.kt`, the screens, dialogs and the account sheet of
+`docs/android-redesign/ui-inventory.json`) on the real emulator, with the shared `LayoutStateRunner`, and list every
+problem of every state before failing:
+
+- `ui/AccessibilityChecksTest.kt` (1 test) — Compose's accessibility checks (the Accessibility Test Framework behind
+  `enableAccessibilityChecks`: touch-target size, a content description on every icon that does something, text and image
+  contrast, duplicate click areas) run on each window of every captured state at 412 x 892 dp; any error fails, a warning
+  does not. The dependency is `androidx.compose.ui:ui-test-junit4-accessibility` (an `androidTestImplementation`; its
+  version comes from the Compose BOM). The contrast it measures is of the pixels, so it sits over `TextFillPairsTest`, which
+  holds the design's text and fill colours to AA on the JVM.
+- `ui/navigation/ThreeButtonNavigationTest.kt` (1 test) — with 3-button navigation really on (`testsupport/NavigationMode`
+  sets the overlay and puts the device's setting back), every captured state at 360 x 640 dp: no tagged element, as much of
+  it as is on show, reaches into the navigation bar. `SystemBarsTest` holds the rule that does it (`RigCheckApp`'s
+  `safeDrawingPadding()`) for two screens with the real controls tapped; this one covers every screen.
+- `ui/navigation/SignOutDuringScanNavigationTest.kt` (3 tests) — Sign out is not possible while a paid Scan is out, through
+  the real nav host and view model with a signed-in fake account (owner decision of 2026-10-28, #192 merge): a Scan started
+  on the Chooser and backed out of leaves the Rig picker's account sheet with Sign out disabled and the reason in words
+  (`ScanMessages.SIGN_OUT_UNAVAILABLE`), a tap and `signOut()` reach the account zero times, and the account is still signed
+  in; once the Scan has answered, Sign out is enabled, the reason is gone, and signing out ends the session; the Paywall's
+  Sign out is disabled too. `ScanInFlightNavigationTest` is unchanged.
+- `ui/screens/RigPickerDialogsLayoutTest.kt` (2 tests) — the delete-Rig and crash-report dialogs on a 360 x 640 dp phone, at
+  font scale 1 and 2.0: every action is reached by scrolling, nothing is wider than the screen, the 48 dp rule holds. The
+  other screens' primary actions are reached by their own layout test (each has a 360 x 640 test at both font scales).
+- `ui/screens/EntryScreensLayoutTest.kt`, three tests more: at font scale 1.5 the balance chip is beside the Truck screen's
+  title and the reference card is the 116 dp card; at 2.0 the chip is on a row under the title and the card is the 44 dp
+  strip, and with a field focused the hint beside the badge is readable in full or not there ("Tap a fi..." fails) on the
+  Truck and Trailer screens; with the keyboard open the card scrolls with the form on a 360 x 640 dp phone (under 420 dp of
+  room) and stays pinned on a 412 x 892 dp one. The stand-alone panel's words ("the field below") are compared with where
+  the field is. The three layout rules are the ones of `EntryScreenFrame.kt` that survived every #193 test; each was
+  mutated on the device (`val chipBelow = false`, the `fontScale` term dropped, `maxHeight >= 0.dp`) and fails a named test.
+- `ui/navigation/HistoryNavigationTest.kt`, one test more: "Upgrade to Pro" in the History's limit notice opens the Paywall
+  through the real nav host (`onUpgrade = { navController.navigate(RigCheckRoute.Paywall) }` had no test).
+- JVM, `ui/theme/TextFillPairsTest.kt` (4 tests) — every text colour of `tokens.json` against every fill it is drawn on meets
+  WCAG AA (4.5:1; 3:1 for the disabled button, which the standard exempts), the table names only tokens that exist and covers
+  every text token and tint, and the check is shown to fail on a pair under AA.
+
 **Test-support tests** (`testsupport/`, Major suite) — real-network-free
 coverage for test infrastructure: the fixture pool the External suite below
 depends on, and the scroll helper the screen and nav tests use:

@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import com.rigcheck.app.ui.components.LARGE_FONT_SCALE
 import com.rigcheck.app.ui.components.RigCheckFooter
 import com.rigcheck.app.ui.components.RigCheckStepIndicator
 import com.rigcheck.app.ui.components.RigCheckTopBar
@@ -50,7 +51,7 @@ internal fun EntryScreenFrame(
     val chipBelow = chip != null && chipBelowTitle()
     val keyboardOpen = WindowInsets.isImeVisible
     val configuration = LocalConfiguration.current
-    val compactReference = configuration.screenHeightDp < SHORT_SCREEN_DP || configuration.fontScale >= 1.6f
+    val compactReference = configuration.screenHeightDp < SHORT_SCREEN_DP || configuration.fontScale >= LARGE_FONT_SCALE
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val pinReference = reference != null && maxHeight >= MIN_ROOM_TO_PIN_DP.dp

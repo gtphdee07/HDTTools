@@ -33,10 +33,16 @@ class Probe(
     val rule: ComposeTestRule,
     val widthDp: Double,
     val heightDp: Double,
+    // The font scale the activity runs at (the system setting of the display frame).
+    val fontScale: Float,
     private val imePx: () -> Int,
+    private val navigationBarPx: () -> Int = { 0 },
 ) {
     fun bounds(): Map<String, TaggedBounds> = rule.measureTaggedElements(Frame.PX_PER_DP)
     fun imeDp(): Double = imePx() / Frame.PX_PER_DP
+
+    // The height of the navigation bar (the 3-button keys or the gesture handle) the system reports for the window.
+    fun navigationBarDp(): Double = navigationBarPx() / Frame.PX_PER_DP
 }
 
 sealed interface Dim {
@@ -89,8 +95,12 @@ class LayoutStateRunner(private val rule: ComposeTestRule, private val screensho
                     rule,
                     widthDp = metrics.widthPixels / Frame.PX_PER_DP,
                     heightDp = metrics.heightPixels / Frame.PX_PER_DP,
+                    fontScale = activity.resources.configuration.fontScale,
                     imePx = {
                         ViewCompat.getRootWindowInsets(activity.window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0
+                    },
+                    navigationBarPx = {
+                        ViewCompat.getRootWindowInsets(activity.window.decorView)?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
                     },
                 )
             }

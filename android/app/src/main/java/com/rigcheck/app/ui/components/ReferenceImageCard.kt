@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,6 +28,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsPropertyKey
@@ -56,6 +58,9 @@ import com.rigcheck.app.ui.theme.Surface as SurfaceWhite
 import kotlin.math.roundToInt
 
 private val cardShape = RoundedCornerShape(14.dp)
+
+// From this font scale the reference card is the one-line strip (EntryScreenFrame) and its hint steps aside for the badge.
+internal const val LARGE_FONT_SCALE = 1.6f
 
 // The line outlined in the crop: 2.5 dp in orange on tint-orange (components.md). The tint is see-through so the printed
 // words show through it.
@@ -143,6 +148,9 @@ fun <F : Enum<F>> PinnedReferenceCard(
     val spot = label.spotFor(focused)
     // What the photo is centred on: the focused line alone on the one-line strip, else three lines around it.
     val target = if (compact) spot?.line ?: label.defaultLine else spot?.crop ?: label.defaultCrop
+    // At a large font the badge leaves the hint room for a few letters ("Tap a fi..."). The hint's point is to get the
+    // user to tap a field; once one is focused the badge says which field the card shows, so the hint steps aside (#197).
+    val showHint = !(spot != null && LocalDensity.current.fontScale >= LARGE_FONT_SCALE)
     Surface(
         color = SurfaceWhite,
         shape = RoundedCornerShape(Radii.Panel),
@@ -158,14 +166,18 @@ fun <F : Enum<F>> PinnedReferenceCard(
                 modifier = Modifier.padding(horizontal = 4.dp),
             ) {
                 Icon(Icons.Filled.Search, contentDescription = null, tint = TealDeep, modifier = Modifier.size(22.dp))
-                Text(
-                    hint,
-                    style = RigCheckStyles.bodySm,
-                    color = InkMuted,
-                    maxLines = if (compact) 2 else Int.MAX_VALUE,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = hintModifier.weight(1f),
-                )
+                if (showHint) {
+                    Text(
+                        hint,
+                        style = RigCheckStyles.bodySm,
+                        color = InkMuted,
+                        maxLines = if (compact) 2 else Int.MAX_VALUE,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = hintModifier.weight(1f),
+                    )
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
                 if (spot != null) {
                     // Read out when it appears, so a screen reader user hears which field the card now shows.
                     RigCheckBadge(

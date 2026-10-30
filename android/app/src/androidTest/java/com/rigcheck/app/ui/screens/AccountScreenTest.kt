@@ -1,5 +1,8 @@
 package com.rigcheck.app.ui.screens
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -205,5 +208,26 @@ class AccountScreenTest {
         composeRule.onNodeWithTag(UiTags.ACCOUNT_NOT_NOW_BUTTON).performClick()
 
         assert(left) { "onNotNow should have fired" }
+    }
+
+    // The top bar's Back (#196) goes where Not now goes: the screen has nowhere else to leave to.
+    @Test
+    fun theTopBarsBackLeavesTheScreenLikeNotNow() {
+        var left = 0
+        show(Recorder(), onNotNow = { left++ })
+
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_BACK).assertIsDisplayed().performClick()
+
+        assert(left == 1) { "onNotNow should have fired once, fired $left times" }
+    }
+
+    // The password field is a password field (its text is hidden as it is typed, and the keyboard does not suggest it);
+    // the email field is not. The re-skin (#196) moved both onto the shared text field, which has to pass this on.
+    @Test
+    fun onlyThePasswordFieldIsAPasswordField() {
+        show(Recorder())
+
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_PASSWORD_FIELD).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Password))
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_EMAIL_FIELD).assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Password))
     }
 }

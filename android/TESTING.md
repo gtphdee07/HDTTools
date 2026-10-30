@@ -1249,6 +1249,33 @@ network involved:
   picker's logo moved to the shared `RigCheckLogo` and `RigCheckEmptyState` takes an optional title (no words or sizes
   changed for the picker), so `RigPickerScreenTest`, `RigPickerChooserLayoutTest` and `RigCheckEmptyStateTest` are
   the classes to run if the full pass finds anything; the full pass is #197's.
+- `PaywallAccountLayoutTest` (#196) — the Paywall, the Account screen and the two Scan dialogs against the
+  designer's map, on the emulator, built the way `HistoryLayoutTest` is. In every state the frames draw (Paywall:
+  `free_pro_offer`, `free_busy`, `free_no_pro`, `pro_packs` with the Snackbar, `pro_no_packs`, `pro_bought_waiting`,
+  `loading`, `load_error`, `plan_unknown`, and a production build without the beta notice; Account: `sign_in`,
+  `create_account`, `error`, `info_reset_sent`, `busy`, `keyboard_open`, `feedback_no_mail`, `apple_enabled_future`;
+  `scan_error_dialog` with no, one, two next steps and a long message; `late_scan_dialog`) every element is on show
+  by its tag, the reading order is the frame's, and the measured width and height are the map's. TOLERANCE: 1.5 dp
+  where the map gives a fixed size, 2 dp on one line of text, 3 dp on one line of 15/22 copy (Compose trims 2.4 dp
+  of its extra space), 4 dp on the notices', the title's, the offer card's and the toast's ~values, 12 dp on three
+  or four lines of copy (the explainer, the reason), and 4 dp on a dialog message's lines of 24 dp; "fill" is the
+  screen less the 16 dp margins (less what a card or the dialog holds around it). The production build moves the
+  account line up 80 dp. In `free_busy` the buy button, Sign out, Restore purchase and Back are off; in `busy` on the
+  Account screen the form is off and Send feedback, Not now and Back are on. Restore purchase and Not now are
+  pinned: they do not move when the body is scrolled to its end and they end above the bottom of the screen; the
+  Snackbar is 16 dp in from each side and ends above Restore purchase. Every price button is one line (48 dp),
+  "CA$12.99 one time" among them. At 360 x 640 dp and at font scale 2.0 the offers, the form and the dialogs' buttons
+  are all reached, with the keyboard open on the Account screen, nothing is wider than the screen and every
+  clickable is at least 48 x 48 dp. The frame `pro_bought_waiting` draws the Pro card away and the plan as Pro; the
+  app keeps the card, off (the code and its test do: nothing may buy Pro twice), and the test holds that. It changes
+  the display size, density and font scale and puts them back; it needs the single emulator and sends no Scan. With
+  `-Pandroid.testInstrumentationRunnerArguments.layoutScreenshots=true` it keeps each state's screenshot in
+  `/data/local/tmp/ticket-196-screenshots/<frame>/` on the device. Run it before `AccountScreenTest`: that class
+  leaves the emulator's Google password sheet over the next screenshots (not the measurements). Changed by #196, and
+  the classes at risk: `RigCheckTextField` gained `keyboardType` and `visualTransformation` (no change for its other
+  callers) and `RigCheckDialog` now serves the two Scan dialogs, so the Rig and entry screens' tests that use a field
+  or the photo dialog (`EntryScreensLayoutTest`, `RigPickerChooserLayoutTest`) are the ones to run if the full pass
+  finds anything; the full pass is #197's.
 - `StatusLooksTest` (#194, a JVM test in `src/test`) — the three row tones have three icons, the three sets of
   words "Within limit", "Over limit" and "Not checked" and three badge kinds, and the verdict's pass, fail and
   unsure outcomes have three icons (the two unsure ones share one): a failing row or verdict is never told from a
@@ -1260,7 +1287,8 @@ network involved:
   no icon (the estimate).
 - `LateScanDialogTest` (#118) — the dialog for a Scan that answered after its
   check ended shows its message with OK only (no Try again, Sign in or photo
-  step), and OK dismisses.
+  step), and OK dismisses. (#196) Not changed by the re-skin: the dialog is now the shared
+  `RigCheckDialog` with a ghost OK button, and the test still finds it by its tags and reads the same words.
 - `FeedbackLinkTest` (#182) — "Send feedback" fires one `ACTION_SENDTO` intent whose data is
   `mailto:WTIAppDev@gmail.com?subject=RigCheck%20feedback`, and a phone with no mail app
   (`startActivity` throws `ActivityNotFoundException`) gets "This phone has no email app. Write to
@@ -1269,7 +1297,8 @@ network involved:
   `PaywallScreenTest` checks the "Beta: test payments" label shows with `isBeta = true` and is gone
   with `false` (the screen takes the flag as a parameter; its default is `BuildConfig.IS_BETA`). That the
   address is the same on Web and in the tester guide is `tests/test_beta_feedback_address.py`.
-- `UiTagsDisplayedTest` (#188, 31 tests since #192, which added the picker's account menu and its empty state, and
+- `UiTagsDisplayedTest` (#188, 31 tests since #192, 32 since #196, which added the Snackbar after a restore and the
+  Account Back; #192 added the picker's account menu and its empty state, and
   took out the header divider the design removed) — every element of `docs/android-redesign/ui-inventory.json`
   has a `Modifier.testTag` from the `UiTags` object, and this class shows it on a real screen. One test per
   screen, or per state of it that the inventory lists (the picker, the Chooser with and without a Scan in
@@ -1384,12 +1413,22 @@ network involved:
   close it, and an Offering without a lifetime package (Free) or without packs
   (Pro) shows a plain message.
 - `PaywallScreenTest` also covers (#186) scrolling and Back. A large font (`fontScale` 2) in a window
-  too short for the content puts "Restore purchase" out of view; it scrolls into view with Back still
-  shown. Restore purchase sits right after the offers, not at the bottom of the screen. Back leaves the
+  too short for the content keeps Back and "Restore purchase" in view and scrolls the offers (#196 changed
+  this: Restore purchase moved from the end of the scroll into the pinned footer, so the old test, which
+  expected it to start out of view and scroll in, now holds that it is always in view and that the last
+  offer scrolls to; and the test that held it "right after the offers" now holds that it rests at the
+  foot of the screen under them). Back leaves the
   screen (`onDone`) for a Free account, a Pro account and a plan not known, shows beside Sign out and
   Restore purchase, and is disabled while a restore is out (leaving then would let the result act on
   another screen). That Back returns to the right screen is `ScanErrorNextStepNavigationTest`'s; that
   the Paywall clears the system bars is `SystemBarsTest`'s.
+- `PaywallScreenTest` also covers (#196) the Snackbar: a restore is answered with "Purchases restored."
+  in a Snackbar (tagged `paywall_toast`) that goes away by itself, a failed restore shows the store's
+  error in it, buying Pro (which stays on the screen) says "Pro unlocked!" in it, and a bought pack
+  leaves the screen at once without raising one (the owner's decision: that one confirmation stays a
+  system Toast, which a test cannot see, because a Snackbar would close with the screen).
+- `AccountScreenTest` also covers (#196) the top bar's Back, which leaves the screen like Not now, and
+  that the password field is a password field (its text hidden) and the email field is not.
 - `PaywallOffersTest.kt` (#101, JVM, 5 tests) — the split of an Offering into Pro and scan
   packs: the lifetime package is Pro and the other one-time packages are packs whatever their
   ids, Pro is never also a pack, no lifetime package means no Pro offer, a subscription is

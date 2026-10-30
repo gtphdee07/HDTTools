@@ -8364,7 +8364,7 @@
       },
       "today_measured": null,
       "test_tag_today": null,
-      "test_tag_new": null,
+      "test_tag_new": "paywall_toast",
       "tests_referencing": {},
       "redesign": {
         "status": null,

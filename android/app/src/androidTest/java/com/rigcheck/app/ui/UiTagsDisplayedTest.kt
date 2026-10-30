@@ -434,13 +434,14 @@ class UiTagsDisplayedTest {
         isPro: Boolean?,
         isBeta: Boolean = false,
         onPurchase: (Package, (Boolean, String?) -> Unit) -> Unit = { _, _ -> },
+        onRestore: ((Boolean, String?) -> Unit) -> Unit = {},
         loadPackages: suspend () -> List<Package>,
     ) {
         composeRule.setContent {
             PaywallScreen(
                 creditBalance = 5,
                 onPurchase = onPurchase,
-                onRestore = {},
+                onRestore = onRestore,
                 onDone = {},
                 accountLabel = "alice@example.com",
                 onSignOut = {},
@@ -461,6 +462,17 @@ class UiTagsDisplayedTest {
             UiTags.PAYWALL_OFFER_CARD, UiTags.PAYWALL_OFFER_TITLE, UiTags.PAYWALL_OFFER_DESCRIPTION,
             UiTags.PAYWALL_BUY_BUTTON, UiTags.PAYWALL_RESTORE_BUTTON,
         )
+    }
+
+    // What a restore (or a purchase that stays on the screen) answers is a Snackbar (#196).
+    @Test
+    fun paywallAfterARestoreSaysSoInASnackbar() {
+        setPaywall(isPro = true, onRestore = { report -> report(true, null) }) { listOf(smallPack) }
+
+        composeRule.onNodeWithTag(UiTags.PAYWALL_RESTORE_BUTTON).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { composeRule.nodesWithTag(UiTags.PAYWALL_TOAST) > 0 }
+
+        assertShown(UiTags.PAYWALL_TOAST)
     }
 
     @Test
@@ -528,7 +540,8 @@ class UiTagsDisplayedTest {
         setAccount()
 
         assertShown(
-            UiTags.ACCOUNT_TITLE, UiTags.ACCOUNT_REASON, UiTags.ACCOUNT_EMAIL_FIELD, UiTags.ACCOUNT_PASSWORD_FIELD,
+            UiTags.ACCOUNT_BACK, UiTags.ACCOUNT_TITLE, UiTags.ACCOUNT_REASON, UiTags.ACCOUNT_EMAIL_FIELD,
+            UiTags.ACCOUNT_PASSWORD_FIELD,
             UiTags.ACCOUNT_SUBMIT, UiTags.ACCOUNT_TOGGLE_MODE, UiTags.ACCOUNT_FORGOT_PASSWORD,
             UiTags.ACCOUNT_DIVIDER, UiTags.ACCOUNT_GOOGLE_BUTTON, UiTags.ACCOUNT_APPLE_BUTTON,
             UiTags.ACCOUNT_NOT_NOW_BUTTON, UiTags.ACCOUNT_FEEDBACK_LINK,

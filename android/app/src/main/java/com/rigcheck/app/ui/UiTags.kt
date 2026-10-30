@@ -145,6 +145,10 @@ object UiTags {
     const val RESULTS_ROW_NOTE = "results_row_note"
     const val RESULTS_FOOTER_NOTE = "results_footer_note"
     const val RESULTS_START_ANOTHER_BUTTON = "results_start_another_button"
+    const val RESULTS_BACK = "results_back"
+    const val RESULTS_VERDICT_ICON = "results_verdict_icon"
+    const val RESULTS_ROW_BADGE = "results_row_badge"
+    const val RESULTS_ROW_CHEVRON = "results_row_chevron"
 
     // history
     const val HISTORY_TITLE = "history_title"

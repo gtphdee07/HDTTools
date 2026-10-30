@@ -1,9 +1,15 @@
 package com.rigcheck.app.ui.components
 
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.domain.Tone
 import com.rigcheck.app.domain.VerdictInfo
@@ -54,6 +60,14 @@ class RigCheckVerdictBandTest {
     @Test
     fun notEnoughInformationIsPurple() =
         showAndAssert(verdict(VerdictStatus.INSUFFICIENT, Tone.INSUFFICIENT, "Not Enough Information"), Purple)
+
+    // The map's `results.verdict_icon` is the 64 dp circle, not the 36 dp glyph in it.
+    @Test
+    fun theIconModifierLandsOnTheSixtyFourDpCircle() {
+        val info = verdict(VerdictStatus.PASS, Tone.SUCCESS, "Safe to Tow")
+        composeRule.setRigCheckContent { RigCheckVerdictBand(info, iconModifier = Modifier.testTag("circle")) }
+        composeRule.onNodeWithTag("circle", useUnmergedTree = true).assertWidthIsEqualTo(64.dp).assertHeightIsEqualTo(64.dp)
+    }
 
     @Test
     fun theThreeKindsOfOutcomeDifferInIconAsWellAsColour() {

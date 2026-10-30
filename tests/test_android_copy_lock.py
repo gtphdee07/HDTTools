@@ -152,6 +152,22 @@ def test_the_focus_badge_names_are_in_copy_changes_and_are_the_only_words_the_st
     assert badges == ["GVWR", "Front GAWR", "Rear GAWR", "GVWR", "GAWR per axle", "UVW"]
 
 
+def test_the_disclaimer_wording_is_the_inventorys_byte_for_byte(parts, sources):
+    """#194: the Disclaimer is legally reviewed. `test_no_other_visible_string_changed` only looks for the pieces of a
+    text that has a line break or a dash in it; this holds each of the four whole strings, as the inventory has them,
+    to be one string literal in the app, character for character."""
+    by_id = {e["id"]: e for e in parts["inventory"]["elements"]}
+    for element_id in ("disclaimer.title", "disclaimer.body_1", "disclaimer.body_2", "disclaimer.accept_button"):
+        text = by_id[element_id]["text"]
+        assert f'"{text}"' in sources, f"{element_id}: the app does not hold {text!r} as one literal"
+
+
+def test_a_changed_character_in_the_disclaimer_is_caught(parts, sources):
+    body = next(e for e in parts["inventory"]["elements"] if e["id"] == "disclaimer.body_2")["text"]
+    assert f'"{body}"' in sources
+    assert f'"{body}"' not in sources.replace("at your own risk", "at your risk")
+
+
 def test_the_chip_says_zero_scans_signed_out_in_the_shared_function():
     chip = (ANDROID_MAIN / "java" / "com" / "rigcheck" / "app" / "ui" / "CreditChipLabel.kt").read_text(encoding="utf-8")
     assert re.search(r"signedOut\s*->\s*scansText\(0\)", chip)

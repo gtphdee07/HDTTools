@@ -1065,24 +1065,31 @@ network involved:
   "Partially Checked" (added 2026-08-21 alongside the `Tone.INSUFFICIENT`
   correctness fixes below). (#47) The real breakdown of a rig renders no
   Combined Rig Weight row without a GCWR and shows it (scrolled to in the
-  card's own lazy list) with one. (#168) The Verdict's subline shows under the
-  headline in the verdict pill: the Safe to Tow subline carries the GCWR caveat
+  page, which scrolls as one since #194) with one. (#168) The Verdict's subline shows under the
+  headline in the verdict band: the Safe to Tow subline carries the GCWR caveat
   without a GCWR and not with a checked one, and the over-limit subline shows.
   The `EstimatedFiguresNotice` (Android port of
   Web's `PredictiveEstimateNotice.tsx`) shows when any row is `estimated`,
-  hidden otherwise. (#31) A Garage notice shows beside the verdict when the check's Rig was not saved,
-  offers Pro only when told to, and is absent when the Rig was saved. (#32) A History notice shows beside the
-  verdict only when the check was not saved to the History.
-- `BreakdownRowTest` — a row's note is hidden until tapped, then appears
-  (the dynamic pin-weight-explanation feature); a note-less row's tap
-  is a no-op, doesn't crash; an insufficient row renders without crashing
-  and shows 0%. A real bug was found manually verifying this on-device,
-  not by this test: the progress bar's *track* color didn't follow
-  `Tone.INSUFFICIENT`'s mauve, only the filled portion did — invisible on
-  a normal row (mostly covered by the fill) but glaring on an insufficient
-  row (always 0%, all track) — fixed by setting `trackColor` explicitly.
+  hidden otherwise. (#31) A Garage notice shows under the verdict when the check's Rig was not saved,
+  offers Pro only when told to, and is absent when the Rig was saved. (#32) A History notice shows under the
+  verdict only when the check was not saved to the History. (#194) Back in the top bar calls `onBack`; the
+  estimate, the Garage notice with Get Pro and the History notice all show together with the breakdown; a
+  failing row and a failing verdict say "Over limit" and "Not Safe to Tow" (a passing one "Within limit" and
+  "Safe to Tow") and use another icon, not just another colour (`StatusLooksTest` holds the shapes on the JVM).
+  Changed in #194, and why: the sixth-row test no longer scrolls "the card's own lazy list" with
+  `performScrollToNode` (there is no list now); it scrolls the page to the row.
+- `BreakdownRowTest` — removed in #194 with the row it tested (`BreakdownRow`, replaced by `RigCheckBreakdownRow`
+  from #191). Its three tests live on in `RigCheckBreakdownRowTest`: a row's note is hidden until tapped and then
+  appears (the chevron, and a tap on the row itself), a row without a note ignores a tap, and a row at 0% renders.
+  A real bug was found manually verifying the old row on-device, not by its test: the progress bar's *track*
+  color didn't follow `Tone.INSUFFICIENT`'s mauve, only the filled portion did — invisible on a normal row
+  (mostly covered by the fill) but glaring on an insufficient row (always 0%, all track). The new bar draws one
+  fill on one track in its own colours (`RigCheckProgressBarTest`), so that cannot recur.
 - `DisclaimerScreenTest` — the finalized disclaimer copy renders;
-  tapping "I Understand, Continue" fires `onAcknowledge`.
+  tapping "I Understand, Continue" fires `onAcknowledge`. (#194) The title, both paragraphs and the button say
+  exactly the reviewed words (`onNodeWithTagText` matches the whole text, so one changed character finds
+  nothing; `tests/test_android_copy_lock.py` holds the same strings to the inventory's, byte for byte), and on a
+  screen too short for the words the button does not move when the page scrolls.
 - `RigPickerScreenTest` — a recent-rig card tap fires
   `onSelectRecentRig` with that rig; the "Create" button is disabled
   until a nickname is typed, then fires `onStartNewRig` with it. (#169) Delete: with no delete handler no Rig
@@ -1191,6 +1198,35 @@ network involved:
   (360 x 640, and at font scale 2.0) focus the longest badges, Front GAWR and GAWR per axle, on the collapsed
   44 dp card: the badge is at the right of the hint on the hint's row and its text is laid out whole, not cut off
   or wrapped.
+- `DisclaimerResultsLayoutTest` (#194) — the Disclaimer and Results screens against the designer's map, on the
+  emulator, built the way `EntryScreensLayoutTest` is (the checks and the way a state is put on the screen are
+  `testsupport/LayoutChecks.kt`). In each state the frames draw (`disclaimer__default` and `__large_font`;
+  `results__safe`, `__not_safe_row_expanded`, `__partially_checked`, `__not_enough_information`, `__notices`,
+  `__notices_scrolled` and `__safe_scrolled_to_end`) every element is on show by its tag after a scroll to it, the
+  reading order is the frame's (bands compared by their tops: the notices come in the frames' order, the estimate,
+  the Garage notice, Get Pro, the History notice, not the map's `new_order` numbers, which count a different frame
+  for each), and the measured width and height are the map's: 1.5 dp where the map gives a fixed size, 4 dp (2 dp
+  for one line of text) on a "~" height, 10 dp on a short notice, 22 dp on the estimate (15 lines of legal copy) and
+  24 dp on the breakdown card (the sum of its rows). A repeated element (the row and its parts) is measured on its
+  first instance, as the map says; the rows are counted (six with a GCWR, five without) and the chevron is on
+  exactly the three rows that have a note. The top bar and the footer button are held to the region: they do not
+  move when the page scrolls (and the test checks the page really scrolled), and the Results page has exactly one
+  scroll, the page's own, with the breakdown card moving with it. At 360 x 640 dp and at font scale 2.0, with all the
+  notices showing, the primary action of each screen stays on show, every part of the page scrolls wholly on show,
+  nothing is wider than the screen and every clickable is at least 48 x 48 dp; under 380 dp the verdict icon is above
+  its words, and from font scale 1.6 a row's badge is on the line under its label. It changes the display size,
+  density and font scale and puts them back; it needs the single emulator and sends no Scan. With
+  `-Pandroid.testInstrumentationRunnerArguments.layoutScreenshots=true` it keeps each state's screenshot in
+  `/data/local/tmp/ticket-194-screenshots/<frame>/` on the device, to `adb pull` for the owner's comparison.
+- `StatusLooksTest` (#194, a JVM test in `src/test`) — the three row tones have three icons, the three sets of
+  words "Within limit", "Over limit" and "Not checked" and three badge kinds, and the verdict's pass, fail and
+  unsure outcomes have three icons (the two unsure ones share one): a failing row or verdict is never told from a
+  passing one by colour alone.
+- `RigCheckBreakdownRowTest`, `RigCheckVerdictBandTest` and `RigCheckNoticeCardTest` (#191, extended by #194 where
+  the Results screen needed more of them): a tap on the row itself opens and closes the note, a row without a note
+  ignores it, the badge says the status in words and the chevron is a 48 x 48 dp target that does not make the row
+  taller than 104 dp; the verdict's icon tag lands on its 64 dp circle; a notice can hold content of its own with
+  no icon (the estimate).
 - `LateScanDialogTest` (#118) — the dialog for a Scan that answered after its
   check ended shows its message with OK only (no Try again, Sign in or photo
   step), and OK dismisses.

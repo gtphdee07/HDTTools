@@ -3,6 +3,7 @@ package com.rigcheck.app.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.rigcheck.app.ui.theme.Border
 import com.rigcheck.app.ui.theme.DangerText
@@ -41,6 +43,9 @@ fun rigCheckNoticeColors(tone: RigCheckNoticeTone): RigCheckNoticeColors = when 
     RigCheckNoticeTone.Error -> RigCheckNoticeColors(TintRed, Ink, DangerText, null)
 }
 
+private fun defaultNoticeIcon(tone: RigCheckNoticeTone): ImageVector =
+    if (tone == RigCheckNoticeTone.Info) Icons.Filled.Info else Icons.Filled.Warning
+
 // components.md, "Notice card": 14 dp radius, 12 x 14 padding, a 22 dp leading icon, the text in `body-sm`, an
 // optional title in `title-sm`. The text is always ink; the tone shows in the fill and the icon.
 @Composable
@@ -49,9 +54,26 @@ fun RigCheckNoticeCard(
     tone: RigCheckNoticeTone,
     modifier: Modifier = Modifier,
     title: String? = null,
-    icon: ImageVector = if (tone == RigCheckNoticeTone.Info) Icons.Filled.Info else Icons.Filled.Warning,
+    icon: ImageVector? = defaultNoticeIcon(tone),
     // For the tag of the words (the design measures the words, not the card around them).
     textModifier: Modifier = Modifier,
+) {
+    val colors = rigCheckNoticeColors(tone)
+    RigCheckNoticeCard(tone = tone, modifier = modifier, title = title, icon = icon, gap = 2.dp) {
+        Text(text, style = RigCheckStyles.bodySm, color = colors.text, modifier = textModifier)
+    }
+}
+
+// The same card around content of its own (the estimated-figures notice holds a list), with no icon when `icon` is
+// null: that notice keeps the warning emoji its frozen title already carries, and the design draws no second one.
+@Composable
+fun RigCheckNoticeCard(
+    tone: RigCheckNoticeTone,
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    icon: ImageVector? = defaultNoticeIcon(tone),
+    gap: Dp = 6.dp,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = rigCheckNoticeColors(tone)
     Surface(
@@ -64,10 +86,10 @@ fun RigCheckNoticeCard(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
-            Icon(icon, contentDescription = null, tint = colors.icon, modifier = Modifier.size(22.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+            if (icon != null) Icon(icon, contentDescription = null, tint = colors.icon, modifier = Modifier.size(22.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(gap), modifier = Modifier.weight(1f)) {
                 if (title != null) Text(title, style = RigCheckStyles.titleSm, color = colors.text)
-                Text(text, style = RigCheckStyles.bodySm, color = colors.text, modifier = textModifier)
+                content()
             }
         }
     }

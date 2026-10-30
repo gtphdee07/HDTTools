@@ -4,15 +4,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasScrollAction
-import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rigcheck.app.domain.BreakdownItem
 import com.rigcheck.app.domain.GCWR_UNCHECKED_CAVEAT
@@ -21,13 +17,18 @@ import com.rigcheck.app.domain.computeBreakdown
 import com.rigcheck.app.domain.model.ScaleTicket
 import com.rigcheck.app.domain.model.TrailerTag
 import com.rigcheck.app.domain.model.TruckTag
+import com.rigcheck.app.domain.VerdictStatus
 import com.rigcheck.app.domain.verdictFor
 import com.rigcheck.app.ui.GarageNotice
+import com.rigcheck.app.ui.components.rigCheckRowLook
+import com.rigcheck.app.ui.components.rigCheckVerdictLook
+import org.junit.Assert.assertNotEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.testsupport.onNodeWithTagText
+import com.rigcheck.app.testsupport.scrollToIfScrollable
 
 @RunWith(AndroidJUnit4::class)
 class ResultsScreenTest {
@@ -103,7 +104,8 @@ class ResultsScreenTest {
     fun combinedRigWeightRowIsHiddenWhenNoGcwrWasEntered() {
         showResultsFor(gcwrTruck)
 
-        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_LABEL, "Tow Vehicle Total (GVWR)").assertIsDisplayed()
+        // The taller verdict band and the pinned bars leave the third row below the fold: the page scrolls to it.
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_LABEL, "Tow Vehicle Total (GVWR)").scrollToIfScrollable().assertIsDisplayed()
         composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_LABEL, "Combined Rig Weight").assertDoesNotExist()
     }
 
@@ -111,9 +113,8 @@ class ResultsScreenTest {
     fun combinedRigWeightRowShowsWhenAGcwrWasEntered() {
         showResultsFor(gcwrTruck.copy(gcwrLb = 26_000.0))
 
-        // The sixth row sits below the fold of the card's own list, which composes lazily.
-        composeRule.onNode(hasScrollAction()).performScrollToNode(hasTestTag(UiTags.RESULTS_ROW) and hasText("Combined Rig Weight"))
-        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_LABEL, "Combined Rig Weight").assertIsDisplayed()
+        // The sixth row sits below the fold of the page, which scrolls as one (the card no longer has a list of its own).
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_LABEL, "Combined Rig Weight").scrollToIfScrollable().assertIsDisplayed()
     }
 
     // #168: the Verdict's subline sits under the headline. Without a GCWR the Safe to Tow
@@ -316,5 +317,71 @@ class ResultsScreenTest {
 
         composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, "Safe to Tow").assertIsDisplayed()
         composeRule.onNodeWithTag(UiTags.HISTORY_NOTICE).assertIsDisplayed()
+    }
+
+    // Back in the top bar is the system Back button's twin (interaction-notes.md): the screen only says it was tapped.
+    @Test
+    fun backInTheTopBarInvokesOnBack() {
+        val breakdown = listOf(item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85))
+        var wentBack = false
+        composeRule.setContent {
+            ResultsScreen(
+                rigNickname = "Goose + Addie",
+                breakdown = breakdown,
+                verdict = verdictFor(breakdown),
+                onStartAnother = {},
+                onBack = { wentBack = true },
+            )
+        }
+
+        composeRule.onNodeWithTag(UiTags.RESULTS_BACK, useUnmergedTree = true).performClick()
+
+        assert(wentBack) { "onBack should have fired when Back was tapped" }
+    }
+
+    // The design's page holds the estimate, the Garage notice with Get Pro, and the History notice one under another
+    // (results__notices, results__notices_scrolled): the screen shows them together with the breakdown below them.
+    @Test
+    fun theEstimateTheGarageAndTheHistoryNoticesShowTogether() {
+        val breakdown = listOf(item("Tow Vehicle Total (GVWR)", Tone.SUCCESS, 85, estimated = true))
+        composeRule.setContent {
+            ResultsScreen(
+                rigNickname = "Goose + Addie",
+                breakdown = breakdown,
+                verdict = verdictFor(breakdown),
+                onStartAnother = {},
+                garageNotice = GarageNotice("Your Garage is full (the Free plan holds 5 Rigs), so \"Goose\" wasn't saved to it.", offerPro = true),
+                historyNotice = "We couldn't save this check to your History. Your check is not affected.",
+            )
+        }
+
+        listOf(
+            UiTags.RESULTS_ESTIMATED_NOTICE, UiTags.GARAGE_NOTICE, UiTags.GARAGE_NOTICE_GET_PRO, UiTags.HISTORY_NOTICE,
+            UiTags.RESULTS_BREAKDOWN_CARD, UiTags.RESULTS_FOOTER_NOTE,
+        ).forEach { tag ->
+            composeRule.onNodeWithTag(tag, useUnmergedTree = true).scrollToIfScrollable().assertIsDisplayed()
+        }
+    }
+
+    // The failing row and the failing verdict are not told from a passing one by colour alone: each says so in words
+    // and draws another shape (the badge and the verdict headline; the status icon and the verdict icon).
+    @Test
+    fun aFailingRowAndAFailingVerdictDifferFromPassingOnesInWordsAndShape() {
+        val passing = listOf(item("Front Axle (Steer)", Tone.SUCCESS, 85))
+        val failing = listOf(item("Front Axle (Steer)", Tone.WARNING, 108))
+        var breakdown by mutableStateOf(passing)
+        composeRule.setContent {
+            ResultsScreen(rigNickname = "Goose + Addie", breakdown = breakdown, verdict = verdictFor(breakdown), onStartAnother = {})
+        }
+
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, "Safe to Tow").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_BADGE, "Within limit").assertIsDisplayed()
+
+        breakdown = failing
+
+        composeRule.onNodeWithTagText(UiTags.RESULTS_VERDICT, "Not Safe to Tow").assertIsDisplayed()
+        composeRule.onNodeWithTagText(UiTags.RESULTS_ROW_BADGE, "Over limit").assertIsDisplayed()
+        assertNotEquals(rigCheckVerdictLook(VerdictStatus.PASS).icon, rigCheckVerdictLook(VerdictStatus.FAIL).icon)
+        assertNotEquals(rigCheckRowLook(Tone.SUCCESS).icon, rigCheckRowLook(Tone.WARNING).icon)
     }
 }

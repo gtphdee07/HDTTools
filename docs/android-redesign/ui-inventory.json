@@ -346,7 +346,7 @@
       "test_tag_today": "open_history",
       "test_tag_new": "open_history",
       "tests_referencing": {
-        "HistoryNavigationTest.kt": 1,
+        "HistoryNavigationTest.kt": 2,
         "RigPickerChooserLayoutTest.kt": 4,
         "RigPickerScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
@@ -1100,7 +1100,7 @@
       "tests_referencing": {
         "GarageNavigationTest.kt": 1,
         "HistoryNavigationTest.kt": 1,
-        "RigCheckNavHostTest.kt": 10,
+        "RigCheckNavHostTest.kt": 11,
         "ScanErrorNextStepNavigationTest.kt": 1,
         "ScanInFlightNavigationTest.kt": 1,
         "SystemBarsTest.kt": 2,
@@ -5212,7 +5212,7 @@
       "test_tag_new": "disclaimer_title",
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 1,
-        "DisclaimerResultsLayoutTest.kt": 5,
+        "DisclaimerResultsLayoutTest.kt": 6,
         "DisclaimerScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -5290,7 +5290,7 @@
       "test_tag_today": null,
       "test_tag_new": "disclaimer_body_1",
       "tests_referencing": {
-        "DisclaimerResultsLayoutTest.kt": 3,
+        "DisclaimerResultsLayoutTest.kt": 4,
         "DisclaimerScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -5368,7 +5368,7 @@
       "test_tag_today": null,
       "test_tag_new": "disclaimer_body_2",
       "tests_referencing": {
-        "DisclaimerResultsLayoutTest.kt": 4,
+        "DisclaimerResultsLayoutTest.kt": 5,
         "DisclaimerScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -5448,7 +5448,7 @@
       "tests_referencing": {
         "GarageNavigationTest.kt": 1,
         "HistoryNavigationTest.kt": 1,
-        "RigCheckNavHostTest.kt": 2,
+        "RigCheckNavHostTest.kt": 3,
         "DisclaimerResultsLayoutTest.kt": 6,
         "DisclaimerScreenTest.kt": 5,
         "UiTagsDisplayedTest.kt": 1
@@ -5682,7 +5682,7 @@
       "test_tag_today": null,
       "test_tag_new": "results_verdict",
       "tests_referencing": {
-        "DisclaimerResultsLayoutTest.kt": 14,
+        "DisclaimerResultsLayoutTest.kt": 15,
         "ResultsScreenTest.kt": 15,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -5761,7 +5761,7 @@
       "test_tag_new": "garage_notice",
       "tests_referencing": {
         "GarageNavigationTest.kt": 2,
-        "DisclaimerResultsLayoutTest.kt": 3,
+        "DisclaimerResultsLayoutTest.kt": 7,
         "ResultsScreenTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -5839,7 +5839,7 @@
       "test_tag_today": "garage_notice_get_pro",
       "test_tag_new": "garage_notice_get_pro",
       "tests_referencing": {
-        "DisclaimerResultsLayoutTest.kt": 4,
+        "DisclaimerResultsLayoutTest.kt": 6,
         "ResultsScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -5918,7 +5918,7 @@
       "test_tag_new": "history_notice",
       "tests_referencing": {
         "HistoryNavigationTest.kt": 2,
-        "DisclaimerResultsLayoutTest.kt": 7,
+        "DisclaimerResultsLayoutTest.kt": 10,
         "ResultsScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -5996,7 +5996,7 @@
       "test_tag_today": null,
       "test_tag_new": "results_estimated_notice",
       "tests_referencing": {
-        "DisclaimerResultsLayoutTest.kt": 3,
+        "DisclaimerResultsLayoutTest.kt": 6,
         "ResultsScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -6074,7 +6074,7 @@
       "test_tag_today": null,
       "test_tag_new": "results_breakdown_card",
       "tests_referencing": {
-        "DisclaimerResultsLayoutTest.kt": 16,
+        "DisclaimerResultsLayoutTest.kt": 21,
         "ResultsScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -6153,7 +6153,7 @@
       "test_tag_new": "results_row",
       "tests_referencing": {
         "RigCheckBreakdownRowTest.kt": 5,
-        "DisclaimerResultsLayoutTest.kt": 6,
+        "DisclaimerResultsLayoutTest.kt": 7,
         "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
@@ -6777,8 +6777,8 @@
       "tests_referencing": {
         "GarageNavigationTest.kt": 2,
         "HistoryNavigationTest.kt": 4,
-        "RigCheckNavHostTest.kt": 1,
-        "DisclaimerResultsLayoutTest.kt": 16,
+        "RigCheckNavHostTest.kt": 2,
+        "DisclaimerResultsLayoutTest.kt": 18,
         "ResultsScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -6836,7 +6836,8 @@
       "test_tag_today": null,
       "test_tag_new": "history_title",
       "tests_referencing": {
-        "HistoryNavigationTest.kt": 1,
+        "HistoryNavigationTest.kt": 2,
+        "HistoryLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -6893,6 +6894,7 @@
       "test_tag_today": null,
       "test_tag_new": "history_subtitle",
       "tests_referencing": {
+        "HistoryLayoutTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -6949,6 +6951,7 @@
       "test_tag_today": "history_limit_notice",
       "test_tag_new": "history_limit_notice",
       "tests_referencing": {
+        "HistoryLayoutTest.kt": 5,
         "HistoryScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -7006,6 +7009,7 @@
       "test_tag_today": "history_upgrade",
       "test_tag_new": "history_upgrade",
       "tests_referencing": {
+        "HistoryLayoutTest.kt": 4,
         "HistoryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -7063,6 +7067,7 @@
       "test_tag_today": "history_empty",
       "test_tag_new": "history_empty",
       "tests_referencing": {
+        "HistoryLayoutTest.kt": 7,
         "HistoryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -7121,6 +7126,7 @@
       "test_tag_new": "history_entry",
       "tests_referencing": {
         "HistoryNavigationTest.kt": 1,
+        "HistoryLayoutTest.kt": 7,
         "HistoryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -7178,6 +7184,7 @@
       "test_tag_today": null,
       "test_tag_new": "history_entry_rig",
       "tests_referencing": {
+        "HistoryLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -7234,6 +7241,7 @@
       "test_tag_today": null,
       "test_tag_new": "history_entry_date",
       "tests_referencing": {
+        "HistoryLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -7291,6 +7299,7 @@
       "test_tag_new": "history_entry_verdict",
       "tests_referencing": {
         "HistoryNavigationTest.kt": 3,
+        "HistoryLayoutTest.kt": 6,
         "HistoryScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },

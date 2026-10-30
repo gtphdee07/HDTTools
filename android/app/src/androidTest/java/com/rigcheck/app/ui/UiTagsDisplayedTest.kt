@@ -415,7 +415,7 @@ class UiTagsDisplayedTest {
         }
 
         assertShown(
-            UiTags.HISTORY_TITLE, UiTags.HISTORY_SUBTITLE, UiTags.HISTORY_LIMIT_NOTICE, UiTags.HISTORY_UPGRADE,
+            UiTags.HISTORY_BACK, UiTags.HISTORY_TITLE, UiTags.HISTORY_SUBTITLE, UiTags.HISTORY_LIMIT_NOTICE, UiTags.HISTORY_UPGRADE,
             UiTags.HISTORY_ENTRY, UiTags.HISTORY_ENTRY_RIG, UiTags.HISTORY_ENTRY_DATE, UiTags.HISTORY_ENTRY_VERDICT,
         )
     }

@@ -22,6 +22,7 @@ import com.rigcheck.app.data.HistoryCaps
 import com.rigcheck.app.data.HistoryEntry
 import com.rigcheck.app.domain.VerdictStatus
 import com.rigcheck.app.domain.model.RecentRig
+import com.rigcheck.app.testsupport.nodesWithTag
 import com.rigcheck.app.testsupport.nodesWithTagShowing
 import com.rigcheck.app.testsupport.onNodeWithTagText
 import com.rigcheck.app.ui.RigCheckViewModel
@@ -157,6 +158,19 @@ class HistoryNavigationTest {
 
         waitForHistoryEntry("Made on Web")
         composeRule.onNodeWithTagText(UiTags.HISTORY_ENTRY_VERDICT, "Over Limit").assertIsDisplayed()
+    }
+
+    // #195: the Back control in the History's top bar goes where the system Back button goes, to the Rig picker the
+    // History was opened from.
+    @Test
+    fun theBackControlReturnsToTheRigPicker() {
+        showApp(PretendHistory())
+        openHistory()
+
+        composeRule.onNodeWithTag(UiTags.HISTORY_BACK).performClick()
+
+        composeRule.onNodeWithTag(UiTags.OPEN_HISTORY).assertIsDisplayed()
+        assertEquals(0, composeRule.nodesWithTag(UiTags.HISTORY_TITLE))
     }
 
     // The app has been open a while: the check from the other device was made after sign-in read the History.

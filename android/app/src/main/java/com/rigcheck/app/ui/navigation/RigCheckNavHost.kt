@@ -138,6 +138,8 @@ fun RigCheckNavHost(
                 entries = historyEntries,
                 limitNotice = historyLimitNotice(historyEntries.size, historyCaps, isPro),
                 onUpgrade = { navController.navigate(RigCheckRoute.Paywall) },
+                // The same as the system Back button (interaction-notes.md).
+                onBack = { navController.popBackStack() },
             )
         }
 

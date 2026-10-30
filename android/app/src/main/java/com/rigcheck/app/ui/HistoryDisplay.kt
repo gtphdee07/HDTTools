@@ -3,6 +3,7 @@ package com.rigcheck.app.ui
 import com.rigcheck.app.data.HistoryCaps
 import com.rigcheck.app.domain.Tone
 import com.rigcheck.app.domain.VerdictStatus
+import com.rigcheck.app.ui.components.RigCheckBadgeKind
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -20,6 +21,15 @@ fun verdictBadgeFor(verdict: VerdictStatus): VerdictBadge = when (verdict) {
     VerdictStatus.FAIL -> VerdictBadge(Tone.WARNING, "Over Limit")
     VerdictStatus.PARTIAL -> VerdictBadge(Tone.INSUFFICIENT, "Partially Checked")
     VerdictStatus.INSUFFICIENT -> VerdictBadge(Tone.INSUFFICIENT, "Not Enough Info")
+}
+
+// The pill's colours for a verdict (components.md, "Badge"): within limit, over limit, partially checked, not checked.
+// The icon is the verdict band's (rigCheckVerdictLook), so a verdict is told by words and shape as well as colour.
+fun historyBadgeKind(verdict: VerdictStatus): RigCheckBadgeKind = when (verdict) {
+    VerdictStatus.PASS -> RigCheckBadgeKind.WithinLimit
+    VerdictStatus.FAIL -> RigCheckBadgeKind.OverLimit
+    VerdictStatus.PARTIAL -> RigCheckBadgeKind.PartiallyChecked
+    VerdictStatus.INSUFFICIENT -> RigCheckBadgeKind.NotChecked
 }
 
 private val HISTORY_DATE_FORMAT = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)

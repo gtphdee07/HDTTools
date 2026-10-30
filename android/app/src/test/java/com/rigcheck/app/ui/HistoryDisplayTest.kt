@@ -3,6 +3,8 @@ package com.rigcheck.app.ui
 import com.rigcheck.app.data.HistoryCaps
 import com.rigcheck.app.domain.Tone
 import com.rigcheck.app.domain.VerdictStatus
+import com.rigcheck.app.ui.components.RigCheckBadgeKind
+import com.rigcheck.app.ui.components.rigCheckVerdictLook
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -18,6 +20,23 @@ class HistoryDisplayTest {
         assertEquals(VerdictBadge(Tone.WARNING, "Over Limit"), verdictBadgeFor(VerdictStatus.FAIL))
         assertEquals(VerdictBadge(Tone.INSUFFICIENT, "Partially Checked"), verdictBadgeFor(VerdictStatus.PARTIAL))
         assertEquals(VerdictBadge(Tone.INSUFFICIENT, "Not Enough Info"), verdictBadgeFor(VerdictStatus.INSUFFICIENT))
+    }
+
+    // #195: the four verdicts are four pills, so a partial check is not drawn like a failed one or like one not checked
+    // at all; the three outcomes also differ in icon (the verdict band's), so none rests on colour.
+    @Test
+    fun `each verdict has its own pill, and pass, fail and unsure differ in icon as well`() {
+        val kinds = VerdictStatus.entries.map(::historyBadgeKind)
+        assertEquals(
+            listOf(
+                RigCheckBadgeKind.WithinLimit, RigCheckBadgeKind.OverLimit,
+                RigCheckBadgeKind.PartiallyChecked, RigCheckBadgeKind.NotChecked,
+            ),
+            listOf(VerdictStatus.PASS, VerdictStatus.FAIL, VerdictStatus.PARTIAL, VerdictStatus.INSUFFICIENT).map(::historyBadgeKind),
+        )
+        assertEquals(VerdictStatus.entries.size, kinds.toSet().size)
+        val icons = listOf(VerdictStatus.PASS, VerdictStatus.FAIL, VerdictStatus.PARTIAL).map { rigCheckVerdictLook(it).icon }
+        assertEquals(3, icons.toSet().size)
     }
 
     @Test

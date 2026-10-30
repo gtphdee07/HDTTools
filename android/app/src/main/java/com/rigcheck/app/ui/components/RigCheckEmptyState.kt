@@ -27,13 +27,16 @@ import com.rigcheck.app.ui.theme.SurfaceSunken
 
 // components.md, "Empty state": a dashed 2 dp border-strong outline, 24 dp radius, the surface-sunken fill, a 56 dp
 // mark, then the title and the text beside it (the frames rig_picker__signed_out_empty and history__empty draw the
-// mark at the left). The mark is a slot: the app logo goes there.
+// mark at the left). The mark is a slot: the app logo goes there. With no title (the History's frame draws one line of
+// words), the text is the body style in ink, as that frame has it; with one, the text is the muted line under it.
+// `textModifier` is for the tag of the words (the map measures the words, not the panel around them).
 @Composable
 fun RigCheckEmptyState(
-    title: String,
+    title: String?,
     text: String,
     modifier: Modifier = Modifier,
     mark: (@Composable () -> Unit)? = null,
+    textModifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(Radii.Panel)
     Row(
@@ -53,8 +56,12 @@ fun RigCheckEmptyState(
     ) {
         if (mark != null) Box(modifier = Modifier.size(56.dp)) { mark() }
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = RigCheckStyles.title, color = Ink)
-            Text(text, style = RigCheckStyles.bodyMd, color = InkMuted)
+            if (title != null) {
+                Text(title, style = RigCheckStyles.title, color = Ink)
+                Text(text, style = RigCheckStyles.bodyMd, color = InkMuted, modifier = textModifier)
+            } else {
+                Text(text, style = RigCheckStyles.body, color = Ink, modifier = textModifier)
+            }
         }
     }
 }

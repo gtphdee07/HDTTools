@@ -891,7 +891,9 @@ root `TESTING.md`'s "Dashboard" section.
   error, not a guess). It cannot show the live project agrees; the owner's live run does.
 - `HistoryDisplayTest.kt` (#32) — what the History screen says: Web's badge for each verdict (a partial
   or insufficient check is not called over the limit), a check dated by the day on the phone's clock, what a
-  Free account whose History is full is told (and that nobody else is), and the not-saved wording.
+  Free account whose History is full is told (and that nobody else is), and the not-saved wording. (#195) The four
+  verdicts have four different pills (`historyBadgeKind`), and the verdict's pass, fail and unsure outcomes have three
+  icons: an entry is never told from another by the colour of its pill alone.
 - `GoogleSignInTest.kt` (#22) — the Google nonce (Supabase gets the raw
   nonce, Google its SHA-256 hex) and cancel/missing-account messages.
 - `ScanApiClientTest.kt` (#22) — scan requests carry
@@ -1058,7 +1060,9 @@ network involved:
   `GarageNavigationTest`. (#169) It does cover the delete control, which it is given a handler for.
 - `HistoryScreenTest` (#32) — the History screen given fake entries: each check shows its rig and its
   verdict badge (three verdicts, three labels), the empty list says so, and the limit notice shows with a
-  tappable "Upgrade to Pro". Where the entries come from is `HistoryTest` and `HistoryNavigationTest`.
+  tappable "Upgrade to Pro". Where the entries come from is `HistoryTest` and `HistoryNavigationTest`. (#195) Not
+  changed by the re-skin and not loosened: the entry's verdict is now a pill with an icon, and the test still finds
+  it by its tag and reads the same words. How the screen is laid out is `HistoryLayoutTest`.
 - `ResultsScreenTest` — all-passing renders "Safe to Tow", any failure
   renders "Not Safe to Tow"; row labels/percentages display correctly;
   all-insufficient renders "Not Enough Information", a mix renders
@@ -1225,6 +1229,26 @@ network involved:
   density and font scale and puts them back; it needs the single emulator and sends no Scan. With
   `-Pandroid.testInstrumentationRunnerArguments.layoutScreenshots=true` it keeps each state's screenshot in
   `/data/local/tmp/ticket-194-screenshots/<frame>/` on the device, to `adb pull` for the owner's comparison.
+- `HistoryLayoutTest` (#195) — the History screen against the designer's map, on the emulator, built the way
+  `DisclaimerResultsLayoutTest` is. In each state the frames draw (`history__few_entries`, `__limit_notice` and
+  `__empty`, with the map's "many entries (scrolls)" at 360 x 640) every element is on show by its tag after a scroll
+  to it, the reading order is the frame's (Back and the title, the subtitle, the notice with Upgrade to Pro under it,
+  then the entries, whose name is over its day), and the measured width and height are the map's: 1.5 dp where the
+  map gives a fixed size, 2 dp on one line of text, 4 dp on the title's ~30, the entry card's ~72 and the empty line's ~44, and 10 dp
+  on the limit notice's ~86 (three lines of copy). A repeated element (the entry and its parts) is measured on its
+  first instance. The seven entries of `few_entries` say "Safe to Tow" three times, "Over Limit" twice, "Partially
+  Checked" and "Not Enough Info" once, and the screen shows the notice, Upgrade and the empty line only in the
+  states that have them. The screen has nothing pinned at the bottom, so there is no primary action to hold on
+  show: at 360 x 640 dp and at font scale 2.0 every part, Upgrade to Pro among them, scrolls wholly on show (the
+  limit notice at 2.0 is taller than the room and is scrolled to, some of it on show), twenty entries scroll to the
+  last one, nothing is wider than the screen, every clickable is at least 48 x 48 dp, and from font scale 1.6 an
+  entry's verdict goes on a line under the name and the day. It changes the display size, density and font scale and
+  puts them back; it needs the single emulator and sends no Scan. With
+  `-Pandroid.testInstrumentationRunnerArguments.layoutScreenshots=true` it keeps each state's screenshot in
+  `/data/local/tmp/ticket-195-screenshots/<frame>/` on the device. Changed by #195, and the classes at risk: the Rig
+  picker's logo moved to the shared `RigCheckLogo` and `RigCheckEmptyState` takes an optional title (no words or sizes
+  changed for the picker), so `RigPickerScreenTest`, `RigPickerChooserLayoutTest` and `RigCheckEmptyStateTest` are
+  the classes to run if the full pass finds anything; the full pass is #197's.
 - `StatusLooksTest` (#194, a JVM test in `src/test`) — the three row tones have three icons, the three sets of
   words "Within limit", "Over limit" and "Not checked" and three badge kinds, and the verdict's pass, fail and
   unsure outcomes have three icons (the two unsure ones share one): a failing row or verdict is never told from a
@@ -1505,7 +1529,8 @@ History server: a check made on another device is listed; a finished check is sa
 listed (a check with nothing entered is "Not Enough Info", not over limit); one made on another device
 after the app was open is listed when the History is opened; a second check with another new Rig is saved
 too; the Results screen composed again does not record the check twice; a check that could not be saved still shows its result, with the
-"couldn't save this check" notice.
+"couldn't save this check" notice. (#195) The Back control in the History's top bar returns to the Rig picker it
+was opened from.
 
 **Scan error next-step tests** (`ui/navigation/ScanErrorNextStepNavigationTest.kt`,
 #124) — what the dialog's "Sign in" and "Buy more Scans" buttons do once tapped

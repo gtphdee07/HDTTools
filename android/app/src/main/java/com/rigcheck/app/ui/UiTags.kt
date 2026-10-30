@@ -151,6 +151,7 @@ object UiTags {
     const val RESULTS_ROW_CHEVRON = "results_row_chevron"
 
     // history
+    const val HISTORY_BACK = "history_back"
     const val HISTORY_TITLE = "history_title"
     const val HISTORY_SUBTITLE = "history_subtitle"
     const val HISTORY_LIMIT_NOTICE = "history_limit_notice"

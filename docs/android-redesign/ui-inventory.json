@@ -407,6 +407,7 @@
       "tests_referencing": {
         "CreditBalanceChipTest.kt": 11,
         "RigCheckNavHostTest.kt": 1,
+        "SignOutDuringScanNavigationTest.kt": 1,
         "RigPickerChooserLayoutTest.kt": 3,
         "RigPickerScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
@@ -520,6 +521,7 @@
       "test_tag_new": "picker_heading",
       "tests_referencing": {
         "ScanInFlightNavigationTest.kt": 2,
+        "SignOutDuringScanNavigationTest.kt": 1,
         "RigPickerChooserLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -1039,6 +1041,7 @@
         "RigCheckNavHostTest.kt": 1,
         "ScanErrorNextStepNavigationTest.kt": 1,
         "ScanInFlightNavigationTest.kt": 1,
+        "SignOutDuringScanNavigationTest.kt": 1,
         "SystemBarsTest.kt": 1,
         "RigPickerChooserLayoutTest.kt": 7,
         "RigPickerScreenTest.kt": 3,
@@ -1103,6 +1106,7 @@
         "RigCheckNavHostTest.kt": 11,
         "ScanErrorNextStepNavigationTest.kt": 1,
         "ScanInFlightNavigationTest.kt": 1,
+        "SignOutDuringScanNavigationTest.kt": 1,
         "SystemBarsTest.kt": 2,
         "RigPickerChooserLayoutTest.kt": 7,
         "RigPickerScreenTest.kt": 4,
@@ -1222,6 +1226,7 @@
       "test_tag_new": "send_feedback_no_mail_app",
       "tests_referencing": {
         "FeedbackLinkTest.kt": 2,
+        "PaywallAccountLayoutTest.kt": 3,
         "RigPickerChooserLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -1635,6 +1640,7 @@
         "RigCheckNavHostTest.kt": 21,
         "ScanErrorNextStepNavigationTest.kt": 3,
         "ScanInFlightNavigationTest.kt": 5,
+        "SignOutDuringScanNavigationTest.kt": 1,
         "ChooserScreenTest.kt": 3,
         "RigPickerChooserLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
@@ -2101,7 +2107,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_title",
       "tests_referencing": {
-        "EntryScreensLayoutTest.kt": 4,
+        "EntryScreensLayoutTest.kt": 6,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -2331,7 +2337,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_reference_image",
       "tests_referencing": {
-        "EntryScreensLayoutTest.kt": 13,
+        "EntryScreensLayoutTest.kt": 19,
         "TruckTagEntryScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 2
       },
@@ -2564,7 +2570,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_gvwr_field",
       "tests_referencing": {
-        "EntryScreensLayoutTest.kt": 10,
+        "EntryScreensLayoutTest.kt": 12,
         "TruckTagEntryScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 2
       },
@@ -2622,7 +2628,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_front_gawr_field",
       "tests_referencing": {
-        "EntryScreensLayoutTest.kt": 7,
+        "EntryScreensLayoutTest.kt": 8,
         "TruckTagEntryScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -2738,7 +2744,7 @@
       "test_tag_today": "truck_gcwr",
       "test_tag_new": "truck_gcwr",
       "tests_referencing": {
-        "EntryScreensLayoutTest.kt": 9,
+        "EntryScreensLayoutTest.kt": 11,
         "TruckTagEntryScreenTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -3085,7 +3091,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_field",
       "tests_referencing": {
-        "EntryScreensLayoutTest.kt": 6,
+        "EntryScreensLayoutTest.kt": 7,
         "TruckTagEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -3257,7 +3263,7 @@
       "test_tag_today": null,
       "test_tag_new": "truck_standalone_panel_body",
       "tests_referencing": {
-        "EntryScreensLayoutTest.kt": 4,
+        "EntryScreensLayoutTest.kt": 6,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -3839,7 +3845,7 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_reference_image",
       "tests_referencing": {
-        "EntryScreensLayoutTest.kt": 12,
+        "EntryScreensLayoutTest.kt": 14,
         "TrailerTagEntryScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 2
       },
@@ -4129,7 +4135,7 @@
       "test_tag_today": null,
       "test_tag_new": "trailer_gawr_field",
       "tests_referencing": {
-        "EntryScreensLayoutTest.kt": 5,
+        "EntryScreensLayoutTest.kt": 6,
         "TrailerTagEntryScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -6836,7 +6842,7 @@
       "test_tag_today": null,
       "test_tag_new": "history_title",
       "tests_referencing": {
-        "HistoryNavigationTest.kt": 2,
+        "HistoryNavigationTest.kt": 3,
         "HistoryLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -7009,6 +7015,7 @@
       "test_tag_today": "history_upgrade",
       "test_tag_new": "history_upgrade",
       "tests_referencing": {
+        "HistoryNavigationTest.kt": 2,
         "HistoryLayoutTest.kt": 4,
         "HistoryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
@@ -7357,7 +7364,9 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_title",
       "tests_referencing": {
+        "HistoryNavigationTest.kt": 1,
         "ScanErrorNextStepNavigationTest.kt": 3,
+        "PaywallAccountLayoutTest.kt": 3,
         "PaywallScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -7416,6 +7425,7 @@
       "test_tag_new": "paywall_account_label",
       "tests_referencing": {
         "ScanErrorNextStepNavigationTest.kt": 1,
+        "PaywallAccountLayoutTest.kt": 5,
         "PaywallScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -7473,6 +7483,8 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_sign_out_button",
       "tests_referencing": {
+        "SignOutDuringScanNavigationTest.kt": 1,
+        "PaywallAccountLayoutTest.kt": 4,
         "PaywallScreenTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -7530,6 +7542,7 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_plan_label",
       "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 5,
         "PaywallScreenTest.kt": 6,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -7587,6 +7600,7 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_explainer",
       "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 7,
         "PaywallScreenTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -7644,6 +7658,7 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_beta_label",
       "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 4,
         "PaywallScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -7701,6 +7716,7 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_loading",
       "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 8,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -7758,6 +7774,7 @@
       "test_tag_new": "paywall_load_error",
       "tests_referencing": {
         "RevenueCatAndroidSdkExternalTest.kt": 2,
+        "PaywallAccountLayoutTest.kt": 5,
         "PaywallScreenTest.kt": 1,
         "PaywallScreenWeeklyTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
@@ -7816,6 +7833,7 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_plan_unknown",
       "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 4,
         "PaywallScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -7873,6 +7891,7 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_retry_button",
       "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 8,
         "PaywallScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 2
       },
@@ -7931,6 +7950,7 @@
       "test_tag_new": "paywall_offer_card",
       "tests_referencing": {
         "SystemBarsTest.kt": 1,
+        "PaywallAccountLayoutTest.kt": 12,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -7987,7 +8007,8 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_offer_title",
       "tests_referencing": {
-        "PaywallScreenTest.kt": 18,
+        "PaywallAccountLayoutTest.kt": 5,
+        "PaywallScreenTest.kt": 21,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -8044,6 +8065,7 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_offer_description",
       "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 5,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -8100,7 +8122,8 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_buy_button",
       "tests_referencing": {
-        "PaywallScreenTest.kt": 10,
+        "PaywallAccountLayoutTest.kt": 12,
+        "PaywallScreenTest.kt": 13,
         "UiTagsDisplayedTest.kt": 3
       },
       "redesign": {
@@ -8157,6 +8180,7 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_no_packs",
       "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 6,
         "PaywallScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -8214,6 +8238,7 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_no_pro",
       "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 6,
         "PaywallScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -8271,6 +8296,7 @@
       "test_tag_today": null,
       "test_tag_new": "paywall_pro_bought",
       "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 4,
         "PaywallScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -8329,9 +8355,10 @@
       "test_tag_new": "paywall_restore_button",
       "tests_referencing": {
         "RevenueCatAndroidSdkExternalTest.kt": 1,
-        "SystemBarsTest.kt": 3,
-        "PaywallScreenTest.kt": 13,
-        "UiTagsDisplayedTest.kt": 1
+        "SystemBarsTest.kt": 2,
+        "PaywallAccountLayoutTest.kt": 8,
+        "PaywallScreenTest.kt": 15,
+        "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
         "status": null,
@@ -8365,7 +8392,11 @@
       "today_measured": null,
       "test_tag_today": null,
       "test_tag_new": "paywall_toast",
-      "tests_referencing": {},
+      "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 6,
+        "PaywallScreenTest.kt": 3,
+        "UiTagsDisplayedTest.kt": 2
+      },
       "redesign": {
         "status": null,
         "new_screen": null,
@@ -8422,7 +8453,8 @@
       "tests_referencing": {
         "ScanErrorNextStepNavigationTest.kt": 1,
         "SystemBarsTest.kt": 1,
-        "PaywallScreenTest.kt": 4,
+        "PaywallAccountLayoutTest.kt": 4,
+        "PaywallScreenTest.kt": 5,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -8480,6 +8512,7 @@
       "test_tag_new": "account_title",
       "tests_referencing": {
         "AccountScreenTest.kt": 1,
+        "PaywallAccountLayoutTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -8537,6 +8570,7 @@
       "test_tag_new": "account_reason",
       "tests_referencing": {
         "AccountScreenTest.kt": 1,
+        "PaywallAccountLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -8593,7 +8627,8 @@
       "test_tag_today": null,
       "test_tag_new": "account_email_field",
       "tests_referencing": {
-        "AccountScreenTest.kt": 4,
+        "AccountScreenTest.kt": 5,
+        "PaywallAccountLayoutTest.kt": 8,
         "UiTagsDisplayedTest.kt": 3
       },
       "redesign": {
@@ -8650,7 +8685,8 @@
       "test_tag_today": null,
       "test_tag_new": "account_password_field",
       "tests_referencing": {
-        "AccountScreenTest.kt": 3,
+        "AccountScreenTest.kt": 4,
+        "PaywallAccountLayoutTest.kt": 7,
         "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
@@ -8708,6 +8744,7 @@
       "test_tag_new": "account_error",
       "tests_referencing": {
         "AccountScreenTest.kt": 1,
+        "PaywallAccountLayoutTest.kt": 6,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -8765,6 +8802,7 @@
       "test_tag_new": "account_info",
       "tests_referencing": {
         "AccountScreenTest.kt": 3,
+        "PaywallAccountLayoutTest.kt": 6,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -8822,6 +8860,7 @@
       "test_tag_new": "account_submit",
       "tests_referencing": {
         "AccountScreenTest.kt": 8,
+        "PaywallAccountLayoutTest.kt": 9,
         "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
@@ -8879,6 +8918,7 @@
       "test_tag_new": "account_toggle_mode",
       "tests_referencing": {
         "AccountScreenTest.kt": 2,
+        "PaywallAccountLayoutTest.kt": 6,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -8936,6 +8976,7 @@
       "test_tag_new": "account_forgot_password",
       "tests_referencing": {
         "AccountScreenTest.kt": 2,
+        "PaywallAccountLayoutTest.kt": 7,
         "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
@@ -8992,6 +9033,7 @@
       "test_tag_today": null,
       "test_tag_new": "account_divider",
       "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -9051,6 +9093,7 @@
         "RigCheckNavHostTest.kt": 4,
         "ScanErrorNextStepNavigationTest.kt": 3,
         "AccountScreenTest.kt": 9,
+        "PaywallAccountLayoutTest.kt": 5,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -9108,6 +9151,7 @@
       "test_tag_new": "account_apple_button",
       "tests_referencing": {
         "AccountScreenTest.kt": 5,
+        "PaywallAccountLayoutTest.kt": 6,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -9166,6 +9210,7 @@
       "tests_referencing": {
         "RigCheckNavHostTest.kt": 2,
         "AccountScreenTest.kt": 1,
+        "PaywallAccountLayoutTest.kt": 15,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -9223,6 +9268,7 @@
       "test_tag_new": "account_feedback_link",
       "tests_referencing": {
         "AccountScreenTest.kt": 1,
+        "PaywallAccountLayoutTest.kt": 9,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -9280,6 +9326,7 @@
       "test_tag_new": "send_feedback_no_mail_app",
       "tests_referencing": {
         "FeedbackLinkTest.kt": 2,
+        "PaywallAccountLayoutTest.kt": 3,
         "RigPickerChooserLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -9340,6 +9387,7 @@
         "ScanErrorNextStepNavigationTest.kt": 2,
         "ScanInFlightNavigationTest.kt": 2,
         "ChooserScreenTest.kt": 1,
+        "PaywallAccountLayoutTest.kt": 5,
         "TruckTagEntryScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -9399,6 +9447,7 @@
       "tests_referencing": {
         "ScanErrorNextStepNavigationTest.kt": 1,
         "ChooserScreenTest.kt": 3,
+        "PaywallAccountLayoutTest.kt": 6,
         "TruckTagEntryScreenTest.kt": 4,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -9567,6 +9616,7 @@
         "scan_error_next_type_it_in"
       ],
       "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 19,
         "UiTagsDisplayedTest.kt": 6,
         "LateScanDialogTest.kt": 3,
         "ScanErrorNextStepNavigationTest.kt": 4,
@@ -9631,6 +9681,7 @@
       "tests_referencing": {
         "ScanErrorNextStepNavigationTest.kt": 2,
         "ChooserScreenTest.kt": 1,
+        "PaywallAccountLayoutTest.kt": 11,
         "TruckTagEntryScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -9688,6 +9739,7 @@
       "test_tag_today": null,
       "test_tag_new": "late_scan_title",
       "tests_referencing": {
+        "PaywallAccountLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -9746,6 +9798,7 @@
       "tests_referencing": {
         "LateScanDialogTest.kt": 1,
         "ScanInFlightNavigationTest.kt": 7,
+        "PaywallAccountLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -9804,6 +9857,8 @@
       "tests_referencing": {
         "LateScanDialogTest.kt": 2,
         "ScanInFlightNavigationTest.kt": 1,
+        "SignOutDuringScanNavigationTest.kt": 2,
+        "PaywallAccountLayoutTest.kt": 3,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -9917,6 +9972,7 @@
       "test_tag_today": null,
       "test_tag_new": "delete_rig_title",
       "tests_referencing": {
+        "RigPickerDialogsLayoutTest.kt": 1,
         "RigPickerScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -10030,6 +10086,7 @@
       "test_tag_today": "delete_rig_error",
       "test_tag_new": "delete_rig_error",
       "tests_referencing": {
+        "RigPickerDialogsLayoutTest.kt": 1,
         "RigPickerScreenTest.kt": 2,
         "UiTagsDisplayedTest.kt": 2
       },
@@ -10088,6 +10145,7 @@
       "test_tag_new": "delete_rig_confirm",
       "tests_referencing": {
         "GarageNavigationTest.kt": 1,
+        "RigPickerDialogsLayoutTest.kt": 1,
         "RigPickerScreenTest.kt": 4,
         "UiTagsDisplayedTest.kt": 2
       },
@@ -10145,6 +10203,7 @@
       "test_tag_today": "delete_rig_cancel",
       "test_tag_new": "delete_rig_cancel",
       "tests_referencing": {
+        "RigPickerDialogsLayoutTest.kt": 1,
         "RigPickerScreenTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
@@ -10203,6 +10262,7 @@
       "test_tag_new": "crash_prompt_question",
       "tests_referencing": {
         "CrashReportPromptTest.kt": 7,
+        "RigPickerDialogsLayoutTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -10259,6 +10319,7 @@
       "test_tag_today": null,
       "test_tag_new": "crash_prompt_details",
       "tests_referencing": {
+        "RigPickerDialogsLayoutTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -10316,6 +10377,7 @@
       "test_tag_new": "crash_prompt_no_mail_app",
       "tests_referencing": {
         "CrashReportPromptTest.kt": 1,
+        "RigPickerDialogsLayoutTest.kt": 1,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {
@@ -10373,6 +10435,7 @@
       "test_tag_new": "crash_prompt_send",
       "tests_referencing": {
         "CrashReportPromptTest.kt": 2,
+        "RigPickerDialogsLayoutTest.kt": 1,
         "UiTagsDisplayedTest.kt": 2
       },
       "redesign": {
@@ -10430,6 +10493,7 @@
       "test_tag_new": "crash_prompt_dismiss",
       "tests_referencing": {
         "CrashReportPromptTest.kt": 3,
+        "RigPickerDialogsLayoutTest.kt": 2,
         "UiTagsDisplayedTest.kt": 1
       },
       "redesign": {

@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.ContentResolver
 import android.net.Uri
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
@@ -14,12 +15,14 @@ import com.rigcheck.app.data.AccountManager
 import com.rigcheck.app.data.AccountPlan
 import com.rigcheck.app.data.AccountResult
 import com.rigcheck.app.data.AccountState
+import com.rigcheck.app.data.BillingIdentity
 import com.rigcheck.app.data.Garage
 import com.rigcheck.app.data.GarageBackend
 import com.rigcheck.app.data.History
 import com.rigcheck.app.data.HistoryBackend
 import com.rigcheck.app.data.HistoryCaps
 import com.rigcheck.app.data.HistoryEntry
+import com.rigcheck.app.data.PlanSource
 import com.rigcheck.app.data.PurchaseCancelledException
 import com.rigcheck.app.data.RecentRigsRepository
 import com.rigcheck.app.data.RevenueCatManager
@@ -73,6 +76,10 @@ class RigCheckViewModel internal constructor(
     accountBackend: AccountBackend,
     garageBackend: GarageBackend = (accountBackend as? SupabaseAccountBackend)?.garage ?: UnavailableGarageBackend,
     historyBackend: HistoryBackend = (accountBackend as? SupabaseAccountBackend)?.history ?: UnavailableHistoryBackend,
+    // Who RevenueCat's customer is logged in as, and whether that customer owns Pro; the app always uses RevenueCat. A
+    // test passes its own, so an account can be Free or Pro without a store.
+    billing: BillingIdentity = RevenueCatManager,
+    planSource: PlanSource = RevenueCatManager,
 ) : AndroidViewModel(application) {
     constructor(application: Application) : this(application, SupabaseAccountBackend.get() ?: UnavailableAccountBackend)
 
@@ -99,6 +106,12 @@ class RigCheckViewModel internal constructor(
     // that has ended (#118). Ending a check clears its loading state at once, so
     // the next check can scan while the old request is still out.
     private val scanSession = ScanSession(onLiveScanGone = { if (scanState is ScanUiState.Loading) scanState = ScanUiState.Idle })
+
+    // How many Scan requests are out, whichever screen the user is on: ending a check clears its loading state but
+    // not the request, which the Worker has already taken a Scan Credit for. Signing out is not offered while any is
+    // out (#197), so the account that paid is the one the answer comes back to.
+    private var scansOut by mutableIntStateOf(0)
+    val scanIsOut: Boolean get() = scansOut > 0
 
     // The document whose entry screen a delivered Scan has just filled in, for the
     // nav host to open and then clear. State here, not a callback from the screen
@@ -137,14 +150,14 @@ class RigCheckViewModel internal constructor(
     // buying and scanning need a signed-in account.
     private val accountManager = AccountManager(
         backend = accountBackend,
-        billing = RevenueCatManager,
+        billing = billing,
         scope = viewModelScope,
     )
     val accountState: StateFlow<AccountState> = accountManager.state
 
     // Free or Pro for the signed-in account, from RevenueCat's `pro` entitlement, so a
     // Pro bought on Web shows here (#27). null = not known, which is not Free.
-    private val accountPlan = AccountPlan(accountManager.state, RevenueCatManager, viewModelScope)
+    private val accountPlan = AccountPlan(accountManager.state, planSource, viewModelScope)
     val isPro: StateFlow<Boolean?> = accountPlan.isPro
 
     // The saved Rigs (#31): the signed-in account's Garage, the same on every device with the plan's cap
@@ -227,7 +240,9 @@ class RigCheckViewModel internal constructor(
             }
         }
 
+    // Does nothing while a paid Scan is out (#197); the screens show Sign out disabled then, so this is the second lock.
     fun signOut() {
+        if (scanIsOut) return
         viewModelScope.launch { accountManager.signOut() }
     }
 
@@ -454,16 +469,22 @@ class RigCheckViewModel internal constructor(
     // dedupes the RevenueCat charge on the request id, so the same photo keeps
     // its id until an answer settles the attempt (see ScanAttempts): a user's
     // retry after a lost answer is then charged once.
-    private suspend fun sendScan(module: EntryModule, contentResolver: ContentResolver, photoUri: Uri): ScanResult =
-        scanSender?.invoke(module, photoUri) ?: runCatching {
-            scanAttempts.run(module, photoUri.toString()) { clientRequestId ->
-                val token = accountManager.accessToken() ?: return@run NOT_SIGNED_IN
-                // A photo that cannot be opened or decoded fails before anything is sent.
-                val base64 = runCatching { encodePhotoForScan(contentResolver, photoUri) }
-                    .getOrElse { return@run PHOTO_UNSENDABLE }
-                ScanApiClient.scan(token, module, base64, clientRequestId = clientRequestId)
-            }
-        }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
+    private suspend fun sendScan(module: EntryModule, contentResolver: ContentResolver, photoUri: Uri): ScanResult {
+        scansOut++
+        try {
+            return scanSender?.invoke(module, photoUri) ?: runCatching {
+                scanAttempts.run(module, photoUri.toString()) { clientRequestId ->
+                    val token = accountManager.accessToken() ?: return@run NOT_SIGNED_IN
+                    // A photo that cannot be opened or decoded fails before anything is sent.
+                    val base64 = runCatching { encodePhotoForScan(contentResolver, photoUri) }
+                        .getOrElse { return@run PHOTO_UNSENDABLE }
+                    ScanApiClient.scan(token, module, base64, clientRequestId = clientRequestId)
+                }
+            }.getOrElse { ScanResult.Failure("client_error", it.message ?: "Something went wrong.") }
+        } finally {
+            scansOut--
+        }
+    }
 
     fun clearScanError() {
         scanState = ScanUiState.Idle

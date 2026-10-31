@@ -27,12 +27,13 @@ import com.rigcheck.app.ui.theme.Surface as SurfaceWhite
 // components.md, "Dialog": 24 dp radius, 24 dp padding, 364 dp wide (the screen's width less 16 dp on each side on a
 // narrower phone), shadow md, a scrim at 55%. The title, the body, then the buttons stacked full width at 52 dp
 // (RigCheckButtonSize.Dialog): the primary first, the secondary second, a ghost OK or Cancel last. The caller passes
-// the pieces and their tags.
+// the pieces and their tags. A dialog with no heading of its own (the crash report's "no email app" line, #197) has
+// only a body.
 @Composable
 fun RigCheckDialog(
     onDismissRequest: () -> Unit,
-    title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    title: (@Composable () -> Unit)? = null,
     body: (@Composable () -> Unit)? = null,
     buttons: @Composable ColumnScope.() -> Unit,
 ) {
@@ -47,9 +48,9 @@ fun RigCheckDialog(
         ) {
             // Scrolls, so that at a large font on a small phone the buttons are still reachable.
             Column(modifier = Modifier.verticalScroll(rememberScrollState()).padding(24.dp)) {
-                title()
+                title?.invoke()
                 if (body != null) {
-                    Column(modifier = Modifier.padding(top = 12.dp)) { body() }
+                    Column(modifier = Modifier.padding(top = if (title != null) 12.dp else 0.dp)) { body() }
                 }
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp),

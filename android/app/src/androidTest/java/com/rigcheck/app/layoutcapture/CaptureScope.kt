@@ -41,7 +41,9 @@ class CaptureScope(val rule: ComposeTestRule, private val activity: ComponentAct
     private fun imeBottomPx(): Int =
         onMain { ViewCompat.getRootWindowInsets(decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0 }
 
-    // Waits until the soft keyboard is up and has stopped moving. Fails if it never comes up.
+    // Waits until the soft keyboard is up and has stopped moving. Fails if it never comes up, and says what the window
+    // was doing: a keyboard that does not come up is nearly always an autofill session an earlier test left open (#188,
+    // #202: AccountScreenTest typed a password and never cancelled it), so the test that failed is not the one to blame.
     fun awaitKeyboardShown() {
         awaitImeStill { imeBottomPx() > 0 }
     }
@@ -53,15 +55,20 @@ class CaptureScope(val rule: ComposeTestRule, private val activity: ComponentAct
     }
 
     private fun awaitImeStill(wanted: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + KEYBOARD_MS
+        val started = System.currentTimeMillis()
+        val deadline = started + KEYBOARD_MS
         var last = -1
         var steady = 0
         while (steady < STEADY_POLLS) {
-            check(System.currentTimeMillis() < deadline) { "the soft keyboard did not settle (ime inset ${imeBottomPx()} px)" }
+            val now = System.currentTimeMillis()
+            check(now < deadline) {
+                "the soft keyboard did not settle (ime inset ${imeBottomPx()} px, " +
+                    "window focused: ${onMain { decorView.hasWindowFocus() }}, focus: ${onMain { activity.currentFocus?.javaClass?.simpleName }})"
+            }
             Thread.sleep(POLL_MS)
-            val now = imeBottomPx()
-            steady = if (wanted() && now == last) steady + 1 else 0
-            last = now
+            val inset = imeBottomPx()
+            steady = if (wanted() && inset == last) steady + 1 else 0
+            last = inset
         }
         rule.waitForIdle()
     }

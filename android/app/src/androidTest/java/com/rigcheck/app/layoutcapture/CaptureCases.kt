@@ -80,6 +80,7 @@ private fun picker(
     balance: Int? = 3,
     onDeleteRig: (suspend (RecentRig) -> Boolean)? = { true },
     signedOut: Boolean = false,
+    scanIsOut: Boolean = false,
 ): @Composable () -> Unit = {
     RigPickerScreen(
         recentRigs = rigs,
@@ -91,6 +92,7 @@ private fun picker(
         signedOut = signedOut,
         accountLabel = if (signedOut) null else "dana.rivera@example.com",
         onDeleteRig = onDeleteRig,
+        scanIsOut = scanIsOut,
     )
 }
 
@@ -273,6 +275,15 @@ val captureCases: List<CaptureCase> = listOf(
             rule.waitUntil(timeoutMillis = 5_000) { rule.nodesWithTag(UiTags.PICKER_ACCOUNT_MENU) > 0 }
         },
         content = picker(),
+    ),
+    // #197: a paid Scan is out, so the sheet's Sign out is off and says why (not in the designer's frames).
+    CaptureCase(
+        "rig_picker", "account_menu_scan_out",
+        setUp = {
+            tap(UiTags.PICKER_ACCOUNT_STATUS)
+            rule.waitUntil(timeoutMillis = 5_000) { rule.nodesWithTag(UiTags.PICKER_ACCOUNT_MENU) > 0 }
+        },
+        content = picker(scanIsOut = true),
     ),
     CaptureCase("rig_picker", "six_saved_rigs", content = picker(rigs = sixRigs)),
     CaptureCase("rig_picker", "balance_not_loaded", content = picker(balance = null)),

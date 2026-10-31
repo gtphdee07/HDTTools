@@ -16,10 +16,12 @@ import com.rigcheck.app.data.AccountBackend
 import com.rigcheck.app.data.AccountResult
 import com.rigcheck.app.data.AccountState
 import com.rigcheck.app.data.BackendStatus
+import com.rigcheck.app.data.BillingIdentity
 import com.rigcheck.app.data.GarageBackend
 import com.rigcheck.app.data.HistoryBackend
 import com.rigcheck.app.data.HistoryCaps
 import com.rigcheck.app.data.HistoryEntry
+import com.rigcheck.app.data.PlanSource
 import com.rigcheck.app.domain.VerdictStatus
 import com.rigcheck.app.domain.model.RecentRig
 import com.rigcheck.app.testsupport.nodesWithTag
@@ -54,6 +56,17 @@ private object AcceptingGarage : GarageBackend {
     override suspend fun addRig(idempotencyKey: String, rig: RecentRig, isPro: Boolean?) = Unit
     override suspend fun updateRig(rig: RecentRig) = Unit
     override suspend fun deleteRig(id: String) = Unit
+}
+
+// RevenueCat linked to the account, and no Pro: the account is on the Free plan.
+private object LinkedBilling : BillingIdentity {
+    override val isAnonymous = false
+    override suspend fun logIn(accountId: String) = Unit
+    override suspend fun logOut() = Unit
+}
+
+private object FreePlan : PlanSource {
+    override suspend fun isPro() = false
 }
 
 // The account's History on a pretend server: checks that "another device" can add behind the app's back, and a
@@ -97,9 +110,17 @@ class HistoryNavigationTest {
 
     private lateinit var viewModel: RigCheckViewModel
 
-    private fun showApp(history: PretendHistory) {
+    // With `freePlan` the account is Free (RevenueCat is linked and says no Pro), which the limit notice needs.
+    private fun showApp(history: PretendHistory, freePlan: Boolean = false) {
         composeRule.runOnUiThread {
-            viewModel = RigCheckViewModel(ApplicationProvider.getApplicationContext(), HistoryTestAccount(), AcceptingGarage, history)
+            viewModel = if (freePlan) {
+                RigCheckViewModel(
+                    ApplicationProvider.getApplicationContext(), HistoryTestAccount(), AcceptingGarage, history,
+                    billing = LinkedBilling, planSource = FreePlan,
+                )
+            } else {
+                RigCheckViewModel(ApplicationProvider.getApplicationContext(), HistoryTestAccount(), AcceptingGarage, history)
+            }
         }
         composeRule.setContent { RigCheckNavHost(viewModel = viewModel) }
         composeRule.waitUntil(timeoutMillis = 10_000) {
@@ -170,6 +191,23 @@ class HistoryNavigationTest {
         composeRule.onNodeWithTag(UiTags.HISTORY_BACK).performClick()
 
         composeRule.onNodeWithTag(UiTags.OPEN_HISTORY).assertIsDisplayed()
+        assertEquals(0, composeRule.nodesWithTag(UiTags.HISTORY_TITLE))
+    }
+
+    // #197 (from the #195 merge review): "Upgrade to Pro" in the History's limit notice opens the Paywall through the real
+    // nav host. HistoryScreenTest only shows that the screen's callback fires; the wiring in RigCheckNavHost
+    // (`onUpgrade = { navController.navigate(RigCheckRoute.Paywall) }`) had no test. A Free account with ten checks (the
+    // Free cap of PretendHistory) has the notice and its button.
+    @Test
+    fun upgradeToProInTheHistoryNoticeOpensThePaywall() {
+        val history = PretendHistory().apply { repeat(10) { madeElsewhere("Check $it", VerdictStatus.PASS) } }
+        showApp(history, freePlan = true)
+        openHistory()
+        composeRule.waitUntil(timeoutMillis = 10_000) { composeRule.nodesWithTag(UiTags.HISTORY_UPGRADE) > 0 }
+
+        composeRule.onNodeWithTag(UiTags.HISTORY_UPGRADE).performClick()
+
+        composeRule.onNodeWithTag(UiTags.PAYWALL_TITLE).assertIsDisplayed()
         assertEquals(0, composeRule.nodesWithTag(UiTags.HISTORY_TITLE))
     }
 

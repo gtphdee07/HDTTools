@@ -224,7 +224,7 @@ fun TruckTagEntryScreen(
             )
             Text(
                 "Scan a CAT Scale ticket weighing just your tow vehicle (no trailer attached) " +
-                    "and we'll fill in the field above for you.",
+                    "and we'll fill in the field below for you.",
                 style = RigCheckStyles.bodySm,
                 color = InkMuted,
                 modifier = Modifier.fillMaxWidth().testTag(UiTags.TRUCK_STANDALONE_PANEL_BODY),

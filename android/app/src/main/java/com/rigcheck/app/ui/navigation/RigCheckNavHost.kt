@@ -125,6 +125,7 @@ fun RigCheckNavHost(
                 onOpenPaywall = { navController.navigate(RigCheckRoute.Paywall) },
                 onOpenHistory = { navController.navigate(RigCheckRoute.History) },
                 onDeleteRig = if (canDeleteRigs) viewModel::deleteRig else null,
+                scanIsOut = viewModel.scanIsOut,
             )
         }
 
@@ -199,6 +200,7 @@ fun RigCheckNavHost(
                         onDone = { navController.popBackStack() },
                         accountLabel = account.account.email ?: account.account.id,
                         onSignOut = { viewModel.signOut() },
+                        scanIsOut = viewModel.scanIsOut,
                     )
                 }
             }

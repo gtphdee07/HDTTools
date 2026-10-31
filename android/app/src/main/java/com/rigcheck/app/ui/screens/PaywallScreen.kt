@@ -38,6 +38,7 @@ import com.rigcheck.app.BuildConfig
 import com.rigcheck.app.data.PaywallOffers
 import com.rigcheck.app.data.RevenueCatManager
 import com.rigcheck.app.data.paywallOffers
+import com.rigcheck.app.ui.ScanMessages
 import com.rigcheck.app.ui.UiTags
 import com.rigcheck.app.ui.components.RigCheckBadge
 import com.rigcheck.app.ui.components.RigCheckBadgeKind
@@ -102,6 +103,8 @@ fun PaywallScreen(
     // True in the beta build (#174): the offers are bought with test cards, and the screen says so (#182).
     // A parameter so a test can show it both ways.
     isBeta: Boolean = BuildConfig.IS_BETA,
+    // A paid Scan is out (#197): Sign out is disabled, with the reason in words, until it answers.
+    scanIsOut: Boolean = false,
 ) {
     val context = LocalContext.current
     var offers by remember { mutableStateOf<PaywallOffers?>(null) }
@@ -163,26 +166,31 @@ fun PaywallScreen(
                     }
                 }
                 accountLabel?.let { label ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            "Buying for $label",
-                            style = RigCheckStyles.bodySm,
-                            color = InkMuted,
-                            modifier = Modifier.weight(1f).testTag(UiTags.PAYWALL_ACCOUNT_LABEL),
-                        )
-                        RigCheckButton(
-                            text = "Sign out",
-                            onClick = onSignOut,
-                            kind = RigCheckButtonKind.Ghost,
-                            size = RigCheckButtonSize.Compact,
-                            enabled = !isBusy,
-                            icon = Icons.AutoMirrored.Filled.Logout,
-                            modifier = Modifier.testTag(UiTags.PAYWALL_SIGN_OUT_BUTTON),
-                        )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "Buying for $label",
+                                style = RigCheckStyles.bodySm,
+                                color = InkMuted,
+                                modifier = Modifier.weight(1f).testTag(UiTags.PAYWALL_ACCOUNT_LABEL),
+                            )
+                            RigCheckButton(
+                                text = "Sign out",
+                                onClick = onSignOut,
+                                kind = RigCheckButtonKind.Ghost,
+                                size = RigCheckButtonSize.Compact,
+                                enabled = !isBusy && !scanIsOut,
+                                icon = Icons.AutoMirrored.Filled.Logout,
+                                modifier = Modifier.testTag(UiTags.PAYWALL_SIGN_OUT_BUTTON),
+                            )
+                        }
+                        if (scanIsOut) {
+                            Text(ScanMessages.SIGN_OUT_UNAVAILABLE, style = RigCheckStyles.bodySm, color = InkMuted)
+                        }
                     }
                 }
                 isPro?.let { pro ->

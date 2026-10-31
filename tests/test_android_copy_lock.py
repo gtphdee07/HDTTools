@@ -94,6 +94,30 @@ def _found(piece: tuple[str, bool], sources: str) -> bool:
     return f'"{text}"' in sources
 
 
+COPY_CHANGES = _ROOT / "docs" / "android-redesign" / "design-return" / "copy-changes.md"
+
+
+def _table_rows(section: str) -> list[list[str]]:
+    """The cells of each data row of the first table under the `## <section>` heading of copy-changes.md."""
+    text = COPY_CHANGES.read_text(encoding="utf-8")
+    start = text.index(f"## {section}")
+    end = text.find("\n## ", start + 1)
+    body = text[start : end if end != -1 else len(text)]
+    rows = [[c.strip() for c in line.strip().strip("|").split(" | ")] for line in body.splitlines() if line.startswith("| `")]
+    return rows
+
+
+def _owner_changed_literals() -> dict[str, str]:
+    """element id -> the new text, for the rows of copy-changes.md "Changed strings" whose old and new text are each one
+    whole quoted string (the chip rows are rules, not strings). The designer's maps carry the hint rows; the owner
+    added the others after the hand-back (the Truck panel, #197)."""
+    return {
+        row[0].strip("`"): row[2][1:-1]
+        for row in _table_rows("Changed strings")
+        if all(len(cell) > 2 and cell[0] == cell[-1] == '"' for cell in row[1:3])
+    }
+
+
 def _changed_literals(parts: dict) -> dict[str, str]:
     """element id -> the new text, for the changed strings that are literal text (the chip rule is not)."""
     changed = {}
@@ -101,7 +125,7 @@ def _changed_literals(parts: dict) -> dict[str, str]:
         new_text = entry["redesign"].get("new_text")
         if new_text and "scans" not in new_text:
             changed[entry["id"]] = new_text
-    return changed
+    return {**changed, **_owner_changed_literals()}
 
 
 @pytest.fixture(scope="module")
@@ -114,10 +138,14 @@ def sources():
     return _sources()
 
 
-def test_the_changed_strings_are_the_four_the_owner_approved(parts):
+def test_the_changed_strings_are_the_five_the_owner_approved(parts):
     assert _changed_literals(parts) == {
         "truck.reference_hint": "Tap a field to see its spot on the tag",
         "trailer.reference_hint": "Tap a field to see its spot on the tag",
+        "truck.standalone_panel_body": (
+            "Scan a CAT Scale ticket weighing just your tow vehicle (no trailer attached) and we'll fill in the "
+            "field below for you."
+        ),
     }
     # The two chip rows are in copy-changes.md as a rule, not a literal (creditChipLabel and its JVM test).
     copy_changes = (_ROOT / "docs" / "android-redesign" / "design-return" / "copy-changes.md").read_text(encoding="utf-8")
@@ -208,3 +236,30 @@ def test_the_shared_components_say_the_new_status_words(sources):
     for words in ("Within limit", "Over limit", "Not checked", "Show note", "Hide note", "Back", "Reading…"):
         assert f'"{words}"' in sources, words
     assert "Scan balance: " in sources and ". Opens the Paywall" in sources
+
+
+NEW_STRINGS = "New strings (new elements, no existing text changes)"
+
+
+def _new_string_pieces(text: str) -> list[str]:
+    """The strings one "New strings" cell holds: its ' / ' alternatives, without a `<placeholder>` in backticks."""
+    return [p for part in text.split(" / ") if (p := re.sub(r"`[^`]*`", "", part).strip())]
+
+
+def test_every_new_string_in_copy_changes_is_in_the_app(sources):
+    """#197: the "New strings" table of copy-changes.md lists the words the re-skin added. Each piece of each cell must be
+    a string in the app, so a new element that was drawn but not built (or built with other words) fails here."""
+    rows = _table_rows(NEW_STRINGS)
+    assert len(rows) >= 11, "the table was not read"
+    missing = [
+        f"{row[0]}: {piece!r}"
+        for row in rows
+        for piece in _new_string_pieces(row[1])
+        if not _found((piece, False), sources)
+    ]
+    assert not missing, "new strings of copy-changes.md that are not in the app:\n" + "\n".join(missing)
+
+
+def test_the_sign_out_reason_is_the_one_copy_changes_lists(sources):
+    rows = {row[0]: row[1] for row in _table_rows(NEW_STRINGS)}
+    assert f'"{rows["`picker.sign_out_unavailable`"]}"' in sources

@@ -186,23 +186,37 @@ only in debug and beta and `IS_BETA` only in beta, no keystore path, alias or pa
 `slow` and offline; the APK check skips when the beta dependencies are not in the offline Gradle cache
 (build `assembleBeta` once online to fill it).
 
-### Instrumented suite, measured (2026-10-21, #64)
+### Instrumented suite, measured (2026-10-30, #197)
 
-`./gradlew connectedDebugAndroidTest` from `android/`, on the `medium_phone` emulator (API 36
-Google Play image, started with `-gpu swangle_indirect -no-snapshot-save`): **148 tests in 22
-classes, 148 passed, 0 failed, 0 skipped**; `BUILD SUCCESSFUL in 5m 35s` (that includes
-building and installing both APKs). The tree has 160 `@Test` methods under `androidTest`; the
-12 that do not run here are the live ones the Gradle task keeps out:
-`PaywallScreenWeeklyTest` (6, `notClass`; the old weekly suite, below) and
-`RevenueCatAndroidSdkExternalTest` (6, `notAnnotation`; the `revenuecat-android-sdk` surface). The
-slowest classes are `RigCheckNavHostTest` (11 tests, 49 s), `TruckTagEntryScreenTest` (20, 40 s)
-and `ScanInFlightNavigationTest` (11, 37 s). The decision-logic JVM floor and the 176 JVM tests
-need no device (`uv run scripts/android_session_end.py`).
+`uv run scripts/android_suite_loop.py --runs 3 --expected-tests 436 --emulator-arg=-no-window --emulator-arg=-no-audio`
+from the repo root, on the `medium_phone` emulator (API 36 Google Play image, software GPU, cold-booted before every
+run, headless): **436 tests in 53 classes, 3 runs in a row, 436 passed each time, 0 failed, 0 aborted**; one run takes
+about 1,560 s of test time (26 min) and about 28 min with the boot. The count is the suite's real size, taken from
+`am instrument -e log true` with the loop's exclusions (448 `@Test` methods under `androidTest`, less the 12 that need a
+store or a Worker and that the Gradle task keeps out too: `PaywallScreenWeeklyTest`, 6, and
+`RevenueCatAndroidSdkExternalTest`, 6); it was 148 at #64 (2026-10-21), 342 at #200 and 436 once the re-skin (#191 to #196,
+#199) and the final pass (#197) had their tests. Four of the 436 are `LayoutCaptureTest`'s, which skip (an assumption) unless
+the layout capture asks for them. Whenever a test is added, the number in `--expected-tests` moves with it; a run that ends
+with another count is labelled failed, so a quiet change of the suite's size is caught. The decision-logic JVM floor and the
+JVM tests need no device (`uv run scripts/android_session_end.py`).
+
+The first full suite since the re-skin tickets (each of #191 to #196 ran only its own classes on the device) failed on
+every cold-booted run: **one test, 3 of 3 runs, the other 435 passed**. The test was the first in `EntryScreensLayoutTest`
+to wait for the soft keyboard (`the soft keyboard did not settle (ime inset 0 px)`). That is the failure #202 recorded once
+in `RigPickerChooserLayoutTest.theDesignFrame412x892MatchesTheMap` at #200. Run alone, on a cold-booted headless emulator
+and on a windowed one (5 runs each), the class passed every time, and so did the entry test alone; run after
+`AccountScreenTest`, both failed. **The cause is a test that left an autofill session open**, the same as #188's: 
+`AccountScreenTest` types a password and never cancelled the session, and the next test that waits for the keyboard gets
+none, so it is neither a flake nor something only a headless emulator does. `AccountScreenTest` now cancels autofill after
+each test (as `UiTagsDisplayedTest` and `LayoutStateRunner` do), the keyboard wait says what the window was doing when it
+gives up, and the two tests pass after `AccountScreenTest`. Where it came from: the bug is in `AccountScreenTest` (#22); it only shows when a keyboard test runs soon after it,
+and the re-skin tickets' layout classes (`RigPickerChooserLayoutTest` #192, `EntryScreensLayoutTest` #193) are the
+keyboard tests that follow it in the suite's order, so it was never merged by a ticket: it needed a full suite to show.
 
 ### Running the instrumented suite N times in a row (#127)
 
 ```
-uv run scripts/android_suite_loop.py --runs 5 --expected-tests 148   # from the repo root
+uv run scripts/android_suite_loop.py --runs 5 --expected-tests 436   # from the repo root
 ```
 
 The one supported way to get a "full suite N times in a row" count. Before
@@ -216,7 +230,7 @@ finds them, so a newly tagged class needs no edit to the script). It then labels
 each run from its output and prints, per run and in total:
 
 - **passed**: `OK (N tests)`, the count in the run's line (the offline
-  instrumented suite is 148 tests, 2026-10-21, see below; pass `--expected-tests 148`
+  instrumented suite is 436 tests, 2026-10-30, see above; pass `--expected-tests 436`
   and a run that ends with another count is `test-failed`. The default is no check, so
   the number is not hand-kept in the script);
 - **test-failed**: the suite reached its end and a test failed;
@@ -1323,7 +1337,7 @@ network involved:
   (`AutofillManager.cancel()`); any test that fills a password field should do the same.
 - `LayoutCaptureTest` (#189, 4 tests, in `layoutcapture/`) — not a regression test but the capture of the
   redesign's "before" and "after" map. It opens every screen state of `docs/android-redesign/ui-inventory.json`
-  that the app can reach with the existing fixtures (89 states in `CaptureCases.kt`: the real screens inside
+  that the app can reach with the existing fixtures (93 states in `CaptureCases.kt`, the last added by #197 for the account sheet with Sign out off: the real screens inside
   `RigCheckApp`, RevenueCat faked as the Offering's packages, no Scan sent, no network) once per phone frame:
   412 x 892 dp (the reference frame), 360 x 640 dp, and the Disclaimer and Results states again at font scale
   2.0 on both. For each state it writes `<screen>__<state>.png` (a screenshot of the display, status and
@@ -1630,6 +1644,54 @@ ends at 63px", and the same for the title and Create (the 3-button bar is 126 px
 emulator's own default, gesture navigation, is what had hidden the problem. A new screen that is a full-bleed camera preview would have to opt out of the padding
 on purpose; production capture uses the system camera, so none does today.
 
+**Final-pass tests** (#197) — the checks over the whole finished app, after the re-skin (#191 to #196, #199). They
+open the states of the layout capture (`layoutcapture/CaptureCases.kt`, the screens, dialogs and the account sheet of
+`docs/android-redesign/ui-inventory.json`) on the real emulator, with the shared `LayoutStateRunner`, and list every
+problem of every state before failing:
+
+- `ui/AccessibilityChecksTest.kt` (16 tests: one per screen, and one that no screen of the capture is left without a test) — Compose's accessibility checks (the Accessibility Test Framework behind
+  `enableAccessibilityChecks`: touch-target size, a content description on every icon that does something, text and image
+  contrast, duplicate click areas) run on each window of every captured state at 412 x 892 dp; any error fails, a warning
+  does not. The dependency is `androidx.compose.ui:ui-test-junit4-accessibility` (an `androidTestImplementation`; its
+  version comes from the Compose BOM). The contrast it measures is of the pixels, so it sits over `TextFillPairsTest`, which
+  holds the design's text and fill colours to AA on the JVM.
+- `ui/navigation/ThreeButtonNavigationTest.kt` (16 tests: one per screen, plus the same completeness test) — with 3-button navigation really on (`testsupport/NavigationMode`
+  sets the overlay and puts the device's setting back), every captured state at 360 x 640 dp: no tagged element, as much of
+  it as is on show, reaches into the navigation bar. `SystemBarsTest` holds the rule that does it (`RigCheckApp`'s
+  `safeDrawingPadding()`) for two screens with the real controls tapped; this one covers every screen.
+- `ui/navigation/SignOutDuringScanNavigationTest.kt` (3 tests) — Sign out is not possible while a paid Scan is out, through
+  the real nav host and view model with a signed-in fake account (owner decision of 2026-10-28, #192 merge): a Scan started
+  on the Chooser and backed out of leaves the Rig picker's account sheet with Sign out disabled and the reason in words
+  (`ScanMessages.SIGN_OUT_UNAVAILABLE`), a tap and `signOut()` reach the account zero times, and the account is still signed
+  in; once the Scan has answered, Sign out is enabled, the reason is gone, and signing out ends the session; the Paywall's
+  Sign out is disabled too. `ScanInFlightNavigationTest` is unchanged.
+- `ui/screens/RigPickerDialogsLayoutTest.kt` (2 tests) — the delete-Rig and crash-report dialogs on a 360 x 640 dp phone, at
+  font scale 1 and 2.0: every action is reached by scrolling, nothing is wider than the screen, the 48 dp rule holds. The
+  other screens' primary actions are reached by their own layout test (each has a 360 x 640 test at both font scales).
+- `ui/screens/EntryScreensLayoutTest.kt`, three tests more: at font scale 1.5 the balance chip is beside the Truck screen's
+  title and the reference card is the 116 dp card; at 2.0 the chip is on a row under the title and the card is the 44 dp
+  strip, and with a field focused the hint beside the badge is readable in full or not there ("Tap a fi..." fails) on the
+  Truck and Trailer screens; with the keyboard open the card scrolls with the form on a 360 x 640 dp phone (under 420 dp of
+  room) and stays pinned on a 412 x 892 dp one. The stand-alone panel's words ("the field below") are compared with where
+  the field is. The three layout rules are the ones of `EntryScreenFrame.kt` that survived every #193 test; each was
+  mutated on the device (`val chipBelow = false`, the `fontScale` term dropped, `maxHeight >= 0.dp`) and fails a named test.
+- `ui/navigation/HistoryNavigationTest.kt`, one test more: "Upgrade to Pro" in the History's limit notice opens the Paywall
+  through the real nav host (`onUpgrade = { navController.navigate(RigCheckRoute.Paywall) }` had no test).
+- **Device mutations (2026-10-30, #197).** Eleven mutations applied together in one run of these classes, plus the two that
+  the others mask run on their own, every file restored byte for byte; each failed the test named: the chip left beside the
+  title at font 2.0 and the card not the strip (`EntryScreensLayoutTest.atFontScale2TheChipIsUnderTheTitle...`), the card
+  always pinned (`...withTheKeyboardOpenOnAShortPhone...`), the old hint layout back (alone: `...atFontScale2...` and
+  `aSmallPhone360x640AtFontScale2ReachesEveryPrimaryAction`, "cut off (2 lines)"), the Truck panel saying "above"
+  (`theTruckTagFrame412x892MatchesTheMap`, "the field is below it"), Sign out left enabled in the sheet and in the Paywall
+  (`SignOutDuringScanNavigationTest`), the view model's `signOut()` guard removed (alone, same class: `expected:<0> but
+  was:<1>`), the History upgrade callback replaced by `{}` (`HistoryNavigationTest.upgradeToProInTheHistoryNoticeOpensThePaywall`;
+  all 47 earlier tests of the four History classes passed with it, which is why the test was added), `safeDrawingPadding()`
+  removed (`SystemBarsTest`, and `ThreeButtonNavigationTest` on 12 screens), and the icon button 36 dp
+  (`AccessibilityChecksTest`, `EntryScreensLayoutTest` touch targets).
+- JVM, `ui/theme/TextFillPairsTest.kt` (4 tests) — every text colour of `tokens.json` against every fill it is drawn on meets
+  WCAG AA (4.5:1; 3:1 for the disabled button, which the standard exempts), the table names only tokens that exist and covers
+  every text token and tint, and the check is shown to fail on a pair under AA.
+
 **Test-support tests** (`testsupport/`, Major suite) — real-network-free
 coverage for test infrastructure: the fixture pool the External suite below
 depends on, and the scroll helper the screen and nav tests use:
@@ -1750,6 +1812,11 @@ against the test audit in `docs/test-audit/android.md`.
   (148 passed), so the "N times in a row" count was never green. The run now excludes every
   tagged class, found by `run_external_android.surface_classes`
   (`tests/test_android_suite_loop.py`); see "Running the instrumented suite N times in a row".
+- ✅ **Closed (#202, #197)**: `RigPickerChooserLayoutTest.theDesignFrame412x892MatchesTheMap` failing once in the full
+  suite with `the soft keyboard did not settle (ime inset 0 px)`. Not a flake and not a headless limit: `AccountScreenTest`
+  left an autofill session open, so the next test that waits for the keyboard got none (it failed after
+  `AccountScreenTest` alone, and passed 5 of 5 on a cold headless emulator and 5 of 5 on a windowed one without it). Fixed
+  in `AccountScreenTest`; see "Instrumented suite, measured".
 - **Open (no ticket)**: Google and email sign-in have no automated test against the real
   provider. Google sign-in was checked by hand end to end when #22 closed (the Supabase Google
   provider enabled, `scripts/wizard_android_sign_in.sh` sets it up); the offline tests

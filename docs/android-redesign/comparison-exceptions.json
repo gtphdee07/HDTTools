@@ -1,0 +1,201 @@
+{
+  "about": "Differences between the finished Android app and the designer's map that the owner accepted (#197, AskUserQuestion answer of 2026-10-30: accept all 28). scripts/design_compare.py reads this file; an exception that matches no difference is reported stale.",
+  "exceptions": [
+    {
+      "id": "picker.credit_chip",
+      "kind": "size",
+      "reason": "The chip is as wide as its label: the capture's fixture says fewer scans than the frame's sample, so it is a few dp under the map's 125.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "chooser.credit_chip",
+      "kind": "size",
+      "reason": "The chip is as wide as its label: the capture's fixture says fewer scans than the frame's sample, so it is a few dp under the map's 125.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "chooser.step_bar",
+      "kind": "size",
+      "reason": "The step indicator's two text lines take 77.6 dp in the bundled fonts; the frame measured 76, 0.1 dp over the 1.5 dp tolerance.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "chooser.loading_overlay",
+      "kind": "size",
+      "reason": "The overlay covers the screen inside the system bars (892 less the 24 dp status bar and 24 dp navigation allowances = 844); the frame draws it over the whole display.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "truck.step_bar",
+      "kind": "size",
+      "reason": "The step indicator's two text lines take 77.6 dp in the bundled fonts; the frame measured 76, 0.1 dp over the 1.5 dp tolerance.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "truck.standalone_panel",
+      "kind": "size",
+      "reason": "The capture's first state with the panel on show is the one with the info text open (+72.8 dp); the blank panel measures 485.2 dp, inside the estimate.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "trailer.step_bar",
+      "kind": "size",
+      "reason": "The step indicator's two text lines take 77.6 dp in the bundled fonts; the frame measured 76, 0.1 dp over the 1.5 dp tolerance.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "scale.step_bar",
+      "kind": "size",
+      "reason": "The step indicator's two text lines take 77.6 dp in the bundled fonts; the frame measured 76, 0.1 dp over the 1.5 dp tolerance.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "results.garage_notice",
+      "kind": "size",
+      "reason": "Text-dependent: the frame's sample text wraps to a different number of lines than the app's real or fixture text (a line is about 20 dp); the figure is the map's estimate, not a size the design fixes.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "results.history_notice",
+      "kind": "size",
+      "reason": "Text-dependent: the frame's sample text wraps to a different number of lines than the app's real or fixture text (a line is about 20 dp); the figure is the map's estimate, not a size the design fixes.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "results.row",
+      "kind": "size",
+      "reason": "Text-dependent: the frame's sample text wraps to a different number of lines than the app's real or fixture text (a line is about 20 dp); the figure is the map's estimate, not a size the design fixes. The row measured is the expanded one.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "results.row_label",
+      "kind": "size",
+      "reason": "Text-dependent: the frame's sample text wraps to a different number of lines than the app's real or fixture text (a line is about 20 dp); the figure is the map's estimate, not a size the design fixes.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "results.row_note",
+      "kind": "size",
+      "reason": "Text-dependent: the frame's sample text wraps to a different number of lines than the app's real or fixture text (a line is about 20 dp); the figure is the map's estimate, not a size the design fixes.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "history.limit_notice",
+      "kind": "size",
+      "reason": "Text-dependent: the frame's sample text wraps to a different number of lines than the app's real or fixture text (a line is about 20 dp); the figure is the map's estimate, not a size the design fixes.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "paywall.offer_card",
+      "kind": "size",
+      "reason": "Text-dependent: the frame's sample text wraps to a different number of lines than the app's real or fixture text (a line is about 20 dp); the figure is the map's estimate, not a size the design fixes. The offer title and description are store data (copy-changes.md, sample text).",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "paywall.offer_description",
+      "kind": "size",
+      "reason": "Text-dependent: the frame's sample text wraps to a different number of lines than the app's real or fixture text (a line is about 20 dp); the figure is the map's estimate, not a size the design fixes. The offer description is store data.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "account.reason",
+      "kind": "size",
+      "reason": "Text-dependent: the frame's sample text wraps to a different number of lines than the app's real or fixture text (a line is about 20 dp); the figure is the map's estimate, not a size the design fixes.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "scan_error.message",
+      "kind": "size",
+      "reason": "Text-dependent: the frame's sample text wraps to a different number of lines than the app's real or fixture text (a line is about 20 dp); the figure is the map's estimate, not a size the design fixes. The message is the Worker's, not fixed text.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "picker.account_menu_email",
+      "kind": "size",
+      "reason": "The email line is 20 dp where the frame measured 22, 0.5 dp outside the tolerance: the line height of the one-line text style.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "picker.empty_state",
+      "kind": "size",
+      "reason": "Text-dependent: the frame's sample text wraps to a different number of lines than the app's real or fixture text (a line is about 20 dp); the figure is the map's estimate, not a size the design fixes. 4.4 dp under the frame's 108.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "trailer.reference_focus_badge",
+      "kind": "size",
+      "reason": "The badge is as wide as its label: the first state shows GVWR (60 dp); the map's 114 dp is the longest, GAWR per axle.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "truck.credit_chip",
+      "kind": "size",
+      "reason": "The chip is as wide as its label: the capture's fixture says fewer scans than the frame's sample, so it is a few dp under the map's 125.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "splash.background",
+      "kind": "unimplemented",
+      "reason": "Built as theme resources in #191 (splash_window_background.xml, values-v31/themes.xml). The flag stays false because setting it would require a UiTags tag that no Compose screen can set.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "splash.background",
+      "kind": "missing",
+      "reason": "The splash screen is the platform's (theme resources: windowSplashScreenBackground and the animated icon), not part of the Compose tree, so the capture cannot measure it and its UiTags tag has no screen to be set on.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "splash.icon",
+      "kind": "unimplemented",
+      "reason": "Built as theme resources in #191 (ic_splash_icon.xml). The flag stays false for the same reason as splash.background.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "splash.icon",
+      "kind": "missing",
+      "reason": "The splash screen is the platform's (theme resources: windowSplashScreenBackground and the animated icon), not part of the Compose tree, so the capture cannot measure it and its UiTags tag has no screen to be set on.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "splash.branding",
+      "kind": "unimplemented",
+      "reason": "Not built: the design marks it optional ('drop if it cannot be built'), and Android 13 and later no longer show the branding image (values-v31/themes.xml says so).",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    },
+    {
+      "id": "splash.branding",
+      "kind": "missing",
+      "reason": "The splash screen is the platform's (theme resources: windowSplashScreenBackground and the animated icon), not part of the Compose tree, so the capture cannot measure it and its UiTags tag has no screen to be set on. It is also the optional branding image (the name and tagline) that the design said to drop if it cannot be built; Android 13 and later no longer show it.",
+      "accepted_by": "owner",
+      "date": "2026-10-30"
+    }
+  ]
+}

@@ -63,7 +63,11 @@ MEASURED_NOTES = {
         "or untagged (the merge names those). "
         "These supersede the estimates in `today`, which stay for the designer's round."
     ),
-    "after_measured": "The same measurement of the re-skinned app (#197), merged with `--field after_measured`.",
+    "after_measured": (
+        "The same measurement of the re-skinned app (#197), merged with `--field after_measured`. The elements the "
+        "designer added (they are not inventory elements) are measured the same way, by their map's new_test_tag, under "
+        "the top-level key `added_after_measured`, keyed by id."
+    ),
 }
 REDESIGN_COLUMNS = [
     "status", "new_screen", "new_region", "new_order", "new_width", "new_height", "new_style", "new_text",
@@ -268,10 +272,13 @@ def _set_field(element: dict, field: str, value: dict | None) -> None:
             element[field] = value
 
 
-def merge_bounds(inventory: dict, frames: dict[str, list[dict]], field: str = "today_measured") -> list[str]:
+def merge_bounds(
+    inventory: dict, frames: dict[str, list[dict]], field: str = "today_measured", added: list[dict] | None = None
+) -> list[str]:
     """Writes each element's measurement into element[field] and returns the problems found, one line each: every
     element with a tag that no captured state of its screen has, and every bounds file for a screen the inventory
-    does not have."""
+    does not have. With `added` (the elements the designer added, from the maps) and the after_measured field, their
+    measurements go to inventory["added_after_measured"], keyed by id, since they are not inventory elements."""
     if field not in MEASURED_FIELDS:
         raise ValueError(f"field must be one of {MEASURED_FIELDS}, not {field!r}")
     found: list[str] = []
@@ -292,6 +299,14 @@ def merge_bounds(inventory: dict, frames: dict[str, list[dict]], field: str = "t
                 f"{element['id']} ({', '.join(element_tags(element))}) on {element['screen']} was never found in any "
                 "captured state"
             )
+    if added is not None and field == "after_measured":
+        measured_added: dict[str, dict | None] = {}
+        for element in added:
+            tag = element["redesign"].get("new_test_tag")
+            measured_added[element["id"]] = _measure({"screen": element["screen"], "test_tag_new": tag}, frames) if tag else None
+            if measured_added[element["id"]] is None:
+                found.append(f"{element['id']} ({tag}), added by the design, was never found in any captured state")
+        inventory["added_after_measured"] = measured_added
     inventory["meta"][field] = MEASURED_NOTES[field]
     return found
 
@@ -302,7 +317,9 @@ def merge_command(argv: list[str]) -> int:
         field = argv[argv.index("--field") + 1] if "--field" in argv else "today_measured"
         frames = read_bounds(directory)
         inventory = load_inventory()
-        found = merge_bounds(inventory, frames, field)
+        parts = design_return_check.load_parts()
+        added = parts["map"].get("added_elements", []) + parts["followup"].get("added_elements", [])
+        found = merge_bounds(inventory, frames, field, added)
     except IndexError:
         print("usage: ui_inventory.py --merge-bounds DIR [--field today_measured|after_measured]")
         return 2

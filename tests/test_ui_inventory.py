@@ -24,6 +24,25 @@ def test_the_repository_inventory_csv_ui_tags_and_screens_agree():
     assert ui_inventory.problems() == []
 
 
+def test_no_screen_still_shows_a_material_text_button_or_alert_dialog():
+    """#197: the old orange text buttons ("History", "Send feedback", a dialog's "Cancel") were the unstyled Material
+    ones. Every button of the app is a RigCheckButton and every dialog a RigCheckDialog (or the bottom sheet); the
+    camera-overlay spike (ui/experiments, not a screen of the app) is the one place left that uses Material's."""
+    sources = {
+        p.relative_to(ui_inventory.ANDROID_MAIN).as_posix(): p.read_text(encoding="utf-8")
+        for p in ui_inventory.ANDROID_MAIN.rglob("*.kt")
+        if "/experiments/" not in p.as_posix()
+    }
+    assert sources, "no sources were read"
+    old = [
+        f"{name}: {call}"
+        for name, text in sources.items()
+        for call in ("TextButton(", "AlertDialog(", "OutlinedButton(", "ElevatedButton(")
+        if call in text
+    ]
+    assert old == []
+
+
 def test_a_tag_in_the_inventory_but_not_in_ui_tags_is_reported(monkeypatch):
     constants = ui_inventory.ui_tags_constants()
     dropped = constants.pop("OPEN_HISTORY")
@@ -290,6 +309,38 @@ def test_merging_after_measured_leaves_today_measured_alone():
     element = inventory["elements"][0]
     assert (element["today_measured"]["412x892"]["x"], element["after_measured"]["412x892"]["x"]) == (1.0, 2.0)
     assert "after_measured" in inventory["meta"] and "today_measured" in inventory["meta"]
+
+
+def _added(element_id, screen, tag):
+    return {"id": element_id, "screen": screen, "redesign": {"status": "added", "new_test_tag": tag}}
+
+
+def test_an_element_the_designer_added_is_measured_by_its_new_tag_under_added_after_measured():
+    inventory = _inventory(_element("picker.title", "picker", "t"))
+    files = [_bounds_file("picker", "s", 0, {"t": _box(), "picker_tagline": _box(x=3.0, y=4.0, width=50.0, height=16.0)})]
+    problems = ui_inventory.merge_bounds(
+        inventory, {"412x892": files}, "after_measured",
+        added=[_added("picker.tagline", "picker", "picker_tagline"), _added("picker.gone", "picker", "picker_gone")],
+    )
+
+    measured = inventory["added_after_measured"]
+    assert measured["picker.tagline"]["412x892"]["width"] == 50.0
+    assert measured["picker.gone"] is None
+    assert any("picker.gone" in p and "never found" in p for p in problems)
+    # An element is looked for on its own screen only.
+    other = ui_inventory.merge_bounds(
+        inventory, {"412x892": [_bounds_file("chooser", "s", 0, {"picker_tagline": _box()})]}, "after_measured",
+        added=[_added("picker.tagline", "picker", "picker_tagline")],
+    )
+    assert inventory["added_after_measured"]["picker.tagline"] is None and other
+
+
+def test_added_elements_are_only_measured_for_the_after_half_and_only_when_given():
+    inventory = _inventory(_element("picker.title", "picker", "t"))
+    files = {"412x892": [_bounds_file("picker", "s", 0, {"t": _box(), "x": _box()})]}
+    ui_inventory.merge_bounds(inventory, files, "today_measured", added=[_added("picker.x", "picker", "x")])
+    ui_inventory.merge_bounds(inventory, files, "after_measured")
+    assert "added_after_measured" not in inventory
 
 
 def test_merging_into_a_field_that_is_not_a_measurement_is_refused():

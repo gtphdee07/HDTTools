@@ -2,6 +2,7 @@ package com.rigcheck.app.ui.screens
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
@@ -47,6 +48,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+
+// resize-rules.md: from this font scale the chip goes under the title, the reference card is the one-line strip, and a
+// stacked row stacks. Written here, not read from the app, so changing the app's number fails these tests.
+private const val LARGE_FONT_SCALE = 1.6f
 
 // #193: the Truck Tag, Trailer Tag and Scale Ticket entry screens, checked against the designer's map
 // (docs/android-redesign/design-return/ui-redesign-map.json). For every element of those screens, in the states below
@@ -147,7 +152,8 @@ class EntryScreensLayoutTest {
         problems += inState("truck_tag_entry: standalone_blank", truck(), setUp = { node(UiTags.TRUCK_STANDALONE_PANEL) }) { p ->
             val b = p.bounds()
             val tags = standalonePanel + pinWeight
-            sizes(b, p.widthDp, truckSizes.only(tags + UiTags.TRUCK_GCWR_HELP)) +
+            standaloneWordsMatchWhereTheFieldIs(p) +
+                sizes(b, p.widthDp, truckSizes.only(tags + UiTags.TRUCK_GCWR_HELP)) +
                 order(b, standaloneBands + pinWeight.map { listOf(it) }) +
                 reach(p, UiTags.TRUCK_GCWR_HELP, *tags.toTypedArray(), UiTags.TRUCK_NEXT_BUTTON) + touchTargets(p)
         }
@@ -361,6 +367,123 @@ class EntryScreensLayoutTest {
     @Test
     fun aSmallPhone360x640AtFontScale2ReachesEveryPrimaryAction() = reachEverything(Frame(360, 640, fontScale = 2f))
 
+    // --- #197: the layout rules of EntryScreenFrame, and the focused field's hint at a large font ---------------------
+    //
+    // (a) The balance chip sits beside the title up to font scale 1.5 and on a row of its own under it from 1.6.
+    // (b) On a tall phone the reference card is the 116 dp card up to font scale 1.5 and the 44 dp strip from 1.6.
+    // (c) With the keyboard open on a short phone the card has no room to stay pinned and scrolls with the form.
+    // And at font scale 2.0, with a field focused, the hint beside the badge is readable in full or not there ("Tap a fi...").
+
+    @Test
+    fun atFontScale1_5TheChipIsBesideTheTitleAndTheCardIsTheFullCard() {
+        putOnTheDisplay(Frame(412, 892, fontScale = 1.5f))
+        val problems = inState("truck_tag_entry: blank (font 1.5)", truck()) { p ->
+            val b = p.bounds()
+            chipBesideTheTitle(b) + sizes(b, p.widthDp, mapOf(UiTags.TRUCK_REFERENCE_IMAGE to Size(Dim.Any, fixed(116))))
+        }
+        assertTrue("font scale 1.5:\n" + problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    @Test
+    fun atFontScale2TheChipIsUnderTheTitleTheCardIsTheStripAndTheHintIsReadableOrGone() {
+        putOnTheDisplay(Frame(412, 892, fontScale = 2f))
+        val problems = mutableListOf<String>()
+        problems += inState("truck_tag_entry: blank (font 2.0)", truck()) { p ->
+            val b = p.bounds()
+            chipUnderTheTitle(b) + sizes(b, p.widthDp, mapOf(UiTags.TRUCK_REFERENCE_IMAGE to Size(Dim.Any, fixed(44))))
+        }
+        problems += inState(
+            "truck_tag_entry: front gawr focused (font 2.0)", truck(),
+            setUp = {
+                tap(UiTags.TRUCK_FRONT_GAWR_FIELD)
+                awaitKeyboardShown()
+                hideKeyboard()
+            },
+        ) { p ->
+            val b = p.bounds()
+            shown(b, listOf(UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_IMAGE)) +
+                sizes(b, p.widthDp, mapOf(UiTags.TRUCK_REFERENCE_IMAGE to Size(Dim.Any, fixed(44)))) +
+                hintBesideTheBadge(p, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_HINT) +
+                badgeTextIsNotCutOff(p, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, "Front GAWR")
+        }
+        problems += inState(
+            "trailer_tag_entry: gawr focused (font 2.0)", trailer(),
+            setUp = {
+                tap(UiTags.TRAILER_GAWR_FIELD)
+                awaitKeyboardShown()
+                hideKeyboard()
+            },
+        ) { p ->
+            val b = p.bounds()
+            shown(b, listOf(UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_IMAGE)) +
+                sizes(b, p.widthDp, mapOf(UiTags.TRAILER_REFERENCE_IMAGE to Size(Dim.Any, fixed(44)))) +
+                hintBesideTheBadge(p, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_HINT) +
+                badgeTextIsNotCutOff(p, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, "GAWR per axle")
+        }
+        assertTrue("font scale 2.0:\n" + problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    @Test
+    fun withTheKeyboardOpenOnAShortPhoneTheCardScrollsWithTheFormAndOnATallOneItStaysPinned() {
+        val problems = mutableListOf<String>()
+        putOnTheDisplay(Frame(360, 640))
+        problems += inState(
+            "truck_tag_entry: keyboard open, 360 x 640", truck(),
+            setUp = {
+                tap(UiTags.TRUCK_GVWR_FIELD)
+                awaitKeyboardShown()
+            },
+        ) { p ->
+            scrollsWithTheForm(p, UiTags.TRUCK_GCWR, UiTags.TRUCK_REFERENCE_IMAGE)
+        }
+        putOnTheDisplay(Frame(412, 892))
+        problems += inState(
+            "truck_tag_entry: keyboard open, 412 x 892", truck(),
+            setUp = {
+                tap(UiTags.TRUCK_GVWR_FIELD)
+                awaitKeyboardShown()
+            },
+        ) { p ->
+            pinned(p, UiTags.TRUCK_GCWR, UiTags.TRUCK_REFERENCE_IMAGE)
+        }
+        assertTrue("the card with the keyboard open:\n" + problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    // The stand-alone panel tells the user the scan fills in "the field below" (the design puts the field under the
+    // Scan button, in the panel): the words say below when the field is below the text, above when it is above (#197).
+    private fun standaloneWordsMatchWhereTheFieldIs(p: Probe): List<String> {
+        val b = p.bounds()
+        val body = b[UiTags.TRUCK_STANDALONE_PANEL_BODY] ?: return listOf("the panel's text is not on the screen")
+        val field = b[UiTags.TRUCK_STANDALONE_FIELD] ?: return listOf("the stand-alone weight field is not on the screen")
+        val node = p.rule.onNodeWithTag(UiTags.TRUCK_STANDALONE_PANEL_BODY, useUnmergedTree = true).fetchSemanticsNode()
+        val text = node.config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }.orEmpty()
+        val where = if (field.y >= body.y + body.height - 0.5) "below" else "above"
+        return listOfNotNull(
+            "the panel says \"$text\", but the field is $where it (field top ${field.y} dp, text ends ${body.y + body.height} dp)"
+                .takeIf { "fill in the field $where for you" !in text },
+        )
+    }
+
+    // The chip's row is the title's: it starts above the bottom of the title.
+    private fun chipBesideTheTitle(b: Map<String, TaggedBounds>): List<String> {
+        val chip = b[UiTags.TRUCK_CREDIT_CHIP] ?: return listOf("the balance chip is not on the screen")
+        val title = b[UiTags.TRUCK_TITLE] ?: return listOf("the title is not on the screen")
+        return listOfNotNull(
+            "the chip (top ${chip.y} dp) is under the title (${title.y} to ${title.y + title.height} dp), not beside it"
+                .takeIf { chip.y >= title.y + title.height - 0.5 },
+        )
+    }
+
+    // The chip has a row of its own: it starts at or below the bottom of the title.
+    private fun chipUnderTheTitle(b: Map<String, TaggedBounds>): List<String> {
+        val chip = b[UiTags.TRUCK_CREDIT_CHIP] ?: return listOf("the balance chip is not on the screen")
+        val title = b[UiTags.TRUCK_TITLE] ?: return listOf("the title is not on the screen")
+        return listOfNotNull(
+            "the chip (top ${chip.y} dp) is not on a row under the title (${title.y} to ${title.y + title.height} dp)"
+                .takeIf { chip.y < title.y + title.height - 0.5 },
+        )
+    }
+
     // The primary action of each screen (Next, Next, Check Weights) and every field and control of its form: a scroll puts
     // it wholly on show, nothing is wider than the screen, and the 48 dp rule holds. With the keyboard open the card
     // that no longer leaves room for the form scrolls with it.
@@ -396,9 +519,9 @@ class EntryScreensLayoutTest {
             },
         ) { p ->
             val b = p.bounds()
-            shown(b, listOf(UiTags.TRUCK_REFERENCE_HINT, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_IMAGE)) +
+            shown(b, listOf(UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_IMAGE)) +
                 sizes(b, p.widthDp, mapOf(UiTags.TRUCK_REFERENCE_IMAGE to Size(Dim.Any, fixed(44)))) +
-                badgeBesideTheHint(b, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_HINT) +
+                hintBesideTheBadge(p, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, UiTags.TRUCK_REFERENCE_HINT) +
                 badgeTextIsNotCutOff(p, UiTags.TRUCK_REFERENCE_FOCUS_BADGE, "Front GAWR") +
                 noneWiderThanTheScreen(p)
         }
@@ -411,9 +534,9 @@ class EntryScreensLayoutTest {
             },
         ) { p ->
             val b = p.bounds()
-            shown(b, listOf(UiTags.TRAILER_REFERENCE_HINT, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_IMAGE)) +
+            shown(b, listOf(UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_IMAGE)) +
                 sizes(b, p.widthDp, mapOf(UiTags.TRAILER_REFERENCE_IMAGE to Size(Dim.Any, fixed(44)))) +
-                badgeBesideTheHint(b, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_HINT) +
+                hintBesideTheBadge(p, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, UiTags.TRAILER_REFERENCE_HINT) +
                 badgeTextIsNotCutOff(p, UiTags.TRAILER_REFERENCE_FOCUS_BADGE, "GAWR per axle") +
                 noneWiderThanTheScreen(p)
         }
@@ -488,6 +611,44 @@ class EntryScreensLayoutTest {
             "$badge starts at ${badgeBounds.y} dp, not on the row of $hint (${hintBounds.y} dp)"
                 .takeIf { badgeBounds.y > hintBounds.y + hintBounds.height || badgeBounds.y + badgeBounds.height < hintBounds.y },
         )
+    }
+
+    // The hint beside the badge of the focused field (#197). Under font scale 1.6 it is on show on the badge's row. From
+    // 1.6 the card is the one-line strip, and the hint is either there in full (not cut, not ellipsised: "Tap a fi..."
+    // fails) or not there at all, because the badge already says which field the card shows.
+    private fun hintBesideTheBadge(p: Probe, badge: String, hint: String): List<String> {
+        val b = p.bounds()
+        if (p.fontScale < LARGE_FONT_SCALE) return shown(b, listOf(hint)) + badgeBesideTheHint(b, badge, hint)
+        if (hint !in b) return emptyList()
+        val node = p.rule.onNodeWithTag(hint, useUnmergedTree = true).fetchSemanticsNode()
+        val results = mutableListOf<TextLayoutResult>()
+        val read = node.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(results)
+        val layout = results.firstOrNull()
+        if (read != true || layout == null) return listOf("$hint: the text layout of the hint cannot be read")
+        val last = layout.lineCount - 1
+        val whole = (0..last).none { layout.isLineEllipsized(it) } && layout.getLineEnd(last) == layout.layoutInput.text.length
+        return listOf("$hint is on show at font scale ${p.fontScale} but cut off (${layout.lineCount} lines, \"${layout.layoutInput.text}\")")
+            .filter { !whole }
+    }
+
+    // The form and what is in it scroll together: each tag moves when the form scrolls to `scrollTo` (and the form really
+    // scrolled, so this is not vacuous). The opposite of `pinned`.
+    private fun scrollsWithTheForm(p: Probe, scrollTo: String, vararg tags: String): List<String> {
+        val before = p.bounds()
+        p.rule.onAllNodesWithTag(scrollTo, useUnmergedTree = true).onFirst().scrollToIfScrollable()
+        p.rule.waitForIdle()
+        val after = p.bounds()
+        val moved = before[scrollTo]?.y != after[scrollTo]?.y
+        return listOfNotNull("the form did not scroll to $scrollTo, so what scrolls with it was not tested".takeIf { !moved }) +
+            tags.mapNotNull { tag ->
+                val was = before[tag]
+                val now = after[tag]
+                when {
+                    was == null || now == null -> "$tag is not on the screen"
+                    abs(was.y - now.y) < 0.5 -> "$tag stayed at ${was.y} dp when the form scrolled: it should scroll with the form"
+                    else -> null
+                }
+            }
     }
 
     // The badge names the field in full: its text is one line, not ellipsised, and the line's right edge and its

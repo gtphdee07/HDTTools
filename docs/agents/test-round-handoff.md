@@ -17,6 +17,7 @@ Two lanes, one build session each, a **new** session for every ticket. Lane A is
 | # | Ticket | Lane | Starts when | Your part |
 |---|---|---|---|---|
 | 6 | [#198](#198-emulator-profiles-for-four-phone-shapes) Emulator profiles on G: for four phone shapes | A | your sign-off on the phone | answer its three decisions, including the Android 26 image download to G: |
+| 7 | [#205](#205-create-a-testers-account-and-grant-pro-and-scans-before-they-sign-in) Create a tester's account and grant Pro and scans before they sign in | B | nothing blocks it | the small owner check on the ticket after the merge |
 | optional | [#132](#132-optional-is-mutation-testing-worth-running-research) Is mutation testing worth running? | any | any time | none |
 
 A ticket starts when the tickets it waits for have merged, not when the round ends. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.
@@ -95,6 +96,33 @@ Test-round additions:
 4. Back in this main-checkout session type `/ticket-merge 198`. Claude reviews the work, adds any missing test or testing-document row (asking you first), merges, and asks before any push. Afterwards stop the emulator (`G:\Android\Sdk\platform-tools\adb.exe -s emulator-5554 emu kill`).
 
 **Your part:** answer the ticket's three decisions when the session asks, including whether the Android 26 system image may be downloaded and to which path on G:.
+
+### #205 Create a tester's account and grant Pro and scans before they sign in
+
+**Lane B.** Nothing blocks it; no emulator, so it can run beside #198. It must be merged before you invite the Alpha testers.
+
+1. In this main-checkout session type `/ticket-start 205`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-205`; if it stops, it says why.
+2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-205` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-205"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
+
+```
+/mattpocock-skills:implement #205
+
+Follow docs/agents/session-handoff.md: don't push, don't close the issue, and finish with a STATUS comment on the ticket. While you work, run single test files and typechecks only; leave the full run to /ticket-finish, which runs it once and remembers the pass. Run a live External suite only if an acceptance criterion names one, and only after the owner approves that run; the merge step covers the rest. If the ticket has a `## Decisions` section, or needs a decision only the owner can make, ask the owner directly with AskUserQuestion (up to 4 questions per call) before building on it, then post the questions and answers as a ticket comment starting `DECISIONS`; if you cannot ask, use the recommended defaults, post them as `DECISIONS (assumed)` and list them under Owner actions.
+
+Test-round additions:
+- The end-of-session commands are `uv run scripts/static_checks.py core` and the offline tests that `uv run scripts/test_planner.py` lists. Do not start Gradle or the emulator.
+- Only `scripts/`, `tests/`, `docs/` and the testing documents change.
+- Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
+- A new test file must be named in `tests/TESTING.md`, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
+- Live runs: do not run the tool against the real RevenueCat project or make any paid call. Never print or log `REVENUECAT_SECRET_KEY`.
+- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->` markers.
+- The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
+```
+
+3. When that session says it is done, type `/ticket-finish` in it. At the end it asks whether to move the shell out of the worktree into the main checkout; answer **Yes**.
+4. Back in this main-checkout session type `/ticket-merge 205`. Claude reviews the work, adds any missing test or testing-document row (asking you first), merges, and asks before any push.
+
+**Your part:** after the merge, do the small owner check listed on the ticket: create a Supabase secret key, set `SUPABASE_SECRET_KEY` and `REVENUECAT_SECRET_KEY` in your shell, run it for one throwaway `+alias` address, and sign in with Forgot password on your phone.
 
 ### #132 (optional) Is mutation testing worth running? Research
 

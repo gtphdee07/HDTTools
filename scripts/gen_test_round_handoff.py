@@ -125,6 +125,10 @@ TICKETS.append(card(
     "answer the ticket's three decisions when the session asks, including whether the Android 26 system image may be downloaded and to which path on G:.", android=True,
 ))
 TICKETS.append(card(
+    205, "Create a tester's account and grant Pro and scans before they sign in", "Lane B", "Nothing blocks it; no emulator, so it can run beside #198. It must be merged before you invite the Alpha testers.", "T", [],
+    "after the merge, do the small owner check listed on the ticket: create a Supabase secret key, set `SUPABASE_SECRET_KEY` and `REVENUECAT_SECRET_KEY` in your shell, run it for one throwaway `+alias` address, and sign in with Forgot password on your phone.",
+))
+TICKETS.append(card(
     132, "(optional) Is mutation testing worth running? Research", "Any lane", "Lowest priority; production code is not changed. Skip it if the round is running long.", "R", [],
     "read the research file it writes under `docs/research/` after the merge.",
 ))
@@ -148,6 +152,7 @@ Two lanes, one build session each, a **new** session for every ticket. Lane A is
 | # | Ticket | Lane | Starts when | Your part |
 |---|---|---|---|---|
 | 6 | [#198](#198-emulator-profiles-for-four-phone-shapes) Emulator profiles on G: for four phone shapes | A | your sign-off on the phone | answer its three decisions, including the Android 26 image download to G: |
+| 7 | [#205](#205-create-a-testers-account-and-grant-pro-and-scans-before-they-sign-in) Create a tester's account and grant Pro and scans before they sign in | B | nothing blocks it | the small owner check on the ticket after the merge |
 | optional | [#132](#132-optional-is-mutation-testing-worth-running-research) Is mutation testing worth running? | any | any time | none |
 
 A ticket starts when the tickets it waits for have merged, not when the round ends. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.

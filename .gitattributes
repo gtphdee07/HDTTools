@@ -2,3 +2,7 @@
 # otherwise bash fails on stray \r characters.
 *.sh text eol=lf
 .githooks/* text eol=lf
+
+# PDFs are binary. This one has no NUL byte, so git would otherwise treat it as text and, with core.autocrlf=true,
+# write CRLF into the working copy on checkout, which corrupts it.
+*.pdf binary

@@ -28,6 +28,8 @@ You can use the weight check without an account. An account is needed to scan do
 3. **Check your email for a confirmation message and open its link.** Look in your spam folder if it does not arrive within a few minutes. Confirm before you try to sign in.
 4. Come back to the app and sign in. You can also use **Continue with Google** if we added your Gmail address as a tester.
 
+**If we made your account for you** (we will tell you), it already exists and is confirmed, but it has no password yet. On the sign-in screen choose **Forgot password**, enter the email address we used, and open the link in the email. The link opens our **Web page**, where you set your password; then come back to the app and sign in with that email and password. You can also use **Continue with Google** if we added your Gmail address as a tester.
+
 The same account works on the web and on Android, and your saved trucks and past checks should show up on both.
 
 ## What is fake
@@ -74,7 +76,7 @@ When you scan a photo (a truck tag, a weigh ticket, a document), the photo is se
 You do not need to do all of these. Do what you would do with the app anyway, and try the odd things too.
 
 - Create an account with your email and confirm it. (If you have a Gmail address we added, also try **Continue with Google**.)
-- Reset your password from the sign-in screen.
+- Reset your password from the sign-in screen (**Forgot password**; you set the new password on the Web page the email's link opens).
 - Run a weight check without signing in, then another while signed in.
 - Save a truck and trailer to your Garage and use it again for a second check.
 - Scan each kind of document: the truck tag, the trailer tag and the weigh ticket. (Only accounts with Pro can scan.)

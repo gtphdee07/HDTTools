@@ -84,7 +84,7 @@ def normalise_account_id(raw: str) -> str:
     return str(uuid.UUID(raw))
 
 
-def _opener_without_redirects() -> urllib.request.OpenerDirector:
+def opener_without_redirects() -> urllib.request.OpenerDirector:
     """A redirect would carry the Authorization header to another host, so none is followed:
     returning None from redirect_request makes urllib raise the 3xx as an HTTPError."""
     handler = urllib.request.HTTPRedirectHandler()
@@ -96,7 +96,7 @@ class Client:
     def __init__(self, api_base: str, key: str):
         self._api_base = api_base.rstrip("/")
         self._key = key
-        self._opener = _opener_without_redirects()
+        self._opener = opener_without_redirects()
 
     def scrub(self, text: str) -> str:
         return text.replace(self._key, "[secret key]") if self._key else text
@@ -114,15 +114,15 @@ class Client:
         )
         try:
             with self._opener.open(request, timeout=TIMEOUT_SECONDS) as response:
-                return response.status, _json_or_none(response.read())
+                return response.status, json_or_none(response.read())
         except urllib.error.HTTPError as err:
-            return err.code, _json_or_none(err.read())
+            return err.code, json_or_none(err.read())
         except (urllib.error.URLError, TimeoutError, OSError) as err:
             reason = getattr(err, "reason", err)
             raise GrantError(self.scrub(f"could not reach RevenueCat ({type(err).__name__}: {reason})")) from None
 
 
-def _json_or_none(raw: bytes) -> object:
+def json_or_none(raw: bytes) -> object:
     try:
         return json.loads(raw.decode("utf-8", "replace"))
     except ValueError:
@@ -164,16 +164,21 @@ def build_parser() -> argparse.ArgumentParser:
 def _validate(args: argparse.Namespace, env: Mapping[str, str]) -> tuple[str, str]:
     """(account id, secret key), or a GrantError, before any request."""
     account_id = normalise_account_id(args.account_id)
+    check_options(args)
+    key = (env.get(KEY_VAR) or "").strip()
+    if not key:
+        raise GrantError(f"{KEY_VAR} is not set; put the RevenueCat secret key in that environment variable")
+    return account_id, key
+
+
+def check_options(args: argparse.Namespace) -> None:
+    """--scans, --pro-days and --grant-id in range, or a GrantError, before any request."""
     if not 1 <= args.scans <= MAX_SCANS:
         raise GrantError(f"--scans must be between 1 and {MAX_SCANS}")
     if args.pro_days < 1:
         raise GrantError("--pro-days must be at least 1")
     if not _GRANT_ID_SHAPE.match(args.grant_id):
         raise GrantError("--grant-id may use only letters, digits, dot, dash and underscore (64 at most)")
-    key = (env.get(KEY_VAR) or "").strip()
-    if not key:
-        raise GrantError(f"{KEY_VAR} is not set; put the RevenueCat secret key in that environment variable")
-    return account_id, key
 
 
 def main(
@@ -205,9 +210,8 @@ def main(
 
     entitlement = args.entitlement or wrangler_entitlement
     expires_at = now() + timedelta(days=args.pro_days)
-    expires_ms = int(expires_at.timestamp() * 1000)
-    idempotency_key = f"tester-grant-{args.grant_id}-{account_id}"
-    customer = f"/projects/{project_id}/customers/{urllib.parse.quote(account_id, safe='')}"
+    idempotency_key = grant_idempotency_key(args.grant_id, account_id)
+    customer = customer_path(project_id, account_id)
 
     print(f"{'APPLY' if args.apply else 'DRY RUN (nothing is sent; add --apply to do it)'}", file=out)
     print(f"  account id : {account_id}", file=out)
@@ -219,36 +223,52 @@ def main(
         return 0
 
     try:
-        status, body = client.post(
-            f"{customer}/actions/grant_entitlement",
-            {"entitlement_id": entitlement, "expires_at": expires_ms},
-        )
-        if 200 <= status < 300:
-            print(f"  ok   Pro granted until {expires_at:%Y-%m-%d} UTC", file=out)
-        elif status == 409:
-            print(
-                f"  note Pro not changed: RevenueCat answered 409 ({client.scrub(_message(body))}); "
-                "usually Pro was already granted within the last two hours. Carrying on to the scans.",
-                file=out,
-            )
-        else:
-            return fail(_step_failure("Pro grant", status, body, "customer_information:customers:read_write"))
-
-        status, body = client.post(
-            f"{customer}/virtual_currencies/transactions",
-            {"adjustments": {currency: args.scans}, "reference": idempotency_key},
-            idempotency_key,
-        )
-        if 200 <= status < 300:
-            print(
-                f"  ok   +{args.scans} {currency} deposited (a repeat with the same --grant-id is applied once)",
-                file=out,
-            )
-        else:
-            return fail(_step_failure("scan deposit", status, body, "customer_information:purchases:read_write"))
+        grant_pro(client, customer, entitlement, expires_at, out)
+        deposit_scans(client, customer, currency, args.scans, idempotency_key, out)
     except GrantError as problem:
         return fail(str(problem))
     return 0
+
+
+def grant_idempotency_key(grant_id: str, account_id: str) -> str:
+    return f"tester-grant-{grant_id}-{account_id}"
+
+
+def customer_path(project_id: str, account_id: str) -> str:
+    return f"/projects/{project_id}/customers/{urllib.parse.quote(account_id, safe='')}"
+
+
+def grant_pro(client: Client, customer: str, entitlement: str, expires_at: datetime, out: TextIO) -> None:
+    """The Pro grant. A 409 is reported and the run carries on; any other failure is a GrantError."""
+    status, body = client.post(
+        f"{customer}/actions/grant_entitlement",
+        {"entitlement_id": entitlement, "expires_at": int(expires_at.timestamp() * 1000)},
+    )
+    if 200 <= status < 300:
+        print(f"  ok   Pro granted until {expires_at:%Y-%m-%d} UTC", file=out)
+    elif status == 409:
+        print(
+            f"  note Pro not changed: RevenueCat answered 409 ({client.scrub(_message(body))}); "
+            "usually Pro was already granted within the last two hours. Carrying on to the scans.",
+            file=out,
+        )
+    else:
+        raise GrantError(_step_failure("Pro grant", status, body, "customer_information:customers:read_write"))
+
+
+def deposit_scans(
+    client: Client, customer: str, currency: str, scans: int, idempotency_key: str, out: TextIO
+) -> None:
+    """The scan deposit, applied once per idempotency key; a failure is a GrantError."""
+    status, body = client.post(
+        f"{customer}/virtual_currencies/transactions",
+        {"adjustments": {currency: scans}, "reference": idempotency_key},
+        idempotency_key,
+    )
+    if 200 <= status < 300:
+        print(f"  ok   +{scans} {currency} deposited (a repeat with the same --grant-id is applied once)", file=out)
+    else:
+        raise GrantError(_step_failure("scan deposit", status, body, "customer_information:purchases:read_write"))
 
 
 def _step_failure(step: str, status: int, body: object, permission: str) -> str:

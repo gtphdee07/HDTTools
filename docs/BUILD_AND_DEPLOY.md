@@ -261,11 +261,41 @@ the apps at a new project, all of it must be recreated or re-verified.
 
 ### Granting a tester
 
-`scripts/grant_tester.py` gives one beta tester Pro and a number of scans (20 by
-default) in RevenueCat, so nobody does it by hand in the dashboard. It needs the
-tester's **Supabase account id**: Supabase dashboard, Authentication, Users, copy
-the `id` column (a UUID). The tester must have signed in once, so RevenueCat has
-their customer.
+**Before the tester has opened the app:** `scripts/add_tester.py <email>` creates
+their Supabase account (confirmed, with no password; it sends no email), creates
+the RevenueCat customer with the same id, then gives Pro and scans with the same
+calls as `grant_tester.py` below. A second run finds the same account and deposits
+no more scans (Pro is a promotional entitlement counted from the moment of each
+run, as described below, so a repeat later than two hours moves its expiry
+forward). An account the tester already made by signing up is found too; if its
+email was never confirmed the script says so.
+
+1. Create a Supabase secret key: Supabase dashboard, Project Settings, API keys,
+   create a secret key. Put it in your shell as `SUPABASE_SECRET_KEY`, together
+   with `REVENUECAT_SECRET_KEY` (see below). Shell only: never put it in a file in
+   the repo, `web/.env.local`, or any browser or app code; it can read and change
+   every account. The script never prints either key.
+2. Dry run (sends nothing, not even the lookup):
+   `uv run scripts/add_tester.py <email>`
+3. Then apply it:
+   `uv run scripts/add_tester.py <email> --apply`
+   (`--no-pro` leaves the tester on Free, for the one Alpha tester who tests
+   buying Pro; `--scans N`, `--pro-days N` and `--grant-id ID` work as in
+   `grant_tester.py`.)
+4. The script ends by printing what to tell the tester: install the APK, tap
+   **Forgot password** with that address, set the password on the Web page the
+   email's link opens, then sign in on the app. "Continue with Google" works only
+   if their Gmail is also a Google test user (Google Cloud Console, OAuth consent
+   screen); that step stays manual, there is no API for it.
+
+If a step fails, the error names the step and the service, and a last line lists
+what was done and what was not. Running the same command again is safe.
+
+**For an account that already exists:** `scripts/grant_tester.py` gives one beta
+tester Pro and a number of scans (20 by default) in RevenueCat, so nobody does it
+by hand in the dashboard. It needs the tester's **Supabase account id**: Supabase
+dashboard, Authentication, Users, copy the `id` column (a UUID). The tester must
+have signed in once, so RevenueCat has their customer.
 
 1. Put the RevenueCat secret key in your shell (the same `REVENUECAT_SECRET_KEY`
    as section 3; it needs Read & Write on both "Customer Configuration" and

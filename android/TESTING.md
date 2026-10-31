@@ -1677,6 +1677,17 @@ problem of every state before failing:
   mutated on the device (`val chipBelow = false`, the `fontScale` term dropped, `maxHeight >= 0.dp`) and fails a named test.
 - `ui/navigation/HistoryNavigationTest.kt`, one test more: "Upgrade to Pro" in the History's limit notice opens the Paywall
   through the real nav host (`onUpgrade = { navController.navigate(RigCheckRoute.Paywall) }` had no test).
+- **Device mutations (2026-10-30, #197).** Eleven mutations applied together in one run of these classes, plus the two that
+  the others mask run on their own, every file restored byte for byte; each failed the test named: the chip left beside the
+  title at font 2.0 and the card not the strip (`EntryScreensLayoutTest.atFontScale2TheChipIsUnderTheTitle...`), the card
+  always pinned (`...withTheKeyboardOpenOnAShortPhone...`), the old hint layout back (alone: `...atFontScale2...` and
+  `aSmallPhone360x640AtFontScale2ReachesEveryPrimaryAction`, "cut off (2 lines)"), the Truck panel saying "above"
+  (`theTruckTagFrame412x892MatchesTheMap`, "the field is below it"), Sign out left enabled in the sheet and in the Paywall
+  (`SignOutDuringScanNavigationTest`), the view model's `signOut()` guard removed (alone, same class: `expected:<0> but
+  was:<1>`), the History upgrade callback replaced by `{}` (`HistoryNavigationTest.upgradeToProInTheHistoryNoticeOpensThePaywall`;
+  all 47 earlier tests of the four History classes passed with it, which is why the test was added), `safeDrawingPadding()`
+  removed (`SystemBarsTest`, and `ThreeButtonNavigationTest` on 12 screens), and the icon button 36 dp
+  (`AccessibilityChecksTest`, `EntryScreensLayoutTest` touch targets).
 - JVM, `ui/theme/TextFillPairsTest.kt` (4 tests) — every text colour of `tokens.json` against every fill it is drawn on meets
   WCAG AA (4.5:1; 3:1 for the disabled button, which the standard exempts), the table names only tokens that exist and covers
   every text token and tint, and the check is shown to fail on a pair under AA.

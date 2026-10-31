@@ -17,7 +17,6 @@ Two lanes, one build session each, a **new** session for every ticket. Lane A is
 | # | Ticket | Lane | Starts when | Your part |
 |---|---|---|---|---|
 | 6 | [#198](#198-emulator-profiles-for-four-phone-shapes) Emulator profiles on G: for four phone shapes | A | your sign-off on the phone | answer its three decisions, including the Android 26 image download to G: |
-| 7 | [#205](#205-create-a-testers-account-and-grant-pro-and-scans-before-they-sign-in) Create a tester's account and grant Pro and scans before they sign in | B | nothing blocks it | the small owner check on the ticket after the merge |
 | optional | [#132](#132-optional-is-mutation-testing-worth-running-research) Is mutation testing worth running? | any | any time | none |
 
 A ticket starts when the tickets it waits for have merged, not when the round ends. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.
@@ -38,7 +37,7 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - [x] Signing values in `G:\GradleUserHome\gradle.properties`, APK built, fingerprint matches the notes file, installed on the phone, Google sign-in works (done 2026-10-27; the phone has versionCode 3).
 - [x] #186 checked on the phone: the Paywall, the Create button, History and the Truck Tag keyboard (done 2026-10-27).
 - [x] The grant tool ran live on one test account (2026-10-27): RevenueCat shows the Pro entitlement (display name "Rig Check Pro", lookup key `pro`, expires in a year) and 20 scans.
-- [ ] After #205 merges: create a Supabase secret key (dashboard, Project Settings, API keys) and set `SUPABASE_SECRET_KEY` and `REVENUECAT_SECRET_KEY` in your shell only, never in the repo. Try `scripts/add_tester.py <email>` on one throwaway `+alias` address (dry run, then `--apply`, then `--apply` again: nothing changes), and on the phone use Forgot password, set the password on the Web page and sign in (checks on the ticket).
+- [ ] #205 is merged (2026-10-31). Create a Supabase secret key (dashboard, Project Settings, API keys) and set `SUPABASE_SECRET_KEY` and `REVENUECAT_SECRET_KEY` in your shell only, never in the repo. Try `scripts/add_tester.py <email>` on one throwaway `+alias` address (dry run, then `--apply`, then `--apply` again: nothing changes), and on the phone use Forgot password, set the password on the Web page and sign in (the steps are in "Granting a tester" in `docs/BUILD_AND_DEPLOY.md`; the ticket lists the four checks).
 - [ ] Run `scripts/add_tester.py <email>` for each real tester (dry run, then `--apply`; steps in `docs/BUILD_AND_DEPLOY.md`, "Granting a tester"); the tester need not sign in first: they use Forgot password and set the password on the Web page. Use `--no-pro` for one tester so someone tests buying Pro. `grant_tester.py <account-id>` remains for an account that already exists.
 - [x] #183: the Worker was redeployed (forced, with a recorded reason) and the live suites passed on 2026-10-27.
 - [x] The Cloudflare logs show our scan line (2026-10-27): `event: scan, outcome: delivered, doc_type: truck_tag, duration_ms: 4225, refunded: false`. A delivered line has no level label in the dashboard; failures show as `error`. Cloudflare also writes its own `POST /v1/scan` row per request, with the requester's IP and rough location (only you can read it); `invocation_logs = false` in `wrangler.toml` would turn that off, and is yours to decide (see "Things to remember").
@@ -72,7 +71,7 @@ Not in this round: #40 (Google Play Billing; blocked until a Play Console accoun
 **Lane A.** Nothing blocks it now (#197 merged 2026-10-31); start it once you have signed off the screens on your phone (your decision 2026-10-29). It is done before the tester APK is built. Android: the single emulator, one Android ticket at a time.
 
 1. In this main-checkout session type `/ticket-start 198`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-198`; if it stops, it says why.
-2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-205\.claude\worktrees\ticket-198` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-205\.claude\worktrees\ticket-198"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
+2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-198` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-198"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
 
 ```
 /mattpocock-skills:implement #198
@@ -98,39 +97,12 @@ Test-round additions:
 
 **Your part:** answer the ticket's three decisions when the session asks, including whether the Android 26 system image may be downloaded and to which path on G:.
 
-### #205 Create a tester's account and grant Pro and scans before they sign in
-
-**Lane B.** Nothing blocks it; no emulator, so it can run beside #198. It must be merged before you invite the Alpha testers.
-
-1. In this main-checkout session type `/ticket-start 205`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-205`; if it stops, it says why.
-2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-205\.claude\worktrees\ticket-205` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-205\.claude\worktrees\ticket-205"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
-
-```
-/mattpocock-skills:implement #205
-
-Follow docs/agents/session-handoff.md: don't push, don't close the issue, and finish with a STATUS comment on the ticket. While you work, run single test files and typechecks only; leave the full run to /ticket-finish, which runs it once and remembers the pass. Run a live External suite only if an acceptance criterion names one, and only after the owner approves that run; the merge step covers the rest. If the ticket has a `## Decisions` section, or needs a decision only the owner can make, ask the owner directly with AskUserQuestion (up to 4 questions per call) before building on it, then post the questions and answers as a ticket comment starting `DECISIONS`; if you cannot ask, use the recommended defaults, post them as `DECISIONS (assumed)` and list them under Owner actions.
-
-Test-round additions:
-- The end-of-session commands are `uv run scripts/static_checks.py core` and the offline tests that `uv run scripts/test_planner.py` lists. Do not start Gradle or the emulator.
-- Only `scripts/`, `tests/`, `docs/` and the testing documents change.
-- Judge each test by whether it would find or prevent a real bug and whether it adds run time; do not add tests only to raise a coverage number.
-- A new test file must be named in `tests/TESTING.md`, and a new `slow`-marked test file in `scripts/test_planner_config.json`; two tests fail otherwise.
-- Live runs: do not run the tool against the real RevenueCat project or make any paid call. Never print or log `REVENUECAT_SECRET_KEY`.
-- Never edit text between `<!-- HUMAN-WRITTEN ... -->` and `<!-- END HUMAN-WRITTEN -->` markers.
-- The ticket's decisions are already recorded in its DECISIONS comment: do not ask them again.
-```
-
-3. When that session says it is done, type `/ticket-finish` in it. At the end it asks whether to move the shell out of the worktree into the main checkout; answer **Yes**.
-4. Back in this main-checkout session type `/ticket-merge 205`. Claude reviews the work, adds any missing test or testing-document row (asking you first), merges, and asks before any push.
-
-**Your part:** after the merge, do the small owner check listed on the ticket: create a Supabase secret key, set `SUPABASE_SECRET_KEY` and `REVENUECAT_SECRET_KEY` in your shell, run it for one throwaway `+alias` address, and sign in with Forgot password on your phone.
-
 ### #132 (optional) Is mutation testing worth running? Research
 
 **Any lane.** Lowest priority; production code is not changed. Skip it if the round is running long.
 
 1. In this main-checkout session type `/ticket-start 132`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-132`; if it stops, it says why.
-2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-205\.claude\worktrees\ticket-132` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-205\.claude\worktrees\ticket-132"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
+2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-132` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-132"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.
 
 ```
 /mattpocock-skills:implement #132

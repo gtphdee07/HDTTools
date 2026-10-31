@@ -125,10 +125,6 @@ TICKETS.append(card(
     "answer the ticket's three decisions when the session asks, including whether the Android 26 system image may be downloaded and to which path on G:.", android=True,
 ))
 TICKETS.append(card(
-    205, "Create a tester's account and grant Pro and scans before they sign in", "Lane B", "Nothing blocks it; no emulator, so it can run beside #198. It must be merged before you invite the Alpha testers.", "T", [],
-    "after the merge, do the small owner check listed on the ticket: create a Supabase secret key, set `SUPABASE_SECRET_KEY` and `REVENUECAT_SECRET_KEY` in your shell, run it for one throwaway `+alias` address, and sign in with Forgot password on your phone.",
-))
-TICKETS.append(card(
     132, "(optional) Is mutation testing worth running? Research", "Any lane", "Lowest priority; production code is not changed. Skip it if the round is running long.", "R", [],
     "read the research file it writes under `docs/research/` after the merge.",
 ))
@@ -152,7 +148,6 @@ Two lanes, one build session each, a **new** session for every ticket. Lane A is
 | # | Ticket | Lane | Starts when | Your part |
 |---|---|---|---|---|
 | 6 | [#198](#198-emulator-profiles-for-four-phone-shapes) Emulator profiles on G: for four phone shapes | A | your sign-off on the phone | answer its three decisions, including the Android 26 image download to G: |
-| 7 | [#205](#205-create-a-testers-account-and-grant-pro-and-scans-before-they-sign-in) Create a tester's account and grant Pro and scans before they sign in | B | nothing blocks it | the small owner check on the ticket after the merge |
 | optional | [#132](#132-optional-is-mutation-testing-worth-running-research) Is mutation testing worth running? | any | any time | none |
 
 A ticket starts when the tickets it waits for have merged, not when the round ends. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.
@@ -173,7 +168,7 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - [x] Signing values in `G:\\GradleUserHome\\gradle.properties`, APK built, fingerprint matches the notes file, installed on the phone, Google sign-in works (done 2026-10-27; the phone has versionCode 3).
 - [x] #186 checked on the phone: the Paywall, the Create button, History and the Truck Tag keyboard (done 2026-10-27).
 - [x] The grant tool ran live on one test account (2026-10-27): RevenueCat shows the Pro entitlement (display name "Rig Check Pro", lookup key `pro`, expires in a year) and 20 scans.
-- [ ] After #205 merges: create a Supabase secret key (dashboard, Project Settings, API keys) and set `SUPABASE_SECRET_KEY` and `REVENUECAT_SECRET_KEY` in your shell only, never in the repo. Try `scripts/add_tester.py <email>` on one throwaway `+alias` address (dry run, then `--apply`, then `--apply` again: nothing changes), and on the phone use Forgot password, set the password on the Web page and sign in (checks on the ticket).
+- [ ] #205 is merged (2026-10-31). Create a Supabase secret key (dashboard, Project Settings, API keys) and set `SUPABASE_SECRET_KEY` and `REVENUECAT_SECRET_KEY` in your shell only, never in the repo. Try `scripts/add_tester.py <email>` on one throwaway `+alias` address (dry run, then `--apply`, then `--apply` again: nothing changes), and on the phone use Forgot password, set the password on the Web page and sign in (the steps are in "Granting a tester" in `docs/BUILD_AND_DEPLOY.md`; the ticket lists the four checks).
 - [ ] Run `scripts/add_tester.py <email>` for each real tester (dry run, then `--apply`; steps in `docs/BUILD_AND_DEPLOY.md`, "Granting a tester"); the tester need not sign in first: they use Forgot password and set the password on the Web page. Use `--no-pro` for one tester so someone tests buying Pro. `grant_tester.py <account-id>` remains for an account that already exists.
 - [x] #183: the Worker was redeployed (forced, with a recorded reason) and the live suites passed on 2026-10-27.
 - [x] The Cloudflare logs show our scan line (2026-10-27): `event: scan, outcome: delivered, doc_type: truck_tag, duration_ms: 4225, refunded: false`. A delivered line has no level label in the dashboard; failures show as `error`. Cloudflare also writes its own `POST /v1/scan` row per request, with the requester's IP and rough location (only you can read it); `invocation_logs = false` in `wrangler.toml` would turn that off, and is yours to decide (see "Things to remember").

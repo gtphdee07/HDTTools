@@ -23,9 +23,9 @@ Dim = compare.Dim
 Expected = compare.Expected
 
 
-def _expected(element_id="x.a", width="wrap", height="wrap", order=1, region="body", status="kept", screen="s", added=False):
+def _expected(element_id="x.a", width="wrap", height="wrap", status="kept", screen="s", added=False):
     return Expected(
-        id=element_id, screen=screen, tag="x_a", status=status, region=region, order=order,
+        id=element_id, screen=screen, tag="x_a", status=status,
         width=compare.parse_dim(width), height=compare.parse_dim(height), added=added,
     )
 

@@ -101,8 +101,6 @@ class Expected:
     screen: str
     tag: str | None
     status: str
-    region: str | None
-    order: int | None
     width: Dim
     height: Dim
     added: bool
@@ -128,8 +126,6 @@ def _expected(element_id: str, screen: str, tag: str | None, redesign: dict, add
         screen=redesign.get("new_screen") or screen,
         tag=tag,
         status=redesign["status"],
-        region=redesign.get("new_region"),
-        order=redesign.get("new_order"),
         width=parse_dim(redesign.get("new_width")),
         height=parse_dim(redesign.get("new_height")),
         added=added,
@@ -239,7 +235,11 @@ def compare(parts: dict) -> tuple[list[Problem], dict]:
 def load_exceptions() -> list[dict]:
     if not EXCEPTIONS.exists():
         return []
-    return json.loads(EXCEPTIONS.read_text(encoding="utf-8"))["exceptions"]
+    exceptions = json.loads(EXCEPTIONS.read_text(encoding="utf-8"))["exceptions"]
+    for exception in exceptions:
+        if exception["kind"] not in KINDS:
+            raise ValueError(f"{exception['id']}: the kind {exception['kind']!r} is not one of {KINDS}")
+    return exceptions
 
 
 def apply_exceptions(problems: list[Problem], exceptions: list[dict]) -> tuple[list[Problem], list[tuple[Problem, dict]], list[str]]:

@@ -211,6 +211,19 @@ def test_an_existing_user_on_a_later_page_is_found_not_created_again(fake):
     assert fake.balances == {"323e4567-e89b-12d3-a456-426614174000": 20}
 
 
+# Merge review of #205: a mutation that dropped the lowercasing of the stored email survived, because every user in
+# these tests was stored in lowercase. Supabase may hold an address as the person first typed it.
+def test_an_existing_user_stored_with_capital_letters_is_found_not_created_again(fake):
+    fake.users.append({"id": "323e4567-e89b-12d3-a456-426614174000", "email": EMAIL})
+
+    code, out, err = run(fake, EMAIL, "--apply")
+
+    assert code == 0, err
+    assert len(fake.users) == 1
+    assert "found (already existed)" in out
+    assert fake.balances == {"323e4567-e89b-12d3-a456-426614174000": 20}
+
+
 def test_a_second_apply_finds_the_same_user_and_deposits_once(fake):
     run(fake, EMAIL, "--apply")
     code, out, err = run(fake, EMAIL, "--apply")

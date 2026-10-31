@@ -1323,7 +1323,7 @@ network involved:
   (`AutofillManager.cancel()`); any test that fills a password field should do the same.
 - `LayoutCaptureTest` (#189, 4 tests, in `layoutcapture/`) — not a regression test but the capture of the
   redesign's "before" and "after" map. It opens every screen state of `docs/android-redesign/ui-inventory.json`
-  that the app can reach with the existing fixtures (89 states in `CaptureCases.kt`: the real screens inside
+  that the app can reach with the existing fixtures (93 states in `CaptureCases.kt`, the last added by #197 for the account sheet with Sign out off: the real screens inside
   `RigCheckApp`, RevenueCat faked as the Offering's packages, no Scan sent, no network) once per phone frame:
   412 x 892 dp (the reference frame), 360 x 640 dp, and the Disclaimer and Results states again at font scale
   2.0 on both. For each state it writes `<screen>__<state>.png` (a screenshot of the display, status and
@@ -1635,13 +1635,13 @@ open the states of the layout capture (`layoutcapture/CaptureCases.kt`, the scre
 `docs/android-redesign/ui-inventory.json`) on the real emulator, with the shared `LayoutStateRunner`, and list every
 problem of every state before failing:
 
-- `ui/AccessibilityChecksTest.kt` (1 test) — Compose's accessibility checks (the Accessibility Test Framework behind
+- `ui/AccessibilityChecksTest.kt` (16 tests: one per screen, and one that no screen of the capture is left without a test) — Compose's accessibility checks (the Accessibility Test Framework behind
   `enableAccessibilityChecks`: touch-target size, a content description on every icon that does something, text and image
   contrast, duplicate click areas) run on each window of every captured state at 412 x 892 dp; any error fails, a warning
   does not. The dependency is `androidx.compose.ui:ui-test-junit4-accessibility` (an `androidTestImplementation`; its
   version comes from the Compose BOM). The contrast it measures is of the pixels, so it sits over `TextFillPairsTest`, which
   holds the design's text and fill colours to AA on the JVM.
-- `ui/navigation/ThreeButtonNavigationTest.kt` (1 test) — with 3-button navigation really on (`testsupport/NavigationMode`
+- `ui/navigation/ThreeButtonNavigationTest.kt` (16 tests: one per screen, plus the same completeness test) — with 3-button navigation really on (`testsupport/NavigationMode`
   sets the overlay and puts the device's setting back), every captured state at 360 x 640 dp: no tagged element, as much of
   it as is on show, reaches into the navigation bar. `SystemBarsTest` holds the rule that does it (`RigCheckApp`'s
   `safeDrawingPadding()`) for two screens with the real controls tapped; this one covers every screen.

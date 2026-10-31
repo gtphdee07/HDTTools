@@ -22,7 +22,7 @@ import org.junit.runner.RunWith
 
 // #197: Compose's accessibility checks (the Accessibility Test Framework: touch-target size, a content description on
 // every icon that does something, text and image contrast, duplicate click areas) run on every screen state of the
-// layout capture (docs/android-redesign/ui-inventory.json: the screens, the dialogs and the sheet, 92 states) and
+// layout capture (docs/android-redesign/ui-inventory.json: the screens, the dialogs and the sheet, 93 states) and
 // report no error. The framework looks at the pixels for contrast, so this is the contrast of what is really drawn, over
 // the TextFillPairsTest table of what the design says. On the 412 x 892 reference phone; the small phone and the large
 // font are the layout tests' (every one of them also holds the 48 dp touch target).

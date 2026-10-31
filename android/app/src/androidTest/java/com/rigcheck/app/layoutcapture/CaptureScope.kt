@@ -41,14 +41,11 @@ class CaptureScope(val rule: ComposeTestRule, private val activity: ComponentAct
     private fun imeBottomPx(): Int =
         onMain { ViewCompat.getRootWindowInsets(decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0 }
 
-    // Waits until the soft keyboard is up and has stopped moving. Fails if it never comes up. In a long suite on a cold
-    // software-GPU emulator the first test to ask for the keyboard after a stretch without one (the input method is
-    // idle, or is started again) now and then gets no keyboard for 20 s (#202: it failed so in full suites, in two
-    // different classes, and never in 10 runs of the class alone, headless or windowed). So the wait is 30 s, the
-    // request is made once more if nothing has come up after ASK_AGAIN_MS, and the failure says what the window was
-    // doing when it gave up; the keyboard must still appear and settle.
+    // Waits until the soft keyboard is up and has stopped moving. Fails if it never comes up, and says what the window
+    // was doing: a keyboard that does not come up is nearly always an autofill session an earlier test left open (#188,
+    // #202: AccountScreenTest typed a password and never cancelled it), so the test that failed is not the one to blame.
     fun awaitKeyboardShown() {
-        awaitImeStill(askAgainAfterMs = ASK_AGAIN_MS) { imeBottomPx() > 0 }
+        awaitImeStill { imeBottomPx() > 0 }
     }
 
     // Closes the soft keyboard that typing opened, so a state with typed text is not also a keyboard-open state.
@@ -57,21 +54,16 @@ class CaptureScope(val rule: ComposeTestRule, private val activity: ComponentAct
         awaitImeStill { imeBottomPx() == 0 }
     }
 
-    private fun awaitImeStill(askAgainAfterMs: Long? = null, wanted: () -> Boolean) {
+    private fun awaitImeStill(wanted: () -> Boolean) {
         val started = System.currentTimeMillis()
         val deadline = started + KEYBOARD_MS
-        var askedAgain = false
         var last = -1
         var steady = 0
         while (steady < STEADY_POLLS) {
             val now = System.currentTimeMillis()
             check(now < deadline) {
-                "the soft keyboard did not settle (ime inset ${imeBottomPx()} px, asked again: $askedAgain, " +
+                "the soft keyboard did not settle (ime inset ${imeBottomPx()} px, " +
                     "window focused: ${onMain { decorView.hasWindowFocus() }}, focus: ${onMain { activity.currentFocus?.javaClass?.simpleName }})"
-            }
-            if (askAgainAfterMs != null && !askedAgain && imeBottomPx() == 0 && now - started > askAgainAfterMs) {
-                askedAgain = true
-                onMain { WindowCompat.getInsetsController(activity.window, decorView).show(WindowInsetsCompat.Type.ime()) }
             }
             Thread.sleep(POLL_MS)
             val inset = imeBottomPx()
@@ -82,8 +74,7 @@ class CaptureScope(val rule: ComposeTestRule, private val activity: ComponentAct
     }
 
     private companion object {
-        const val KEYBOARD_MS = 30_000L
-        const val ASK_AGAIN_MS = 10_000L
+        const val KEYBOARD_MS = 20_000L
         const val POLL_MS = 150L
         const val STEADY_POLLS = 4
     }

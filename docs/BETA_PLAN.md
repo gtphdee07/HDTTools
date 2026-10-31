@@ -60,7 +60,9 @@ Android tickets run one at a time because there is one emulator; lane B has no G
 - [x] Feedback goes to WTIAppDev@gmail.com (an email address, not a form), so there is no form to create.
 - [ ] Add each Alpha tester's Gmail as a Google test user (consent screen in Testing mode), up to 5.
 - [ ] Build the APK on your machine with the signing values in `gradle.properties` in your Gradle user home (the `GRADLE_USER_HOME` folder; on this machine `G:\GradleUserHome\gradle.properties`, not `C:\Users\Angela\.gradle`) (#174) and confirm its SHA-1 matches `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`.
-- [ ] Run the grant tool for each tester. Leave one tester on Free (no Pro grant) so someone tests buying Pro, because Pro cannot be bought twice on one account.
+- [ ] Create a Supabase secret key (dashboard, Project Settings, API keys) and set `SUPABASE_SECRET_KEY` and `REVENUECAT_SECRET_KEY` in your shell only, never in the repo (#205).
+- [ ] Run `scripts/add_tester.py <email>` for each tester (dry run, then `--apply`): it creates the confirmed account with no password and the RevenueCat customer, then grants Pro and scans, so the tester need not sign in first. Use `--no-pro` for one tester, so someone tests buying Pro, because Pro cannot be bought twice on one account. Tell each tester to use Forgot password and set the password on the Web page.
+- [ ] Add each Alpha tester's Gmail as a Google test user (manual, Google Cloud Console; no script does it) if they will use Continue with Google.
 - [ ] Send the APK and the guide to the testers. Tell them to expect Web to change under them whenever you push (see "Not in Alpha").
 - [ ] During Alpha, glance at the Anthropic Console usage page and the Supabase dashboard once a week. If sign-in or scans suddenly fail, a Supabase pause (click Resume) is the first thing to check.
 

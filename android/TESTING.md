@@ -186,23 +186,37 @@ only in debug and beta and `IS_BETA` only in beta, no keystore path, alias or pa
 `slow` and offline; the APK check skips when the beta dependencies are not in the offline Gradle cache
 (build `assembleBeta` once online to fill it).
 
-### Instrumented suite, measured (2026-10-21, #64)
+### Instrumented suite, measured (2026-10-30, #197)
 
-`./gradlew connectedDebugAndroidTest` from `android/`, on the `medium_phone` emulator (API 36
-Google Play image, started with `-gpu swangle_indirect -no-snapshot-save`): **148 tests in 22
-classes, 148 passed, 0 failed, 0 skipped**; `BUILD SUCCESSFUL in 5m 35s` (that includes
-building and installing both APKs). The tree has 160 `@Test` methods under `androidTest`; the
-12 that do not run here are the live ones the Gradle task keeps out:
-`PaywallScreenWeeklyTest` (6, `notClass`; the old weekly suite, below) and
-`RevenueCatAndroidSdkExternalTest` (6, `notAnnotation`; the `revenuecat-android-sdk` surface). The
-slowest classes are `RigCheckNavHostTest` (11 tests, 49 s), `TruckTagEntryScreenTest` (20, 40 s)
-and `ScanInFlightNavigationTest` (11, 37 s). The decision-logic JVM floor and the 176 JVM tests
-need no device (`uv run scripts/android_session_end.py`).
+`uv run scripts/android_suite_loop.py --runs 3 --expected-tests 436 --emulator-arg=-no-window --emulator-arg=-no-audio`
+from the repo root, on the `medium_phone` emulator (API 36 Google Play image, software GPU, cold-booted before every
+run, headless): **436 tests in 53 classes, 3 runs in a row, 436 passed each time, 0 failed, 0 aborted**; one run takes
+about 1,560 s of test time (26 min) and about 28 min with the boot. The count is the suite's real size, taken from
+`am instrument -e log true` with the loop's exclusions (448 `@Test` methods under `androidTest`, less the 12 that need a
+store or a Worker and that the Gradle task keeps out too: `PaywallScreenWeeklyTest`, 6, and
+`RevenueCatAndroidSdkExternalTest`, 6); it was 148 at #64 (2026-10-21), 342 at #200 and 436 once the re-skin (#191 to #196,
+#199) and the final pass (#197) had their tests. Four of the 436 are `LayoutCaptureTest`'s, which skip (an assumption) unless
+the layout capture asks for them. Whenever a test is added, the number in `--expected-tests` moves with it; a run that ends
+with another count is labelled failed, so a quiet change of the suite's size is caught. The decision-logic JVM floor and the
+JVM tests need no device (`uv run scripts/android_session_end.py`).
+
+The first full suite since the re-skin tickets (each of #191 to #196 ran only its own classes on the device) failed on
+every cold-booted run: **one test, 3 of 3 runs, the other 435 passed**. The test was the first in `EntryScreensLayoutTest`
+to wait for the soft keyboard (`the soft keyboard did not settle (ime inset 0 px)`). That is the failure #202 recorded once
+in `RigPickerChooserLayoutTest.theDesignFrame412x892MatchesTheMap` at #200. Run alone, on a cold-booted headless emulator
+and on a windowed one (5 runs each), the class passed every time, and so did the entry test alone; run after
+`AccountScreenTest`, both failed. **The cause is a test that left an autofill session open**, the same as #188's: 
+`AccountScreenTest` types a password and never cancelled the session, and the next test that waits for the keyboard gets
+none, so it is neither a flake nor something only a headless emulator does. `AccountScreenTest` now cancels autofill after
+each test (as `UiTagsDisplayedTest` and `LayoutStateRunner` do), the keyboard wait says what the window was doing when it
+gives up, and the two tests pass after `AccountScreenTest`. Where it came from: the bug is in `AccountScreenTest` (#22); it only shows when a keyboard test runs soon after it,
+and the re-skin tickets' layout classes (`RigPickerChooserLayoutTest` #192, `EntryScreensLayoutTest` #193) are the
+keyboard tests that follow it in the suite's order, so it was never merged by a ticket: it needed a full suite to show.
 
 ### Running the instrumented suite N times in a row (#127)
 
 ```
-uv run scripts/android_suite_loop.py --runs 5 --expected-tests 148   # from the repo root
+uv run scripts/android_suite_loop.py --runs 5 --expected-tests 436   # from the repo root
 ```
 
 The one supported way to get a "full suite N times in a row" count. Before
@@ -216,7 +230,7 @@ finds them, so a newly tagged class needs no edit to the script). It then labels
 each run from its output and prints, per run and in total:
 
 - **passed**: `OK (N tests)`, the count in the run's line (the offline
-  instrumented suite is 148 tests, 2026-10-21, see below; pass `--expected-tests 148`
+  instrumented suite is 436 tests, 2026-10-30, see above; pass `--expected-tests 436`
   and a run that ends with another count is `test-failed`. The default is no check, so
   the number is not hand-kept in the script);
 - **test-failed**: the suite reached its end and a test failed;
@@ -1787,6 +1801,11 @@ against the test audit in `docs/test-audit/android.md`.
   (148 passed), so the "N times in a row" count was never green. The run now excludes every
   tagged class, found by `run_external_android.surface_classes`
   (`tests/test_android_suite_loop.py`); see "Running the instrumented suite N times in a row".
+- ✅ **Closed (#202, #197)**: `RigPickerChooserLayoutTest.theDesignFrame412x892MatchesTheMap` failing once in the full
+  suite with `the soft keyboard did not settle (ime inset 0 px)`. Not a flake and not a headless limit: `AccountScreenTest`
+  left an autofill session open, so the next test that waits for the keyboard got none (it failed after
+  `AccountScreenTest` alone, and passed 5 of 5 on a cold headless emulator and 5 of 5 on a windowed one without it). Fixed
+  in `AccountScreenTest`; see "Instrumented suite, measured".
 - **Open (no ticket)**: Google and email sign-in have no automated test against the real
   provider. Google sign-in was checked by hand end to end when #22 closed (the Supabase Google
   provider enabled, `scripts/wizard_android_sign_in.sh` sets it up); the offline tests

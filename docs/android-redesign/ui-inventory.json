@@ -25,7 +25,8 @@
       "screens": 15
     },
     "test_tags": "test_tag_new is the Modifier.testTag value of the element (UiTags in the app); null when the element is not tagged (system toasts). An element whose one slot holds several different controls (the Scan error dialog's next-step buttons) also lists test_tag_variants, one per control; test_tag_new then tags the area that holds them. Repeated items (rig card, breakdown row, history entry, offer card) share one tag and are found with onAllNodesWithTag.",
-    "today_measured": "Measured on the emulator by the layout capture (LayoutCaptureTest, #189; merged by `scripts/ui_inventory.py --merge-bounds`), per frame (412x892 is the reference frame, 360x640 the small phone, -font2.0 the same at font scale 2.0). x and y are the element's top-left corner on the display and width and height its size as laid out, all in dp, in the first captured state (in the capture's order) where it is on show; `visible` is whether any of it is on show there (width and height are the laid-out size, so an element scrolled out of view keeps its size and has visible false); `count` how many elements carry the tag there (a repeated item); `seen_in_states` in how many captured states it is present. null: never found in any state, or untagged (the merge names those). These supersede the estimates in `today`, which stay for the designer's round."
+    "today_measured": "Measured on the emulator by the layout capture (LayoutCaptureTest, #189; merged by `scripts/ui_inventory.py --merge-bounds`), per frame (412x892 is the reference frame, 360x640 the small phone, -font2.0 the same at font scale 2.0). x and y are the element's top-left corner on the display and width and height its size as laid out, all in dp, in the first captured state (in the capture's order) where it is on show; `visible` is whether any of it is on show there (width and height are the laid-out size, so an element scrolled out of view keeps its size and has visible false); `count` how many elements carry the tag there (a repeated item); `seen_in_states` in how many captured states it is present. null: never found in any state, or untagged (the merge names those). These supersede the estimates in `today`, which stay for the designer's round.",
+    "after_measured": "The same measurement of the re-skinned app (#197), merged with `--field after_measured`. The elements the designer added (they are not inventory elements) are measured the same way, by their map's new_test_tag, under the top-level key `added_after_measured`, keyed by id."
   },
   "screens": [
     {
@@ -303,6 +304,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 84.0,
+          "y": 36.0,
+          "width": 114.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        },
+        "412x892": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 84.0,
+          "y": 39.2,
+          "width": 114.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        }
       }
     },
     {
@@ -362,6 +385,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 16.0,
+          "y": 291.6,
+          "width": 328.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        },
+        "412x892": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 277.6,
+          "y": 192.0,
+          "width": 118.4,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        }
       }
     },
     {
@@ -423,6 +468,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 222.4,
+          "y": 44.8,
+          "width": 121.6,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        },
+        "412x892": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 274.4,
+          "y": 40.0,
+          "width": 121.6,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        }
       }
     },
     {
@@ -477,7 +544,8 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
-      }
+      },
+      "after_measured": null
     },
     {
       "id": "picker.heading",
@@ -536,6 +604,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 16.0,
+          "y": 201.6,
+          "width": 136.4,
+          "height": 35.2,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        },
+        "412x892": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 16.0,
+          "y": 192.0,
+          "width": 136.4,
+          "height": 35.2,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        }
       }
     },
     {
@@ -593,6 +683,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 16.0,
+          "y": 236.8,
+          "width": 328.0,
+          "height": 42.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        },
+        "412x892": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 16.0,
+          "y": 227.2,
+          "width": 249.6,
+          "height": 42.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        }
       }
     },
     {
@@ -651,6 +763,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__one_saved_rig_signed_in",
+          "x": 32.0,
+          "y": 363.6,
+          "width": 274.8,
+          "height": 108.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 12
+        },
+        "412x892": {
+          "state": "rig_picker__one_saved_rig_signed_in",
+          "x": 32.0,
+          "y": 294.0,
+          "width": 326.8,
+          "height": 84.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 12
+        }
       }
     },
     {
@@ -708,6 +842,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__one_saved_rig_signed_in",
+          "x": 32.0,
+          "y": 384.0,
+          "width": 52.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 12
+        },
+        "412x892": {
+          "state": "rig_picker__one_saved_rig_signed_in",
+          "x": 32.0,
+          "y": 302.0,
+          "width": 52.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 12
+        }
       }
     },
     {
@@ -765,6 +921,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__one_saved_rig_signed_in",
+          "x": 96.0,
+          "y": 363.6,
+          "width": 141.6,
+          "height": 22.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 12
+        },
+        "412x892": {
+          "state": "rig_picker__one_saved_rig_signed_in",
+          "x": 96.0,
+          "y": 299.6,
+          "width": 141.6,
+          "height": 22.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 12
+        }
       }
     },
     {
@@ -822,6 +1000,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__one_saved_rig_signed_in",
+          "x": 96.0,
+          "y": 386.4,
+          "width": 146.8,
+          "height": 38.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 12
+        },
+        "412x892": {
+          "state": "rig_picker__one_saved_rig_signed_in",
+          "x": 96.0,
+          "y": 322.4,
+          "width": 156.8,
+          "height": 18.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 12
+        }
       }
     },
     {
@@ -879,6 +1079,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__one_saved_rig_signed_in",
+          "x": 96.0,
+          "y": 424.8,
+          "width": 146.8,
+          "height": 31.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 12
+        },
+        "412x892": {
+          "state": "rig_picker__one_saved_rig_signed_in",
+          "x": 96.0,
+          "y": 340.8,
+          "width": 154.8,
+          "height": 15.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 12
+        }
       }
     },
     {
@@ -936,6 +1158,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__one_saved_rig_signed_in",
+          "x": 292.0,
+          "y": 386.0,
+          "width": 48.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "rig_picker__one_saved_rig_signed_in",
+          "x": 344.0,
+          "y": 304.0,
+          "width": 48.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -993,6 +1237,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 32.0,
+          "y": 512.4,
+          "width": 296.0,
+          "height": 22.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        },
+        "412x892": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 32.0,
+          "y": 421.6,
+          "width": 348.0,
+          "height": 22.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        }
       }
     },
     {
@@ -1058,6 +1324,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 32.0,
+          "y": 547.2,
+          "width": 296.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        },
+        "412x892": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 32.0,
+          "y": 456.4,
+          "width": 348.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        }
       }
     },
     {
@@ -1123,6 +1411,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 32.0,
+          "y": 615.2,
+          "width": 296.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        },
+        "412x892": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 32.0,
+          "y": 524.4,
+          "width": 348.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        }
       }
     },
     {
@@ -1182,6 +1492,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__feedback_no_mail_app",
+          "x": 110.0,
+          "y": 568.0,
+          "width": 140.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        },
+        "412x892": {
+          "state": "rig_picker__no_saved_rigs",
+          "x": 136.0,
+          "y": 612.4,
+          "width": 140.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 14
+        }
       }
     },
     {
@@ -1241,6 +1573,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "rig_picker__feedback_no_mail_app",
+          "x": 16.0,
+          "y": 620.0,
+          "width": 328.0,
+          "height": 34.8,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "rig_picker__feedback_no_mail_app",
+          "x": 16.0,
+          "y": 644.8,
+          "width": 380.0,
+          "height": 34.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -1300,6 +1654,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "chooser__truck_module",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 142.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        },
+        "412x892": {
+          "state": "chooser__truck_module",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 194.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        }
       }
     },
     {
@@ -1359,6 +1735,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "chooser__truck_module",
+          "x": 222.0,
+          "y": 36.0,
+          "width": 122.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        },
+        "412x892": {
+          "state": "chooser__truck_module",
+          "x": 274.0,
+          "y": 36.0,
+          "width": 122.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        }
       }
     },
     {
@@ -1417,6 +1815,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "chooser__truck_module",
+          "x": 16.0,
+          "y": 96.0,
+          "width": 328.0,
+          "height": 77.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        },
+        "412x892": {
+          "state": "chooser__truck_module",
+          "x": 16.0,
+          "y": 96.0,
+          "width": 380.0,
+          "height": 77.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        }
       }
     },
     {
@@ -1475,6 +1895,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "chooser__truck_module",
+          "x": 16.0,
+          "y": 213.6,
+          "width": 328.0,
+          "height": 55.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        },
+        "412x892": {
+          "state": "chooser__truck_module",
+          "x": 16.0,
+          "y": 213.6,
+          "width": 380.0,
+          "height": 55.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        }
       }
     },
     {
@@ -1534,6 +1976,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "chooser__truck_module",
+          "x": 16.0,
+          "y": 285.2,
+          "width": 328.0,
+          "height": 148.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        },
+        "412x892": {
+          "state": "chooser__truck_module",
+          "x": 16.0,
+          "y": 285.2,
+          "width": 380.0,
+          "height": 148.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        }
       }
     },
     {
@@ -1592,6 +2056,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "chooser__truck_module",
+          "x": 228.0,
+          "y": 315.2,
+          "width": 67.2,
+          "height": 20.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        },
+        "412x892": {
+          "state": "chooser__truck_module",
+          "x": 228.0,
+          "y": 325.6,
+          "width": 67.2,
+          "height": 20.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        }
       }
     },
     {
@@ -1656,6 +2142,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "chooser__truck_module",
+          "x": 16.0,
+          "y": 449.2,
+          "width": 328.0,
+          "height": 148.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        },
+        "412x892": {
+          "state": "chooser__truck_module",
+          "x": 16.0,
+          "y": 449.2,
+          "width": 380.0,
+          "height": 148.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        }
       }
     },
     {
@@ -1714,6 +2222,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "chooser__truck_module",
+          "x": 264.4,
+          "y": 489.6,
+          "width": 48.0,
+          "height": 20.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        },
+        "412x892": {
+          "state": "chooser__truck_module",
+          "x": 264.4,
+          "y": 489.6,
+          "width": 48.0,
+          "height": 20.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        }
       }
     },
     {
@@ -1771,6 +2301,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "chooser__truck_module",
+          "x": 62.0,
+          "y": 625.2,
+          "width": 268.0,
+          "height": 38.4,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 7
+        },
+        "412x892": {
+          "state": "chooser__truck_module",
+          "x": 62.0,
+          "y": 625.2,
+          "width": 320.0,
+          "height": 38.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        }
       }
     },
     {
@@ -1829,6 +2381,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "chooser__scan_in_flight",
+          "x": 0.0,
+          "y": 24.0,
+          "width": 360.0,
+          "height": 592.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "chooser__scan_in_flight",
+          "x": 0.0,
+          "y": 24.0,
+          "width": 412.0,
+          "height": 844.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -1887,6 +2461,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "photo_source_dialog__default",
+          "x": 40.0,
+          "y": 211.6,
+          "width": 113.6,
+          "height": 27.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "photo_source_dialog__default",
+          "x": 48.0,
+          "y": 337.6,
+          "width": 113.6,
+          "height": 27.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -1945,6 +2541,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "photo_source_dialog__default",
+          "x": 40.0,
+          "y": 251.2,
+          "width": 280.0,
+          "height": 44.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "photo_source_dialog__default",
+          "x": 48.0,
+          "y": 377.2,
+          "width": 316.0,
+          "height": 44.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -2004,6 +2622,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "photo_source_dialog__default",
+          "x": 40.0,
+          "y": 376.0,
+          "width": 280.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "photo_source_dialog__default",
+          "x": 48.0,
+          "y": 502.0,
+          "width": 316.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -2064,6 +2704,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "photo_source_dialog__default",
+          "x": 40.0,
+          "y": 316.0,
+          "width": 280.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "photo_source_dialog__default",
+          "x": 48.0,
+          "y": 442.0,
+          "width": 316.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -2121,6 +2783,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 142.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 194.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -2178,6 +2862,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 96.0,
+          "width": 328.0,
+          "height": 77.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 96.0,
+          "width": 380.0,
+          "height": 77.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -2237,6 +2943,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__scan_notice_nothing_read",
+          "x": 16.0,
+          "y": 318.0,
+          "width": 328.0,
+          "height": 82.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        },
+        "412x892": {
+          "state": "truck_tag_entry__scan_notice_nothing_read",
+          "x": 16.0,
+          "y": 390.0,
+          "width": 380.0,
+          "height": 82.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        }
       }
     },
     {
@@ -2294,6 +3022,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 318.0,
+          "width": 328.0,
+          "height": 64.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 390.0,
+          "width": 380.0,
+          "height": 42.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -2352,6 +3102,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 29.2,
+          "y": 244.8,
+          "width": 301.6,
+          "height": 44.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 29.2,
+          "y": 244.8,
+          "width": 353.6,
+          "height": 116.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -2410,6 +3182,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 63.2,
+          "y": 216.8,
+          "width": 263.6,
+          "height": 18.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 63.2,
+          "y": 216.8,
+          "width": 315.6,
+          "height": 18.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -2469,6 +3263,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 421.6,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 471.6,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -2527,6 +3343,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 516.4,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 566.4,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -2585,6 +3423,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__keyboard_open",
+          "x": 16.0,
+          "y": 9.6,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 661.2,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -2643,6 +3503,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__gvwr_focused",
+          "x": 16.0,
+          "y": 389.2,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 756.0,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -2701,6 +3583,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__gvwr_focused",
+          "x": 16.0,
+          "y": 484.0,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 16.0,
+          "y": 343.2,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -2759,6 +3663,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 895.6,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 16.0,
+          "y": 438.0,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -2817,6 +3743,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 957.6,
+          "width": 328.0,
+          "height": 34.8,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 16.0,
+          "y": 500.0,
+          "width": 380.0,
+          "height": 16.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -2875,6 +3823,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__gcwr_below_gvwr_warning",
+          "x": 16.0,
+          "y": 998.4,
+          "width": 328.0,
+          "height": 34.8,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "truck_tag_entry__gcwr_below_gvwr_warning",
+          "x": 16.0,
+          "y": 1030.4,
+          "width": 380.0,
+          "height": 34.8,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -2932,6 +3902,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 32.0,
+          "y": 503.6,
+          "width": 248.0,
+          "height": 16.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 32.0,
+          "y": 755.6,
+          "width": 300.0,
+          "height": 16.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -2990,6 +3982,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 280.0,
+          "y": 488.0,
+          "width": 48.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 332.0,
+          "y": 740.0,
+          "width": 48.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -3048,6 +4062,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 44.0,
+          "y": 550.0,
+          "width": 296.0,
+          "height": 90.8,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 44.0,
+          "y": 802.0,
+          "width": 348.0,
+          "height": 72.8,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -3106,6 +4142,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 32.0,
+          "y": 1267.6,
+          "width": 296.0,
+          "height": 56.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 32.0,
+          "y": 1299.6,
+          "width": 348.0,
+          "height": 56.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -3163,6 +4221,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 32.0,
+          "y": 296.8,
+          "width": 328.0,
+          "height": 580.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 32.0,
+          "y": 548.8,
+          "width": 380.0,
+          "height": 562.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -3220,6 +4300,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 32.0,
+          "y": 296.8,
+          "width": 296.0,
+          "height": 44.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 32.0,
+          "y": 548.8,
+          "width": 348.0,
+          "height": 44.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -3277,6 +4379,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 32.0,
+          "y": 353.6,
+          "width": 296.0,
+          "height": 58.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 32.0,
+          "y": 605.6,
+          "width": 348.0,
+          "height": 58.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -3336,6 +4460,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 32.0,
+          "y": 424.0,
+          "width": 296.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__standalone_info_expanded",
+          "x": 32.0,
+          "y": 676.0,
+          "width": 348.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -3394,6 +4540,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 32.0,
+          "y": 1335.6,
+          "width": 296.0,
+          "height": 38.4,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 32.0,
+          "y": 1367.6,
+          "width": 348.0,
+          "height": 38.4,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -3452,6 +4620,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 32.0,
+          "y": 1386.0,
+          "width": 296.0,
+          "height": 48.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 32.0,
+          "y": 1418.0,
+          "width": 348.0,
+          "height": 48.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -3509,6 +4699,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 32.0,
+          "y": 1446.0,
+          "width": 296.0,
+          "height": 31.6,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 32.0,
+          "y": 1478.0,
+          "width": 348.0,
+          "height": 31.6,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -3572,6 +4784,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 548.0,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        },
+        "412x892": {
+          "state": "truck_tag_entry__blank",
+          "x": 16.0,
+          "y": 800.0,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 11
+        }
       }
     },
     {
@@ -3629,6 +4863,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__blank",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 272.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__blank",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 324.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        }
       }
     },
     {
@@ -3686,6 +4942,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 96.0,
+          "width": 328.0,
+          "height": 77.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 5
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 96.0,
+          "width": 380.0,
+          "height": 77.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 5
+        }
       }
     },
     {
@@ -3745,6 +5023,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__scan_notice_nothing_read",
+          "x": 16.0,
+          "y": 318.0,
+          "width": 328.0,
+          "height": 82.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__scan_notice_nothing_read",
+          "x": 16.0,
+          "y": 390.0,
+          "width": 380.0,
+          "height": 82.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -3802,6 +5102,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 318.0,
+          "width": 328.0,
+          "height": 64.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 390.0,
+          "width": 380.0,
+          "height": 42.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        }
       }
     },
     {
@@ -3860,6 +5182,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__blank",
+          "x": 29.2,
+          "y": 244.8,
+          "width": 301.6,
+          "height": 44.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__blank",
+          "x": 29.2,
+          "y": 244.8,
+          "width": 353.6,
+          "height": 116.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        }
       }
     },
     {
@@ -3918,6 +5262,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__blank",
+          "x": 63.2,
+          "y": 216.8,
+          "width": 263.6,
+          "height": 18.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__blank",
+          "x": 63.2,
+          "y": 216.8,
+          "width": 315.6,
+          "height": 18.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        }
       }
     },
     {
@@ -3976,6 +5342,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 421.6,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 471.6,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        }
       }
     },
     {
@@ -4034,6 +5422,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 516.4,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 566.4,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        }
       }
     },
     {
@@ -4092,6 +5502,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__keyboard_open",
+          "x": 16.0,
+          "y": 9.6,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 661.2,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        }
       }
     },
     {
@@ -4150,6 +5582,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__gvwr_focused",
+          "x": 16.0,
+          "y": 389.2,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 756.0,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        }
       }
     },
     {
@@ -4208,6 +5662,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__gvwr_focused",
+          "x": 16.0,
+          "y": 484.0,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__gvwr_focused",
+          "x": 16.0,
+          "y": 703.2,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        }
       }
     },
     {
@@ -4265,6 +5741,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 862.8,
+          "width": 328.0,
+          "height": 16.8,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 6
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__gvwr_focused",
+          "x": 16.0,
+          "y": 765.2,
+          "width": 380.0,
+          "height": 16.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        }
       }
     },
     {
@@ -4323,6 +5821,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 918.4,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 6
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 968.4,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 6
+        }
       }
     },
     {
@@ -4384,6 +5904,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 548.0,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        },
+        "412x892": {
+          "state": "trailer_tag_entry__blank",
+          "x": 16.0,
+          "y": 800.0,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 6
+        }
       }
     },
     {
@@ -4441,6 +5983,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scale_ticket_entry__blank",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 272.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "scale_ticket_entry__blank",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 324.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -4498,6 +6062,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 96.0,
+          "width": 328.0,
+          "height": 77.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 3
+        },
+        "412x892": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 96.0,
+          "width": 380.0,
+          "height": 77.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 3
+        }
       }
     },
     {
@@ -4557,6 +6143,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scale_ticket_entry__scan_notice_nothing_read",
+          "x": 16.0,
+          "y": 205.6,
+          "width": 328.0,
+          "height": 82.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "scale_ticket_entry__scan_notice_nothing_read",
+          "x": 16.0,
+          "y": 205.6,
+          "width": 380.0,
+          "height": 82.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -4614,6 +6222,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 205.6,
+          "width": 328.0,
+          "height": 42.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 205.6,
+          "width": 380.0,
+          "height": 20.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -4672,6 +6302,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 264.4,
+          "width": 328.0,
+          "height": 167.2,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 242.4,
+          "width": 380.0,
+          "height": 167.2,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -4730,6 +6382,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 447.6,
+          "width": 328.0,
+          "height": 72.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 425.6,
+          "width": 380.0,
+          "height": 72.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -4788,6 +6462,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scale_ticket_entry__keyboard_open",
+          "x": 16.0,
+          "y": -90.4,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 541.6,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -4845,6 +6541,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scale_ticket_entry__keyboard_open",
+          "x": 16.0,
+          "y": 9.6,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 641.6,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -4902,6 +6620,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 763.6,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 741.6,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -4959,6 +6699,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 863.6,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 841.6,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -5016,6 +6778,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 963.6,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 941.6,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -5077,6 +6861,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 548.0,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "scale_ticket_entry__blank",
+          "x": 16.0,
+          "y": 800.0,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -5154,6 +6960,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 64.0,
+          "width": 72.0,
+          "height": 72.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "360x640-font2.0": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 64.0,
+          "width": 72.0,
+          "height": 72.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 64.0,
+          "width": 72.0,
+          "height": 72.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892-font2.0": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 64.0,
+          "width": 72.0,
+          "height": 72.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -5233,6 +7081,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 152.0,
+          "width": 320.0,
+          "height": 69.2,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "360x640-font2.0": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 152.0,
+          "width": 320.0,
+          "height": 183.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 152.0,
+          "width": 372.0,
+          "height": 69.2,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892-font2.0": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 152.0,
+          "width": 372.0,
+          "height": 138.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -5311,6 +7201,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 241.2,
+          "width": 320.0,
+          "height": 164.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "360x640-font2.0": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 355.6,
+          "width": 320.0,
+          "height": 540.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 241.2,
+          "width": 372.0,
+          "height": 140.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892-font2.0": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 310.0,
+          "width": 372.0,
+          "height": 414.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -5389,6 +7321,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 426.0,
+          "width": 320.0,
+          "height": 188.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "360x640-font2.0": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 916.0,
+          "width": 320.0,
+          "height": 624.4,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 402.0,
+          "width": 372.0,
+          "height": 164.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892-font2.0": {
+          "state": "disclaimer__default",
+          "x": 20.0,
+          "y": 744.4,
+          "width": 372.0,
+          "height": 540.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -5470,6 +7444,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "disclaimer__default",
+          "x": 16.0,
+          "y": 548.0,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "360x640-font2.0": {
+          "state": "disclaimer__default",
+          "x": 16.0,
+          "y": 530.0,
+          "width": 328.0,
+          "height": 74.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "disclaimer__default",
+          "x": 16.0,
+          "y": 800.0,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892-font2.0": {
+          "state": "disclaimer__default",
+          "x": 16.0,
+          "y": 800.0,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -5548,6 +7564,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__safe_to_tow",
+          "x": 72.0,
+          "y": 36.0,
+          "width": 202.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "360x640-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 72.0,
+          "y": 36.0,
+          "width": 272.0,
+          "height": 88.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "results__safe_to_tow",
+          "x": 72.0,
+          "y": 36.0,
+          "width": 202.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 72.0,
+          "y": 36.0,
+          "width": 280.8,
+          "height": 46.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -5625,6 +7683,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__safe_to_tow",
+          "x": 72.0,
+          "y": 68.8,
+          "width": 78.4,
+          "height": 16.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "360x640-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 72.0,
+          "y": 124.8,
+          "width": 152.8,
+          "height": 32.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "results__safe_to_tow",
+          "x": 72.0,
+          "y": 68.8,
+          "width": 78.4,
+          "height": 16.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 72.0,
+          "y": 82.4,
+          "width": 152.8,
+          "height": 32.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -5703,6 +7803,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 117.6,
+          "width": 328.0,
+          "height": 198.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "360x640-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 189.2,
+          "width": 328.0,
+          "height": 241.2,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 117.6,
+          "width": 380.0,
+          "height": 122.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 146.8,
+          "width": 380.0,
+          "height": 203.2,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -5782,6 +7924,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__garage_notice_free_with_get_pro",
+          "x": 16.0,
+          "y": 332.4,
+          "width": 328.0,
+          "height": 46.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        },
+        "360x640-font2.0": {
+          "state": "results__garage_notice_free_with_get_pro",
+          "x": 16.0,
+          "y": 446.4,
+          "width": 328.0,
+          "height": 94.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        },
+        "412x892": {
+          "state": "results__garage_notice_free_with_get_pro",
+          "x": 16.0,
+          "y": 256.4,
+          "width": 380.0,
+          "height": 46.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        },
+        "412x892-font2.0": {
+          "state": "results__garage_notice_free_with_get_pro",
+          "x": 16.0,
+          "y": 366.0,
+          "width": 380.0,
+          "height": 94.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        }
       }
     },
     {
@@ -5860,6 +8044,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__garage_notice_free_with_get_pro",
+          "x": 16.0,
+          "y": 382.4,
+          "width": 328.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "360x640-font2.0": {
+          "state": "results__garage_notice_free_with_get_pro",
+          "x": 16.0,
+          "y": 545.2,
+          "width": 328.0,
+          "height": 70.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "results__garage_notice_free_with_get_pro",
+          "x": 16.0,
+          "y": 306.4,
+          "width": 380.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892-font2.0": {
+          "state": "results__garage_notice_free_with_get_pro",
+          "x": 16.0,
+          "y": 464.8,
+          "width": 380.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -5939,6 +8165,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__history_notice",
+          "x": 16.0,
+          "y": 332.4,
+          "width": 328.0,
+          "height": 62.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "360x640-font2.0": {
+          "state": "results__history_notice",
+          "x": 16.0,
+          "y": 446.4,
+          "width": 328.0,
+          "height": 94.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "results__history_notice",
+          "x": 16.0,
+          "y": 256.4,
+          "width": 380.0,
+          "height": 46.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892-font2.0": {
+          "state": "results__history_notice",
+          "x": 16.0,
+          "y": 366.0,
+          "width": 380.0,
+          "height": 94.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -6017,6 +8285,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__estimated_figures_notice",
+          "x": 16.0,
+          "y": 332.4,
+          "width": 328.0,
+          "height": 443.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "360x640-font2.0": {
+          "state": "results__estimated_figures_notice",
+          "x": 16.0,
+          "y": 446.4,
+          "width": 328.0,
+          "height": 1374.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "results__estimated_figures_notice",
+          "x": 16.0,
+          "y": 256.4,
+          "width": 380.0,
+          "height": 361.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892-font2.0": {
+          "state": "results__estimated_figures_notice",
+          "x": 16.0,
+          "y": 366.0,
+          "width": 380.0,
+          "height": 1149.2,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -6095,6 +8405,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 332.4,
+          "width": 328.0,
+          "height": 708.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "360x640-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 446.4,
+          "width": 328.0,
+          "height": 1429.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 256.4,
+          "width": 380.0,
+          "height": 639.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 366.0,
+          "width": 380.0,
+          "height": 1056.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -6173,6 +8525,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 336.4,
+          "width": 328.0,
+          "height": 119.6,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "360x640-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 450.4,
+          "width": 328.0,
+          "height": 243.2,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 260.4,
+          "width": 380.0,
+          "height": 119.6,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "412x892-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 370.0,
+          "width": 380.0,
+          "height": 206.0,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -6250,6 +8644,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__safe_to_tow",
+          "x": 32.0,
+          "y": 361.2,
+          "width": 26.0,
+          "height": 26.0,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "360x640-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 32.0,
+          "y": 510.8,
+          "width": 26.0,
+          "height": 26.0,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "results__safe_to_tow",
+          "x": 32.0,
+          "y": 285.2,
+          "width": 26.0,
+          "height": 26.0,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "412x892-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 32.0,
+          "y": 430.4,
+          "width": 26.0,
+          "height": 26.0,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -6329,6 +8765,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__safe_to_tow",
+          "x": 68.0,
+          "y": 352.4,
+          "width": 138.4,
+          "height": 43.2,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "360x640-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 68.0,
+          "y": 466.4,
+          "width": 260.0,
+          "height": 74.0,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "results__safe_to_tow",
+          "x": 68.0,
+          "y": 276.4,
+          "width": 190.4,
+          "height": 43.2,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "412x892-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 68.0,
+          "y": 386.0,
+          "width": 312.0,
+          "height": 74.0,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -6406,6 +8884,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__safe_to_tow",
+          "x": 32.0,
+          "y": 421.6,
+          "width": 265.6,
+          "height": 18.4,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "360x640-font2.0": {
+          "state": "results__row_note_expanded",
+          "x": 32.0,
+          "y": 449.2,
+          "width": 227.2,
+          "height": 70.8,
+          "visible": true,
+          "count": 5,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "results__safe_to_tow",
+          "x": 32.0,
+          "y": 345.6,
+          "width": 317.6,
+          "height": 18.4,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "412x892-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 32.0,
+          "y": 526.4,
+          "width": 291.6,
+          "height": 33.6,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -6485,6 +9005,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__safe_to_tow",
+          "x": 297.6,
+          "y": 421.6,
+          "width": 30.4,
+          "height": 18.4,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "360x640-font2.0": {
+          "state": "results__row_note_expanded",
+          "x": 259.2,
+          "y": 449.2,
+          "width": 68.8,
+          "height": 33.6,
+          "visible": true,
+          "count": 5,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "results__safe_to_tow",
+          "x": 349.6,
+          "y": 345.6,
+          "width": 30.4,
+          "height": 18.4,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "412x892-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 323.6,
+          "y": 526.4,
+          "width": 56.4,
+          "height": 33.6,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -6562,6 +9124,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__safe_to_tow",
+          "x": 32.0,
+          "y": 403.6,
+          "width": 296.0,
+          "height": 10.0,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "360x640-font2.0": {
+          "state": "results__row_note_expanded",
+          "x": 32.0,
+          "y": 431.2,
+          "width": 296.0,
+          "height": 10.0,
+          "visible": true,
+          "count": 5,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "results__safe_to_tow",
+          "x": 32.0,
+          "y": 327.6,
+          "width": 348.0,
+          "height": 10.0,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        },
+        "412x892-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 32.0,
+          "y": 508.4,
+          "width": 348.0,
+          "height": 10.0,
+          "visible": true,
+          "count": 6,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -6640,6 +9244,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__row_note_expanded",
+          "x": 32.0,
+          "y": 448.0,
+          "width": 296.0,
+          "height": 42.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "360x640-font2.0": {
+          "state": "results__row_note_expanded",
+          "x": 32.0,
+          "y": 528.0,
+          "width": 296.0,
+          "height": 57.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "results__row_note_expanded",
+          "x": 32.0,
+          "y": 393.2,
+          "width": 348.0,
+          "height": 42.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892-font2.0": {
+          "state": "results__row_note_expanded",
+          "x": 32.0,
+          "y": 649.2,
+          "width": 348.0,
+          "height": 57.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -6718,6 +9364,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 1056.8,
+          "width": 328.0,
+          "height": 16.8,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "360x640-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 1892.0,
+          "width": 328.0,
+          "height": 67.2,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "results__partially_checked",
+          "x": 16.0,
+          "y": 729.6,
+          "width": 380.0,
+          "height": 16.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 1438.0,
+          "width": 380.0,
+          "height": 67.2,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -6799,6 +9487,48 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 548.0,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "360x640-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 548.0,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 800.0,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        },
+        "412x892-font2.0": {
+          "state": "results__safe_to_tow",
+          "x": 16.0,
+          "y": 800.0,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 10
+        }
       }
     },
     {
@@ -6857,6 +9587,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "history__empty",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 272.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 5
+        },
+        "412x892": {
+          "state": "history__empty",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 324.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 5
+        }
       }
     },
     {
@@ -6914,6 +9666,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "history__empty",
+          "x": 16.0,
+          "y": 120.0,
+          "width": 328.0,
+          "height": 42.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 5
+        },
+        "412x892": {
+          "state": "history__empty",
+          "x": 16.0,
+          "y": 120.0,
+          "width": 380.0,
+          "height": 20.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 5
+        }
       }
     },
     {
@@ -6972,6 +9746,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "history__limit_notice",
+          "x": 16.0,
+          "y": 178.8,
+          "width": 328.0,
+          "height": 46.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "history__limit_notice",
+          "x": 16.0,
+          "y": 156.8,
+          "width": 380.0,
+          "height": 46.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -7031,6 +9827,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "history__limit_notice",
+          "x": 16.0,
+          "y": 228.8,
+          "width": 328.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "history__limit_notice",
+          "x": 16.0,
+          "y": 206.8,
+          "width": 380.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -7089,6 +9907,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "history__empty",
+          "x": 106.0,
+          "y": 198.8,
+          "width": 218.0,
+          "height": 64.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "history__empty",
+          "x": 106.0,
+          "y": 183.6,
+          "width": 270.0,
+          "height": 42.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -7148,6 +9988,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "history__a_few_entries",
+          "x": 16.0,
+          "y": 178.8,
+          "width": 328.0,
+          "height": 71.6,
+          "visible": true,
+          "count": 3,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "history__a_few_entries",
+          "x": 16.0,
+          "y": 156.8,
+          "width": 380.0,
+          "height": 71.6,
+          "visible": true,
+          "count": 3,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -7205,6 +10067,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "history__a_few_entries",
+          "x": 32.0,
+          "y": 194.8,
+          "width": 105.2,
+          "height": 22.8,
+          "visible": true,
+          "count": 3,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "history__a_few_entries",
+          "x": 32.0,
+          "y": 172.8,
+          "width": 105.2,
+          "height": 22.8,
+          "visible": true,
+          "count": 3,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -7262,6 +10146,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "history__a_few_entries",
+          "x": 32.0,
+          "y": 217.6,
+          "width": 76.4,
+          "height": 16.8,
+          "visible": true,
+          "count": 3,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "history__a_few_entries",
+          "x": 32.0,
+          "y": 195.6,
+          "width": 76.4,
+          "height": 16.8,
+          "visible": true,
+          "count": 3,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -7321,6 +10227,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "history__a_few_entries",
+          "x": 224.4,
+          "y": 204.4,
+          "width": 103.6,
+          "height": 20.8,
+          "visible": true,
+          "count": 3,
+          "seen_in_states": 4
+        },
+        "412x892": {
+          "state": "history__a_few_entries",
+          "x": 276.4,
+          "y": 182.4,
+          "width": 103.6,
+          "height": 20.8,
+          "visible": true,
+          "count": 3,
+          "seen_in_states": 4
+        }
       }
     },
     {
@@ -7381,6 +10309,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__offers_loading",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 272.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 13
+        },
+        "412x892": {
+          "state": "paywall__offers_loading",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 324.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 13
+        }
       }
     },
     {
@@ -7440,6 +10390,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__offers_loading",
+          "x": 16.0,
+          "y": 134.8,
+          "width": 204.4,
+          "height": 18.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 13
+        },
+        "412x892": {
+          "state": "paywall__offers_loading",
+          "x": 16.0,
+          "y": 134.8,
+          "width": 256.4,
+          "height": 18.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 13
+        }
       }
     },
     {
@@ -7499,6 +10471,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__offers_loading",
+          "x": 220.4,
+          "y": 120.0,
+          "width": 123.6,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 13
+        },
+        "412x892": {
+          "state": "paywall__offers_loading",
+          "x": 272.4,
+          "y": 120.0,
+          "width": 123.6,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 13
+        }
       }
     },
     {
@@ -7557,6 +10551,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__offers_loading",
+          "x": 16.0,
+          "y": 184.0,
+          "width": 78.8,
+          "height": 20.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 12
+        },
+        "412x892": {
+          "state": "paywall__offers_loading",
+          "x": 16.0,
+          "y": 184.0,
+          "width": 78.8,
+          "height": 20.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 12
+        }
       }
     },
     {
@@ -7615,6 +10631,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__offers_loading",
+          "x": 16.0,
+          "y": 220.8,
+          "width": 328.0,
+          "height": 85.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 13
+        },
+        "412x892": {
+          "state": "paywall__offers_loading",
+          "x": 16.0,
+          "y": 220.8,
+          "width": 380.0,
+          "height": 85.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 13
+        }
       }
     },
     {
@@ -7673,6 +10711,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__free_one_pro_card_beta",
+          "x": 16.0,
+          "y": 120.0,
+          "width": 328.0,
+          "height": 82.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "paywall__free_one_pro_card_beta",
+          "x": 16.0,
+          "y": 120.0,
+          "width": 380.0,
+          "height": 62.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -7730,6 +10790,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__offers_loading",
+          "x": 160.0,
+          "y": 346.4,
+          "width": 40.0,
+          "height": 40.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "paywall__offers_loading",
+          "x": 186.0,
+          "y": 346.4,
+          "width": 40.0,
+          "height": 40.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -7790,6 +10872,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__offers_load_error",
+          "x": 16.0,
+          "y": 322.4,
+          "width": 328.0,
+          "height": 46.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "paywall__offers_load_error",
+          "x": 16.0,
+          "y": 322.4,
+          "width": 380.0,
+          "height": 46.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -7848,6 +10952,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__plan_unknown",
+          "x": 16.0,
+          "y": 241.6,
+          "width": 328.0,
+          "height": 41.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "paywall__plan_unknown",
+          "x": 16.0,
+          "y": 241.6,
+          "width": 380.0,
+          "height": 19.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -7906,6 +11032,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__plan_unknown",
+          "x": 16.0,
+          "y": 293.2,
+          "width": 328.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        },
+        "412x892": {
+          "state": "paywall__plan_unknown",
+          "x": 16.0,
+          "y": 271.2,
+          "width": 380.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        }
       }
     },
     {
@@ -7964,6 +11112,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__free_one_pro_card",
+          "x": 16.0,
+          "y": 322.4,
+          "width": 328.0,
+          "height": 166.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 8
+        },
+        "412x892": {
+          "state": "paywall__free_one_pro_card",
+          "x": 16.0,
+          "y": 322.4,
+          "width": 380.0,
+          "height": 166.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 8
+        }
       }
     },
     {
@@ -8022,6 +11192,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__free_one_pro_card",
+          "x": 37.6,
+          "y": 344.0,
+          "width": 284.8,
+          "height": 27.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 8
+        },
+        "412x892": {
+          "state": "paywall__free_one_pro_card",
+          "x": 37.6,
+          "y": 344.0,
+          "width": 336.8,
+          "height": 27.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 8
+        }
       }
     },
     {
@@ -8079,6 +11271,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__free_one_pro_card",
+          "x": 37.6,
+          "y": 375.6,
+          "width": 284.8,
+          "height": 19.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        },
+        "412x892": {
+          "state": "paywall__free_one_pro_card",
+          "x": 37.6,
+          "y": 375.6,
+          "width": 336.8,
+          "height": 19.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        }
       }
     },
     {
@@ -8137,6 +11351,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__free_one_pro_card",
+          "x": 37.6,
+          "y": 411.2,
+          "width": 284.8,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 8
+        },
+        "412x892": {
+          "state": "paywall__free_one_pro_card",
+          "x": 37.6,
+          "y": 411.2,
+          "width": 336.8,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 8
+        }
       }
     },
     {
@@ -8195,6 +11431,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__pro_no_packs",
+          "x": 16.0,
+          "y": 300.4,
+          "width": 328.0,
+          "height": 46.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "paywall__pro_no_packs",
+          "x": 16.0,
+          "y": 278.4,
+          "width": 380.0,
+          "height": 46.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -8253,6 +11511,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__free_no_pro_package",
+          "x": 16.0,
+          "y": 322.4,
+          "width": 328.0,
+          "height": 46.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "paywall__free_no_pro_package",
+          "x": 16.0,
+          "y": 322.4,
+          "width": 380.0,
+          "height": 46.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -8311,6 +11591,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__free_after_buying_pro",
+          "x": 16.0,
+          "y": 498.8,
+          "width": 328.0,
+          "height": 41.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "paywall__free_after_buying_pro",
+          "x": 16.0,
+          "y": 498.8,
+          "width": 380.0,
+          "height": 19.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -8371,6 +11673,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__offers_loading",
+          "x": 16.0,
+          "y": 548.0,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 13
+        },
+        "412x892": {
+          "state": "paywall__offers_loading",
+          "x": 16.0,
+          "y": 800.0,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 13
+        }
       }
     },
     {
@@ -8408,6 +11732,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__free_after_buying_pro",
+          "x": 16.0,
+          "y": 472.0,
+          "width": 328.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "paywall__free_after_buying_pro",
+          "x": 16.0,
+          "y": 724.0,
+          "width": 380.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -8468,6 +11814,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "paywall__offers_loading",
+          "x": 16.0,
+          "y": 36.0,
+          "width": 48.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 13
+        },
+        "412x892": {
+          "state": "paywall__offers_loading",
+          "x": 16.0,
+          "y": 36.0,
+          "width": 48.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 13
+        }
       }
     },
     {
@@ -8526,6 +11894,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__sign_in",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 272.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        },
+        "412x892": {
+          "state": "account__sign_in",
+          "x": 72.0,
+          "y": 43.6,
+          "width": 324.0,
+          "height": 32.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        }
       }
     },
     {
@@ -8584,6 +11974,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 120.0,
+          "width": 328.0,
+          "height": 20.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        },
+        "412x892": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 120.0,
+          "width": 380.0,
+          "height": 20.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        }
       }
     },
     {
@@ -8642,6 +12054,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 179.6,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        },
+        "412x892": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 179.6,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        }
       }
     },
     {
@@ -8700,6 +12134,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 274.4,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        },
+        "412x892": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 274.4,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        }
       }
     },
     {
@@ -8758,6 +12214,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__error",
+          "x": 16.0,
+          "y": 248.0,
+          "width": 328.0,
+          "height": 18.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "account__error",
+          "x": 16.0,
+          "y": 346.4,
+          "width": 380.0,
+          "height": 18.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -8816,6 +12294,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__info_reset_sent",
+          "x": 16.0,
+          "y": 346.4,
+          "width": 328.0,
+          "height": 62.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        },
+        "412x892": {
+          "state": "account__info_reset_sent",
+          "x": 16.0,
+          "y": 346.4,
+          "width": 380.0,
+          "height": 62.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        }
       }
     },
     {
@@ -8874,6 +12374,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 346.4,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        },
+        "412x892": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 346.4,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        }
       }
     },
     {
@@ -8932,6 +12454,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 418.4,
+          "width": 235.6,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        },
+        "412x892": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 418.4,
+          "width": 235.6,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        }
       }
     },
     {
@@ -8990,6 +12534,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 470.4,
+          "width": 160.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        },
+        "412x892": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 470.4,
+          "width": 160.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 7
+        }
       }
     },
     {
@@ -9047,6 +12613,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 534.4,
+          "width": 328.0,
+          "height": 1.2,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        },
+        "412x892": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 534.4,
+          "width": 380.0,
+          "height": 1.2,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        }
       }
     },
     {
@@ -9107,6 +12695,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__create_account",
+          "x": 16.0,
+          "y": 522.4,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        },
+        "412x892": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 551.6,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        }
       }
     },
     {
@@ -9165,6 +12775,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__apple_button_shown",
+          "x": 16.0,
+          "y": 623.6,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "account__apple_button_shown",
+          "x": 16.0,
+          "y": 623.6,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -9224,6 +12856,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 548.0,
+          "width": 328.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        },
+        "412x892": {
+          "state": "account__sign_in",
+          "x": 16.0,
+          "y": 800.0,
+          "width": 380.0,
+          "height": 56.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        }
       }
     },
     {
@@ -9282,6 +12936,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__feedback_no_mail_app",
+          "x": 110.0,
+          "y": 488.0,
+          "width": 140.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        },
+        "412x892": {
+          "state": "account__sign_in",
+          "x": 136.0,
+          "y": 623.6,
+          "width": 140.0,
+          "height": 48.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 9
+        }
       }
     },
     {
@@ -9341,6 +13017,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "account__feedback_no_mail_app",
+          "x": 16.0,
+          "y": 540.0,
+          "width": 328.0,
+          "height": 34.8,
+          "visible": false,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "account__feedback_no_mail_app",
+          "x": 16.0,
+          "y": 675.6,
+          "width": 380.0,
+          "height": 34.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -9402,6 +13100,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scan_error_dialog__message_only_ok",
+          "x": 40.0,
+          "y": 253.6,
+          "width": 112.0,
+          "height": 27.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 5
+        },
+        "412x892": {
+          "state": "scan_error_dialog__message_only_ok",
+          "x": 48.0,
+          "y": 379.6,
+          "width": 112.0,
+          "height": 27.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 5
+        }
       }
     },
     {
@@ -9462,6 +13182,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scan_error_dialog__message_only_ok",
+          "x": 40.0,
+          "y": 293.2,
+          "width": 176.0,
+          "height": 20.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 5
+        },
+        "412x892": {
+          "state": "scan_error_dialog__message_only_ok",
+          "x": 48.0,
+          "y": 419.2,
+          "width": 176.0,
+          "height": 20.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 5
+        }
       }
     },
     {
@@ -9636,6 +13378,132 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scan_error_dialog__one_next_step",
+          "x": 40.0,
+          "y": 304.0,
+          "width": 280.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4,
+          "variants": {
+            "scan_error_next_sign_in": {
+              "state": "scan_error_dialog__one_next_step",
+              "x": 40.0,
+              "y": 304.0,
+              "width": 280.0,
+              "height": 52.0,
+              "visible": true,
+              "count": 1,
+              "seen_in_states": 2
+            },
+            "scan_error_next_buy_scans": {
+              "state": "scan_error_dialog__five_next_steps",
+              "x": 40.0,
+              "y": 244.0,
+              "width": 280.0,
+              "height": 52.0,
+              "visible": true,
+              "count": 1,
+              "seen_in_states": 1
+            },
+            "scan_error_next_try_again": {
+              "state": "scan_error_dialog__two_next_steps",
+              "x": 40.0,
+              "y": 274.0,
+              "width": 280.0,
+              "height": 52.0,
+              "visible": true,
+              "count": 1,
+              "seen_in_states": 3
+            },
+            "scan_error_next_choose_photo": {
+              "state": "scan_error_dialog__five_next_steps",
+              "x": 40.0,
+              "y": 364.0,
+              "width": 280.0,
+              "height": 52.0,
+              "visible": true,
+              "count": 1,
+              "seen_in_states": 1
+            },
+            "scan_error_next_type_it_in": {
+              "state": "scan_error_dialog__two_next_steps",
+              "x": 40.0,
+              "y": 334.0,
+              "width": 280.0,
+              "height": 52.0,
+              "visible": true,
+              "count": 1,
+              "seen_in_states": 2
+            }
+          }
+        },
+        "412x892": {
+          "state": "scan_error_dialog__one_next_step",
+          "x": 48.0,
+          "y": 430.0,
+          "width": 316.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 4,
+          "variants": {
+            "scan_error_next_sign_in": {
+              "state": "scan_error_dialog__one_next_step",
+              "x": 48.0,
+              "y": 430.0,
+              "width": 316.0,
+              "height": 52.0,
+              "visible": true,
+              "count": 1,
+              "seen_in_states": 2
+            },
+            "scan_error_next_buy_scans": {
+              "state": "scan_error_dialog__five_next_steps",
+              "x": 48.0,
+              "y": 370.0,
+              "width": 316.0,
+              "height": 52.0,
+              "visible": true,
+              "count": 1,
+              "seen_in_states": 1
+            },
+            "scan_error_next_try_again": {
+              "state": "scan_error_dialog__two_next_steps",
+              "x": 48.0,
+              "y": 400.0,
+              "width": 316.0,
+              "height": 52.0,
+              "visible": true,
+              "count": 1,
+              "seen_in_states": 3
+            },
+            "scan_error_next_choose_photo": {
+              "state": "scan_error_dialog__five_next_steps",
+              "x": 48.0,
+              "y": 490.0,
+              "width": 316.0,
+              "height": 52.0,
+              "visible": true,
+              "count": 1,
+              "seen_in_states": 1
+            },
+            "scan_error_next_type_it_in": {
+              "state": "scan_error_dialog__two_next_steps",
+              "x": 48.0,
+              "y": 460.0,
+              "width": 316.0,
+              "height": 52.0,
+              "visible": true,
+              "count": 1,
+              "seen_in_states": 2
+            }
+          }
+        }
       }
     },
     {
@@ -9696,6 +13564,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "scan_error_dialog__message_only_ok",
+          "x": 40.0,
+          "y": 334.0,
+          "width": 280.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 5
+        },
+        "412x892": {
+          "state": "scan_error_dialog__message_only_ok",
+          "x": 48.0,
+          "y": 460.0,
+          "width": 316.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 5
+        }
       }
     },
     {
@@ -9753,6 +13643,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "late_scan_dialog__credit_used",
+          "x": 40.0,
+          "y": 229.6,
+          "width": 196.0,
+          "height": 27.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        },
+        "412x892": {
+          "state": "late_scan_dialog__credit_used",
+          "x": 48.0,
+          "y": 355.6,
+          "width": 196.0,
+          "height": 27.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        }
       }
     },
     {
@@ -9812,6 +13724,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "late_scan_dialog__credit_used",
+          "x": 40.0,
+          "y": 269.2,
+          "width": 280.0,
+          "height": 68.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        },
+        "412x892": {
+          "state": "late_scan_dialog__credit_used",
+          "x": 48.0,
+          "y": 395.2,
+          "width": 316.0,
+          "height": 68.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        }
       }
     },
     {
@@ -9872,6 +13806,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "late_scan_dialog__credit_used",
+          "x": 40.0,
+          "y": 358.0,
+          "width": 280.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        },
+        "412x892": {
+          "state": "late_scan_dialog__credit_used",
+          "x": 48.0,
+          "y": 484.0,
+          "width": 316.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        }
       }
     },
     {
@@ -9929,6 +13885,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "delete_rig_dialog__question",
+          "x": 16.0,
+          "y": 187.6,
+          "width": 360.0,
+          "height": 264.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 3
+        },
+        "412x892": {
+          "state": "delete_rig_dialog__question",
+          "x": 24.0,
+          "y": 313.6,
+          "width": 396.0,
+          "height": 264.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 3
+        }
       }
     },
     {
@@ -9987,6 +13965,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "delete_rig_dialog__question",
+          "x": 40.0,
+          "y": 211.6,
+          "width": 272.0,
+          "height": 27.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 3
+        },
+        "412x892": {
+          "state": "delete_rig_dialog__question",
+          "x": 48.0,
+          "y": 337.6,
+          "width": 272.0,
+          "height": 27.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 3
+        }
       }
     },
     {
@@ -10043,6 +14043,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "delete_rig_dialog__question",
+          "x": 40.0,
+          "y": 251.2,
+          "width": 280.0,
+          "height": 44.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 3
+        },
+        "412x892": {
+          "state": "delete_rig_dialog__question",
+          "x": 48.0,
+          "y": 377.2,
+          "width": 316.0,
+          "height": 44.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 3
+        }
       }
     },
     {
@@ -10101,6 +14123,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "delete_rig_dialog__delete_failed",
+          "x": 40.0,
+          "y": 280.8,
+          "width": 280.0,
+          "height": 38.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "delete_rig_dialog__delete_failed",
+          "x": 48.0,
+          "y": 406.8,
+          "width": 316.0,
+          "height": 38.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -10160,6 +14204,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "delete_rig_dialog__question",
+          "x": 40.0,
+          "y": 316.0,
+          "width": 280.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 3
+        },
+        "412x892": {
+          "state": "delete_rig_dialog__question",
+          "x": 48.0,
+          "y": 442.0,
+          "width": 316.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 3
+        }
       }
     },
     {
@@ -10218,6 +14284,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "delete_rig_dialog__question",
+          "x": 40.0,
+          "y": 376.0,
+          "width": 280.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 3
+        },
+        "412x892": {
+          "state": "delete_rig_dialog__question",
+          "x": 48.0,
+          "y": 502.0,
+          "width": 316.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 3
+        }
       }
     },
     {
@@ -10276,6 +14364,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "crash_report_dialog__question",
+          "x": 40.0,
+          "y": 166.8,
+          "width": 280.0,
+          "height": 83.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "crash_report_dialog__question",
+          "x": 48.0,
+          "y": 306.8,
+          "width": 316.0,
+          "height": 55.6,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -10333,6 +14443,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "crash_report_dialog__question",
+          "x": 40.0,
+          "y": 262.4,
+          "width": 280.0,
+          "height": 78.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "crash_report_dialog__question",
+          "x": 48.0,
+          "y": 374.4,
+          "width": 316.0,
+          "height": 78.4,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -10391,6 +14523,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "crash_report_dialog__no_email_app",
+          "x": 40.0,
+          "y": 261.6,
+          "width": 280.0,
+          "height": 44.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "crash_report_dialog__no_email_app",
+          "x": 48.0,
+          "y": 387.6,
+          "width": 316.0,
+          "height": 44.8,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -10449,6 +14603,28 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "crash_report_dialog__question",
+          "x": 40.0,
+          "y": 360.8,
+          "width": 280.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        },
+        "412x892": {
+          "state": "crash_report_dialog__question",
+          "x": 48.0,
+          "y": 472.8,
+          "width": 316.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 1
+        }
       }
     },
     {
@@ -10507,8 +14683,621 @@
         "new_text": null,
         "new_test_tag": null,
         "notes": null
+      },
+      "after_measured": {
+        "360x640": {
+          "state": "crash_report_dialog__question",
+          "x": 40.0,
+          "y": 420.8,
+          "width": 280.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        },
+        "412x892": {
+          "state": "crash_report_dialog__question",
+          "x": 48.0,
+          "y": 532.8,
+          "width": 316.0,
+          "height": 52.0,
+          "visible": true,
+          "count": 1,
+          "seen_in_states": 2
+        }
       }
     }
   ],
-  "added_elements": []
+  "added_elements": [],
+  "added_after_measured": {
+    "picker.logo": {
+      "360x640": {
+        "state": "rig_picker__no_saved_rigs",
+        "x": 18.0,
+        "y": 42.8,
+        "width": 56.0,
+        "height": 56.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 14
+      },
+      "412x892": {
+        "state": "rig_picker__no_saved_rigs",
+        "x": 18.0,
+        "y": 38.0,
+        "width": 56.0,
+        "height": 56.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 14
+      }
+    },
+    "picker.tagline": {
+      "360x640": {
+        "state": "rig_picker__no_saved_rigs",
+        "x": 84.0,
+        "y": 68.8,
+        "width": 130.4,
+        "height": 32.8,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 14
+      },
+      "412x892": {
+        "state": "rig_picker__no_saved_rigs",
+        "x": 84.0,
+        "y": 72.0,
+        "width": 174.0,
+        "height": 16.8,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 14
+      }
+    },
+    "picker.account_status": {
+      "360x640": {
+        "state": "rig_picker__no_saved_rigs",
+        "x": 28.0,
+        "y": 119.6,
+        "width": 328.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 14
+      },
+      "412x892": {
+        "state": "rig_picker__no_saved_rigs",
+        "x": 28.0,
+        "y": 110.0,
+        "width": 380.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 14
+      }
+    },
+    "picker.account_avatar": {
+      "360x640": {
+        "state": "rig_picker__no_saved_rigs",
+        "x": 28.0,
+        "y": 121.6,
+        "width": 32.0,
+        "height": 32.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 14
+      },
+      "412x892": {
+        "state": "rig_picker__no_saved_rigs",
+        "x": 28.0,
+        "y": 112.0,
+        "width": 32.0,
+        "height": 32.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 14
+      }
+    },
+    "picker.account_menu": {
+      "360x640": {
+        "state": "rig_picker__account_menu",
+        "x": 0.0,
+        "y": 352.0,
+        "width": 360.0,
+        "height": 288.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      },
+      "412x892": {
+        "state": "rig_picker__account_menu",
+        "x": 0.0,
+        "y": 604.0,
+        "width": 412.0,
+        "height": 288.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      }
+    },
+    "picker.account_menu_email": {
+      "360x640": {
+        "state": "rig_picker__account_menu",
+        "x": 76.0,
+        "y": 406.0,
+        "width": 197.6,
+        "height": 20.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      },
+      "412x892": {
+        "state": "rig_picker__account_menu",
+        "x": 76.0,
+        "y": 658.0,
+        "width": 197.6,
+        "height": 20.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      }
+    },
+    "picker.sign_out_button": {
+      "360x640": {
+        "state": "rig_picker__account_menu",
+        "x": 16.0,
+        "y": 452.0,
+        "width": 328.0,
+        "height": 56.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      },
+      "412x892": {
+        "state": "rig_picker__account_menu",
+        "x": 16.0,
+        "y": 704.0,
+        "width": 380.0,
+        "height": 56.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      }
+    },
+    "picker.account_menu_cancel": {
+      "360x640": {
+        "state": "rig_picker__account_menu",
+        "x": 16.0,
+        "y": 520.0,
+        "width": 328.0,
+        "height": 56.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      },
+      "412x892": {
+        "state": "rig_picker__account_menu",
+        "x": 16.0,
+        "y": 772.0,
+        "width": 380.0,
+        "height": 56.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      }
+    },
+    "picker.empty_state": {
+      "360x640": {
+        "state": "rig_picker__no_saved_rigs",
+        "x": 36.0,
+        "y": 375.6,
+        "width": 328.0,
+        "height": 124.8,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      },
+      "412x892": {
+        "state": "rig_picker__no_saved_rigs",
+        "x": 36.0,
+        "y": 306.0,
+        "width": 380.0,
+        "height": 103.6,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      }
+    },
+    "chooser.back": {
+      "360x640": {
+        "state": "chooser__truck_module",
+        "x": 16.0,
+        "y": 36.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 7
+      },
+      "412x892": {
+        "state": "chooser__truck_module",
+        "x": 16.0,
+        "y": 36.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 7
+      }
+    },
+    "chooser.loading_text": {
+      "360x640": {
+        "state": "chooser__scan_in_flight",
+        "x": 133.6,
+        "y": 337.6,
+        "width": 92.8,
+        "height": 25.2,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 1
+      },
+      "412x892": {
+        "state": "chooser__scan_in_flight",
+        "x": 159.6,
+        "y": 463.6,
+        "width": 92.8,
+        "height": 25.2,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 1
+      }
+    },
+    "truck.back": {
+      "360x640": {
+        "state": "truck_tag_entry__blank",
+        "x": 16.0,
+        "y": 36.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 11
+      },
+      "412x892": {
+        "state": "truck_tag_entry__blank",
+        "x": 16.0,
+        "y": 36.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 11
+      }
+    },
+    "truck.reference_focus_badge": {
+      "360x640": {
+        "state": "truck_tag_entry__gvwr_focused",
+        "x": 266.4,
+        "y": 223.6,
+        "width": 60.4,
+        "height": 20.8,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      },
+      "412x892": {
+        "state": "truck_tag_entry__keyboard_open",
+        "x": 318.4,
+        "y": -39.2,
+        "width": 60.4,
+        "height": 20.8,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      }
+    },
+    "trailer.reference_focus_badge": {
+      "360x640": {
+        "state": "trailer_tag_entry__gvwr_focused",
+        "x": 266.4,
+        "y": 223.6,
+        "width": 60.4,
+        "height": 20.8,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      },
+      "412x892": {
+        "state": "trailer_tag_entry__keyboard_open",
+        "x": 318.4,
+        "y": -39.2,
+        "width": 60.4,
+        "height": 20.8,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 2
+      }
+    },
+    "truck.credit_chip": {
+      "360x640": {
+        "state": "truck_tag_entry__blank",
+        "x": 222.0,
+        "y": 36.0,
+        "width": 122.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 11
+      },
+      "412x892": {
+        "state": "truck_tag_entry__blank",
+        "x": 274.0,
+        "y": 36.0,
+        "width": 122.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 11
+      }
+    },
+    "trailer.back": {
+      "360x640": {
+        "state": "trailer_tag_entry__blank",
+        "x": 16.0,
+        "y": 36.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 6
+      },
+      "412x892": {
+        "state": "trailer_tag_entry__blank",
+        "x": 16.0,
+        "y": 36.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 6
+      }
+    },
+    "scale.back": {
+      "360x640": {
+        "state": "scale_ticket_entry__blank",
+        "x": 16.0,
+        "y": 36.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 4
+      },
+      "412x892": {
+        "state": "scale_ticket_entry__blank",
+        "x": 16.0,
+        "y": 36.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 4
+      }
+    },
+    "results.back": {
+      "360x640": {
+        "state": "results__safe_to_tow",
+        "x": 16.0,
+        "y": 36.8,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 10
+      },
+      "360x640-font2.0": {
+        "state": "results__safe_to_tow",
+        "x": 16.0,
+        "y": 72.8,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 10
+      },
+      "412x892": {
+        "state": "results__safe_to_tow",
+        "x": 16.0,
+        "y": 36.8,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 10
+      },
+      "412x892-font2.0": {
+        "state": "results__safe_to_tow",
+        "x": 16.0,
+        "y": 51.6,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 10
+      }
+    },
+    "results.verdict_icon": {
+      "360x640": {
+        "state": "results__safe_to_tow",
+        "x": 36.0,
+        "y": 137.6,
+        "width": 64.0,
+        "height": 64.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 10
+      },
+      "360x640-font2.0": {
+        "state": "results__safe_to_tow",
+        "x": 36.0,
+        "y": 209.2,
+        "width": 64.0,
+        "height": 64.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 10
+      },
+      "412x892": {
+        "state": "results__safe_to_tow",
+        "x": 36.0,
+        "y": 147.2,
+        "width": 64.0,
+        "height": 64.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 10
+      },
+      "412x892-font2.0": {
+        "state": "results__safe_to_tow",
+        "x": 36.0,
+        "y": 216.4,
+        "width": 64.0,
+        "height": 64.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 10
+      }
+    },
+    "results.row_badge": {
+      "360x640": {
+        "state": "results__safe_to_tow",
+        "x": 216.4,
+        "y": 363.6,
+        "width": 111.6,
+        "height": 20.8,
+        "visible": true,
+        "count": 6,
+        "seen_in_states": 10
+      },
+      "360x640-font2.0": {
+        "state": "results__row_note_expanded",
+        "x": 68.0,
+        "y": 386.8,
+        "width": 157.2,
+        "height": 36.4,
+        "visible": true,
+        "count": 5,
+        "seen_in_states": 10
+      },
+      "412x892": {
+        "state": "results__safe_to_tow",
+        "x": 268.4,
+        "y": 287.6,
+        "width": 111.6,
+        "height": 20.8,
+        "visible": true,
+        "count": 6,
+        "seen_in_states": 10
+      },
+      "412x892-font2.0": {
+        "state": "results__safe_to_tow",
+        "x": 68.0,
+        "y": 464.0,
+        "width": 180.0,
+        "height": 36.4,
+        "visible": true,
+        "count": 6,
+        "seen_in_states": 10
+      }
+    },
+    "results.row_chevron": {
+      "360x640": {
+        "state": "results__not_safe_to_tow",
+        "x": 292.0,
+        "y": 350.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 3,
+        "seen_in_states": 3
+      },
+      "360x640-font2.0": {
+        "state": "results__row_note_expanded",
+        "x": 292.0,
+        "y": 342.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 3,
+        "seen_in_states": 3
+      },
+      "412x892": {
+        "state": "results__not_safe_to_tow",
+        "x": 344.0,
+        "y": 295.2,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 3,
+        "seen_in_states": 3
+      },
+      "412x892-font2.0": {
+        "state": "results__not_safe_to_tow",
+        "x": 344.0,
+        "y": 500.4,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 3,
+        "seen_in_states": 3
+      }
+    },
+    "history.back": {
+      "360x640": {
+        "state": "history__empty",
+        "x": 16.0,
+        "y": 36.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 5
+      },
+      "412x892": {
+        "state": "history__empty",
+        "x": 16.0,
+        "y": 36.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 5
+      }
+    },
+    "account.back": {
+      "360x640": {
+        "state": "account__sign_in",
+        "x": 16.0,
+        "y": 36.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 9
+      },
+      "412x892": {
+        "state": "account__sign_in",
+        "x": 16.0,
+        "y": 36.0,
+        "width": 48.0,
+        "height": 48.0,
+        "visible": true,
+        "count": 1,
+        "seen_in_states": 9
+      }
+    },
+    "splash.background": null,
+    "splash.icon": null,
+    "splash.branding": null
+  }
 }

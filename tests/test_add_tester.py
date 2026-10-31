@@ -164,10 +164,10 @@ def test_apply_creates_the_account_the_customer_and_the_grants(fake):
 
     assert code == 0, err
     user = created_user(fake)
-    create = next(r for r in fake.requests if r["method"] == "POST" and r["path"] == "/auth/v1/admin/users")
-    assert create["body"] == {"email": LOWER_EMAIL, "email_confirm": True}
-    assert "password" not in create["body"]
-    assert create["sent"]["apikey"] == SUPABASE_KEY and "authorization" not in create["sent"]
+    user_post = next(r for r in fake.requests if r["method"] == "POST" and r["path"] == "/auth/v1/admin/users")
+    assert user_post["body"] == {"email": LOWER_EMAIL, "email_confirm": True}
+    assert "password" not in user_post["body"]
+    assert user_post["sent"]["apikey"] == SUPABASE_KEY and "authorization" not in user_post["sent"]
     customer = next(r for r in fake.requests if r["path"] == "/v2/projects/proj07f52826/customers")
     assert customer["body"] == {"id": user["id"]}
     assert customer["sent"]["authorization"] == f"Bearer {RC_KEY}"

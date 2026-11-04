@@ -27,6 +27,7 @@ Each context has a `session_end` command in `scripts/test_planner_config.json`:
 2. An error fails; a warning fails unless it is in the checked-in allow-list with a reason, and an allow-list entry for a warning that is gone also fails.
 3. `ruff` (Python) and `oxlint` (Web and Scan Proxy) were added now; everything else not covered is below with a follow-up.
 4. The Python coverage floor runs when `src/hdttools/`, `streamlit_app/` or `scripts/` changed.
+5. **No shell or PowerShell linter (owner, 2026-11-04, #156).** Neither `shellcheck` nor PSScriptAnalyzer is added. Reasons, measured from git history on 2026-11-04: the 17 script files (6 wizards, 2 git hooks, 9 `.ps1`) were touched in 35 of 828 commits, all between 2026-08-22 and 2026-10-23, so a lint step would rarely run and its cost would be the install, not the run time; and they cannot delete anything on C: (the only file deletes are two fixed `adb shell rm -f` paths on the device in `android/test-weekly.ps1`, the only other `Remove-Item` removes an environment variable, and the wizards run `gh secret set` and `curl`). The worry behind the ticket, an expanded variable, glob or `~` deleting or overwriting something outside the project, comes from commands typed live in a session, which no file linter sees; that is #207 (a `PreToolUse` guard hook). The facts on both tools, none of them run, are in `docs/research/shell-powershell-linters-156.md`; reopen this if a script that deletes or overwrites files is added, or the scripts start changing often.
 
 ## Allow-lists (nothing is silenced without a reason)
 
@@ -46,7 +47,7 @@ Every source directory and file type each context owns, and which check covers i
 |---|---|---|---|---|---|
 | `src/hdttools/*.py` | none | ruff | vulture | Python floor | no Python type checker exists yet: #155 |
 | `scripts/*.py` | none | ruff | vulture (code pass) | none | no type checker: #155; `scripts/` is outside coverage's `source`: #157 |
-| `scripts/*.sh`, `.githooks/*`, root `test-external.ps1` | none | none | none | none | shell scripts have no linter: #156 |
+| `scripts/*.sh`, `.githooks/*`, root `test-external.ps1` | none | none | none | none | no shell linter, by decision (#156, Decision 5) |
 | `scripts/*.json`, `scripts/external_manifest/**/*.json`, `test-vectors/*.json` | none | none | none | none | read by tests but with no schema check: #159 |
 | `ruff.toml`, `vulture_whitelist.py`, `vulture_whitelist_tests.py` (root) | none | none (not scanned: bare names are not code) | read by vulture itself | none | config and lists; staleness of the whitelists is tested (`tests/test_static_checks_real.py`), not linted: #159 |
 | `tests/*.py` | none | ruff | vulture (tests pass) | n/a (tests are not measured) | no type checker: #155 |
@@ -64,7 +65,7 @@ Every source directory and file type each context owns, and which check covers i
 | `web/src/**/*.ts`, `*.tsx` (including the `external/` subdirectory) | `tsc -b` | oxlint | knip | none | Web has no coverage floor, only a report: #158 |
 | `web/vite.config.ts`, `web/vitest.external.config.ts` | `tsc -b` (`tsconfig.node.json`) | oxlint | knip | none | coverage: #158 |
 | `web/scripts/*.mjs` | `tsc -b` (`checkJs`, closed by #150) | oxlint | knip | none | coverage: #158 |
-| `web/*.ps1` | none | none | none | none | no PowerShell linter: #156 |
+| `web/*.ps1` | none | none | none | none | no PowerShell linter, by decision (#156, Decision 5) |
 | `web/package.json`, `tsconfig*.json`, `wrangler.toml`, `.oxlintrc.json`, `supabase/migrations/*.sql` | none | none | none | none | config and SQL files with no schema check: #159 |
 
 ### scan-proxy (`workers/scan-proxy/`)
@@ -72,7 +73,7 @@ Every source directory and file type each context owns, and which check covers i
 | Source | Typecheck | Lint | Dead code | Coverage floor | Not covered: reason and follow-up |
 |---|---|---|---|---|---|
 | `workers/scan-proxy/src/*.ts` (including the `external/`, `weekly/` and `release/` subdirectories) | `tsc --noEmit` | oxlint | knip | 100% (line) | none |
-| `workers/scan-proxy/*.ps1` | none | none | none | none | no PowerShell linter: #156 |
+| `workers/scan-proxy/*.ps1` | none | none | none | none | no PowerShell linter, by decision (#156, Decision 5) |
 | `workers/scan-proxy/package.json`, `tsconfig.json`, `knip.json`, `wrangler.toml` | none | none | none | none | config files with no schema check: #159 |
 
 ### android (`android/`)
@@ -83,7 +84,7 @@ Every source directory and file type each context owns, and which check covers i
 | `android/app/src/test/**/*.kt` | Kotlin compile | detekt | detekt | n/a (tests are not measured) | none |
 | `android/app/src/androidTest/**/*.kt` | Kotlin compile (instrumented compile step, closed by #150) | detekt (closed by #150) | detekt | n/a (tests are not measured) | none |
 | `android/**/*.kts`, `libs.versions.toml`, `gradle.properties`, `detekt.yml`, `coverage-logic.toml`, `AndroidManifest.xml`, `res/**/*.xml` | Gradle reads them | none | none | none | no check beyond the build: #159. One build check exists (#166): `verifyRevenueCatReleaseKey` in `app/build.gradle.kts` fails `assembleRelease`/`bundleRelease` on a missing or `test_` RevenueCat key; it is tested by `tests/test_android_release_key_guard.py`, not run by `session_end`. A second (#174): `verifyBetaSigning` fails `assembleBeta`/`bundleBeta` on a missing signing setting; tested by `tests/test_android_beta_build.py` |
-| `android/*.ps1` | none | none | none | none | no PowerShell linter: #156 |
+| `android/*.ps1` | none | none | none | none | no PowerShell linter, by decision (#156, Decision 5) |
 
 ## What a check cannot see
 

@@ -276,8 +276,7 @@ def test_settings_register_the_guard_for_bash_next_to_the_unchanged_session_star
             "timeout": 60,
         }],
     }
-    (pre_tool_use,) = hooks["PreToolUse"]
-    assert pre_tool_use["matcher"] == "Bash"
+    (pre_tool_use,) = [entry for entry in hooks["PreToolUse"] if entry["matcher"] == "Bash"]  # the destructive-command guard (#207) has its own entry
     (entry,) = pre_tool_use["hooks"]
     assert entry["type"] == "command" and entry["command"].endswith('scripts/long_command_guard.py" --hook')
     assert (ROOT / "scripts" / "long_command_guard.py").is_file()

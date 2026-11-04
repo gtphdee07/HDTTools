@@ -22,6 +22,16 @@
             "timeout": 20
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project \"$CLAUDE_PROJECT_DIR/scripts/destructive_command_guard.py\" --hook",
+            "timeout": 20
+          }
+        ]
       }
     ]
   }

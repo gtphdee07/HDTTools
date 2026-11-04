@@ -4,6 +4,7 @@ or overwrite whose target is a variable, glob, `~` or a place outside the projec
 writes anything (every command line below is only parsed)."""
 
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -109,6 +110,16 @@ def verdict(command, tool="Bash", cwd=PROJECT, subagent=False):
     "echo hi > $HOME/f",
     "echo hi >\"$OUT\"",
     "rm -- -rf $X",  # after -- every word is a target
+    'echo "$(rm /c/x)"',  # review: a substitution inside double quotes still runs
+    'echo "`rm /c/x`"',
+    'x="$(rm -rf $X)"',
+    'git commit -m "$(rm -rf /c/Users/x)"',
+    'echo "a $(echo b; rm -rf $X) c"',
+    "cat <<EOF\nbody\nEOF\nrm -rf $X",  # a command after a here-document is still read
+    "cat <<-'END'\n\tbody\n\tEND\nrm -rf $Y",  # <<- lets the closing line be tab-indented, and the next command is read
+    "cat <<< x\nrm -rf $X",  # a here-string has no body to skip
+    "mv . elsewhere",  # review: the project folder as a SOURCE moves it away
+    "mv . ../x",
 ])
 def test_bash_commands_with_an_unresolved_or_outside_target_are_held_for_a_prompt(command):
     assert verdict(command) == "ask", command
@@ -166,6 +177,19 @@ def test_bash_commands_with_an_unresolved_or_outside_target_are_held_for_a_promp
     "[System.IO.File]::Delete($x)",
     "[IO.Directory]::Delete('C:\\x', $true)",
     "cmd /c \"rd /s /q C:\\Users\\x\"",
+    "Remove-Item HKLM:\\Software\\x",  # review: a provider path is not a project path
+    "Remove-Item HKCU:\\Software\\x -Recurse",
+    "Remove-Item Cert:\\LocalMachine\\My\\ABC",
+    "Get-Item C:\\x | Move-Item -Destination tmp",  # review: the pipeline supplies the sources
+    "Get-ChildItem C:\\x | Copy-Item -Destination tmp",
+    "Get-ChildItem build | Remove-Item -Recurse",
+    "Get-ChildItem build | Rename-Item -NewName x",
+    "Remove-Item @(\"C:\\x\")",  # review: an array or a splat is built at run time
+    "Remove-Item @args",
+    "Remove-Item -Path @paths",
+    "Write-Output \"$(Remove-Item C:\\x)\"",  # a substitution inside double quotes
+    "Write-Output \"a $(Remove-Item $x) b\"",
+    "mv . elsewhere",
 ])
 def test_powershell_commands_with_an_unresolved_or_outside_target_are_held_for_a_prompt(command):
     assert verdict(command, tool="PowerShell") == "ask", command
@@ -251,6 +275,18 @@ def test_a_held_command_is_also_held_when_the_same_text_arrives_through_the_othe
     "rm C:/Users/Me/AppData/Local/Temp/hdttools-status/ticket-1.md",
     "rm -f tmp.txt 2>/dev/null",
     "rm -rf node_modules .venv",
+    "cp a.txt .",  # the project folder as a destination is normal
+    "mv a.txt .",
+    "cp -r src/. dist",
+    "echo \"$(date)\" > build.log",  # a harmless substitution in quotes
+    "echo \"$(ls tmp)\"",
+    "echo \"$(git rev-parse HEAD)\"",
+    "echo \"`date` rm $X `whoami`\"",  # text between two backtick commands is not a command
+    "git commit -m \"$(cat <<'EOF'\nfix the thing\ncp it to $HOME and rm -rf $X\nEOF\n)\"",  # a commit message in a here-document
+    "cat > notes.md <<EOF\nrm -rf $X\nmv a /c/Users/x\nEOF",
+    "cat <<-'END'\n\trm -rf $X\n\tEND",
+    "cat <<EOF1 <<EOF2\nrm $X\nEOF1\nrm $Y\nEOF2",
+    "cat <<< 'rm -rf $X'",  # a here-string is data
 ])
 def test_bash_commands_with_only_named_targets_inside_the_project_pass_untouched(command):
     assert verdict(command) is None, command
@@ -293,6 +329,12 @@ def test_bash_commands_with_only_named_targets_inside_the_project_pass_untouched
     "Get-Date > out.txt",
     "Get-Date >> out.txt",
     "Get-Date 2>&1 | Out-Null",
+    "Get-Content f.txt | Out-File notes.txt",  # a pipeline that feeds DATA to a write is fine
+    "Get-ChildItem build | Select-Object -First 3 | Out-File list.txt",
+    "mv a.txt .",
+    "Write-Output \"$(Get-Date)\"",
+    "Write-Output \"Remove-Item is a cmdlet\"",
+    "Remove-Item Env:\\Path -ErrorAction SilentlyContinue",
     "Get-Date *> $null",
     "Get-Date 2>$null",
     "Get-ChildItem C:\\Users\\x",
@@ -528,8 +570,6 @@ SCRIPT = ROOT / "scripts" / "destructive_command_guard.py"
 
 
 def run_script(stdin_text, *args, env_extra=None):
-    import os
-
     temp = str(LOG_FOR_TEST[0].parent)  # the script's log lives under the temp folder: keep it inside the test's tmp_path
     env = {**os.environ, "CLAUDE_PROJECT_DIR": str(ROOT), "TEMP": temp, "TMP": temp, "TMPDIR": temp, **(env_extra or {})}
     return subprocess.run(
@@ -551,7 +591,7 @@ def test_the_script_prints_nothing_for_a_passing_command_and_for_garbage_it_asks
 
 
 def test_the_script_without_the_hook_flag_prints_its_description_and_blocks_nothing():
-    done = run_script("", env_extra={})
+    done = run_script("")
     assert done.returncode == 0 and "PreToolUse" in done.stdout
 
 

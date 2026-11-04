@@ -4,7 +4,7 @@ A `PreToolUse` hook (#207) that makes the "verify before touching anything outsi
 
 ## What it holds
 
-For each simple command on the line (split at `;` `|` `&` `&&` `||`, newlines, and in PowerShell `{` `}`), it looks at what the command deletes (`rm`, `rmdir`, `del`, `rd`, `Remove-Item`, `find -delete`), moves or copies (`mv`, `cp`, `Move-Item`, `Copy-Item`), or overwrites (a `>` or `>>` redirect, `tee`, `dd of=`, `Set-Content`, `Out-File`, `sed -i`), and holds the command when a target:
+For each simple command on the line (split at `;` `|` `&` `&&` `||` and newlines; in Bash also `(` `)` and backticks; in PowerShell `{` `}`; a `$(...)` or backtick command inside double quotes is read as a command of its own, and the body of a here-document is skipped as data), it looks at what the command deletes (`rm`, `rmdir`, `del`, `rd`, `Remove-Item`, `find -delete`), moves or copies (`mv`, `cp`, `Move-Item`, `Copy-Item`), or overwrites (a `>` or `>>` redirect, `tee`, `dd of=`, `Set-Content`, `Out-File`, `sed -i`), and holds the command when a target:
 
 | Target | Why it is held |
 |---|---|
@@ -12,9 +12,10 @@ For each simple command on the line (split at `;` `|` `&` `&&` `||`, newlines, a
 | holds a wildcard: `*` `?` `[`, or a `{a,b}` brace (any `*?[` in PowerShell, which globs even inside quotes) | it can match more than intended |
 | starts with `~` | your home folder (PowerShell resolves it even inside quotes) |
 | is a literal path outside the project folder: a `..` that climbs out, another drive, the user profile, `/`, an MSYS `/c/...` path | outside the project |
-| is the project folder itself, for a delete or an overwrite | one stroke from losing everything |
+| is the project folder itself, for a delete or an overwrite, or as the source of a move | one stroke from losing everything (as a `find` start, or the destination of a `cp` or `mv`, the folder is fine) |
+| is a PowerShell provider path (`HKLM:\...`, `Cert:\...`), or `@args` / `@(...)` | a registry or certificate store is not a project file, and an array or splat is built at run time |
 | is relative, after a `cd` the guard cannot read (`cd "$X" && rm foo`) | the folder is unknown |
-| comes from another command: `xargs rm`, a bare `Remove-Item` at the end of a pipeline | the targets are not on the line |
+| comes from another command: `xargs rm`, or `Remove-Item`, `Move-Item`, `Copy-Item`, `Rename-Item` after a `\|` in PowerShell | the targets are not on the line |
 | is `Invoke-Expression`, `iex`, `-EncodedCommand`, or a .NET `::Delete(`/`::Move(`/`::WriteAll*(` call | the text cannot be read in advance |
 
 Wrappers are read through: `sudo`, `env`, `nohup`, `xargs`, `bash -c`, `cmd /c`, `powershell -Command`. A `cd`, `pushd` or `Set-Location` earlier on the line moves the folder relative targets are read against.
@@ -36,8 +37,11 @@ It fails **closed** (owner decision, #207): an exception inside the guard, or in
 ## What it does not see
 
 - Code run by an interpreter: `python -c "shutil.rmtree(x)"`, `node -e`, `uv run some_script.py`. A script that deletes is reviewed as code, not as a command line.
-- A command built at run time (`$cmd args`), and what a variable will expand to (that is the point: it holds the command so you look).
-- A here-document's body, and a symbolic link or junction inside the project that points outside it.
+- A command built at run time: `$cmd args`, `eval rm ...`, `busybox rm`, `wsl rm`, `Start-Process cmd -ArgumentList "/c del ..."`; and what a variable will expand to (that is the point: it holds the command so you look).
+- A file written by something other than the commands above: `curl -o`, `wget -O`, `Invoke-WebRequest -OutFile`, `Export-Csv`, `Start-Transcript`, `perl -i`, `ln -sf`.
+- A symbolic link or junction inside the project that points outside it.
+
+The guard is a tripwire against an honest mistake (an unset variable, a glob, a stray `~`), not a sandbox: it does not stop someone who is trying to get around it. `rm \\?\C:\x` is held but the reason says "wildcard" (the `?` is read as a glob); the outcome is right, the wording is not.
 - The Edit and Write tools, and MCP tools.
 
 ## Observed and not observed

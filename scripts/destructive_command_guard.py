@@ -18,14 +18,19 @@ Copy-Item ...) or overwrites (a > or >> redirect, tee, dd of=, Set-Content, Out-
 
 Anything else is left alone (nothing is printed): a single literal path inside the project, git commands, a
 quoted word that merely contains `rm -rf` (a commit message), a redirect to /dev/null or $null, and
-reading. The line is split at ; | & && || newlines and (in PowerShell) { }, wrapper commands are read through
-(sudo, env, xargs, bash -c, cmd /c, powershell -Command), and a `cd` earlier on the line moves the folder
-that relative targets are read against. A command that comes from a sub-agent is refused (`deny`) instead of
-asked, because a prompt may not reach anyone there.
+reading. The line is split at ; | & && || newlines, and in Bash also ( ) and backticks, and in PowerShell
+{ }; a $(...) or `...` inside double quotes is read as a command of its own; the body of a here-document is
+data and is skipped; wrapper commands are read through (sudo, env, xargs, bash -c, cmd /c,
+powershell -Command); and a `cd` earlier on the line moves the folder that relative targets are read against.
+A command that comes from a sub-agent is refused (`deny`) instead of asked, because a prompt may not reach
+anyone there.
 
-What it does not see: code run by an interpreter (python -c, node -e, a script), a command built at run time
-(`$cmd args`; Invoke-Expression and -EncodedCommand are held), what a variable will expand to, a here-document's
-body, and a symbolic link or junction inside the project that points outside it.
+This is a tripwire against an honest mistake (an unset variable, a glob, a stray ~), not a sandbox: it does
+not stop someone who is trying to get around it. What it does not see: code run by an interpreter (python -c,
+node -e, a script), a command built at run time (`$cmd args`, `eval`, `busybox rm`, `wsl rm`, Start-Process;
+Invoke-Expression and -EncodedCommand are held), a file written by a downloader or exporter (curl -o,
+Invoke-WebRequest -OutFile, Export-Csv, Start-Transcript, perl -i, ln -sf), what a variable will expand to,
+and a symbolic link or junction inside the project that points outside it.
 
 It fails closed: when the guard itself breaks (a bug, unreadable input) it logs the error to
 `%TEMP%\\hdttools-status\\destructive_command_guard.log` and holds the command for a prompt. A hook that cannot
@@ -69,8 +74,12 @@ DESTRUCTIVE = frozenset({
     "remove-item", "ri", "move-item", "mi", "copy-item", "cpi", "rename-item", "rni",
     "set-content", "sc", "add-content", "ac", "clear-content", "clc", "out-file", "new-item", "ni", "tee-object",
 })
-ROOT_OK = frozenset({  # the project folder itself is a normal start or destination for these (never for a delete or an overwrite)
+ROOT_OK = frozenset({  # the project folder itself is a normal find start or the last word (the destination) of a move or copy;
     "find", "mv", "cp", "move", "copy", "move-item", "mi", "copy-item", "cpi", "xcopy", "robocopy", "rsync", "install",
+})  # as a source, or as the target of a delete or an overwrite, it is not
+PIPELINE_SOURCES = frozenset({  # PowerShell commands that take what they act on from the pipeline
+    "remove-item", "ri", "rm", "rmdir", "del", "erase", "rd", "move-item", "mi", "mv", "move", "copy-item", "cpi", "cp", "copy",
+    "rename-item", "rni", "ren", "rename", "clear-content", "clc",
 })
 POWERSHELL_ONLY = frozenset({"ri", "mi", "cpi", "rni", "sc", "ac", "clc", "ni"})  # `sc` is also sc.exe, so only PowerShell reads it as a write
 WINDOWS_ONLY = frozenset({"del", "erase", "rd", "move", "ren", "rename", "xcopy", "robocopy", "copy"})  # /s /q are switches, not paths
@@ -92,6 +101,7 @@ POWERSHELL_SKIP_VALUE = frozenset({
 POWERSHELL_PATH_PARAMS = frozenset({"-path", "-literalpath", "-lp", "-filepath", "-destination", "-name", "-pspath"})
 SINKS = frozenset({"/dev/null", "$null", "nul", "/dev/stdout", "/dev/stderr", "/dev/tty", "con"})
 PROVIDER_DRIVE = re.compile(r"^(env|variable|function|alias):", re.IGNORECASE)  # in-memory PowerShell drives, not files
+PROVIDER_PATH = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]+:")  # HKLM:\..., Cert:\...: a PowerShell provider, never a project path
 PERCENT_VAR = re.compile(r"%[A-Za-z_]\w*%")
 ENV_ASSIGN = re.compile(r"^[A-Za-z_]\w*=")
 MSYS_DRIVE = re.compile(r"^/([A-Za-z])(?=/|$)")
@@ -126,6 +136,7 @@ class Token:
 class Segment:
     tokens: list[Token] = field(default_factory=list)
     piped: bool = False  # follows a `|`
+    inner: list[str] = field(default_factory=list)  # the text of each $(...) or `...` inside a double-quoted word
 
 
 class _Scanner:
@@ -133,6 +144,9 @@ class _Scanner:
         self.text, self.dialect = text, dialect  # dialect: bash | powershell | cmd
         self.segments: list[Segment] = []
         self.tokens: list[Token] = []
+        self.inner: list[str] = []
+        self.heredocs: list[tuple[str, bool]] = []  # (delimiter, <<- strips tabs) of the here-documents whose bodies follow
+        self.in_backticks = False
         self.piped = False
         self.redirect: tuple[str, bool] | None = None
         self._reset_word()
@@ -165,7 +179,8 @@ class _Scanner:
         powershell = self.dialect == "powershell"  # PowerShell globs and expands ~ even in quotes
         glob = self.glob or (self.brace and ("," in value or ".." in value)) or (powershell and any(c in value for c in "*?["))
         tilde = self.tilde or (powershell and value.startswith("~"))
-        token = Token("word", value, self.dynamic or bool(PERCENT_VAR.search(value)), glob, tilde)
+        dynamic = self.dynamic or bool(PERCENT_VAR.search(value)) or (powershell and value.startswith("@"))  # @args, @(...)
+        token = Token("word", value, dynamic, glob, tilde)
         if self.redirect:
             direction, ampersand = self.redirect
             token.kind = "redir_out" if direction == "out" else "redir_in"
@@ -176,11 +191,59 @@ class _Scanner:
 
     def end_segment(self, next_piped: bool):
         self.end_word()
-        if self.tokens:
-            self.segments.append(Segment(self.tokens, self.piped))
-        self.tokens = []
+        if self.tokens or self.inner:
+            self.segments.append(Segment(self.tokens, self.piped, self.inner))
+        self.tokens, self.inner = [], []
         self.redirect = None
         self.piped = next_piped
+
+    def capture_substitution(self, i: int):
+        """Remember the command inside a $(...) or `...` that starts at i within double quotes: the shell runs it."""
+        t = self.text
+        if t[i] == "`":
+            if self.in_backticks:
+                self.in_backticks = False
+                return
+            self.in_backticks = True
+            end = t.find("`", i + 1)
+            self.inner.append(t[i + 1 : len(t) if end < 0 else end])
+        elif t[i + 1 : i + 2] == "(":
+            depth, j = 0, i + 1
+            while j < len(t):
+                depth += (t[j] == "(") - (t[j] == ")")
+                if depth == 0:
+                    break
+                j += 1
+            self.inner.append(t[i + 2 : j])
+
+    def read_heredoc_delimiter(self, j: int) -> int:
+        """After `<<` at j: note the delimiter word (its body is data, skipped at the next newline); returns the index after it."""
+        t, n = self.text, len(self.text)
+        strip_tabs = t[j : j + 1] == "-"
+        j += strip_tabs
+        while j < n and t[j] in " \t":
+            j += 1
+        start = j
+        while j < n and t[j] not in " \t\n;|&()<>":
+            j += 1
+        delimiter = re.sub(r"['\"\\]", "", t[start:j])
+        if delimiter:
+            self.heredocs.append((delimiter, strip_tabs))
+        return j
+
+    def skip_heredoc_bodies(self, i: int) -> int:
+        """From the start of the line after a command with here-documents: skip each body up to its delimiter line."""
+        t, n = self.text, len(self.text)
+        for delimiter, strip_tabs in self.heredocs:
+            while i < n:
+                end = t.find("\n", i)
+                end = n if end < 0 else end
+                line = t[i:end].rstrip("\r")
+                i = end + 1
+                if (line.lstrip("\t") if strip_tabs else line) == delimiter:
+                    break
+        self.heredocs = []
+        return i
 
     def separator_at(self, i: int) -> tuple[int, bool] | None:
         """(width, is a pipe) when an unquoted separator starts at i."""
@@ -239,6 +302,7 @@ class _Scanner:
                 else:
                     if (ch == "$" and d != "cmd") or (d == "bash" and ch == "`"):
                         self.dynamic = True
+                        self.capture_substitution(i)
                     self.add_literal(ch)
                 i += 1
                 continue
@@ -248,7 +312,7 @@ class _Scanner:
                 i += 1
             elif ch == "\n":
                 self.end_segment(False)
-                i += 1
+                i = self.skip_heredoc_bodies(i + 1) if self.heredocs else i + 1
             elif ch == "#" and not self.started and d != "cmd":
                 while i < n and t[i] != "\n":
                     i += 1
@@ -298,6 +362,9 @@ class _Scanner:
                 op = t[i:j]
                 if ">" in op and t[j : j + 1] == "|":
                     j += 1
+                if d == "bash" and op == "<<":  # a here-document: its delimiter is not a file, its body is data
+                    i = self.read_heredoc_delimiter(j)
+                    continue
                 ampersand = False
                 if t[j : j + 1] == "&":
                     ampersand = True
@@ -382,6 +449,8 @@ def _resolve(value: str, state: _State) -> str | None:
 def _path_problem(value: str, state: _State, allow_root: bool) -> str | None:
     if value.strip() == "" or PROVIDER_DRIVE.match(value):
         return None
+    if PROVIDER_PATH.match(value):
+        return WHY_OUTSIDE
     full = _resolve(value, state)
     if full is None:
         return WHY_CWD
@@ -539,13 +608,35 @@ def _wrapped(program: str, args: list[Token]) -> tuple[str, str] | None:
     return None
 
 
-def _segment_risks(segment: Segment, dialect: str, state: _State, depth: int) -> list[Risk]:
-    risks: list[Risk] = []
+def _redirect_risks(segment: Segment, state: _State) -> list[Risk]:
+    risks = []
     for token in segment.tokens:
         if token.kind == "redir_out" and not token.dup and token.value.lower() not in SINKS:
             why = _why(token, state)
             if why:
                 risks.append(Risk("redirect to", token.value, why))
+    return risks
+
+
+def _move_working_folder(program: str, args: list[Token], dialect: str, state: _State) -> None:
+    """A cd, pushd, popd or Set-Location earlier on the line moves where relative targets are read from (changes `state`)."""
+    if program in POP_PROGRAMS:
+        state.cwd = state.stack.pop() if state.stack else None
+        return
+    target = next(iter(_targets(program, args, dialect)), None)
+    if program in ("pushd", "push-location"):
+        state.stack.append(state.cwd)
+    if target is None or target.dynamic or target.glob or target.tilde or target.value == "-":
+        state.cwd = None
+    else:
+        state.cwd = _resolve(target.value, state)
+
+
+def _segment_risks(segment: Segment, dialect: str, state: _State, depth: int) -> list[Risk]:
+    risks = _redirect_risks(segment, state)
+    if depth < MAX_UNWRAP:
+        for text in segment.inner:  # "$(rm x)" inside double quotes still runs
+            risks += find_risks(text, dialect, state.copy(), depth + 1)
     all_words = [t for t in segment.tokens if t.kind == "word"]
     if dialect == "powershell":
         for token in all_words:
@@ -556,17 +647,8 @@ def _segment_risks(segment: Segment, dialect: str, state: _State, depth: int) ->
     if not words or (words[0].dynamic and words[0].value.startswith("$")):
         return risks
     program, args = _program(words[0].value), words[1:]
-    if program in CD_PROGRAMS:
-        target = next((t for t in _targets(program, args, dialect)), None)
-        if program in ("pushd", "push-location"):
-            state.stack.append(state.cwd)
-        if target is None or target.dynamic or target.glob or target.tilde or target.value == "-":
-            state.cwd = None
-        else:
-            state.cwd = _resolve(target.value, state)
-        return risks
-    if program in POP_PROGRAMS:
-        state.cwd = state.stack.pop() if state.stack else None
+    if program in CD_PROGRAMS or program in POP_PROGRAMS:
+        _move_working_folder(program, args, dialect, state)
         return risks
     if program in OPAQUE_PROGRAMS:
         return [*risks, Risk(program, " ".join(a.value for a in args) or "(no text)", WHY_OPAQUE)]
@@ -586,12 +668,13 @@ def _segment_risks(segment: Segment, dialect: str, state: _State, depth: int) ->
         if via_xargs:
             return [*risks, Risk(program, "(from standard input)", WHY_STDIN)]
         targets, label = _targets(program, args, dialect), program
-        if not targets and segment.piped and _is_powershell_style(program, dialect):
-            return [*risks, Risk(program, "(from the pipeline)", WHY_STDIN)]
+        if segment.piped and program in PIPELINE_SOURCES and _is_powershell_style(program, dialect):
+            risks.append(Risk(program, "(from the pipeline)", WHY_STDIN))  # the pipeline supplies targets the line never names
     else:
         return risks
-    for target in targets:
-        why = _why(target, state, allow_root=program in ROOT_OK)
+    for index, target in enumerate(targets):
+        folder_ok = program in ROOT_OK and (program == "find" or index == len(targets) - 1)
+        why = _why(target, state, allow_root=folder_ok)
         if why:
             risks.append(Risk(label, target.value, why))
     return risks

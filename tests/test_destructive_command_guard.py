@@ -576,6 +576,14 @@ def test_settings_register_the_guard_for_both_the_bash_and_the_powershell_tool()
     assert SCRIPT.is_file()
 
 
+def test_the_behaviour_has_a_page_under_docs_agents_and_the_project_claude_md_points_at_it_from_the_verify_section():
+    page = ROOT / "docs" / "agents" / "destructive-command-guard.md"
+    assert page.is_file() and "scripts/destructive_command_guard.py" in page.read_text(encoding="utf-8")
+    claude_md = (ROOT / "Claude.md").read_text(encoding="utf-8")
+    section = claude_md.split("## Verify before touching anything outside this repo", 1)[1].split("\n## ", 1)[0]
+    assert "docs/agents/destructive-command-guard.md" in section
+
+
 def test_registering_the_new_guard_left_the_device_command_guard_and_session_start_hook_as_they_were():
     hooks = json.loads((ROOT / ".claude" / "settings.json").read_text(encoding="utf-8"))["hooks"]
     (session_start,) = hooks["SessionStart"]

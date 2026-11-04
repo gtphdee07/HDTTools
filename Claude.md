@@ -67,6 +67,8 @@ Git operations (branch delete, worktree remove, etc.) are exempt — recoverable
 
 This rule needs to be restated explicitly by name when briefing a sub-agent for work likely to touch the filesystem outside its assigned worktree — inheriting it silently isn't reliable.
 
+A `PreToolUse` hook enforces the unresolved-target part of this rule for Bash and PowerShell commands: a delete, move or overwrite aimed at a variable, glob, `~` or a place outside this project is held for a permission prompt (refused in a sub-agent), with the check-then-execute step in its reason. It does not read code run by an interpreter (`python -c`, a script), so the rule still applies there. See `docs/agents/destructive-command-guard.md`.
+
 ## Asking Questions
 Any time a question is being posed to the user — clarifying an ambiguous
 request, choosing between implementation approaches, or confirming

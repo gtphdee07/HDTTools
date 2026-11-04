@@ -91,13 +91,23 @@ The hook is committed in the shared `.claude/settings.json` (the owner approved 
             "timeout": 20
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project \"$CLAUDE_PROJECT_DIR/scripts/destructive_command_guard.py\" --hook",
+            "timeout": 20
+          }
+        ]
       }
     ]
   }
 }
 ```
 
-The `PreToolUse` entry is not part of this report: it is the hang-detection guard (#200) that puts a session's direct device or emulator command on the supervised runner (`docs/agents/session-handoff.md`, "Long commands run supervised"). It sits in the same file, so the snippet shows the whole file.
+The two `PreToolUse` entries are not part of this report. The first is the hang-detection guard (#200) that puts a session's direct device or emulator command on the supervised runner (`docs/agents/session-handoff.md`, "Long commands run supervised"); the second is the destructive-command guard (#207) that holds a delete, move or overwrite aimed at a variable, glob, `~` or a place outside the project (`docs/agents/destructive-command-guard.md`). They sit in the same file, so the snippet shows the whole file.
 
 `--no-project` keeps `uv run` from creating or syncing a project environment, so the hook is quick even in a fresh ticket worktree with no `.venv`; the script uses only the standard library.
 

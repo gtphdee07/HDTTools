@@ -40,3 +40,5 @@ company
 # tests/_supervisor_fakes.py: the process object scripts/run_supervisor.py drives (read, wait, kill).
 wait
 kill
+# tests/test_destructive_command_guard.py: an autouse fixture, which pytest runs without any test naming it.
+scratch_dirs

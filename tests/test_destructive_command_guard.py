@@ -379,6 +379,14 @@ def test_scratch_folders_allow_a_literal_path_but_never_a_glob_or_a_path_that_cl
     assert verdict(f"Remove-Item '{SCRATCH}\\a.txt'", tool="PowerShell") is None
 
 
+# Merge review of #207: every other test swaps SAFE_DIRS for a made-up pair, so a mutation that made the whole temp
+# folder safe survived. This one reads the guard's own definition.
+def test_the_real_scratch_folders_are_claude_and_hdttools_status_under_the_temp_folder(monkeypatch):
+    monkeypatch.undo()  # drops the autouse override of SAFE_DIRS
+    temp = guard._temp_dir()
+    assert guard.SAFE_DIRS == (str(temp / "claude"), str(temp / "hdttools-status"))
+
+
 def test_the_project_folder_itself_and_its_parents_are_outside_it():
     assert verdict(f"rm -rf {PROJECT.replace(chr(92), '/')}") == "ask"
     assert verdict("rm -rf G:/Work") == "ask"

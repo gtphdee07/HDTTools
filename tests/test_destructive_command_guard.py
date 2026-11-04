@@ -332,6 +332,8 @@ def test_scratch_folders_allow_a_literal_path_but_never_a_glob_or_a_path_that_cl
     assert verdict(f"rm {SCRATCH_FWD}/*") == "ask"
     assert verdict(f"rm {SCRATCH_FWD}/../../../../other") == "ask"  # four levels up leaves the claude folder
     assert verdict("rm C:/Users/Me/AppData/Local/Temp/other.txt") == "ask"
+    assert verdict("rm C:/Users/Me/AppData/Local/Temp/claude-other/x") == "ask"  # a sibling whose name starts the same
+    assert verdict("rm -rf C:/Users/Me/AppData/Local/Temp/claude") == "ask"  # the scratch root itself
     assert verdict(f"Remove-Item '{SCRATCH}\\a.txt'", tool="PowerShell") is None
 
 

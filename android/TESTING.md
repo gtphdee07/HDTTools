@@ -476,9 +476,14 @@ One extra check on configuration 4, beyond the two classes: `ThreeButtonNavigati
 (2026-11-05):** the helper now treats the missing setting as already 3-button, and the test's bar position now comes from
 the frame it sets, not from `Probe.heightDp`, which leaves the bar out before Android 11 (it took the bar off twice and
 reported 20 false overlaps). `ThreeButtonNavigationTest` then passes 16 of 16 on `rc_pixel_3a_api26` (API 26) and on
-`medium_phone` (API 36). Not usable on API 26: `-Pandroid.testInstrumentationRunnerArguments.layoutScreenshots=true`
-(`UiAutomation.executeShellCommandRw` needs API 30; every test fails with `NoSuchMethodError`). A run
-takes about 1 to 4 minutes once the APKs are built (the first run of the session also built them, 4 min 18 s).
+`medium_phone` (API 36). The screenshot flag `-Pandroid.testInstrumentationRunnerArguments.layoutScreenshots=true` also
+works on API 26 to 29 now (#225; before, `UiAutomation.executeShellCommandRw`, which needs API 30, made every test fail
+with `NoSuchMethodError`): below API 30 `LayoutStateRunner` has the device write the picture with `screencap -p`. Both
+runs wrote 93 PNGs. One difference: from API 30 the picture is the frame itself (900 x 1600 px for the 360 x 640 dp
+frame), while on API 26 `screencap` takes the whole physical screen (1080 x 2220 px on `rc_pixel_3a_api26`), so the frame
+is scaled up to the screen's width with a band of wallpaper above and below it; crop and scale it before laying it beside
+the designer's PNG. A run takes about 1 to 4 minutes once the APKs are built (the first run of the session also built
+them, 4 min 18 s).
 
 ## Categories
 

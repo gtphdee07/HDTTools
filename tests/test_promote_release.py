@@ -65,10 +65,10 @@ class World:
     def release(self):
         return git(self.origin, "rev-parse", "--verify", "-q", "release", check=False)
 
-    def promote(self, commit_ish, *, yes=True, answer=None, create=False):
+    def promote(self, commit_ish, *, yes=True, answer=None, make_branch=False):
         self.out.clear()
         code = pr.promote(
-            commit_ish, git=pr.Git(self.repo), create=create, yes=yes,
+            commit_ish, git=pr.Git(self.repo), create=make_branch, yes=yes,
             ask=None if answer is None else (lambda _prompt: answer), out=self.out.append,
         )
         return code, "\n".join(self.out)
@@ -190,7 +190,7 @@ def test_a_missing_release_branch_is_created_only_with_create(world):
     refused = world.promote(world.c2)
     assert refused[0] == 1 and "--create" in refused[1] and world.release() == ""
 
-    created = world.promote(world.c2, create=True)
+    created = world.promote(world.c2, make_branch=True)
     assert created[0] == 0 and world.release() == world.c2
 
 

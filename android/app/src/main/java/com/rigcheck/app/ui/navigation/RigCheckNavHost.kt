@@ -7,6 +7,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -87,6 +90,23 @@ fun RigCheckNavHost(
     // ends nothing.
     LaunchedEffect(navController) {
         navController.currentBackStackEntryFlow.collect { viewModel.screenShown(scanScreenOf(it)) }
+    }
+
+    // Signing in returns to the screen the sign-in was started from, not to the account standing the sign-in screen
+    // turns into (#206): the front page when it was started from the Rig picker, the check's own screen when it was
+    // started from inside a check (a Scan error's "Sign in", buying Scans). Only the change from signed out to
+    // signed in does it, so opening the app already signed in, or opening the account standing later, leaves the
+    // user where they went. Password, Google and Apple all come back through this one state change. The flag is
+    // saved with the screen's state, meant so a sign-in that finishes while the device is turned still counts (no
+    // test turns the device); it only acts while the sign-in screen is on show.
+    var wasSignedOut by rememberSaveable { mutableStateOf(viewModel.accountState.value is AccountState.SignedOut) }
+    LaunchedEffect(navController) {
+        viewModel.accountState.collect { state ->
+            val signedInNow = state is AccountState.SignedIn
+            val onSignInScreen = navController.currentDestination?.hasRoute<RigCheckRoute.Paywall>() == true
+            if (wasSignedOut && signedInNow && onSignInScreen) navController.popBackStack()
+            wasSignedOut = state is AccountState.SignedOut
+        }
     }
 
     // A Scan that delivers goes on to its document's entry screen to be reviewed.

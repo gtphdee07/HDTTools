@@ -1,6 +1,8 @@
 package com.rigcheck.app.testsupport
 
+import android.app.UiAutomation
 import android.graphics.Bitmap
+import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.view.WindowManager
 import android.view.autofill.AutofillManager
@@ -128,13 +130,24 @@ class LayoutStateRunner(private val rule: ComposeTestRule, private val screensho
     private fun saveScreenshotWhenAsked(name: String) {
         if (InstrumentationRegistry.getArguments().getString("layoutScreenshots") != "true") return
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
-        val png = ByteArrayOutputStream().also { automation.takeScreenshot().compress(Bitmap.CompressFormat.PNG, 100, it) }
         val folder = "/data/local/tmp/$screenshotFolder/$frameName"
         val file = name.replace(": ", "__").replace(" ", "_").replace("(", "").replace(")", "") + ".png"
-        ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("mkdir -p $folder")).use { it.readBytes() }
+        shell(automation, "mkdir -p $folder")
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            // executeShellCommandRw (a shell that takes input) needs API 30, so below it the device takes the picture itself.
+            // That is the whole physical screen, not the frame: the frame is scaled up inside it (TESTING.md, #225).
+            shell(automation, "screencap -p $folder/$file")
+            return
+        }
+        val png = ByteArrayOutputStream().also { automation.takeScreenshot().compress(Bitmap.CompressFormat.PNG, 100, it) }
         val (output, input) = automation.executeShellCommandRw("dd of=$folder/$file")
         ParcelFileDescriptor.AutoCloseOutputStream(input).use { it.write(png.toByteArray()) }
         ParcelFileDescriptor.AutoCloseInputStream(output).use { it.readBytes() }
+    }
+
+    // The output is read to the end, or the command may not have finished when the next one starts.
+    private fun shell(automation: UiAutomation, command: String) {
+        ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).use { it.readBytes() }
     }
 
     private companion object {

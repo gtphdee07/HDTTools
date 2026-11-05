@@ -105,7 +105,7 @@ class ThreeButtonNavigationTest {
 
         val cases = captureCases.filter { it.screen == screen }
         assertTrue("no captured state for $screen", cases.isNotEmpty())
-        val problems = cases.flatMap { case -> runner.inState(case.id, case.content, case.setUp) { p -> coveredByTheBar(p) } }
+        val problems = cases.flatMap { case -> runner.inState(case.id, case.content, case.setUp) { p -> coveredByTheBar(p, frame) } }
 
         assertTrue(
             "${problems.size} problems in ${cases.size} states of $screen with 3-button navigation:\n" + problems.joinToString("\n"),
@@ -114,10 +114,12 @@ class ThreeButtonNavigationTest {
     }
 
     // Each tagged element's bottom edge, as much of it as is on show (cut by the scroll area it is in), on the display.
-    private fun coveredByTheBar(p: Probe): List<String> {
+    private fun coveredByTheBar(p: Probe, frame: Frame): List<String> {
         val bar = p.navigationBarDp()
         if (bar < MIN_BAR_DP) return listOf("the navigation bar is $bar dp, so 3-button navigation is not on and this proves nothing")
-        val barTop = p.heightDp - bar
+        // The display's height is the frame the test set, not p.heightDp: before Android 11 (API 30) the activity's display
+        // metrics leave the navigation bar out, so p.heightDp - bar took the bar off twice on API 26 (#225).
+        val barTop = frame.heightDp - bar
         val nodes = p.rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.TestTag), useUnmergedTree = true)
             .fetchSemanticsNodes()
         return nodes.mapNotNull { node ->

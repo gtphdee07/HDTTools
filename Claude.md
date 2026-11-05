@@ -6,6 +6,8 @@ This project uses `uv` for Python and dependency management. Do not use standard
 
 All work on this project happens on the `MPSkills` branch. `main` sees no activity — never commit, push, or merge into `main` without explicit instruction.
 
+Web goes live only from the `release` branch: a push of `MPSkills` makes a Pages preview, and `uv run scripts/promote_release.py` (fast-forward only; it is a push, so confirm before every run) is the way to publish. See `docs/BUILD_AND_DEPLOY.md` section 6.
+
 ## Agent skills
 
 ### Issue tracker

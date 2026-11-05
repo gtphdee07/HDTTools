@@ -13,6 +13,84 @@ Drafted 2026-10-22 as a beta plan; restructured 2026-10-23 into four stages afte
 
 Rule (owner, 2026-10-23): tickets labelled `enhancement` or `future` wait until after the production release.
 
+## Joint rollout: Web and Android launch the same day (owner, 2026-11-05)
+
+Owner decisions: Web and Android go public **on the same day**; Alpha and Beta use the **same testers on both apps**; the Play listing is under an **organization account** (business verified); Stripe live payments and the business entity are **not started**. The four stages above stay; this section adds what the same-day launch changes. Where it conflicts with a stage below, this section wins.
+
+### What the same-day launch changes
+
+1. **Android is the long pole.** Web can ship the moment its gates pass (a promote command, #175). Android needs a verified Play account, a reviewed listing and a Play-signed build, none of which you control the clock on. So the launch date is set by Android, and Web waits for it.
+2. **Start the slow, outside-the-code items now, in parallel with Alpha**, not after Beta. They are all owner or third-party steps, so they cost no build time.
+3. **Beta rehearses the real release pipeline.** An APK sent by file (Alpha) never touches Play signing, Play Billing, store review or the live-payment path, so the first time those run would be launch day. Beta must therefore run the Android build through a Play testing track and rehearse Web through the release branch (details under Beta below).
+4. **Account deletion and a privacy page become launch gates on both platforms** (Play requires them for an app with accounts; the Web needs the same promise). #177 and a new account-deletion ticket move from "nice to have" to Release gates.
+
+### Long-lead items to start now (owner / third party)
+
+| # | Item | Why it is slow | Needed by | Who |
+|---|---|---|---|---|
+| L1 | **Business entity and D-U-N-S number** (Dun & Bradstreet) | Play organization accounts require a D-U-N-S; sources give "up to 30 days" (assignment can be quicker), and the legal name and address must match the D-U-N-S record exactly. Country, account type and D-U-N-S cannot be changed on a payments profile later, so get them right the first time | before L2 | owner |
+| L2 | **Google Play Console organization account**, verified | Verification follows L1; only the Account Holder can complete it. #40 (Play Billing tests) is blocked until this exists | start of Beta | owner |
+| L3 | **Stripe account verified for live mode**, connected to RevenueCat Web Billing | Identity and bank verification; RevenueCat keeps sandbox and production as separate Web Billing configurations, so the live `rcb_` key only appears once the live Stripe account is linked (check both keys show before launch week) | start of Beta (so one real test purchase is possible) | owner |
+| L4 | **Legal review #34** (terms, refund policy, privacy wording) and **pricing #33** | Pricing needs the per-scan cost measured in Alpha; legal wording gates #177 | #177 text before Beta, final before Release | owner (+ counsel if you use one) |
+| L5 | **Domain decision.** Today Web lives at `rigcheck-web.pages.dev` | The privacy-policy URL that Play and Google sign-in ask for, the Supabase redirect list, the Google OAuth client and RevenueCat all name the Web address. Changing it after launch means touching all of them | before #177 is published | owner |
+| L6 | **Play listing content**: icon, feature graphic, phone screenshots, short and long description, content-rating questionnaire, data-safety form, a support email | Pure writing and image work; the screenshots come from the finished re-skin | before Release submission | owner (I can draft the text and the data-safety answers from the code) |
+
+### Plan by stage, both apps together
+
+**Stage 1, Alpha (combined).** Same five testers, one guide, one feedback address.
+- Remaining build work: the four-phone check (#198), then the tester APK. Android re-skin sign-off is done (2026-11-05); #206 (login first page) is already marked `pre-beta`.
+- Owner steps: the list under "Owner steps for Alpha" below. Add one Alpha line: every tester uses **both** Web and Android with the same account, so the cross-platform Garage and History sync is exercised from day one.
+- Start L1, L3 and L5 this week.
+- Exit: the owner calls it. Each problem becomes a ticket, labelled `web`, `android` or `both` so stage 2 can be split across two lanes.
+
+**Stage 2, Fix and audit (both apps).**
+1. Alpha fixes, then #171, #206 and the Beta prep tickets #175, #177, #114, as written below.
+2. **New tickets I recommend filing (not yet filed; ask first):**
+   - **In-app account deletion** on Web and Android, with the Worker/Supabase side (cascade of Garage, History, the RevenueCat customer note). Release gate.
+   - **Production configuration runbook** (one doc, checklists for the swap: Web RevenueCat production key via `scripts/wizard_web_revenuecat.sh`, Android production RevenueCat key and Play products, Play App Signing SHA-1 added to the Google OAuth Android client, Supabase redirect URLs for the final domain, Google consent screen published, Stripe webhooks registered for live).
+   - **Launch-day runbook** (the order of operations and a rollback for each app, see Stage 4).
+   - **Play listing pack** (L6) as a ticket for the drafting I can do.
+3. Refactor analysis and the security audit, as written below. Add to the audit scope the live-payment path and account deletion, because both are new code between Alpha and Beta.
+4. Owner: Supabase Pro, Anthropic limit raised if needed (the live scan load will exceed Alpha), Beta tester list.
+5. L2 should be verified by the end of this stage. If it is not, Beta cannot rehearse Play, and the launch date moves.
+
+**Stage 3, Beta (combined, under 20 testers).**
+- **Android through Play, not by file.** Upload the Play-signed bundle to an internal or closed testing track and invite testers from there. This rehearses Play App Signing (and the new SHA-1 for Google sign-in), Play Billing with license testers (#40 becomes runnable here), the deep link, and Play's pre-launch checks. Keep the APK as a fallback for anyone Play will not take. This replaces "APK file only" for Beta; Alpha stays APK-only.
+- **Web through the release branch** (#175), promoted once for the Beta, so the promote step is rehearsed.
+- **Payments:** test cards and Test Store stay for testers. The owner makes **one real low-price purchase on each app, then refunds it**, to prove the live path end to end (Stripe live, RevenueCat production, Play Billing).
+- Clean-device smoke test and the External runs, as listed below, run against the **release candidate** (the exact build and Web commit that would ship).
+- Exit gate: no open high or medium bug; every Release gate in the table below is either done or has an owner and a date.
+
+**Stage 4, Release (same day).**
+- **Submit Android about a week ahead.** Submit the production release to Play, with managed publishing turned on if the console offers it (verify in the console: it lets an approved release wait until you press publish). Use a staged rollout percentage rather than 100 percent on day one.
+- **Freeze:** from submission, only fixes to blockers go to the release branch. Web changes after the freeze do not get promoted.
+- **Launch day, in order:** (1) confirm Android is approved and waiting; (2) confirm Supabase Pro, Anthropic limit and the Cloudflare Worker are healthy; (3) swap the Web production key and promote Web; (4) publish Android; (5) one real purchase and one real scan on each app, refund the purchases; (6) announce.
+- **Rollback:** Web, promote the previous release commit; Android, halt the staged rollout and (if needed) un-publish; Worker, redeploy the previous version; payments, switch offerings in RevenueCat without a rebuild.
+- Watch the first 48 hours: Anthropic Console spend, Supabase usage, Worker logs (#183), Android crash reports (#184).
+
+### Release gates for a same-day launch (both must be true)
+
+| Gate | Web | Android |
+|---|---|---|
+| Account deletion in the app | new ticket | new ticket |
+| Privacy policy and terms published at the final URL (#177, L5) | yes | yes, the URL entered in Play |
+| Live payments proven by one real purchase and refund | Stripe live + `rcb_` production key | Play Billing + production RevenueCat key + Play products |
+| Production keys in place, sandbox and Test Store keys out of the shipped build | `web/.env.production` | release build; the #166 guard enforces it |
+| Auth redirects for the final domain and the Play App Signing SHA-1 | Supabase redirect list, Google OAuth Web client | Google OAuth Android client |
+| Google consent screen published (out of Testing mode) | yes | same project |
+| Store listing approved | n/a | Play review passed, release waiting |
+| Security audit findings (high, medium) fixed | yes | yes |
+| Supabase on a paid plan, Anthropic limit sized for launch | shared | shared |
+| Rollback tested at least once in Beta | promote previous | halt rollout |
+
+### Open points to check against current sources (I could not confirm them in one place)
+
+- Whether the Google consent screen needs Google's OAuth verification when published, with only the `openid`, `email` and `profile` scopes. The page I found says testing-mode warnings and the 7-day expiry do not apply to those scopes, but does not say outright that verification is skipped. Read the verification criteria page before launch week.
+- Whether the Play Console you will see offers managed publishing and staged rollout as described, and what Play's current review time is. Both are quick checks in the console once L2 exists.
+- Whether Play still wants the extra closed-test run for organization accounts. Google's help page says the 12-tester, 14-day rule is for personal accounts created after 13 November 2023; an organization account is exempt, so none is planned. Re-read the page when L2 is open.
+
+Sources: Google Play Help, "Testing requirements for new personal accounts" (support.google.com/googleplay/android-developer/answer/14151465); Google Cloud Help, "Manage App Audience" (support.google.com/cloud/answer/15549945); Android Developers Blog, "Boosting trust and transparency in Google Play" (July 2023, the D-U-N-S requirement); RevenueCat docs and community threads on Web Billing sandbox and production configurations; Stripe, "Go live" checklist (docs.stripe.com/get-started/checklist/go-live). The timing figures for D-U-N-S and organization verification come from third-party help pages, not from Google, so treat them as estimates.
+
 ## Decisions behind the plan (owner)
 
 - **Payments in Alpha and Beta:** test payments only. Web uses RevenueCat Web Billing sandbox and Android uses RevenueCat's Test Store. No real money moves, so Google Play Console, final pricing (#33) and the full legal review (#34) gate the Release, not Alpha or Beta.

@@ -347,7 +347,8 @@ file. `--entitlement entl...` overrides it for one run.
   **Not yet applied in the dashboard (remove this note when it is):** until the
   owner has created `release` on `origin` and switched Pages' production branch
   to it (#175's "Owner actions needed"), the dashboard still says `MPSkills`
-  (confirmed 2026-10-15), so a push to `MPSkills` still goes live.
+  (confirmed 2026-10-15), so a push to `MPSkills` still goes live, and the External
+  gate no longer checks that push. Do those steps before the next push.
 
 ### GitHub
 

@@ -38,7 +38,7 @@ Owner decisions: Web and Android go public **on the same day**; Alpha and Beta u
 ### Plan by stage, both apps together
 
 **Stage 1, Alpha (combined).** Same five testers, one guide, one feedback address.
-- Remaining build work: the four-phone check (#198), then the tester APK. Android re-skin sign-off is done (2026-11-05); #206 (login first page) is already marked `pre-beta`.
+- Remaining build work: the tester APK. The four-phone check (#198) merged 2026-11-05 and the Android re-skin sign-off is done; #198 found #222 to #225 (all `pre-beta`), and #206 (login first page) is also `pre-beta`. Decide whether #206, #222 and #223 are fixed before the first APK goes out.
 - Owner steps: the list under "Owner steps for Alpha" below. Add one Alpha line: every tester uses **both** Web and Android with the same account, so the cross-platform Garage and History sync is exercised from day one.
 - Start L1, L3 and L5 this week.
 - Exit: the owner calls it. Each problem becomes a ticket, labelled `web`, `android` or `both` so stage 2 can be split across two lanes.
@@ -99,7 +99,7 @@ Every open ticket carries exactly one bucket label, or none if it is a container
 
 | Bucket (label) | Rule | Tickets on 2026-11-05 |
 |---|---|---|
-| Alpha (`pre-alpha`) | Alpha testers cannot be invited without it | #198 |
+| Alpha (`pre-alpha`) | Alpha testers cannot be invited without it | none open (#198 merged 2026-11-05) |
 | Before Beta (`pre-beta`) | Beta cannot run, or cannot rehearse the launch, without it; includes test work that shortens runs or widens coverage for the Beta regressions | #175 #177 #114 #171 #170 #206 #210 #211 #221, #222 #223 #224 #225 (found by #198's device matrix; filed 2026-11-05), and #132 #144 #157 #158 #159 #165 |
 | Before launch (`pre-release`) | Skipping it risks money, user data, a store rejection or a broken launch | #212 #213 #33 #34 #40 #96 #100 #72 #138 #209, and the owner steps #215 to #220 |
 | After launch (`future`) | Enhancement, or tooling that does not protect the launch | #2 #13 #14 #77 #173 #204, and #68 #70 #145 #155 #208 |

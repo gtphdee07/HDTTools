@@ -1,5 +1,6 @@
 package com.rigcheck.app.ui.navigation
 
+import android.view.autofill.AutofillManager
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -28,6 +29,7 @@ import com.rigcheck.app.ui.RigCheckViewModel
 import com.rigcheck.app.ui.UiTags
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -37,8 +39,10 @@ import org.junit.runner.RunWith
 // backend does after Google's own screen hands back a credential and it has been exchanged: the status becomes
 // signed in. A device test cannot drive Google's screen, so the Google criterion is tested at this status change,
 // which is the one place Google, Apple and password sign-in all come back through.
+private val testAccount = Account("account-1", "rig@example.com")
+
 private class SignInAccount(initial: BackendStatus) : AccountBackend {
-    private val account = Account("account-1", "rig@example.com")
+    private val account = testAccount
     private val state = MutableStateFlow(initial)
 
     override val status: Flow<BackendStatus> = state
@@ -91,6 +95,19 @@ class SignInLandingNavigationTest {
     private lateinit var viewModel: RigCheckViewModel
     private lateinit var navController: NavHostController
 
+    // Typing a password opens an autofill session; left open it keeps the next class's soft keyboard back for 30 s
+    // (RigCheckNavHostTest failed on it when run after this class). AccountScreenTest and UiTagsDisplayedTest do the same.
+    @After
+    fun cancelAutofill() {
+        composeRule.activity.getSystemService(AutofillManager::class.java)?.cancel()
+    }
+
+    // A sign-in leaves the form, which is when a filled-in form's autofill session is committed and the emulator's
+    // Google service offers to save the password; cancelling afterwards is too late, so it is cancelled before.
+    private fun cancelAutofillNow() = composeRule.runOnUiThread {
+        composeRule.activity.getSystemService(AutofillManager::class.java)?.cancel()
+    }
+
     private fun showApp(account: SignInAccount) {
         composeRule.runOnUiThread {
             viewModel = RigCheckViewModel(ApplicationProvider.getApplicationContext(), account, NoRigs, NoChecks)
@@ -115,10 +132,21 @@ class SignInLandingNavigationTest {
         }
     }
 
+    private fun waitForTheSignInScreen() {
+        composeRule.waitUntil(timeoutMillis = 10_000) { composeRule.nodesWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON) == 1 }
+    }
+
     // The signed-out picker's account row opens the sign-in screen.
     private fun openTheSignInScreen() {
         composeRule.onNodeWithTag(UiTags.PICKER_ACCOUNT_STATUS).performClick()
-        composeRule.waitUntil(timeoutMillis = 10_000) { composeRule.nodesWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON) == 1 }
+        waitForTheSignInScreen()
+    }
+
+    private fun signInWithAPassword() {
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_EMAIL_FIELD).performTextInput("rig@example.com")
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_PASSWORD_FIELD).performTextInput("hunter22")
+        cancelAutofillNow()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_SUBMIT).performClick()
     }
 
     private fun assertOnTheFrontPageSignedIn() {
@@ -148,9 +176,7 @@ class SignInLandingNavigationTest {
         waitForAccount(signedIn = false)
         openTheSignInScreen()
 
-        composeRule.onNodeWithTag(UiTags.ACCOUNT_EMAIL_FIELD).performTextInput("rig@example.com")
-        composeRule.onNodeWithTag(UiTags.ACCOUNT_PASSWORD_FIELD).performTextInput("hunter22")
-        composeRule.onNodeWithTag(UiTags.ACCOUNT_SUBMIT).performClick()
+        signInWithAPassword()
 
         waitForAccount(signedIn = true)
         assertOnTheFrontPageSignedIn()
@@ -182,12 +208,33 @@ class SignInLandingNavigationTest {
             navController.navigate(RigCheckRoute.Chooser(EntryModule.TRUCK))
             navController.navigate(RigCheckRoute.Paywall)
         }
-        composeRule.waitUntil(timeoutMillis = 10_000) { composeRule.nodesWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON) == 1 }
+        waitForTheSignInScreen()
 
-        composeRule.onNodeWithTag(UiTags.ACCOUNT_EMAIL_FIELD).performTextInput("rig@example.com")
-        composeRule.onNodeWithTag(UiTags.ACCOUNT_PASSWORD_FIELD).performTextInput("hunter22")
-        composeRule.onNodeWithTag(UiTags.ACCOUNT_SUBMIT).performClick()
+        signInWithAPassword()
 
+        assertBackOnTheChooserSignedIn()
+    }
+
+    // A Scan error's "Sign in" for a rejected token ends the signed-in session before it opens the sign-in screen
+    // (followScanNextStep), so that sign-in is signed in, then signed out, then signed in again, over the check.
+    @Test
+    fun aSignInThatFollowsEndingASessionInsideACheckReturnsToTheCheck() {
+        showApp(SignInAccount(BackendStatus.Authenticated(testAccount)))
+        waitForAccount(signedIn = true)
+        composeRule.runOnUiThread {
+            navController.navigate(RigCheckRoute.Chooser(EntryModule.TRUCK))
+            viewModel.signOut()
+            navController.navigate(RigCheckRoute.Paywall)
+        }
+        waitForAccount(signedIn = false)
+        waitForTheSignInScreen()
+
+        signInWithAPassword()
+
+        assertBackOnTheChooserSignedIn()
+    }
+
+    private fun assertBackOnTheChooserSignedIn() {
         waitForAccount(signedIn = true)
         composeRule.waitUntil(timeoutMillis = 10_000) { composeRule.nodesWithTag(UiTags.CHOOSER_MANUAL_CARD) == 1 }
         composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).assertIsDisplayed()
@@ -197,7 +244,7 @@ class SignInLandingNavigationTest {
 
     @Test
     fun theAccountStandingOpenedWhileSignedInStaysOpen() {
-        showApp(SignInAccount(BackendStatus.Authenticated(Account("account-1", "rig@example.com"))))
+        showApp(SignInAccount(BackendStatus.Authenticated(testAccount)))
         waitForAccount(signedIn = true)
 
         composeRule.onNodeWithTag(UiTags.PICKER_CREDIT_CHIP).performClick()

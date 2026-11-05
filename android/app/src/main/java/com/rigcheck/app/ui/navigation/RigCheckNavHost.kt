@@ -96,9 +96,9 @@ fun RigCheckNavHost(
     // turns into (#206): the front page when it was started from the Rig picker, the check's own screen when it was
     // started from inside a check (a Scan error's "Sign in", buying Scans). Only the change from signed out to
     // signed in does it, so opening the app already signed in, or opening the account standing later, leaves the
-    // user where they went. Password, Google and Apple all come back through this one state change. It is
-    // remembered across turning the device, so a sign-in that finishes while the screen is rebuilt still counts; it
-    // only acts while the sign-in screen is on show.
+    // user where they went. Password, Google and Apple all come back through this one state change. The flag is
+    // saved with the screen's state, meant so a sign-in that finishes while the device is turned still counts (no
+    // test turns the device); it only acts while the sign-in screen is on show.
     var wasSignedOut by rememberSaveable { mutableStateOf(viewModel.accountState.value is AccountState.SignedOut) }
     LaunchedEffect(navController) {
         viewModel.accountState.collect { state ->

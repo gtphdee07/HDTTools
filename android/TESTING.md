@@ -1709,23 +1709,33 @@ not tapped through the photo picker; the tests start the Scan on the view model.
 same flow after "Buy more Scans": the signed-in Paywall's Back control returns to the screen
 the Scan started on (the Chooser, or the Truck Tag screen) and leaves the user signed in.
 
-**Sign-in landing tests** (`ui/navigation/SignInLandingNavigationTest.kt`, 5 tests, #206) — signing in returns to the
+**Sign-in landing tests** (`ui/navigation/SignInLandingNavigationTest.kt`, 6 tests, #206) — signing in returns to the
 screen the sign-in was started from, not to the account standing the sign-in screen turns into. `RigCheckNavHost`
 watches the account state and pops the sign-in screen (the Paywall route) only on the change from signed out to signed
-in while it is on show (`wasSignedOut` is `rememberSaveable`, so turning the device does not lose it). Started from the
+in while it is on show (`wasSignedOut` is `rememberSaveable`, meant so turning the device does not lose it; no test
+turns the device). Started from the
 Rig picker that is the front page; started inside a check (a Scan error's "Sign in", buying Scans while signed out) it
 is the check's own screen. Through the real nav host and view model with a fake account backend that signs in at once
 (`SignInAccount`) and an empty Garage and History: a password sign-in typed into the sign-in screen, and a Google
 sign-in, started from the picker, land on the picker with the sign-in screen gone from the back stack (nothing for Back
 to return to); a sign-in started over the Chooser (put there by navigating, to avoid the keyboard waits of #125) returns
-to the Chooser; the account standing opened by the credit chip while signed in stays open; and a saved session found
+to the Chooser, and so does one that follows ending a signed-in session there (the Scan error's "Sign in" for a rejected
+token signs out first: signed in, signed out, signed in again; the Scan error dialog itself is not driven, the test does
+what `followScanNextStep` does); the account standing opened by the credit chip while signed in stays open; and a saved session found
 while the account standing is already open (the account goes from "Loading" to signed in, which is not a sign-in) does
 not move the user. A device test cannot drive Google's own screen, so the Google test flips the backend's status to
 signed in, which is the point every sign-in (password, Google, Apple) returns through; what stays manual is a real
-"Continue with Google" on a phone. Seen to go red on the emulator: the pop removed fails the two picker tests and the
-Chooser test; the old jump to the picker (with the signed-out condition dropped, applied together) fails the Chooser
-test and the saved-session test, one each. The "opened while signed in" test passed under all of them: the state does
-not change while the account standing is open, so the saved-session test is the one that holds the rule.
+"Continue with Google" on a phone. Seen to go red on the emulator: the pop removed fails the four landing tests (the
+two from the picker and the two inside a check); the old jump to the picker (with the signed-out condition dropped,
+applied together) fails the Chooser test and the saved-session test, one each. The "opened while signed in" test passed
+under all of them: the state does not change while the account standing is open, so the saved-session test is the one
+that holds the rule. **Autofill:** the class types a password, so it cancels the autofill session twice: in `@After`
+(the rule above) and before it taps Sign in, because a sign-in takes the form off the screen, which is when the
+emulator's Google service commits the session and offers to save the password. With only the `@After`, a run of
+`SignInLandingNavigationTest` + `RigCheckNavHostTest` + `AccountScreenTest` failed
+`RigCheckNavHostTest.continuingFromTheTruckTagDropsTheNoticeForGood` (a 30 s keyboard wait in `enterNickname`) in 5 of 6
+runs, though each pair of them and the same three classes without this one passed; with the cancel before Sign in, the
+same run passed three times in a row.
 
 **System bar tests** (`ui/navigation/SystemBarsTest.kt`, #186) — how the system-bar rule is tested.
 The rule is one place: `RigCheckApp` (`ui/navigation/RigCheckApp.kt`, what `MainActivity` shows) wraps

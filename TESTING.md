@@ -359,7 +359,7 @@ confirmation that would exceed the budget aborts the run instead of spending fur
 (#62, #63; tested with fakes in `tests/test_scan_proxy_release.py` and
 `tests/test_android_release.py`). The planner's `--level release` lists the same steps,
 marks every paid one `[CONFIRM]` (never run unprompted) and always lists the slow
-Python tests. A push to `MPSkills` that deploys Web keeps ADR-0008's External freshness
+Python tests. A push of the `release` branch (the one that deploys Web) keeps ADR-0008's External freshness
 gate without a full run (see "External release gate" below). Coverage is a map of untested
 code, not a pass mark: see "Coverage gate".
 
@@ -579,8 +579,8 @@ the report (a stale list) and names every class in `domain`, `data` or
 failure). The device-based Android numbers (Major suite, Major+External
 merged) are still printed, as informational numbers that gate nothing.
 
-**Report-only** for Web. Web does have a release event now (a push to
-`MPSkills` deploys it to Cloudflare Pages, and the External freshness gate guards
+**Report-only** for Web. Web does have a release event now (promoting the
+`release` branch deploys it to Cloudflare Pages, and the External freshness gate guards
 that push), but nobody has set a coverage floor for it: rule 9 of
 `docs/test-audit/rules.md` leaves the number to the owner after seeing it
 (95.95% of statements on 2026-10-21). The script still prints its number with the
@@ -690,7 +690,7 @@ block. It runs in four places:
 
 | Where | Gates | Chain |
 |---|---|---|
-| `.githooks/pre-push` | a push to `MPSkills` (Pages' production branch) whose diff touches `web/`, `workers/scan-proxy/` or `android/`; any other push, including a docs-only one, passes without contacting a registry | the touched directory's platform: web, scan-proxy, android |
+| `.githooks/pre-push` | a push of the `release` branch (Pages' production branch; `scripts/promote_release.py` makes that push) whose diff touches `web/`, `workers/scan-proxy/` or `android/`; any other push, including every push of `MPSkills` and a docs-only one, passes without contacting a registry (#175) | the touched directory's platform: web, scan-proxy, android |
 | `npm run deploy` in `workers/scan-proxy/` (`scripts/scan_proxy_deploy.py`, also used by `pretest:weekly` and `android/test-weekly.ps1`) | the Worker deploy | scan-proxy |
 | `workers/scan-proxy/release.ps1` | before the release and weekly suites, the latter deploys | scan-proxy |
 | `android/release.ps1` | before the weekly suite, which deploys the Worker | android, which includes the Worker's surfaces |
@@ -714,8 +714,10 @@ and the dashboard's External cell shows `(N overridden)` until each one's next
 real pass; a failed or skipped run does not clear it. Forcing a gate that would
 have passed records nothing. The mark is written to the status file of the
 checkout you run from, so it is a tracked-file change to commit; and the gate
-judges that checkout's working tree and status file, so push `MPSkills` from the
-checkout that has it checked out. The mark stays until a real pass even if the
+judges that checkout's working tree and status file, so promote `release` from the
+checkout that has `MPSkills` checked out. Creating `release` on `origin` is gated
+too, over the whole tree (every file of a new branch counts as changed), so create it
+after the External bundle, or with a stated reason. The mark stays until a real pass even if the
 surface stops looking stale in between (for example a registry that was only
 briefly unreachable).
 
@@ -723,6 +725,14 @@ briefly unreachable).
 records nothing, so the dashboard cannot show it. It is a deliberate act, not an
 accident, and the only way past the hook without a recorded reason. A push also
 skips the hook when it runs from a machine without `core.hooksPath` set.
+
+**Why `release`, not `MPSkills` (#175).** Cloudflare Pages publishes Web from the
+`release` branch, so a push of `MPSkills` makes a preview and cannot change what testers
+see; the gate sits on the push that can. The push is made by `uv run
+scripts/promote_release.py` (fast-forward only, prints the `web/` files that go live,
+asks first; `docs/BUILD_AND_DEPLOY.md` section 6), tested against throwaway repositories
+in `tests/test_promote_release.py`; the gate's choice of branch is in
+`tests/test_external_gate.py`.
 
 Not done: the registries are asked on every qualifying push (about a dozen
 requests; an unreachable one blocks) with no cache.

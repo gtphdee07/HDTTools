@@ -8,9 +8,10 @@ failed, skipped or never-run surface and when a registry cannot be reached;
 planned surfaces never block.
 
 Three places run it:
-  - the git pre-push hook (.githooks/pre-push), for a push to MPSkills (Pages'
-    production branch) whose diff touches web/, workers/scan-proxy/ or android/;
-    a docs-only push passes without contacting a registry
+  - the git pre-push hook (.githooks/pre-push), for a push of the release branch
+    (Pages' production branch, moved by scripts/promote_release.py) whose diff
+    touches web/, workers/scan-proxy/ or android/; a push of MPSkills or any other
+    branch, and a docs-only push, passes without contacting a registry
   - the Worker deploy wrapper (scripts/scan_proxy_deploy.py, `npm run deploy`)
   - the Worker and Android release commands (scripts/scan_proxy_release.py,
     scripts/android_release.py), before the step that deploys
@@ -44,7 +45,8 @@ import record_external_result  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FORCE_ENV = "EXTERNAL_GATE_FORCE_REASON"
-GATED_BRANCH_REF = "refs/heads/MPSkills"
+RELEASE_BRANCH = "release"  # the branch Cloudflare Pages publishes Web from (#175)
+GATED_BRANCH_REF = f"refs/heads/{RELEASE_BRANCH}"
 ZERO_SHA = "0" * 40
 
 # A push is gated for the platform whose directory its diff touches, in this order.
@@ -166,7 +168,7 @@ def pre_push(
     changed_paths: Callable[[str, str], list[str] | None],
     gate: Callable[[list[str]], int],
 ) -> int:
-    """Gates a push of MPSkills that touches web/, workers/scan-proxy/ or android/. Every other push passes."""
+    """Gates a push of the release branch that touches web/, workers/scan-proxy/ or android/. Every other push passes."""
     platforms: set[str] = set()
     for line in stdin_text.splitlines():
         parts = line.split()

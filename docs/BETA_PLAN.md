@@ -180,7 +180,7 @@ Alpha testers should be told all of this up front (the tester guide lists it).
 
 **Distribution**
 - **Android comes as an APK file**, not from the Play Store. No automatic updates: you send a new APK, and a tester who has a debug build must uninstall it first.
-- **Web updates on every push of `MPSkills`**, so the site can change under a tester (#175 is Beta prep).
+- **Web updates only when the `release` branch is promoted** (`scripts/promote_release.py`, #175), so the site does not change under a tester by accident; a push of `MPSkills` makes a preview only.
 - **No iOS app and no Sign in with Apple** (#77).
 
 **Product features held back**

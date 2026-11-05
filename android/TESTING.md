@@ -433,9 +433,11 @@ never touched):
 | Gesture navigation | the same with `...navbar.gestural` | the same | **works** on 36 and 37 |
 
 Read the navigation style from `navigation_mode`, not from `cmd overlay list`: after the change that list still showed
-both the 3-button and the gesture overlay marked `[x]`. On API 26 to 28 `cmd overlay` prints nothing and there is no
-`navigation_mode`, so `testsupport/NavigationMode.kt` treats a missing setting there as "already 3-button": it changes
-and restores nothing (#225). From API 29 it still sets the overlay, waits for `0` and restores the old mode.
+both the 3-button and the gesture overlay marked `[x]`. On API 26 (measured; API 27 and 28 were not run, and gesture
+navigation arrived with Android 10) `cmd overlay` prints nothing and there is no `navigation_mode`, so
+`testsupport/NavigationMode.kt` treats a missing setting below API 29 as "already 3-button": it changes and restores
+nothing (#225). From API 29 the code is as before (set the overlay, wait for `0`, restore the old mode); that path was
+run on API 36 only.
 
 **Measured dp, beside the research file's computed values** (`wm size` and `wm density` on each running emulator;
 dp = px / (density / 160)):
@@ -476,14 +478,19 @@ One extra check on configuration 4, beyond the two classes: `ThreeButtonNavigati
 (2026-11-05):** the helper now treats the missing setting as already 3-button, and the test's bar position now comes from
 the frame it sets, not from `Probe.heightDp`, which leaves the bar out before Android 11 (it took the bar off twice and
 reported 20 false overlaps). `ThreeButtonNavigationTest` then passes 16 of 16 on `rc_pixel_3a_api26` (API 26) and on
-`medium_phone` (API 36). The screenshot flag `-Pandroid.testInstrumentationRunnerArguments.layoutScreenshots=true` also
-works on API 26 to 29 now (#225; before, `UiAutomation.executeShellCommandRw`, which needs API 30, made every test fail
-with `NoSuchMethodError`): below API 30 `LayoutStateRunner` has the device write the picture with `screencap -p`. Both
-runs wrote 93 PNGs. One difference: from API 30 the picture is the frame itself (900 x 1600 px for the 360 x 640 dp
-frame), while on API 26 `screencap` takes the whole physical screen (1080 x 2220 px on `rc_pixel_3a_api26`), so the frame
-is scaled up to the screen's width with a band of wallpaper above and below it; crop and scale it before laying it beside
-the designer's PNG. A run takes about 1 to 4 minutes once the APKs are built (the first run of the session also built
-them, 4 min 18 s).
+`medium_phone` (API 36). A run takes about 1 to 4 minutes once the APKs are built (the first run of the session also
+built them, 4 min 18 s).
+
+The screenshot flag `-Pandroid.testInstrumentationRunnerArguments.layoutScreenshots=true` failed every test on API 26
+(`UiAutomation.executeShellCommandRw` needs API 30: `NoSuchMethodError`). **Fixed in #225:** below API 30
+`LayoutStateRunner` has the device write the picture with `screencap -p`. `ThreeButtonNavigationTest` with the flag then
+passed 16 of 16 and wrote 93 PNGs on `rc_pixel_3a_api26` (API 26) and on `medium_phone` (API 36); API 27 to 29 were not
+run. One difference: on API 36 the picture is the frame itself (900 x 1600 px for the 360 x 640 dp frame), while on
+API 26 `screencap` takes the whole physical screen (1080 x 2220 px), so the frame is scaled up to the screen's width
+with a band of wallpaper above and below it; crop and scale it before laying it beside the designer's PNG. A failed
+`screencap` writes no PNG and the test still passes, so count the PNGs after a run. The rest of `testsupport/` and
+`layoutcapture/` has no other call that needs API 30 (checked by reading: `takeScreenshot` is API 18,
+`executeShellCommand` API 21, the insets calls go through the compat library).
 
 ## Categories
 
@@ -1793,7 +1800,8 @@ problem of every state before failing:
   version comes from the Compose BOM). The contrast it measures is of the pixels, so it sits over `TextFillPairsTest`, which
   holds the design's text and fill colours to AA on the JVM.
 - `ui/navigation/ThreeButtonNavigationTest.kt` (16 tests: one per screen, plus the same completeness test) — with 3-button navigation really on (`testsupport/NavigationMode`
-  sets the overlay and puts the device's setting back), every captured state at 360 x 640 dp: no tagged element, as much of
+  sets the overlay and puts the device's setting back; below API 29, where there is no such setting, the device already
+  has the bar and it changes nothing, #225), every captured state at 360 x 640 dp: no tagged element, as much of
   it as is on show, reaches into the navigation bar. `SystemBarsTest` holds the rule that does it (`RigCheckApp`'s
   `safeDrawingPadding()`) for two screens with the real controls tapped; this one covers every screen.
 - `ui/navigation/SignOutDuringScanNavigationTest.kt` (3 tests) — Sign out is not possible while a paid Scan is out, through

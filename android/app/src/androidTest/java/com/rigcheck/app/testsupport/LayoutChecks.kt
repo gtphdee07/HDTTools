@@ -134,8 +134,8 @@ class LayoutStateRunner(private val rule: ComposeTestRule, private val screensho
         val file = name.replace(": ", "__").replace(" ", "_").replace("(", "").replace(")", "") + ".png"
         shell(automation, "mkdir -p $folder")
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            // executeShellCommandRw (a shell that takes input) needs API 30, so below it the device takes the picture itself:
-            // the same screen, written by the shell (#225).
+            // executeShellCommandRw (a shell that takes input) needs API 30, so below it the device takes the picture itself.
+            // That is the whole physical screen, not the frame: the frame is scaled up inside it (TESTING.md, #225).
             shell(automation, "screencap -p $folder/$file")
             return
         }

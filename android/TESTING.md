@@ -470,8 +470,25 @@ uv run scripts/run_supervisor.py --device --output-limit-s 300 -- android/gradle
 |---|---|---|---|
 | 1 | `medium_phone`, 36, font 1.0, gesture | **pass**, 35 of 35 | |
 | 2 | `rc_small_phone_api36`, 36, font 2.0, 3-button | **fail**, 2 of 35: `SystemBarsTest.theRigPickersCreateButtonLiesAboveTheNavigationBarAndCanBeTapped` (the Create button is "not displayed") and `PaywallScreenTest.proCannotBeBoughtAgainWhileThePlanCatchesUp` ("Pro is yours." is "not displayed"). Both repeat at font 2.0 and pass at font 1.0 on the same emulator (35 of 35), so the large font is the cause | #222, #223 |
-| 3 | `rc_pixel_9_pro_xl_api37`, 37, font 1.0, gesture | **fail**, 35 of 35, none checked anything: Espresso 3.5.1 throws `NoSuchMethodException: android.hardware.input.InputManager.getInstance` on Android 17. A tooling failure, not an app finding; the Android 37 screens are unchecked until it is fixed | #224 |
+| 3 | `rc_pixel_9_pro_xl_api37`, 37, font 1.0, gesture | **fail**, 35 of 35, none checked anything: Espresso 3.5.1 throws `NoSuchMethodException: android.hardware.input.InputManager.getInstance` on Android 17. A tooling failure, not an app finding. **Fixed in #224 (2026-11-05), now pass, 35 of 35** (see the note below the table) | #224 |
 | 4 | `rc_pixel_3a_api26`, 26, font 1.15, 3-button | **pass**, 35 of 35 | |
+
+**Configuration 3 after #224 (2026-11-05).** Espresso 3.7.0 (`espressoCore` in `libs.versions.toml`) replaces the
+reflective `InputManager.getInstance` call with `getSystemService` (the 3.7.0 release notes, developer.android.com,
+`androidx.test`); nothing else moved: `ext.junit` 1.1.5 and `uiautomator` 2.3.0 stay, and the runner, monitor and core
+rise by themselves with Espresso (runner 1.7.0, monitor 1.8.0, core 1.7.0). The two classes now run on the three
+emulators that had them passing or untestable: **35 of 35 on `rc_pixel_9_pro_xl_api37`** (Android 17), **35 of 35 on
+`medium_phone`** (API 36) and **35 of 35 on `rc_pixel_3a_api26`** (API 26). The full instrumented suite on `medium_phone`
+(`uv run scripts/android_suite_loop.py --runs 1 --retry-infra-abort`) passed **442 of 442**.
+
+The bump needs one build setting (`configurations.named("androidTestImplementation")` in `android/app/build.gradle.kts`):
+AGP pins the androidTest classpath to the versions the app's own runtime classpath resolved, and Espresso 3.7.0 asks
+for newer `androidx.concurrent:concurrent-futures(-ktx)` (1.2.0, the app has 1.1.0) and `error_prone_annotations`
+(2.30.0, the app has 2.28.0), so the build fails on the conflict without it. Both are excluded from the androidTest scope
+only, and the app's copies serve the tests; the app and its `implementation` lines are unchanged. Excluding on the
+Espresso dependency alone is not enough, because Espresso also arrives through `ext.junit` and the Compose test
+libraries. If a later Espresso needs a newer API from those two libraries than the app's copies have, the symptom is a
+`NoSuchMethodError` at run time, and the fix is to raise the app's own version, not to widen the exclusion.
 
 One extra check on configuration 4, beyond the two classes: `ThreeButtonNavigationTest` stopped at its first test
 (`the navigation mode did not become 0 (it is null)`), because API 26 has no `navigation_mode` setting. **Fixed in #225

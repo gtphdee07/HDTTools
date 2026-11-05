@@ -16,7 +16,7 @@ Two lanes, one build session each, a **new** session for every ticket. Lane A is
 
 | # | Ticket | Lane | Starts when | Your part |
 |---|---|---|---|---|
-| 6 | [#198](#198-emulator-profiles-for-four-phone-shapes) Emulator profiles on G: for four phone shapes | A | your sign-off on the phone | answer its three decisions, including the Android 26 image download to G: |
+| 6 | [#198](#198-emulator-profiles-for-four-phone-shapes) Emulator profiles on G: for four phone shapes | A | nothing (sign-off done 2026-11-05) | answer its three decisions, including the Android 26 image download to G: |
 | optional | [#132](#132-optional-is-mutation-testing-worth-running-research) Is mutation testing worth running? | any | any time | none |
 
 A ticket starts when the tickets it waits for have merged, not when the round ends. Decisions for all of them are already recorded in DECISIONS comments, so the workers do not ask again.
@@ -52,7 +52,7 @@ A ticket starts when the tickets it waits for have merged, not when the round en
 - [x] **#189's baseline frames:** the designer checked the two size mismatches (Rig-card bin 40 dp, Results bar 26 dp) and corrected its notes (fbecd6d, 2026-10-28; reported again 2026-10-29). The folder `docs/android-redesign/design-built-to-be-checked/` is untracked (Claude hid it locally through `.git/info/exclude` so the merge could run): delete it or move it when you like.
 - [x] The 70 frames in `docs/android-redesign/design-return/annotated/` are reviewed and fine to build with (2026-10-29; recorded on #193 to #196). Nothing is changed; everything is built as drawn.
 - [ ] #193 (merged 2026-10-29): on the phone, look at the Scale ticket photo against the designer's picture (its numbered badges are fixed fractions of a 167 dp window of the ticket, about 22 dp apart at 360 dp wide), and at the Truck panel's words, which still say "the field above" (the design puts the field below the Scan button; #197 fixes the words).
-- [ ] Sign-off (the one open criterion of #197, which merged 2026-10-31): with a rebuilt beta APK, check every screen on your phone, 3-button navigation on, and a large font size once. Look especially at the delete-Rig dialog and the crash prompt (re-skinned in #197, never on a phone), the account sheet (handle redrawn; with Sign out off and its reason in words while a Scan is out), the Paywall's Sign out line, the Truck stand-alone panel (it now says "below"), and the Truck and Trailer card at font scale 2.0 (the hint is gone while a badge shows). Then #198 and the tester APK.
+- [x] Sign-off (the one open criterion of #197, which merged 2026-10-31; done by you 2026-11-05, "things look good"; your one finding is #206, the first page after an Android sign-in is Account, not the front page): with a rebuilt beta APK, check every screen on your phone, 3-button navigation on, and a large font size once. Look especially at the delete-Rig dialog and the crash prompt (re-skinned in #197, never on a phone), the account sheet (handle redrawn; with Sign out off and its reason in words while a Scan is out), the Paywall's Sign out line, the Truck stand-alone panel (it now says "below"), and the Truck and Trailer card at font scale 2.0 (the hint is gone while a badge shows). Then #198 and the tester APK.
 - [ ] After your sign-off and before the tester APK (decided 2026-10-29): #198 creates emulator profiles on G: for four phone shapes and runs the screen checks on each. Its build session asks you three things, among them whether it may download the Android 26 system image (about 1 to 2 GB, to a path under `G:\Android\Sdk`); close any other emulator session first.
 - [ ] After #197 and #198: build the tester APK with a higher `-PappVersionCode` (4 or more; raise it for every APK you send), from `android`: `.\gradlew.bat assembleBeta -PappVersionCode=<n>`. Confirm `keytool -printcert -jarfile app\build\outputs\apk\beta\app-beta.apk` shows the SHA-1 in `G:\Secrets\rigcheck\rigcheck-upload-keystore-NOTES.txt`.
 - [ ] Before inviting: add each Alpha tester's Gmail as a Google test user (up to 5; manual, Google Cloud Console, no script does it; needed only for Continue with Google); send the APK and the guide.
@@ -68,7 +68,7 @@ Not in this round: #40 (Google Play Billing; blocked until a Play Console accoun
 
 ### #198 Emulator profiles for four phone shapes
 
-**Lane A.** Nothing blocks it now (#197 merged 2026-10-31); start it once you have signed off the screens on your phone (your decision 2026-10-29). It is done before the tester APK is built. Android: the single emulator, one Android ticket at a time.
+**Lane A.** Nothing blocks it now (#197 merged 2026-10-31, and you signed off the screens on your phone 2026-11-05); start it with /ticket-start 198. It is done before the tester APK is built. Android: the single emulator, one Android ticket at a time.
 
 1. In this main-checkout session type `/ticket-start 198`. It assigns the ticket to you and creates the folder `.claude/worktrees/ticket-198`; if it stops, it says why.
 2. Open a **new** Claude session in `G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-198` (in a terminal: `cd "G:\Claude Experiment\VSCode\VSCodeProj\MattPocock\HDTTools\.claude\worktrees\ticket-198"`, then `claude`). Paste everything in the box below as its **first message**, as one message with nothing added.

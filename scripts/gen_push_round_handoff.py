@@ -1,0 +1,189 @@
+"""Generates docs/agents/push-round-handoff.md, the run sheet for the push round (Worker A and Worker B).
+
+  uv run scripts/gen_push_round_handoff.py
+
+The sheet is generated: change the text here, then run this to rewrite it. It reuses the card layout, the shared
+handoff text and the per-surface rule blocks of scripts/gen_test_round_handoff.py, so a change to a shared rule is
+made once, there. It keeps the sheet's existing line endings. Both sheets and both generators are temporary: delete
+them when the round ends (docs/agents/roles/role-Deputy.md, "The run sheet").
+"""
+
+from pathlib import Path
+
+import gen_test_round_handoff as gtr
+
+REPO = Path(__file__).resolve().parent.parent
+OUT = REPO / "docs" / "agents" / "push-round-handoff.md"
+
+# Tickets whose own Decisions section is still open: the build session asks it (the shared DECIDED line is not printed).
+gtr.ASKS[175] = (
+    "The ticket's `## Decisions` section is still open (the name of the release branch, whether a push of `MPSkills` stays gated, "
+    "whether previews of `MPSkills` stay on): ask its three questions with AskUserQuestion before building, and post the answers as a `DECISIONS` comment."
+)
+
+START_AVD = (
+    "Start the emulator profile the ticket names with `uv run scripts/android_suite_loop.py --boot-only --avd <profile> --emulator-arg=-no-window --emulator-arg=-no-audio` "
+    "(the profiles are `medium_phone`, `rc_small_phone_api36`, `rc_pixel_9_pro_xl_api37` and `rc_pixel_3a_api26`, all on G:; see \"Device matrix (Tier 1)\" in `android/TESTING.md`), "
+    "one emulator at a time, and kill it with `adb -s emulator-5554 emu kill` before starting the next. With only one emulator running it is always `emulator-5554`."
+)
+ALLCOMMENTS = "Read every comment on the ticket before you start: the Deputy's triage comment adds acceptance criteria that are not in the ticket body."
+KEYBOARD = (
+    "A failure in the first test that types a Rig nickname (`enterNickname`, `RigCheckNavHostTest`, `ScanInFlightNavigationTest`) on a freshly booted emulator can be the "
+    "cold-start keyboard wait of #125 (up to 30 s): read the time of the failing test before you decide it is real, and say in your STATUS which it was."
+)
+
+A206 = [
+    ALLCOMMENTS,
+    "Cause, read from `android/app/src/main/java/com/rigcheck/app/ui/navigation/RigCheckNavHost.kt` (about lines 176 to 197): the Account tab shows `AccountScreen` while `AccountState.SignedOut` and the signed-in standing once it becomes `AccountState.SignedIn`, and nothing navigates when it flips, so the user stays on the Account tab. Fix it by going to the front page (the Rig picker, `RigCheckRoute.RigPicker`) on the change from signed out to signed in, and only on that change.",
+    "Do not jump on every visit: opening the app already signed in, or tapping the Account tab while signed in, must still show the account page. Back from the front page must not return to the sign-in form (use `popUpTo`).",
+    "Google sign-in returns through the same state change, so test the change itself. A device test cannot drive Google's own screen: say in your STATUS what stays manual for the owner (a sign-in with Google on the phone).",
+    "Existing tests to keep green: `AccountScreenTest` and `RigCheckNavHostTest`. Run your own classes only (the full suite runs once at the end of the round, not per ticket). Do not change any Gradle or `libs.versions.toml` file: a change there makes two External surfaces stale.",
+    START_AVD,
+    KEYBOARD,
+]
+A225 = [
+    "The helper is `android/app/src/androidTest/java/com/rigcheck/app/testsupport/NavigationMode.kt` (`use3Buttons()`). On Android 8.0 to 9 (API 26 to 28) there is no `navigation_mode` setting (`settings get secure navigation_mode` prints `null`) and no navigation overlay, and the phone always shows the on-screen bar, so the device is already on 3-button navigation: treat a missing setting as \"already 3-button\", with nothing to change and nothing to restore. Check every caller of `use3Buttons()` still works.",
+    "On API 29 and up the helper must behave exactly as before (enable the overlay, wait for the mode to read `0`, restore the old mode afterwards).",
+    "Device runs, one emulator at a time: `ThreeButtonNavigationTest` on `rc_pixel_3a_api26` (API 26), then again on `medium_phone` (API 36). Record the API 26 result in the \"Device matrix (Tier 1)\" section of `android/TESTING.md` in place of the #225 note.",
+    START_AVD,
+    "Do not change any Gradle or `libs.versions.toml` file.",
+]
+A224 = [
+    "Cause, from the ticket: Espresso 3.5.1 (`espressoCore` in `android/gradle/libs.versions.toml`) reflects into `InputManager.getInstance()`, which Android 17 (API 37) removed, so every Compose UI test fails on `rc_pixel_9_pro_xl_api37` before it checks anything. Find the `androidx.test` versions that work on API 37 from the primary release pages (developer.android.com, `androidx.test`), and change only what is needed (`espresso-core`, and the runner, `ui-test-junit4` or `uiautomator` only if the failure points there). Test dependencies only: the shipped app and `android/app/build.gradle.kts` `implementation` lines do not change.",
+    "If no released version works on API 37, stop: post `STATUS: BLOCKED` with what you found and the options (wait for a release, a workaround, an exclusion), and do not force a pre-release into the build.",
+    "Device runs, one emulator at a time, `SystemBarsTest` and `PaywallScreenTest`: on `rc_pixel_9_pro_xl_api37` (must now run, pass or fail on its merits), on `medium_phone` (API 36) and on `rc_pixel_3a_api26` (API 26), both of which still pass 35 of 35. Because the bump touches every Compose test, run the full instrumented suite once on `medium_phone` as well (`uv run scripts/android_suite_loop.py --runs 1 --retry-infra-abort`) and say the count in your STATUS (it was 436 tests at #197).",
+    "Record the result in the \"Device matrix (Tier 1)\" section of `android/TESTING.md` (configuration 3). A failure on its merits on API 37 is a finding: file it as its own ticket, do not fix the app here (#222 and #223 stay in the Beta chain).",
+    START_AVD,
+    "A change to `libs.versions.toml` makes the External surfaces `revenuecat-android-sdk` and `supabase-auth` stale. They are already stale and run in the final bundle: do not run them yourself.",
+]
+B175 = [
+    "Besides `scripts/` and `tests/`, this ticket changes `.githooks/pre-push`, `scripts/external_gate.py` and the pages under `docs/` (`docs/BUILD_AND_DEPLOY.md` sections 5 and 6, \"External release gate\" in `TESTING.md`, and any `docs/agents/` page that says a push to `MPSkills` publishes Web). Do not edit `CLAUDE.md`: post the one line to add as the ticket asks.",
+    "Test the promote command and the gate against throwaway git repositories only. Never push, never create the release branch on `origin`, never touch the Cloudflare dashboard: those are the owner's steps, and the ticket's \"Owner actions needed\" lists them exactly.",
+    "The gate's rule today is that a push of `MPSkills` whose diff touches `web/`, `workers/scan-proxy/` or `android/` needs the External surfaces of that chain fresh. Keep that behaviour for whatever the decisions leave gated, and say in your STATUS which pushes are gated after your change, because the owner's push at the end of this round goes through it.",
+]
+
+
+HEADER = r"""# Push round: your run sheet (Worker A and Worker B)
+
+Working notes for getting the repo to a state where it can be pushed and the dashboard statistics are current. They are temporary: delete this file and its generator (`scripts/gen_push_round_handoff.py`) when the round ends. It is the sibling of [test-round-handoff.md](test-round-handoff.md), which keeps the Alpha owner steps (tester APK, testers, the phone checks); this sheet is only the way to the push. The general ticket flow is in [ticket-skills.md](ticket-skills.md). **Each ticket's card below is complete: the box on it is the whole first message for the build session, and the numbered steps give every command, in order.**
+
+**Words used here:** *Worker A* and *Worker B* are two build sessions that run side by side (A needs the emulator, B does not). The Cloudflare Worker that reads scans is called the *Scan Proxy* in this sheet, to keep the two apart.
+
+## Where things stand (2026-11-05)
+
+- **Last push** c1f1786 (2026-10-28). `MPSkills` is 100 or so commits ahead; the diff since then touches `android/` (the re-skin and its tests), `docs/`, `scripts/`, `tests/` and `.claude/`, and nothing under `web/` or `workers/`, so a push now would redeploy a Web identical to the live one.
+- **Merged since the last push:** the re-skin (#191 to #197, #199), the device matrix (#198), the hang detection (#200, #203), the tester script (#205) and the destructive-command guard (#207, live check done). The launch-readiness plan (tickets #210 to #221, in `docs/BETA_PLAN.md`) is documents only.
+- **What "the statistics" are.** `dashboard.svg` (the README graphic) is built from two things: the **measured results** (pass rates and coverage per context, saved in `scripts/dashboard_data/test_results.json`, last measured **2026-10-04**) and the **External surfaces** (their recorded passes in `scripts/dashboard_data/external_status.json`, last bundle 2026-10-28). The pre-commit hook rebuilds the graphic from the saved files on every commit to `MPSkills`; it measures nothing. So both files must be refreshed by real runs, then committed.
+- **External state:** 8 of the 10 active surfaces are stale (`uv run scripts/external_freshness.py`): `anthropic-python`, `anthropic`, `pages-site`, `revenuecat-android-sdk`, `revenuecat-web-billing`, `scan-proxy-worker`, `supabase-auth`, `supabase-tables`. Most are stale only because a new release of their provider's library came out. The pre-push gate blocks this push on three of them (the Android chain: `revenuecat-android-sdk`, `scan-proxy-worker`, `supabase-auth`); you chose to refresh all eight so the dashboard is green.
+- **Your decisions, 2026-11-05:** #222 and #223 stay in the Beta chain (not in this round); before the push merge #206, #225, #224 (Worker A) and #175 (Worker B); refresh all eight External surfaces.
+
+## What "ready to push" means
+
+1. #206, #225, #224 (Worker A) and #175 (Worker B) are merged, each reviewed with `/ticket-merge`.
+2. You have done #175's Cloudflare steps, so a push of `MPSkills` makes only a preview and cannot change the live site (see "Owner steps").
+3. On the final merged tree, with the emulator alone: the full device suite and the unit suites ran and the measured results are saved.
+4. The External bundle ran for all eight surfaces and `uv run scripts/external_freshness.py` shows nothing stale (`google-play-billing` is `planned` and never blocks).
+5. The two data files and `dashboard.svg` are committed on `MPSkills`, the tree is clean, and the gate says go.
+6. Claude asks you, and you say yes to the push.
+
+## The tickets, in order
+
+Two build sessions at once, a **new** session for every ticket. Worker A is Android and runs one ticket at a time (one emulator). Worker B is tooling and runs beside it (no emulator, no Gradle).
+
+| Order | Ticket | Worker | Starts when | Your part |
+|---|---|---|---|---|
+| A1 | [#206](#206-android-login-lands-on-the-front-page-not-account) Login lands on the front page | A | now | none while it builds; a phone check after the merge (see owner steps) |
+| A2 | [#225](#225-threebuttonnavigationtest-on-android-80) `ThreeButtonNavigationTest` on Android 8.0 | A | #206 is merged and its emulator is stopped | none |
+| A3 | [#224](#224-compose-device-tests-on-android-17) Compose device tests on Android 17 | A | #225 is merged and its emulator is stopped | none |
+| B1 | [#175](#175-web-publishes-from-a-release-branch) Web publishes from a release branch | B | now | answer its three decisions; then the Cloudflare steps after the merge |
+
+**Why this order in Worker A:** #206 changes what testers see first, and is small. #225 is a few lines in a test helper. #224 changes a test library that every Compose test uses, so it goes last: if it fails or is blocked, the other two are already in.
+
+**How the two workers stay out of each other's way**
+- **Memory:** only Worker A may use the emulator or Gradle. Worker B runs pytest and git only. If the machine runs short of memory, pause Worker B.
+- **Same files:** #225 and #224 both edit the "Device matrix (Tier 1)" section of `android/TESTING.md` (the #225 note and configuration 3's row); #175 and #206 share nothing. Claude merges one ticket at a time and settles any text clash at the merge; the later of #225 and #224 may need a refresh onto the new baseline, and Claude says so.
+- **Merge order between workers:** whichever finishes first.
+- **The emulator is used four times** (#206, #225, #224, then the final runs below), never two at once. Close Android Studio and any other emulator before each.
+
+## After the last merge: statistics, External bundle, push
+
+This is Claude's work in the main checkout, with the emulator alone and nothing else running. Claude delegates the long runs to a sub-agent and reports; you are asked at two points (marked **you**).
+
+1. `git status` is clean on `MPSkills`, and `uv run scripts/external_freshness.py` is run for the list. New provider releases make a surface stale again almost every day, so this list is taken fresh, here, not from this page.
+2. **Measured results** (the slowest step; Claude measures and reports its time): start `medium_phone` as in the cards, then run `uv run scripts/run_supervisor.py --suite --output-limit-s 600 -- uv run scripts/generate_dashboard.py --refresh`. It re-runs every context's tests (Core, Streamlit, Web, Android JVM and the full instrumented suite on the one attached emulator, Scan Proxy), saves `scripts/dashboard_data/test_results.json` and rebuilds `dashboard.svg`. A hung run (exit 124) is run once more; a failing test is a real finding and stops the round for you to decide. Stop the emulator afterwards.
+3. **External bundle** (the surfaces and their cost):
+
+   | Command (from the repo root) | Surfaces it runs | Cost |
+   |---|---|---|
+   | `.\web\test-external.ps1` | `pages-site`, `revenuecat-web-billing`, `supabase-auth`, `supabase-tables` | free |
+   | `cmd /c "echo y| powershell -NoProfile -File workers\scan-proxy\test-external.ps1 -MaxPaidCalls 4"` | `scan-proxy-worker` (1 paid scan), `anthropic` (3 paid calls) | up to 4 paid calls (two paid surfaces: if the wrapper asks to confirm once per surface, Claude answers each) |
+   | `cmd /c "echo y| powershell -NoProfile -File test-external.ps1 -MaxPaidCalls 3"` | `anthropic-python` | up to 3 paid calls |
+   | `.\android\test-external.ps1` (start `medium_phone` first, the emulator alone) | `revenuecat-android-sdk` | free |
+
+   **you:** the paid ceiling. The three paid surfaces add up to 7 calls, the ceiling you approved at the last bundle; Claude asks again before running, and does not run past the number you give. A wrapper runs only the surfaces that are stale, so a surface that went stale after step 1 is covered by running the wrapper again, which is cheap. If a wrapper reports a failure, it is recorded as `fail`, the surface stays blocking, and Claude brings it to you before anything else.
+4. `uv run scripts/external_freshness.py` again: nothing stale. Then `uv run scripts/external_gate.py check --platform android` and `--platform web` (they only read the record): both pass.
+5. Commit `scripts/dashboard_data/test_results.json`, `scripts/dashboard_data/external_status.json` and `dashboard.svg` on `MPSkills` (the pre-commit hook regenerates the graphic from them). Never from a `ticket-*` branch.
+6. **you:** Claude asks before the push. `git push` runs the gate (`core.hooksPath` must be `.githooks`; Claude checks it). After the push: `git rev-list --count origin/MPSkills..MPSkills` is 0, the push made a Pages **preview** (if #175's Cloudflare steps are done) and the live site is unchanged; the dashboard in the README shows the new statistics.
+
+## Owner steps, in the order they come up
+
+- [ ] When #175's build session asks, answer its three decisions: the name of the release branch (recommended `release`), whether a push of `MPSkills` is still gated (recommended: gate only the release branch), whether previews of `MPSkills` stay on (recommended yes; the preview addresses must then be in Supabase's Redirect URLs list).
+- [ ] After #175 merges (the ticket's "Owner actions needed" has the exact steps): create the `release` branch on `origin` **at the commit that is live today (c1f1786)**, set Pages' production branch to it in the Cloudflare dashboard, check that a push of `MPSkills` makes only a preview, and that the first promotion changes the production site. Do this **before** the final push, so the push cannot change the live site. Apply the one `CLAUDE.md` line the build session posts.
+- [ ] After #206 merges: build a beta APK (`.\gradlew.bat assembleBeta -PappVersionCode=<n>`, 4 or more) and check on the phone that signing in with a password lands on the front page, and again with Continue with Google. (This can wait for the tester APK build on the other sheet.)
+- [ ] Before the External bundle: close Android Studio and every other emulator or Claude session that has one running; have `web/.env.local` and the keys the wrappers read in place (a wrapper fails with the name of a missing one, and does not skip it).
+- [ ] Set the paid-call ceiling when Claude asks (see step 3 above), and say go for the push.
+- [ ] Clean up the empty `.claude/worktrees/ticket-197` and `ticket-198` folders after a reboot (something still holds them), and the older leftovers listed on the other sheet.
+
+**Not in this round (decided):** #222 and #223 (font 2.0 on a 360 x 640 dp phone; Beta chain), #209 and #208 (guard follow-ups), #170, #171, #204, #210 to #221 (launch gates and owner steps), and every Alpha owner step (tester APK, adding testers, guide): those stay on [test-round-handoff.md](test-round-handoff.md) and [BETA_PLAN.md](../BETA_PLAN.md). If you want one of them before the push, say so and Claude adds a card.
+
+## Run cards
+
+"""
+
+TAIL = r"""
+## Things to remember
+
+- Each card's step 3 (`/ticket-finish`) runs the offline suites once on the ticket and remembers the pass; step 4 (`/ticket-merge`) is Claude's review. Claude adds any missing test or testing-document row at the merge and asks you first.
+- The destructive-command guard (#207) asks before a delete, move or overwrite whose target is a variable, a wildcard, `~` or outside the project. A held command from a build session's sub-agent is refused, not asked. A `$VAR` assigned a literal on the line above still asks (noted on #209): answer Yes when you can see the literal.
+- Build sessions must write the literal scratch path, or use their Write and Edit tools, instead of `printf >` or `sed -i` for files outside the project.
+- `--maxprocesses=8` caps `-n auto` because 24 workers ran this machine out of memory; with the emulator and Gradle up, a Python test that creates a real git repo can fail with a memory error (about 3 in 16 runs). It is memory, not a regression: run it again.
+- An emulator a session started holds its `emulator.log` open and blocks deleting the ticket folder after `/ticket-merge`: stop the emulator and close any terminal open in the ticket's folder, then `rmdir` the leftover.
+- The External bundle goes stale daily: it is run once, at the end, with the emulator alone and the paid ceiling you set.
+- The scripts never push. A push needs your yes every time, and Web goes live on a push of `MPSkills` until #175's Cloudflare steps are done.
+"""
+
+TICKETS = [
+    gtr.card(
+        206, "Android login lands on the front page, not Account", "Worker A (1 of 3)",
+        "Starts now. Smallest and most visible of the three, so it goes first.", "A", A206,
+        "after the merge, on the phone: sign in with a password, then with Continue with Google, and check you land on the front page.",
+        android=True,
+    ),
+    gtr.card(
+        225, "`ThreeButtonNavigationTest` on Android 8.0", "Worker A (2 of 3)",
+        "Starts when #206 is merged and its emulator is stopped.", "A", A225,
+        "none.", android=True,
+    ),
+    gtr.card(
+        224, "Compose device tests on Android 17", "Worker A (3 of 3)",
+        "Starts when #225 is merged and its emulator is stopped. It changes a test library every Compose test uses, so it goes last.", "A", A224,
+        "none.", android=True,
+    ),
+    gtr.card(
+        175, "Web publishes from a release branch", "Worker B",
+        "Starts now, beside Worker A (no emulator, no Gradle: pytest and git only).", "S", B175,
+        "answer the three decisions when the session asks; after the merge do the Cloudflare steps in \"Owner steps\".",
+    ),
+]
+
+
+def main() -> int:
+    text = HEADER + "\n".join(TICKETS) + "\n" + TAIL
+    crlf = OUT.exists() and "\r\n" in OUT.read_bytes().decode("utf-8")
+    OUT.write_bytes((text.replace("\n", "\r\n") if crlf else text).encode("utf-8"))
+    print("written", len(text.splitlines()), "lines; crlf", crlf)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

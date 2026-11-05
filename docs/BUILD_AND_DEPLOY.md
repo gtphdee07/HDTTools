@@ -344,11 +344,12 @@ file. `--entitlement entl...` overrides it for one run.
   Supabase's Redirect URLs (the security audit checks that entry). A Web change
   that depends on a Worker change must wait to be promoted until the Worker is
   redeployed.
-  **Not yet applied in the dashboard (remove this note when it is):** until the
-  owner has created `release` on `origin` and switched Pages' production branch
-  to it (#175's "Owner actions needed"), the dashboard still says `MPSkills`
-  (confirmed 2026-10-15), so a push to `MPSkills` still goes live, and the External
-  gate no longer checks that push. Do those steps before the next push.
+  Applied 2026-11-05 (#175): `release` was created on `origin` at c1f1786 (the
+  commit that was live) and the owner switched Pages' production branch to it in
+  the dashboard. Supabase's Redirect URLs list has `http://localhost:5173/**`,
+  `https://rigcheck-web.pages.dev/**` and `https://*.rigcheck-web.pages.dev/**`
+  (the last one covers previews). Still to observe: that a push of `MPSkills`
+  makes only a preview, and the first promotion.
 
 ### GitHub
 

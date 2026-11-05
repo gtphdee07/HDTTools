@@ -262,29 +262,65 @@ class PushHarness:
         return eg.pre_push("".join(lines), changed_paths=self.changed_paths, gate=self.gate)
 
 
-def push_line(remote_ref="refs/heads/MPSkills", local_sha="a" * 40, remote_sha="b" * 40):
+def push_line(remote_ref="refs/heads/release", local_sha="a" * 40, remote_sha="b" * 40):
     return f"refs/heads/MPSkills {local_sha} {remote_ref} {remote_sha}\n"
 
 
-def test_a_push_of_another_branch_is_not_gated_and_not_even_diffed():
-    harness = PushHarness(["web/src/App.tsx"])
+@pytest.mark.parametrize("branch", ["MPSkills", "ticket-43", "main", "release-candidate", "releases/1"])
+def test_a_push_of_any_branch_but_the_release_branch_is_not_gated_and_not_even_diffed(branch):
+    # MPSkills included (#175): Pages publishes from `release`, so an ordinary push cannot change the live site.
+    harness = PushHarness(["web/src/App.tsx", "workers/scan-proxy/src/index.ts", "android/a.kt"], gate_code=1)
 
-    assert harness.run(push_line("refs/heads/ticket-43")) == 0
+    assert harness.run(push_line(f"refs/heads/{branch}")) == 0
     assert harness.gated == [] and harness.diffed == []
 
 
-def test_a_docs_only_push_to_mpskills_passes_without_running_the_gate():
+def test_the_gated_branch_is_the_one_the_promote_command_moves():
+    import promote_release
+
+    assert eg.GATED_BRANCH_REF == f"refs/heads/{promote_release.RELEASE_BRANCH}" == "refs/heads/release"
+
+
+def test_a_docs_only_push_of_the_release_branch_passes_without_running_the_gate():
     harness = PushHarness(["README.md", "docs/a.md"])
 
     assert harness.run(push_line()) == 0
     assert harness.gated == []
 
 
-def test_a_push_touching_web_is_gated_for_web_and_the_verdict_decides():
+def test_a_push_of_the_release_branch_touching_web_is_gated_for_web_and_the_verdict_decides():
     assert PushHarness(["web/src/App.tsx"], gate_code=0).run(push_line()) == 0
     harness = PushHarness(["web/src/App.tsx"], gate_code=1)
     assert harness.run(push_line()) == 1
     assert harness.gated == [["web"]]
+
+
+def test_a_release_push_touching_web_is_blocked_while_a_web_surface_is_stale_and_passes_when_fresh():
+    # The real verdict behind the hook's decision: pre_push -> gate -> freshness, fakes only at the edges.
+    def push(git_changes):
+        out = []
+        code = eg.pre_push(
+            push_line(),
+            changed_paths=lambda remote_sha, local_sha: ["web/src/App.tsx"],
+            gate=lambda platforms: eg.gate(
+                platforms, out=out.append, manifest=MANIFEST, status=ALL_FRESH,
+                git=FakeGit(changed=git_changes), registry=FakeRegistry(),
+            ),
+        )
+        return code, "\n".join(out)
+
+    blocked_code, blocked_out = push(["web/src/auth.tsx"])  # web-auth changed since its last pass
+    fresh_code, _ = push([])
+
+    assert blocked_code == 1 and "web-auth" in blocked_out
+    assert fresh_code == 0
+
+
+def test_a_push_of_release_alongside_mpskills_is_gated_by_the_release_ref_alone():
+    harness = PushHarness(["android/a.kt"], gate_code=1)
+
+    assert harness.run(push_line("refs/heads/MPSkills"), push_line()) == 1
+    assert harness.gated == [["android"]] and len(harness.diffed) == 1
 
 
 def test_deleting_the_branch_is_not_gated():

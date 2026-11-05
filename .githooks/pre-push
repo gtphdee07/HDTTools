@@ -1,9 +1,10 @@
 #!/bin/sh
 # ADR-0008 release gate. Git runs this before a push and writes one line per
-# pushed ref to stdin; the script gates a push of MPSkills (Pages' production
-# branch) whose diff touches web/, workers/scan-proxy/ or android/, and lets
-# every other push through. It reads the recorded External status and the
-# package registries; it never runs a live test.
+# pushed ref to stdin; the script gates a push of the release branch (Pages'
+# production branch, moved by scripts/promote_release.py) whose diff touches
+# web/, workers/scan-proxy/ or android/, and lets every other push through,
+# MPSkills included. It reads the recorded External status and the package
+# registries; it never runs a live test.
 #
 # Blocks when a surface in the release's chain is stale, failed, skipped or
 # never run, or a registry cannot be reached. To push anyway, give a reason:

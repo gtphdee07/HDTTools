@@ -16,7 +16,7 @@ exact tool paths. Use it as an example, not as truth for a new machine.
 |---|---|---|---|
 | Android app | `android/` | Android devices | Debug APK from Gradle today. Play Store release is **not set up in the repo** (see section 8). |
 | Scan service (Worker) | `workers/scan-proxy/` | Cloudflare Workers | `npm run deploy` (wrangler) |
-| Web app | `web/` | Browser (static) | Cloudflare Pages, push-to-deploy from GitHub |
+| Web app | `web/` | Browser (static) | Cloudflare Pages, publishes from the `release` branch (moved by `scripts/promote_release.py`); other branches get previews |
 | Streamlit demo | `streamlit_app/` | Streamlit Community Cloud | Push-to-deploy from GitHub (branch `main`) |
 | Core library, tests, tooling | `src/hdttools/`, `scripts/`, `tests/` | Your machine | Not deployed. The FastAPI app that was in the `api` package was removed (ADR-0007, #135). |
 
@@ -195,7 +195,7 @@ the apps at a new project, all of it must be recreated or re-verified.
   (no new migration, no redeploy). The app tells the functions whether the account
   is Pro, so the cap is only as honest as the app (owner's decision on #30; a
   server-verified plan would be a later ticket). **Run it before the Web build
-  that sends the plan is deployed** (Pages deploys on every push to `MPSkills`):
+  that sends the plan is deployed** (that is, before `release` is promoted to a commit with it, section 6):
   that build calls the two functions with a `p_pro` argument the old ones do not
   have, so every Rig and History save fails until the migration is applied. The
   other order is safe: an older Web build omits `p_pro` and is treated as Free.
@@ -336,12 +336,19 @@ file. `--entitlement entl...` overrides it for one run.
   rebuilding the app.
 - **Pages** project `rigcheck-web`, Git integration to `gtphdee07/HDTTools`.
   Settings: root directory `web`, build command `npm run build`, build output
-  directory `dist`. The **production branch is `MPSkills`** (confirmed in the
-  Cloudflare dashboard, 2026-10-15, with automatic deployments on), so **every
-  push to `MPSkills` publishes the Web app to https://rigcheck-web.pages.dev/**.
-  A Web change that depends on a Worker change must wait to be pushed until
-  the Worker is redeployed. Other branches get preview URLs, which is why
-  preview hosts appear in Supabase's Redirect URLs.
+  directory `dist`. The **production branch is `release`** (#175), so **the Web
+  app at https://rigcheck-web.pages.dev/ changes only when `release` moves**, and
+  `release` moves only through `scripts/promote_release.py` (section 6). A push to
+  `MPSkills` (or any other branch) makes a **preview** deployment at its own
+  address and leaves the live site alone, which is why preview hosts appear in
+  Supabase's Redirect URLs (the security audit checks that entry). A Web change
+  that depends on a Worker change must wait to be promoted until the Worker is
+  redeployed.
+  **Not yet applied in the dashboard (remove this note when it is):** until the
+  owner has created `release` on `origin` and switched Pages' production branch
+  to it (#175's "Owner actions needed"), the dashboard still says `MPSkills`
+  (confirmed 2026-10-15), so a push to `MPSkills` still goes live, and the External
+  gate no longer checks that push. Do those steps before the next push.
 
 ### GitHub
 
@@ -373,11 +380,26 @@ Anything in `[vars]` (`wrangler.toml`) is plain config and is committed. If you
 use a different RevenueCat project, Supabase project or currency, change those
 values there.
 
-**Web:** push to `MPSkills` (the production branch) and Cloudflare Pages builds
-and publishes within a few minutes. The pre-push hook gates that push when it touches `web/`
-(External release gate, `TESTING.md`). Local build check: `cd web && npm run build`. Anything the
-production bundle needs at build time must be committed in `web/.env.production`
-(public values only).
+**Web:** two steps. A push to `MPSkills` makes a Cloudflare Pages **preview** only
+(look at it on its preview address; the live site is unchanged). To publish, promote
+a commit that is on `MPSkills` to the `release` branch (Pages' production branch)
+from the checkout that has `MPSkills` checked out:
+
+```
+uv run scripts/promote_release.py            # the tip of MPSkills; or pass a commit
+uv run scripts/promote_release.py <commit> --create    # only the first time, if origin has no release
+```
+
+It refuses a commit that is not on `MPSkills`, a move that is not a fast-forward
+(it never rewrites `release` and never forces), and a run nobody confirmed. Before
+it asks `Push? [y/N]` it prints the files under `web/` that differ from the live tip,
+or says nothing under `web/` changed. `--yes` skips the question (after you have read
+the plan). The push is an ordinary `git push`, so the pre-push hook runs the
+External release gate on it when the diff touches `web/`, `workers/scan-proxy/` or
+`android/` (`TESTING.md`); the gate guards `release`, not `MPSkills`. Cloudflare
+Pages builds and publishes within a few minutes of the promotion. Local build
+check: `cd web && npm run build`. Anything the production bundle needs at build
+time must be committed in `web/.env.production` (public values only).
 
 **Android debug build:** `cd android && .\gradlew.bat installDebug` with a
 device or emulator attached.

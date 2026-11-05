@@ -35,7 +35,9 @@ one Scan Credit.
 
 ## Deploy (Cloudflare Pages)
 
-Live at https://rigcheck-web.pages.dev/. Push-to-deploy via Cloudflare Pages' Git integration (ADR-0007). One-time
+Live at https://rigcheck-web.pages.dev/. Deployed by Cloudflare Pages' Git integration (ADR-0007) from the
+`release` branch, which only `scripts/promote_release.py` moves (`docs/BUILD_AND_DEPLOY.md` section 6); a push of any
+other branch makes a preview. One-time
 dashboard setup: Workers & Pages → Create → Pages → connect the GitHub repo,
 then set **Root directory** `web`, **Build command** `npm run build`,
 **Build output directory** `dist`, and the production branch. `wrangler.toml`

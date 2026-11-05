@@ -35,7 +35,7 @@ categories this file's tables use.
 | Dead code | `npm run check:dead-code` |
 | Lint | `npm run lint` (oxlint); warnings are judged against an allow-list by the session-end command below |
 | Static checks, session end (#150) | `uv run scripts/static_checks.py web` (from the repo root): `tsc -b`, oxlint, knip. Offline, exits 0 only when all three pass |
-| Release | none: Web has no full-run release. A push to `MPSkills` that touches `web/` is guarded by the External release gate (`scripts/external_gate.py`, run by `.githooks/pre-push`; `uv run scripts/external_freshness.py --platform web` shows what it would block on) and nothing else |
+| Release | none: Web has no full-run release. A push of the `release` branch (Pages' production branch, moved by `scripts/promote_release.py`) that touches `web/` is guarded by the External release gate (`scripts/external_gate.py`, run by `.githooks/pre-push`; `uv run scripts/external_freshness.py --platform web` shows what it would block on) and nothing else |
 | External, stale surfaces only (live, free) | `web\test-external.ps1` (see below) |
 
 The one-file command is a Vitest path filter, not an exact match — a less
@@ -324,7 +324,7 @@ not imported by any test, and what `coverage.include` below exists to show),
 `src/supabaseGarage.ts` 73%, `src/wizard/UploadStep.tsx` 88%, `src/scanImage.ts` 90%,
 `src/App.tsx` 92%, `src/garageImport.ts` 94%, `src/billing.tsx` 95%.
 `scripts/coverage_gate.py` reports this number **report-only**, not enforced: Web
-has a release event now (a push of `MPSkills` that touches `web/` deploys it to
+has a release event now (promoting `release` to a commit that touches `web/` deploys it to
 Cloudflare Pages, guarded by the External release gate), but no floor has been set,
 and rule 9 of `docs/test-audit/rules.md` leaves the number to the owner. The
 script's own "not gated — no release event yet" note is out of date. See the root
@@ -466,7 +466,7 @@ against the test audit in `docs/test-audit/web.md`.
 - ✅ **Closed (#42, #28, #85, #43)**: the audit's worst Web gap, that External
   covered only `supabase-auth`, is closed: four active surfaces (`supabase-auth`,
   `pages-site`, `supabase-tables`, `revenuecat-web-billing`, see "External suite"), and
-  the pre-push External gate for a push that deploys Web is installed
+  the pre-push External gate for a push of the branch that deploys Web is installed
   (`.githooks/pre-push`, root `TESTING.md`).
 - ✅ **Closed 2026-08-21**: function tests for `recentRigs.ts` and
   `api.ts` in isolation — see `src/recentRigs.test.ts` and

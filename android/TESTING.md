@@ -376,6 +376,104 @@ emulator, adb or real wait) in `tests/test_run_supervisor.py`, `tests/test_run_s
 `tests/test_long_command_guard.py`, `tests/test_run_watch.py` and the hang cases of
 `tests/test_android_suite_loop.py`. Real runs, 2026-10-28: see the ticket (#200).
 
+### Device matrix (Tier 1) (#198)
+
+Every screen check used to run on one emulator, the Medium Phone (411 x 914 dp), which is taller than most real
+phones. Tier 1 of [`docs/research/android-device-coverage.md`](../docs/research/android-device-coverage.md) (Q4) is
+four "corner" configurations, each its own emulator profile in `ANDROID_AVD_HOME` (`G:\Android\EmulatorHome\avd`,
+never the user profile on C:):
+
+| # | Profile | Hardware profile | Android | Font | Navigation | Why |
+|---|---|---|---|---|---|---|
+| 1 | `medium_phone` (the old one) | `medium_phone` | 36 (Google Play image) | 1.0 | gesture | baseline |
+| 2 | `rc_small_phone_api36` | `small_phone` | 36 (Google Play image) | 2.0 | 3-button | smallest and shortest window, biggest text, tallest bottom bar |
+| 3 | `rc_pixel_9_pro_xl_api37` | `pixel_9_pro_xl` | 37 (Google Play image) | 1.0 | gesture | tallest and widest common phone, newest Android |
+| 4 | `rc_pixel_3a_api26` | `pixel_3a` | 26, the app's minSdk (Google APIs image, **no Play Store**) | 1.15 | 3-button (the only kind on API 26) | oldest supported Android, older phone proportions |
+
+The three `rc_*` profiles were made 2026-11-04 with `avdmanager create avd -n <name> -k "<system image>" -d <hardware
+profile>` (`ANDROID_AVD_HOME` already points at G:), and their folders hold 3.4 to 5.7 GB each. The Android 26 image is
+`system-images;android-26;google_apis;x86_64` in `G:\Android\Sdk` (3.2 GB): there is no x86_64 Google Play image for
+API 26, only a 32-bit x86 one, and the app fakes RevenueCat in these tests so the Play Store is not needed. `avdmanager`
+prints `Could not load devices from ...\devices.xml` errors for the Android 36 and 37 images while it creates the
+profiles; the profiles come out right (`avdmanager list avd` shows each with the intended hardware profile and
+Android version, every path under `G:\Android\EmulatorHome\avd`). It also writes `PlayStore.enabled=no` for the Play
+images, which does not stop the Play Store app from being there; the External suite still runs on `medium_phone`.
+
+**Start one** (one emulator at a time; headless, as in the rest of this file; the script passes `-gpu swangle_indirect
+-no-snapshot -no-boot-anim` itself and cold-boots):
+
+```
+uv run scripts/android_suite_loop.py --boot-only --avd rc_small_phone_api36 --emulator-arg=-no-window --emulator-arg=-no-audio
+adb -s emulator-5554 emu kill        # when done
+```
+
+The settings below are stored in the profile's data partition, which `-no-snapshot` does not wipe: they **survive a cold
+boot**, so each profile is set once and keeps its configuration (`rc_small_phone_api36` is left at font 2.0 and 3-button,
+`rc_pixel_3a_api26` at font 1.15, `medium_phone` and `rc_pixel_9_pro_xl_api37` at the defaults). Set a different
+configuration back after a one-off experiment.
+
+**First boot of a new profile on Android 36 and 37.** Those images are `user` builds, so the emulator asks "Allow USB
+debugging?" on the first boot of each new profile, and adb shows the device as `unauthorized` until someone taps it
+(the boot script keeps waiting; the first boot of `rc_small_phone_api36` took 543 s and of `rc_pixel_9_pro_xl_api37`
+187 s for that reason). In a headless emulator, tap it through the emulator's console: read the token in
+`~/.emulator_console_auth_token`, connect to `localhost:5554`, send `auth <token>`, then `screenrecord screenshot
+<existing folder>` to see the dialog, then `event mouse <x> <y> 0 1` followed by `event mouse <x> <y> 0 0` for the
+"Always allow" box and for Allow (the coordinates are the screenshot's own pixels). "Always allow" is remembered, so it
+is once per profile. The API 26 image is a `userdebug` build and needs none.
+
+**The settings recipe** (every command run on the emulator, 2026-11-04; `adb -s emulator-5554` so a phone on the cable is
+never touched):
+
+| Setting | Command | Read it back | Result |
+|---|---|---|---|
+| Window size | `adb -s emulator-5554 shell wm size 1080x1920` (`wm size reset` undoes it) | `wm size` prints `Physical size` and, with an override, `Override size` | **works** (API 36); the profile's own size is already right, so it is not needed for the four configurations |
+| Density ("Display size") | `adb -s emulator-5554 shell wm density 480` (`wm density reset`) | `wm density` | **works** (API 36), same note |
+| Font scale | `adb -s emulator-5554 shell settings put system font_scale 2.0` | `settings get system font_scale` | **works** on 26, 36 and 37 |
+| 3-button navigation | `adb -s emulator-5554 shell cmd overlay enable com.android.internal.systemui.navbar.threebutton` (the #186 recipe) | `settings get secure navigation_mode`: `0` is 3-button, `2` gesture | **works** on 36 and 37. **Not on API 26:** it has no overlay and no `navigation_mode` (it prints `null`); the phone always shows the on-screen bar |
+| Gesture navigation | the same with `...navbar.gestural` | the same | **works** on 36 and 37 |
+
+Read the navigation style from `navigation_mode`, not from `cmd overlay list`: after the change that list still showed
+both the 3-button and the gesture overlay marked `[x]`. A setting that was not tried: `cmd overlay` on API 26 prints
+nothing, so the helper `testsupport/NavigationMode.kt` cannot wait for a mode that does not exist there (#225).
+
+**Measured dp, beside the research file's computed values** (`wm size` and `wm density` on each running emulator;
+dp = px / (density / 160)):
+
+| # | `wm size` | `wm density` | Measured dp | Research file (Q2) | Same? |
+|---|---|---|---|---|---|
+| 1 | 1080x2400 | 420 | 411.4 x 914.3 | 411 x 914 | yes |
+| 2 | 720x1280 | 320 | 360 x 640 | 360 x 640 | yes |
+| 3 | 1344x2992 | 480 | 448 x 997.3 | 448 x 997 | yes (the "xxhdpi read as 480" guess was right) |
+| 4 | 1080x2220 | 440 | 392.7 x 807.3 | 393 x 807 | yes |
+
+**Boot time** (the wall time of `--boot-only`, cold boot to "steadily ready": three steady polls in a row plus the
+script's 20 s settle, headless, software GPU; a profile's very first boot is longer, see above):
+
+| # | Profile | Cold boot |
+|---|---|---|
+| 1 | `medium_phone` | 105 s |
+| 2 | `rc_small_phone_api36` | 94 s |
+| 3 | `rc_pixel_9_pro_xl_api37` | 94 s |
+| 4 | `rc_pixel_3a_api26` | 55 s |
+
+**Results, 2026-11-04.** `SystemBarsTest` and `PaywallScreenTest` (35 tests: 2 and 33), one emulator at a time, each
+command being
+
+```
+uv run scripts/run_supervisor.py --device --output-limit-s 300 -- android/gradlew -p android connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.rigcheck.app.ui.navigation.SystemBarsTest,com.rigcheck.app.ui.screens.PaywallScreenTest
+```
+
+| # | Configuration | Result | Ticket |
+|---|---|---|---|
+| 1 | `medium_phone`, 36, font 1.0, gesture | **pass**, 35 of 35 | |
+| 2 | `rc_small_phone_api36`, 36, font 2.0, 3-button | **fail**, 2 of 35: `SystemBarsTest.theRigPickersCreateButtonLiesAboveTheNavigationBarAndCanBeTapped` (the Create button is "not displayed") and `PaywallScreenTest.proCannotBeBoughtAgainWhileThePlanCatchesUp` ("Pro is yours." is "not displayed"). Both repeat at font 2.0 and pass at font 1.0 on the same emulator (35 of 35), so the large font is the cause | #222, #223 |
+| 3 | `rc_pixel_9_pro_xl_api37`, 37, font 1.0, gesture | **fail**, 35 of 35, none checked anything: Espresso 3.5.1 throws `NoSuchMethodException: android.hardware.input.InputManager.getInstance` on Android 17. A tooling failure, not an app finding; the Android 37 screens are unchecked until it is fixed | #224 |
+| 4 | `rc_pixel_3a_api26`, 26, font 1.15, 3-button | **pass**, 35 of 35 | |
+
+One extra check on configuration 4, beyond the two classes: `ThreeButtonNavigationTest` stops at its first test
+(`the navigation mode did not become 0 (it is null)`), because API 26 has no `navigation_mode` setting (#225). A run
+takes about 1 to 4 minutes once the APKs are built (the first run of the session also built them, 4 min 18 s).
+
 ## Categories
 
 | Category | Status | Trigger | Network calls | Command |

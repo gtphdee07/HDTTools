@@ -2,6 +2,8 @@
 
 Drafted 2026-11-05 for the joint Web and Android launch in [BETA_PLAN.md](BETA_PLAN.md). These are the steps only you can take, and most wait on a third party, so they start first. Each item says what to do, what to have ready, what it unlocks, and what is still unconfirmed. **Confirmed** means a Google, Stripe or RevenueCat page said it (the source is listed at the end). **Unconfirmed** means I wrote it from general knowledge or a third-party page; check it on the real sign-up screen before relying on it.
 
+Tracking: epic **#214**; L1 **#215**, L2 **#216**, L3 **#217**, L4 **#218** (links #33 and #34), L5 **#219**, L6 **#220**. The Play-uploadable build for the Beta is **#221**.
+
 ## How the six fit together
 
 ```

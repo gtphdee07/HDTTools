@@ -433,8 +433,9 @@ never touched):
 | Gesture navigation | the same with `...navbar.gestural` | the same | **works** on 36 and 37 |
 
 Read the navigation style from `navigation_mode`, not from `cmd overlay list`: after the change that list still showed
-both the 3-button and the gesture overlay marked `[x]`. A setting that was not tried: `cmd overlay` on API 26 prints
-nothing, so the helper `testsupport/NavigationMode.kt` cannot wait for a mode that does not exist there (#225).
+both the 3-button and the gesture overlay marked `[x]`. On API 26 to 28 `cmd overlay` prints nothing and there is no
+`navigation_mode`, so `testsupport/NavigationMode.kt` treats a missing setting there as "already 3-button": it changes
+and restores nothing (#225). From API 29 it still sets the overlay, waits for `0` and restores the old mode.
 
 **Measured dp, beside the research file's computed values** (`wm size` and `wm density` on each running emulator;
 dp = px / (density / 160)):
@@ -470,8 +471,13 @@ uv run scripts/run_supervisor.py --device --output-limit-s 300 -- android/gradle
 | 3 | `rc_pixel_9_pro_xl_api37`, 37, font 1.0, gesture | **fail**, 35 of 35, none checked anything: Espresso 3.5.1 throws `NoSuchMethodException: android.hardware.input.InputManager.getInstance` on Android 17. A tooling failure, not an app finding; the Android 37 screens are unchecked until it is fixed | #224 |
 | 4 | `rc_pixel_3a_api26`, 26, font 1.15, 3-button | **pass**, 35 of 35 | |
 
-One extra check on configuration 4, beyond the two classes: `ThreeButtonNavigationTest` stops at its first test
-(`the navigation mode did not become 0 (it is null)`), because API 26 has no `navigation_mode` setting (#225). A run
+One extra check on configuration 4, beyond the two classes: `ThreeButtonNavigationTest` stopped at its first test
+(`the navigation mode did not become 0 (it is null)`), because API 26 has no `navigation_mode` setting. **Fixed in #225
+(2026-11-05):** the helper now treats the missing setting as already 3-button, and the test's bar position now comes from
+the frame it sets, not from `Probe.heightDp`, which leaves the bar out before Android 11 (it took the bar off twice and
+reported 20 false overlaps). `ThreeButtonNavigationTest` then passes 16 of 16 on `rc_pixel_3a_api26` (API 26) and on
+`medium_phone` (API 36). Not usable on API 26: `-Pandroid.testInstrumentationRunnerArguments.layoutScreenshots=true`
+(`UiAutomation.executeShellCommandRw` needs API 30; every test fails with `NoSuchMethodError`). A run
 takes about 1 to 4 minutes once the APKs are built (the first run of the session also built them, 4 min 18 s).
 
 ## Categories

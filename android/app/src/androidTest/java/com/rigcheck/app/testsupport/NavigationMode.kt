@@ -1,6 +1,7 @@
 package com.rigcheck.app.testsupport
 
 import android.app.Instrumentation
+import android.os.Build
 import androidx.test.uiautomator.UiDevice
 
 // Puts the device on 3-button navigation for a test and back where it was (#197): the system-bar rule is only proven on
@@ -13,6 +14,10 @@ class NavigationMode(instrumentation: Instrumentation) {
     fun use3Buttons() {
         val current = mode()
         if (current == THREE_BUTTON) return
+        // Android 8.0 to 9 (API 26 to 28) has no navigation_mode setting and no navigation overlay: the phone always shows
+        // the on-screen bar, so it is already on 3-button navigation and there is nothing to change or restore (#225).
+        // From API 29 a missing reading is not trusted: it falls through to the overlay path and fails loudly there.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && current.isNavigationModeMissing()) return
         changedFrom = overlayOf(current)
         device.executeShellCommand("cmd overlay enable $THREE_BUTTON_OVERLAY")
         awaitMode(THREE_BUTTON)
@@ -26,6 +31,9 @@ class NavigationMode(instrumentation: Instrumentation) {
 
     // 0 = 3-button, 1 = 2-button, 2 = gestures (Settings.Secure navigation_mode).
     private fun mode(): String = device.executeShellCommand("settings get secure navigation_mode").trim()
+
+    // `settings get` prints the word "null" for a setting that does not exist.
+    private fun String.isNavigationModeMissing(): Boolean = isEmpty() || this == "null"
 
     private fun overlayOf(mode: String): String = when (mode) {
         "0" -> THREE_BUTTON_OVERLAY

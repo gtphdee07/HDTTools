@@ -100,7 +100,7 @@ Every open ticket carries exactly one bucket label, or none if it is a container
 | Bucket (label) | Rule | Tickets on 2026-11-05 |
 |---|---|---|
 | Alpha (`pre-alpha`) | Alpha testers cannot be invited without it | #198 |
-| Before Beta (`pre-beta`) | Beta cannot run, or cannot rehearse the launch, without it; includes test work that shortens runs or widens coverage for the Beta regressions | #175 #177 #114 #171 #170 #206 #210 #211 #221, and #132 #144 #157 #158 #159 #165 |
+| Before Beta (`pre-beta`) | Beta cannot run, or cannot rehearse the launch, without it; includes test work that shortens runs or widens coverage for the Beta regressions | #175 #177 #114 #171 #170 #206 #210 #211 #221, #222 #223 #224 #225 (found by #198's device matrix; filed 2026-11-05), and #132 #144 #157 #158 #159 #165 |
 | Before launch (`pre-release`) | Skipping it risks money, user data, a store rejection or a broken launch | #212 #213 #33 #34 #40 #96 #100 #72 #138 #209, and the owner steps #215 to #220 |
 | After launch (`future`) | Enhancement, or tooling that does not protect the launch | #2 #13 #14 #77 #173 #204, and #68 #70 #145 #155 #208 |
 | Closed, not doing (`wontfix`) | Not worth building | #69 (epic-close hook), #139 (pre-push registry cache) |

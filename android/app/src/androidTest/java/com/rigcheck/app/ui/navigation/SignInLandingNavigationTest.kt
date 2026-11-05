@@ -78,9 +78,10 @@ private object NoChecks : HistoryBackend {
     override suspend fun caps() = HistoryCaps(free = 10, pro = 50)
 }
 
-// #206: signing in lands on the front page (the Rig picker), not on the account standing the sign-in screen turns
-// into, and only the change from signed out to signed in does it. Through the real nav host and view model with a
-// fake account.
+// #206: signing in returns to the screen the sign-in was started from, not to the account standing the sign-in screen
+// turns into: the front page (the Rig picker) when it was started there, the check's own screen when it was started
+// inside a check. Only the change from signed out to signed in does it. Through the real nav host and view model with
+// a fake account.
 @RunWith(AndroidJUnit4::class)
 class SignInLandingNavigationTest {
 
@@ -168,6 +169,30 @@ class SignInLandingNavigationTest {
         waitForAccount(signedIn = true)
         assertOnTheFrontPageSignedIn()
         assertFrontPageIsAloneInTheBackStack()
+    }
+
+    // A sign-in started inside a check (a Scan error's "Sign in", buying Scans while signed out) opens the same
+    // sign-in screen over the check's own screen; the user goes back to that screen, not to the front page. The
+    // Chooser is put in place by navigating, which avoids typing a nickname (and so the keyboard waits of #125).
+    @Test
+    fun aSignInStartedInsideACheckReturnsToTheCheck() {
+        showApp(SignInAccount(BackendStatus.NotAuthenticated))
+        waitForAccount(signedIn = false)
+        composeRule.runOnUiThread {
+            navController.navigate(RigCheckRoute.Chooser(EntryModule.TRUCK))
+            navController.navigate(RigCheckRoute.Paywall)
+        }
+        composeRule.waitUntil(timeoutMillis = 10_000) { composeRule.nodesWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON) == 1 }
+
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_EMAIL_FIELD).performTextInput("rig@example.com")
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_PASSWORD_FIELD).performTextInput("hunter22")
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_SUBMIT).performClick()
+
+        waitForAccount(signedIn = true)
+        composeRule.waitUntil(timeoutMillis = 10_000) { composeRule.nodesWithTag(UiTags.CHOOSER_MANUAL_CARD) == 1 }
+        composeRule.onNodeWithTag(UiTags.CHOOSER_MANUAL_CARD).assertIsDisplayed()
+        composeRule.onNodeWithTag(UiTags.PAYWALL_TITLE).assertDoesNotExist()
+        composeRule.onNodeWithTag(UiTags.ACCOUNT_GOOGLE_BUTTON).assertDoesNotExist()
     }
 
     @Test

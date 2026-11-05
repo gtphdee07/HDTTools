@@ -93,6 +93,21 @@ Owner decisions: Web and Android go public **on the same day**; Alpha and Beta u
 
 Sources: Google Play Help, "Testing requirements for new personal accounts" (support.google.com/googleplay/android-developer/answer/14151465); Google Cloud Help, "Manage App Audience" (support.google.com/cloud/answer/15549945); Android Developers Blog, "Boosting trust and transparency in Google Play" (July 2023, the D-U-N-S requirement); RevenueCat docs and community threads on Web Billing sandbox and production configurations; Stripe, "Go live" checklist (docs.stripe.com/get-started/checklist/go-live). The timing figures for D-U-N-S and organization verification come from third-party help pages, not from Google, so treat them as estimates.
 
+## Ticket sort (owner, 2026-11-05)
+
+Every open ticket carries exactly one bucket label, or none if it is a container. Give a new ticket its bucket when it is filed, and re-sort at the end of Alpha. Check with `gh issue list --label <bucket>`; this table is a snapshot and goes stale first.
+
+| Bucket (label) | Rule | Tickets on 2026-11-05 |
+|---|---|---|
+| Alpha (`pre-alpha`) | Alpha testers cannot be invited without it | #198 |
+| Before Beta (`pre-beta`) | Beta cannot run, or cannot rehearse the launch, without it; includes test work that shortens runs or widens coverage for the Beta regressions | #175 #177 #114 #171 #170 #206 #210 #211 #221, and #132 #144 #157 #158 #159 #165 |
+| Before launch (`pre-release`) | Skipping it risks money, user data, a store rejection or a broken launch | #212 #213 #33 #34 #40 #96 #100 #72 #138 #209, and the owner steps #215 to #220 |
+| After launch (`future`) | Enhancement, or tooling that does not protect the launch | #2 #13 #14 #77 #173 #204, and #68 #70 #145 #155 #208 |
+| Closed, not doing (`wontfix`) | Not worth building | #69 (epic-close hook), #139 (pre-push registry cache) |
+| Containers (no label) | Track their children only | #3 #15 #35 #49 #51 #99 #187 #214 |
+
+Decisions in the sort: #170 (import phone-saved Rigs on first sign-in, an `enhancement`) moved up to before Beta because a Rig saved before sign-in disappears from view and confuses testers; #96 and #100 (scan replay) stay before launch and are decided with the Alpha scan numbers; tooling that shortens or widens the test runs goes before Beta, the rest waits. #172, #176 and #178 were closed because their children are done.
+
 ## Decisions behind the plan (owner)
 
 - **Payments in Alpha and Beta:** test payments only. Web uses RevenueCat Web Billing sandbox and Android uses RevenueCat's Test Store. No real money moves, so Google Play Console, final pricing (#33) and the full legal review (#34) gate the Release, not Alpha or Beta.

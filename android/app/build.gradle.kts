@@ -380,3 +380,15 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
+
+// Espresso 3.7.0 (needed on Android 17 / API 37 - #224) wants newer
+// androidx.concurrent and error_prone_annotations than the app's runtime classpath
+// resolves, and AGP pins the androidTest classpath to the app's versions, so the
+// build fails on the conflict. Excluded here (not on the Espresso dependency, which
+// also arrives through ext.junit and the Compose test libraries) so the app's own
+// copies serve the tests and nothing shipped changes. Details: android/TESTING.md,
+// "Device matrix (Tier 1)".
+configurations.named("androidTestImplementation") {
+    exclude(group = "androidx.concurrent")
+    exclude(group = "com.google.errorprone", module = "error_prone_annotations")
+}

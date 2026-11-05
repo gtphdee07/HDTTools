@@ -1709,6 +1709,22 @@ not tapped through the photo picker; the tests start the Scan on the view model.
 same flow after "Buy more Scans": the signed-in Paywall's Back control returns to the screen
 the Scan started on (the Chooser, or the Truck Tag screen) and leaves the user signed in.
 
+**Sign-in landing tests** (`ui/navigation/SignInLandingNavigationTest.kt`, 4 tests, #206) — signing in lands on the
+front page (the Rig picker), not on the account standing the sign-in screen turns into. `RigCheckNavHost` watches the
+account state and goes to the Rig picker, popping everything above it, only on the change from signed out to signed in
+while the Paywall route is on show (`wasSignedOut` is `rememberSaveable`, so turning the device does not lose it).
+Through the real nav host and view model with a fake account backend that signs in at once (`SignInAccount`) and an
+empty Garage and History: a password sign-in typed into the sign-in screen, and a Google sign-in, land on the picker
+with the sign-in screen and the account standing gone from the back stack (nothing for Back to return to); the account
+standing opened by the credit chip while signed in stays open; and a saved session found while the account standing is
+already open (the account goes from "Loading" to signed in, which is not a sign-in) does not move the user. A device
+test cannot drive Google's own screen, so the Google test flips the backend's status to signed in, which is the point
+every sign-in (password, Google, Apple) returns through; what stays manual is a real "Continue with Google" on a phone.
+Seen to go red on the emulator: the navigation removed fails both landing tests; `popUpTo` removed (a plain
+`navigate`) fails both landing tests on the back stack (`[false, true, false]`); the `wasSignedOut` condition
+removed fails only the saved-session test. The "opened while signed in" test passed under that last mutation: the
+state does not change while the account standing is open, so it is the saved-session test that holds the rule.
+
 **System bar tests** (`ui/navigation/SystemBarsTest.kt`, #186) — how the system-bar rule is tested.
 The rule is one place: `RigCheckApp` (`ui/navigation/RigCheckApp.kt`, what `MainActivity` shows) wraps
 the nav host in `safeDrawingPadding()`, so the status bar, the navigation bar (3-button keys or the

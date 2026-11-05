@@ -7,6 +7,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -87,6 +90,25 @@ fun RigCheckNavHost(
     // ends nothing.
     LaunchedEffect(navController) {
         navController.currentBackStackEntryFlow.collect { viewModel.screenShown(scanScreenOf(it)) }
+    }
+
+    // Signing in lands on the front page, not on the account standing the sign-in screen turns into (#206). Only
+    // the change from signed out to signed in does it, so opening the app already signed in, or opening the
+    // account standing later, leaves the user where they went. Password, Google and Apple all come back through
+    // this one state change. It is remembered across turning the device, so a sign-in that finishes while the
+    // screen is rebuilt still counts; it only acts while the sign-in screen is on show.
+    var wasSignedOut by rememberSaveable { mutableStateOf(viewModel.accountState.value is AccountState.SignedOut) }
+    LaunchedEffect(navController) {
+        viewModel.accountState.collect { state ->
+            val signedInNow = state is AccountState.SignedIn
+            val onSignInScreen = navController.currentDestination?.hasRoute<RigCheckRoute.Paywall>() == true
+            if (wasSignedOut && signedInNow && onSignInScreen) {
+                navController.navigate(RigCheckRoute.RigPicker) {
+                    popUpTo(RigCheckRoute.RigPicker) { inclusive = true }
+                }
+            }
+            wasSignedOut = state is AccountState.SignedOut
+        }
     }
 
     // A Scan that delivers goes on to its document's entry screen to be reviewed.
